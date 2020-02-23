@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CMakeRunConfigurationManager" shouldGenerate="true" shouldDeleteObsolete="true">
+    <generated />
+  </component>
+  <component name="CMakeSettings">
+    <configurations>
+      <configuration PROFILE_NAME="Debug" CONFIG_NAME="Debug" />
+    </configurations>
+  </component>
+  <component name="CargoProjects">
+    <cargoProject FILE="$PROJECT_DIR$/mp4meta/Cargo.toml" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="e67ee4c5-fde5-4249-8edf-6ec74d9a2eea" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/mp4meta/src/atom.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mp4meta/src/content.rs" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/mp4meta/src/tag.rs" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Rust File" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/mp4meta" />
+  </component>
+  <component name="MacroExpansionManager">
+    <option name="directoryName" value="fLFkABjn" />
+  </component>
+  <component name="ProjectId" id="1XzXv7MprdWwCjT6Pf3Tz3L4WLA" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showExcludedFiles" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="aspect.path.notification.shown" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../HomeSweetHomeServer" />
+    <property name="org.rust.cargo.project.model.PROJECT_DISCOVERY" value="true" />
+    <property name="org.rust.hideDetachedFileNotifications/home/tobi/Documents/IdeaProjects/rust-mp4meta/mp4meta/src/atom.rs" value="true" />
+    <property name="org.rust.hideDetachedFileNotifications/home/tobi/Documents/IdeaProjects/rust-mp4meta/mp4meta/src/content.rs" value="true" />
+    <property name="org.rust.hideDetachedFileNotifications/home/tobi/Documents/IdeaProjects/rust-mp4meta/mp4meta/src/errors.rs" value="true" />
+    <property name="org.rust.hideDetachedFileNotifications/home/tobi/Documents/IdeaProjects/rust-mp4meta/mp4meta/src/tag.rs" value="true" />
+    <property name="settings.editor.selected.configurable" value="language.rust.rustfmt" />
+  </component>
+  <component name="RunManager" selected="Cargo Command.Test tag::test">
+    <configuration name="Test tag::test" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+      <option name="channel" value="DEFAULT" />
+      <option name="command" value="test --package mp4meta  --lib tag::test -- --exact --nocapture" />
+      <option name="allFeatures" value="false" />
+      <option name="nocapture" value="false" />
+      <option name="emulateTerminal" value="false" />
+      <option name="backtrace" value="SHORT" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$/mp4meta" />
+      <envs />
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Test test" type="CargoCommandRunConfiguration" factoryName="Cargo Command" temporary="true">
+      <option name="channel" value="DEFAULT" />
+      <option name="command" value="test --package mp4meta --lib test -- &quot;/mnt/data/Music/Three Days Grace - Human/10 - Three Days Grace - One Too Many.m4a&quot;" />
+      <option name="allFeatures" value="false" />
+      <option name="nocapture" value="false" />
+      <option name="emulateTerminal" value="false" />
+      <option name="backtrace" value="SHORT" />
+      <option name="workingDirectory" value="file://$PROJECT_DIR$/mp4meta" />
+      <envs />
+      <method v="2">
+        <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+      </method>
+    </configuration>
+    <list>
+      <item itemvalue="Cargo Command.Test tag::test" />
+      <item itemvalue="Cargo Command.Test test" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Cargo Command.Test tag::test" />
+        <item itemvalue="Cargo Command.Test test" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="RustProjectSettings">
+    <option name="explicitPathToStdlib" value="/usr/lib/rustlib/src/rust/src" />
+    <option name="toolchainHomeDirectory" value="/usr/bin" />
+    <option name="version" value="2" />
+  </component>
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="e67ee4c5-fde5-4249-8edf-6ec74d9a2eea" name="Default Changelist" comment="" />
+      <created>1582050124918</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1582050124918</updated>
+      <workItem from="1582050129016" duration="2453000" />
+      <workItem from="1582053025964" duration="2630000" />
+      <workItem from="1582055672153" duration="2702000" />
+      <workItem from="1582058399171" duration="7839000" />
+      <workItem from="1582099327993" duration="863000" />
+      <workItem from="1582100879257" duration="1247000" />
+      <workItem from="1582102344915" duration="3218000" />
+      <workItem from="1582115903869" duration="2108000" />
+      <workItem from="1582182217951" duration="4708000" />
+      <workItem from="1582189006281" duration="338000" />
+      <workItem from="1582189360181" duration="35000" />
+      <workItem from="1582189517475" duration="513000" />
+      <workItem from="1582310145076" duration="18843000" />
+      <workItem from="1582364339519" duration="95000" />
+      <workItem from="1582364463238" duration="9892000" />
+      <workItem from="1582452095599" duration="43000" />
+      <workItem from="1582452469952" duration="135000" />
+      <workItem from="1582452622182" duration="2069000" />
+      <workItem from="1582470042735" duration="1768000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="1" />
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="418" y="177" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1582315650147">
+      <screen x="0" y="0" width="1920" height="1039" />
+    </state>
+    <state x="418" y="177" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.0.1920.1039@0.0.1920.1039" timestamp="1582315650147" />
+    <state x="679" y="324" width="559" height="395" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1582058167172">
+      <screen x="0" y="0" width="1920" height="1039" />
+    </state>
+    <state x="679" y="324" width="559" height="395" key="#com.intellij.fileTypes.FileTypeChooser/0.0.1920.1039@0.0.1920.1039" timestamp="1582058167172" />
+    <state x="768" y="238" width="374" height="564" key="#com.intellij.ide.util.MemberChooser" timestamp="1582312111271">
+      <screen x="0" y="0" width="1920" height="1039" />
+    </state>
+    <state x="768" y="238" width="374" height="564" key="#com.intellij.ide.util.MemberChooser/0.0.1920.1039@0.0.1920.1039" timestamp="1582312111271" />
+    <state x="643" y="246" width="624" height="549" key="#com.intellij.openapi.updateSettings.impl.PluginUpdateInfoDialog" timestamp="1582452599882">
+      <screen x="0" y="0" width="1920" height="1039" />
+    </state>
+    <state x="643" y="246" width="624" height="549" key="#com.intellij.openapi.updateSettings.impl.PluginUpdateInfoDialog/0.0.1920.1039@0.0.1920.1039" timestamp="1582452599882" />
+    <state x="743" y="277" width="424" height="486" key="FileChooserDialogImpl" timestamp="1582452136606">
+      <screen x="0" y="0" width="1920" height="1039" />
+    </state>
+    <state x="743" y="277" width="424" height="486" key="FileChooserDialogImpl/0.0.1920.1039@0.0.1920.1039" timestamp="1582452136606" />
+    <state width="960" height="660" key="GridCell.Tab.0.bottom" timestamp="1582455900840">
+      <screen x="0" y="0" width="1920" height="1039" />
+    </state>
+    <state width="960" height="660" key="GridCell.Tab.0.bottom/0.0.1920.1039@0.0.1920.1039" timestamp="1582455900840" />
+    <state width="960" height="660" key="GridCell.Tab.0.center" timestamp="1582455900840">
+      <screen x="0" y="0" width="1920" height="1039" />
+    </state>
+    <state width="960" height="660" key="GridCell.Tab.0.center/0.0.1920.1039@0.0.1920.1039" timestamp="1582455900840" />
+    <state width="960" height="660" key="GridCell.Tab.0.left" timestamp="1582455900839">
+      <screen x="0" y="0" width="1920" height="1039" />
+    </state>
+    <state width="960" height="660" key="GridCell.Tab.0.left/0.0.1920.1039@0.0.1920.1039" timestamp="1582455900839" />
+    <state width="960" height="660" key="GridCell.Tab.0.right" timestamp="1582455900840">
+      <screen x="0" y="0" width="1920" height="1039" />
+    </state>
+    <state width="960" height="660" key="GridCell.Tab.0.right/0.0.1920.1039@0.0.1920.1039" timestamp="1582455900840" />
+    <state x="449" y="154" width="1022" height="732" key="SettingsEditor" timestamp="1582310500635">
+      <screen x="0" y="0" width="1920" height="1039" />
+    </state>
+    <state x="449" y="154" width="1022" height="732" key="SettingsEditor/0.0.1920.1039@0.0.1920.1039" timestamp="1582310500635" />
+    <state x="732" y="439" width="445" height="162" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2" timestamp="1582116183180">
+      <screen x="0" y="0" width="1920" height="1039" />
+    </state>
+    <state x="732" y="439" width="445" height="162" key="com.intellij.openapi.vcs.update.UpdateOrStatusOptionsDialogupdate-v2/0.0.1920.1039@0.0.1920.1039" timestamp="1582116183180" />
+    <state x="608" y="226" width="703" height="586" key="find.popup" timestamp="1582327361161">
+      <screen x="0" y="0" width="1920" height="1039" />
+    </state>
+    <state x="608" y="226" width="703" height="586" key="find.popup/0.0.1920.1039@0.0.1920.1039" timestamp="1582327361161" />
+    <state x="281" y="245" width="1347" height="550" key="new project wizard" timestamp="1582059686802">
+      <screen x="0" y="0" width="1920" height="1039" />
+    </state>
+    <state x="281" y="245" width="1347" height="550" key="new project wizard/0.0.1920.1039@0.0.1920.1039" timestamp="1582059686802" />
+    <state x="624" y="236" width="672" height="677" key="run.anything.popup" timestamp="1582367068172">
+      <screen x="0" y="0" width="1920" height="1039" />
+    </state>
+    <state x="624" y="236" width="672" height="677" key="run.anything.popup/0.0.1920.1039@0.0.1920.1039" timestamp="1582367068172" />
+    <state x="623" y="228" width="672" height="678" key="search.everywhere.popup" timestamp="1582453242170">
+      <screen x="0" y="0" width="1920" height="1039" />
+    </state>
+    <state x="623" y="228" width="672" height="678" key="search.everywhere.popup/0.0.1920.1039@0.0.1920.1039" timestamp="1582453242170" />
+  </component>
+</project>
