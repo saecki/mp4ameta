@@ -1,8 +1,4 @@
-use std::error;
-use std::fmt;
-use std::io;
-use std::str;
-use std::string;
+use std::{error, fmt, io, str, string};
 use crate::Tag;
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -13,19 +9,23 @@ pub enum ErrorKind {
     /// An error kind indicating that an IO error has occurred. Contains the original io::Error.
     Io(io::Error),
     /// An error kind indicating that a string decoding error has occurred. Contains the invalid
-    /// bytes.
-    StringDecoding(Vec<u8>),
-    /// An error kind indicating that the reader does not contain an ID3 tag.
+    /// data.
+    Utf8StringDecoding(Vec<u8>),
+    /// An error kind indicating that a string decoding error has occurred.
+    Utf16StringDecoding,
+    /// An error kind indicating that the reader does not contain mp4 metadata.
     NoTag,
-    /// An error kind indicating that the reader contains an unsupported ID3 tag version. Contains
-    /// the major and minor versions that were detected in the tag.
-    UnsupportedVersion(u8, u8),
-    /// An error kind indicating that parsing error has occurred.
-    Parsing,
     /// An error kind indicating that some input was invalid.
     InvalidInput,
-    /// An error kind indicating that a feature is not supported.
-    UnsupportedFeature,
+    /// An error kind indicating that the typed data contains an unknown datatype. Contains the
+    /// unknown datatype code.
+    UnknownDataType(u32),
+    /// An error kind indicating that the raw data is empty.
+    EmptyData,
+    /// An error kind indicating that an atom could not be found. Contains the atom's f.
+    AtomNotFound([u8; 4]),
+    /// An error kind indicating that an error accured during parsing.
+    Parsing,
 }
 
 /// A structure able to represent any error that may occur while performing metadata operations.
@@ -45,14 +45,6 @@ impl Error {
             kind,
             description,
             partial_tag: None,
-        }
-    }
-
-    /// Creates a new `Error` using the error kind and description.
-    pub(crate) fn with_tag(self, tag: Tag) -> Error {
-        Error {
-            partial_tag: Some(tag),
-            ..self
         }
     }
 }
@@ -90,7 +82,7 @@ impl From<io::Error> for Error {
 impl From<string::FromUtf8Error> for Error {
     fn from(err: string::FromUtf8Error) -> Error {
         Error {
-            kind: ErrorKind::StringDecoding(err.into_bytes()),
+            kind: ErrorKind::Utf8StringDecoding(err.into_bytes()),
             description: "data is not valid utf-8",
             partial_tag: None,
         }
@@ -100,29 +92,39 @@ impl From<string::FromUtf8Error> for Error {
 impl From<str::Utf8Error> for Error {
     fn from(_: str::Utf8Error) -> Error {
         Error {
-            kind: ErrorKind::StringDecoding(vec![]),
+            kind: ErrorKind::Utf8StringDecoding(vec![]),
             description: "data is not valid utf-8",
             partial_tag: None,
         }
     }
 }
 
+impl From<string::FromUtf16Error> for Error {
+    fn from(_err: string::FromUtf16Error) -> Error {
+        Error {
+            kind: ErrorKind::Utf16StringDecoding,
+            description: "data is not valid utf-16",
+            partial_tag: None,
+        }
+    }
+}
+
 impl fmt::Debug for Error {
-    fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.description != "" {
-            write!(out, "{:?}: {}", self.kind, self.description)
+            write!(f, "{:?}: {}", self.kind, self.description)
         } else {
-            write!(out, "{}", self.description)
+            write!(f, "{}", self.description)
         }
     }
 }
 
 impl fmt::Display for Error {
-    fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.description != "" {
-            write!(out, "{:?}: {}", self.kind, error::Error::description(self))
+            write!(f, "{:?}: {}", self.kind, error::Error::description(self))
         } else {
-            write!(out, "{}", error::Error::description(self))
+            write!(f, "{}", error::Error::description(self))
         }
     }
 }
