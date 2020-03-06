@@ -9,42 +9,40 @@ use crate::{Data, Content, Tag, ErrorKind};
 const VALID_FILE_TYPES: [&str; 2] = ["M4A ", "M4B "];
 
 /// Byte values of Atom heads
-const FILE_TYPE: [u8; 4] = *b"ftyp";
-const MOOVE: [u8; 4] = *b"moov";
-const USER_DATA: [u8; 4] = *b"udta";
-const METADATA: [u8; 4] = *b"meta";
-const LIST: [u8; 4] = *b"ilst";
+pub const FILE_TYPE: [u8; 4] = *b"ftyp";
+pub const MOOVE: [u8; 4] = *b"moov";
+pub const USER_DATA: [u8; 4] = *b"udta";
+pub const METADATA: [u8; 4] = *b"meta";
+pub const LIST: [u8; 4] = *b"ilst";
 
-const ALBUM: [u8; 4] = *b"\xa9alb";
-const ARTIST: [u8; 4] = *b"\xa9ART";
-const ALBUM_ARTIST: [u8; 4] = *b"aART";
-const COMMENT: [u8; 4] = *b"\xa9cmt";
-const COMPOSER: [u8; 4] = *b"\xa9wrt";
-const COVER: [u8; 4] = *b"covr";
-const DISK_NUMBER: [u8; 4] = *b"disk";
-const GENRE: [u8; 4] = *b"\xa9gen";
-const GENERIC_GENRE: [u8; 4] = *b"gnre";
-const LYRICS: [u8; 4] = *b"\xa9lyr";
-const TITLE: [u8; 4] = *b"\xa9nam";
-const TRACK_NUMBER: [u8; 4] = *b"trkn";
-const YEAR: [u8; 4] = *b"\xa9day";
+pub const ALBUM: [u8; 4] = *b"\xa9alb";
+pub const ARTIST: [u8; 4] = *b"\xa9ART";
+pub const ALBUM_ARTIST: [u8; 4] = *b"aART";
+pub const COMMENT: [u8; 4] = *b"\xa9cmt";
+pub const COMPOSER: [u8; 4] = *b"\xa9wrt";
+pub const COVER: [u8; 4] = *b"covr";
+pub const DISK_NUMBER: [u8; 4] = *b"disk";
+pub const GENRE: [u8; 4] = *b"\xa9gen";
+pub const GENERIC_GENRE: [u8; 4] = *b"gnre";
+pub const LYRICS: [u8; 4] = *b"\xa9lyr";
+pub const TITLE: [u8; 4] = *b"\xa9nam";
+pub const TRACK_NUMBER: [u8; 4] = *b"trkn";
+pub const YEAR: [u8; 4] = *b"\xa9day";
 
 /// A structure that represents a MPEG-4 metadata atom
 pub struct Atom {
     /// The 4 byte identifier of the atom.
-    head: [u8; 4],
+    pub head: [u8; 4],
     /// The offset in bytes from the head's end to the beginning of the content.
-    offset: usize,
+    pub offset: usize,
     /// The content of the atom
-    content: Content,
+    pub content: Content,
 }
 
 impl Atom {
     pub fn read_from(reader: &mut BufReader<File>) -> crate::Result<Tag> {
         let mut ftyp = Atom::filetype_atom();
         ftyp.parse(reader)?;
-
-        println!("{:#?}", ftyp);
 
         if !ftyp.is_valid_filetype() {
             return Err(crate::Error::new(
@@ -56,26 +54,7 @@ impl Atom {
         let mut moov = Atom::metadata_atom();
         moov.parse(reader)?;
 
-        if let Content::Atoms(v) = &mut moov.content {
-            if let Some(udta) = v.first_mut() {
-                if let Content::Atoms(v) = &mut udta.content {
-                    if let Some(meta) = v.first_mut() {
-                        if let Content::Atoms(v) = &mut meta.content {
-                            if let Some(ilst) = v.first_mut() {
-                                if let Content::Atoms(v) = &mut ilst.content {
-                                    println!("{:#?}", v)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        Err(crate::Error::new(
-            ErrorKind::NoTag,
-            "Error parsing atoms",
-        ))
+        Ok(Tag::with(moov))
     }
 
     pub fn parse(&mut self, reader: &mut BufReader<File>) -> crate::Result<()> {
@@ -167,8 +146,16 @@ impl Atom {
         Ok(())
     }
 
-    pub fn is_valid_filetype(self) -> bool {
-        if let Content::RawData(Data::UTF8(Ok(s))) = self.content {
+    pub fn first_child(&self) -> Option<&Atom> {
+        if let Content::Atoms(v) = &self.content {
+            return v.first();
+        }
+
+        None
+    }
+
+    pub fn is_valid_filetype(&self) -> bool {
+        if let Content::RawData(Data::UTF8(Ok(s))) = &self.content {
             for f in &VALID_FILE_TYPES {
                 if s.starts_with(f) {
                     return true;

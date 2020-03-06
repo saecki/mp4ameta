@@ -1,5 +1,4 @@
 use std::{error, fmt, io, str, string};
-use crate::Tag;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -34,8 +33,6 @@ pub struct Error {
     pub kind: ErrorKind,
     /// A human readable string describing the error.
     pub description: &'static str,
-    /// If any, the part of the tag that was able to be decoded before the error occurred.
-    pub partial_tag: Option<Tag>,
 }
 
 impl Error {
@@ -44,7 +41,6 @@ impl Error {
         Error {
             kind,
             description,
-            partial_tag: None,
         }
     }
 }
@@ -74,7 +70,6 @@ impl From<io::Error> for Error {
         Error {
             kind: ErrorKind::Io(err),
             description: "",
-            partial_tag: None,
         }
     }
 }
@@ -84,7 +79,6 @@ impl From<string::FromUtf8Error> for Error {
         Error {
             kind: ErrorKind::Utf8StringDecoding(err.into_bytes()),
             description: "data is not valid utf-8",
-            partial_tag: None,
         }
     }
 }
@@ -94,7 +88,6 @@ impl From<str::Utf8Error> for Error {
         Error {
             kind: ErrorKind::Utf8StringDecoding(vec![]),
             description: "data is not valid utf-8",
-            partial_tag: None,
         }
     }
 }
@@ -104,7 +97,6 @@ impl From<string::FromUtf16Error> for Error {
         Error {
             kind: ErrorKind::Utf16StringDecoding,
             description: "data is not valid utf-16",
-            partial_tag: None,
         }
     }
 }

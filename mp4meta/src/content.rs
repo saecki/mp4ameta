@@ -8,8 +8,8 @@ use crate::{Error, ErrorKind};
 const UNKNOWN: u32 = 0;
 const UTF8: u32 = 1;
 const UTF16: u32 = 2;
-const JPEG: u32 = 666;
-const PNG: u32 = 667;
+const JPEG: u32 = 13;
+const PNG: u32 = 14;
 
 /// A structure representing the different types of content an Atom might have.
 pub enum Content {
@@ -25,7 +25,6 @@ pub enum Content {
 
 /// A struct that holds the different types of data an atom can contain. More at:
 /// https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34
-#[derive(Debug)]
 pub enum Data {
     Unknown(crate::Result<Vec<u8>>),
     UTF8(crate::Result<String>),
@@ -171,5 +170,18 @@ impl Data {
 
     pub fn empty_unknown() -> Data {
         Data::Unknown(Err(Error::new(ErrorKind::EmptyData, "Empty data")))
+    }
+}
+
+impl fmt::Debug for Data {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Data::Unknown(d) => write!(f, "Unknown{{ {:?} }}", d),
+            Data::UTF8(d) => write!(f, "UTF8{{ {:?} }}", d),
+            Data::UTF16(d) => write!(f, "UTF16{{ {:?} }}", d),
+            Data::JPEG(d) => write!(f, "JPEG{{ {:?} }}", d),
+            Data::PNG(d) => write!(f, "PNG{{ {:?} }}", d),
+            Data::Unparsed => write!(f, "Unparsed"),
+        }
     }
 }
