@@ -33,6 +33,7 @@ impl Tag {
         Tag::read_from(&mut file)
     }
 
+    /// Returns a string corresponding to the given head if available.
     pub fn get_utf8(&self, head: [u8; 4]) -> Option<String> {
         if let Content::Atoms(v) = &self.atom.first_child()?.first_child()?.first_child()?.content {
             for a in v {
@@ -47,6 +48,7 @@ impl Tag {
         None
     }
 
+    /// Returns a vector containing byte data corresponding to the provided head if available.
     pub fn get_unknown(&self, head: [u8; 4]) -> Option<Vec<u8>> {
         if let Content::Atoms(v) = &self.atom.first_child()?.first_child()?.first_child()?.content {
             for a in v {
@@ -151,7 +153,7 @@ impl Tag {
 
 #[test]
 fn test() {
-    let tag = Tag::read_from_path("/mnt/data/Music/SOiL - Redefine/10 - SOiL - Love Hate Game.m4a");
+    let tag = Tag::read_from_path("/mnt/data/Music/TOOL - Fear Inoculum/10 - TOOL - Mockingbeat.m4a");
 
     match tag {
         Ok(t) => {

@@ -8,8 +8,8 @@ use crate::{Error, ErrorKind};
 const UNKNOWN: u32 = 0;
 const UTF8: u32 = 1;
 const UTF16: u32 = 2;
-const JPEG: u32 = 613;
-const PNG: u32 = 614;
+const JPEG: u32 = 13;
+const PNG: u32 = 14;
 
 /// A structure representing the different types of content an Atom might have.
 pub enum Content {
@@ -31,6 +31,7 @@ pub enum Data {
     UTF16(crate::Result<String>),
     JPEG(crate::Result<Vec<u8>>),
     PNG(crate::Result<Vec<u8>>),
+    UnknownCode(u32),
     Unparsed,
 }
 
@@ -108,7 +109,7 @@ impl Data {
                         UTF16 => *self = Data::UTF16(Data::read_utf16(reader, length - 8)),
                         JPEG => *self = Data::JPEG(Data::read_to_u8_vec(reader, length - 8)),
                         PNG => *self = Data::PNG(Data::read_to_u8_vec(reader, length - 8)),
-                        _ => *self = Data::Unparsed,
+                        _ => *self = Data::UnknownCode(datatype),
                     }
                 }
             }
@@ -117,6 +118,7 @@ impl Data {
             Data::UTF16(_) => *self = Data::UTF16(Data::read_utf16(reader, length)),
             Data::JPEG(_) => *self = Data::JPEG(Data::read_to_u8_vec(reader, length)),
             Data::PNG(_) => *self = Data::PNG(Data::read_to_u8_vec(reader, length)),
+            _ => (),
         }
 
         Ok(())
@@ -179,8 +181,9 @@ impl fmt::Debug for Data {
             Data::Unknown(d) => write!(f, "Unknown{{ {:?} }}", d),
             Data::UTF8(d) => write!(f, "UTF8{{ {:?} }}", d),
             Data::UTF16(d) => write!(f, "UTF16{{ {:?} }}", d),
-            Data::JPEG(d) => write!(f, "JPEG{{ {:?} }}", d),
-            Data::PNG(d) => write!(f, "PNG{{ {:?} }}", d),
+            Data::JPEG(_) => write!(f, "JPEG"),
+            Data::PNG(_) => write!(f, "PNG"),
+            Data::UnknownCode(c) => write!(f, "UnkownCode{{ {:?} }}", c),
             Data::Unparsed => write!(f, "Unparsed"),
         }
     }
