@@ -1,3 +1,4 @@
+use byteorder::{BigEndian, ReadBytesExt};
 use std::fmt::Debug;
 use std::fs::File;
 use std::io::BufReader;
@@ -60,39 +61,97 @@ impl Tag {
         None
     }
 
-
+    /// Returns the title (©nam).
     pub fn title(&self) -> Option<String> {
         self.get_utf8(atom::TITLE)
     }
 
+    /// Returns the artist (©ART).
     pub fn artist(&self) -> Option<String> {
         self.get_utf8(atom::ARTIST)
     }
 
+    /// Returns the album artist (aART).
     pub fn album_artist(&self) -> Option<String> {
         self.get_utf8(atom::ALBUM_ARTIST)
     }
 
+    /// Returns the album (©alb).
     pub fn album(&self) -> Option<String> {
         self.get_utf8(atom::ALBUM)
     }
 
+    /// Returns the genre (©gen).
     pub fn genre(&self) -> Option<String> {
         self.get_utf8(atom::GENRE)
     }
 
+    /// Returns the year (©day).
     pub fn year(&self) -> Option<String> {
         self.get_utf8(atom::YEAR)
     }
 
-    pub fn track_number(&self) -> Option<(u32, u32)> {
-        let vec = self.get_unknown(atom::TRACK_NUMBER);
+    /// Return the lyrics (©lyr).
+    pub fn lyrics(&self) -> Option<String> {
+        self.get_utf8(atom::LYRICS)
+    }
+
+    /// Returns the track number and the total number of tracks (trkn).
+    pub fn track_number(&self) -> (Option<u16>, Option<u16>) {
+        let vec = match self.get_unknown(atom::TRACK_NUMBER) {
+            Some(v) => v,
+            None => return (None, None),
+        };
+
+        let mut buffs = Vec::new();
+
+        for chunk in vec.chunks(2) {
+            buffs.push(chunk)
+        }
+
+        let track_number = match buffs[1].read_u16::<BigEndian>() {
+            Ok(tnr) => Some(tnr),
+            Err(_) => None,
+        };
+
+        let total_tracks = match buffs[2].read_u16::<BigEndian>() {
+            Ok(atr) => Some(atr),
+            Err(_) => None,
+        };
+
+        (track_number, total_tracks)
+    }
+
+    /// Returns disk number and total number of disks (disk).
+    pub fn disk_number(&self) -> (Option<u16>, Option<u16>) {
+        let vec = match self.get_unknown(atom::DISK_NUMBER) {
+            Some(v) => v,
+            None => return (None, None),
+        };
+
+        let mut buffs = Vec::new();
+
+        for chunk in vec.chunks(2) {
+            buffs.push(chunk)
+        }
+
+        let disk_number = match buffs[1].read_u16::<BigEndian>() {
+            Ok(tnr) => Some(tnr),
+            Err(_) => None,
+        };
+
+        let total_disks = match buffs[2].read_u16::<BigEndian>() {
+            Ok(atr) => Some(atr),
+            Err(_) => None,
+        };
+
+        (disk_number, total_disks)
     }
 }
 
 #[test]
 fn test() {
-    let tag = Tag::read_from_path("/mnt/data/Music/Three Days Grace - Human/1 - Three Days Grace - Human Race.m4a");
+    let tag = Tag::read_from_path("/mnt/data/Music/SOiL - Redefine/10 - SOiL - Love Hate Game.m4a");
 
     match tag {
         Ok(t) => {
@@ -103,6 +162,8 @@ fn test() {
             println!("album: {:?}", t.album());
             println!("genre: {:?}", t.genre());
             println!("year: {:?}", t.year());
+            println!("track number: {:?}", t.track_number());
+            println!("disk number: {:?}", t.disk_number());
         }
         Err(e) => panic!("error: {:#?}", e),
     }

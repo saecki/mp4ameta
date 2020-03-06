@@ -8,8 +8,8 @@ use crate::{Error, ErrorKind};
 const UNKNOWN: u32 = 0;
 const UTF8: u32 = 1;
 const UTF16: u32 = 2;
-const JPEG: u32 = 13;
-const PNG: u32 = 14;
+const JPEG: u32 = 613;
+const PNG: u32 = 614;
 
 /// A structure representing the different types of content an Atom might have.
 pub enum Content {
