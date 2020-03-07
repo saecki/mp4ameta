@@ -1,8 +1,10 @@
-use byteorder::{BigEndian, ReadBytesExt};
 use std::fmt::Debug;
 use std::fs::File;
-use std::io::BufReader;
+use std::io;
 use std::path::Path;
+
+use byteorder::{BigEndian, ReadBytesExt};
+
 use crate::{Atom, atom, Content, Data};
 
 /// A MPEG-4 audio tag containing metadata atoms
@@ -13,27 +15,28 @@ pub struct Tag {
 }
 
 impl Tag {
-    /// Creates a new empty Tag
+    /// Creates a new empty `Tag`.
     pub fn new() -> Tag {
         Tag { atom: Atom::new() }
     }
 
+    /// Creates a new `Tag` containing the `Atom`.
     pub fn with(atom: Atom) -> Tag {
         Tag { atom }
     }
 
-    /// Attempts to read a MP4 tag from the reader.
-    pub fn read_from(reader: &mut BufReader<File>) -> crate::Result<Tag> {
+    /// Attempts to read a MP4 `Tag` from the reader.
+    pub fn read_from(reader: &mut impl io::Read) -> crate::Result<Tag> {
         Atom::read_from(reader)
     }
 
-    /// Attempts to read a MP4 tag from the file at the indicated path.
+    /// Attempts to read a MP4 `Tag` from the file at the indicated path.
     pub fn read_from_path(path: impl AsRef<Path>) -> crate::Result<Tag> {
-        let mut file = BufReader::new(File::open(path)?);
+        let mut file = io::BufReader::new(File::open(path)?);
         Tag::read_from(&mut file)
     }
 
-    /// Returns a string corresponding to the given head if available.
+    /// Attempts to return a string corresponding to the provided head.
     pub fn get_utf8(&self, head: [u8; 4]) -> Option<String> {
         if let Content::Atoms(v) = &self.atom.first_child()?.first_child()?.first_child()?.content {
             for a in v {
@@ -48,7 +51,7 @@ impl Tag {
         None
     }
 
-    /// Returns a vector containing byte data corresponding to the provided head if available.
+    /// Attempts to return a vector containing byte data corresponding to the provided head.
     pub fn get_unknown(&self, head: [u8; 4]) -> Option<Vec<u8>> {
         if let Content::Atoms(v) = &self.atom.first_child()?.first_child()?.first_child()?.content {
             for a in v {
@@ -63,34 +66,24 @@ impl Tag {
         None
     }
 
-    /// Returns the title (©nam).
-    pub fn title(&self) -> Option<String> {
-        self.get_utf8(atom::TITLE)
-    }
-
-    /// Returns the artist (©ART).
-    pub fn artist(&self) -> Option<String> {
-        self.get_utf8(atom::ARTIST)
-    }
-
-    /// Returns the album artist (aART).
-    pub fn album_artist(&self) -> Option<String> {
-        self.get_utf8(atom::ALBUM_ARTIST)
-    }
-
-    /// Returns the album (©alb).
+    /// Attempts to return the album (©alb).
     pub fn album(&self) -> Option<String> {
         self.get_utf8(atom::ALBUM)
     }
 
-    /// Returns the genre (©gen).
-    pub fn genre(&self) -> Option<String> {
-        self.get_utf8(atom::GENRE)
+    /// Attempts to return the album artist (aART).
+    pub fn album_artist(&self) -> Option<String> {
+        self.get_utf8(atom::ALBUM_ARTIST)
     }
 
-    /// Returns the year (©day).
-    pub fn year(&self) -> Option<String> {
-        self.get_utf8(atom::YEAR)
+    /// Attempts to return the artist (©ART).
+    pub fn artist(&self) -> Option<String> {
+        self.get_utf8(atom::ARTIST)
+    }
+
+    /// Attempts to return the genre (©gen).
+    pub fn genre(&self) -> Option<String> {
+        self.get_utf8(atom::GENRE)
     }
 
     /// Return the lyrics (©lyr).
@@ -98,7 +91,17 @@ impl Tag {
         self.get_utf8(atom::LYRICS)
     }
 
-    /// Returns the track number and the total number of tracks (trkn).
+    /// Attempts to return the title (©nam).
+    pub fn title(&self) -> Option<String> {
+        self.get_utf8(atom::TITLE)
+    }
+
+    /// Attempts to return the year (©day).
+    pub fn year(&self) -> Option<String> {
+        self.get_utf8(atom::YEAR)
+    }
+
+    /// Attempts to return the track number and the total number of tracks (trkn).
     pub fn track_number(&self) -> (Option<u16>, Option<u16>) {
         let vec = match self.get_unknown(atom::TRACK_NUMBER) {
             Some(v) => v,
@@ -124,7 +127,7 @@ impl Tag {
         (track_number, total_tracks)
     }
 
-    /// Returns disk number and total number of disks (disk).
+    /// Attempts to return disk number and total number of disks (disk).
     pub fn disk_number(&self) -> (Option<u16>, Option<u16>) {
         let vec = match self.get_unknown(atom::DISK_NUMBER) {
             Some(v) => v,
