@@ -22,6 +22,8 @@ pub enum ErrorKind {
     EmptyData,
     /// An error kind indicating that an atom could not be found. Contains the atom's head.
     AtomNotFound([u8; 4]),
+    /// An error kind indicating that an atom already exists. Contains the atom's head.
+    AtomAlreadyExists([u8; 4]),
 }
 
 /// A structure able to represent any error that may occur while performing metadata operations.
@@ -75,7 +77,7 @@ impl From<string::FromUtf8Error> for Error {
     fn from(err: string::FromUtf8Error) -> Error {
         Error {
             kind: ErrorKind::Utf8StringDecoding(err),
-            description: "data is not valid utf-8",
+            description: "Data is not valid utf-8.",
         }
     }
 }
@@ -84,27 +86,19 @@ impl From<string::FromUtf16Error> for Error {
     fn from(err: string::FromUtf16Error) -> Error {
         Error {
             kind: ErrorKind::Utf16StringDecoding(err),
-            description: "data is not valid utf-16",
+            description: "Data is not valid utf-16.",
         }
     }
 }
 
 impl fmt::Debug for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.description != "" {
-            write!(f, "{:?}: {}", self.kind, self.description)
-        } else {
-            write!(f, "{}", self.description)
-        }
+        write!(f, "{:?}", self)
     }
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.description != "" {
-            write!(f, "{:?}: {}", self.kind, error::Error::description(self))
-        } else {
-            write!(f, "{}", error::Error::description(self))
-        }
+        write!(f, "{:?}", self)
     }
 }

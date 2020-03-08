@@ -39,9 +39,9 @@ impl Content {
     }
 
     /// Creates a new `Content` of type `Content::Atoms` containing a data `Atom`.
-    pub fn data_atom() -> Content {
-        Content::atom(Atom::data_atom())
-    }
+    pub fn data_atom() -> Content { Content::atom(Atom::data_atom()) }
+
+    pub fn data_atom_with(data: Data) -> Content { Content::atom(Atom::data_atom_with(data)) }
 
     /// Creates a new `Content` of type `Content::Atoms` containing a new `Atom` with the provided
     /// head, offset and content.
@@ -114,27 +114,27 @@ pub enum Data {
 }
 
 impl Data {
-    /// Creates new `Data` of type `Data::Reserved` containing a Error with `ErrorKind::EmptyData`.
+    /// Creates new data of type `Data::Reserved` containing a Error with `ErrorKind::EmptyData`.
     pub fn empty_reserved() -> Data {
         Data::Reserved(Err(Error::new(ErrorKind::EmptyData, "Empty data")))
     }
 
-    /// Creates new `Data` of type `Data::UTF8` containing a Error with `ErrorKind::EmptyData`.
+    /// Creates new data of type `Data::UTF8` containing a Error with `ErrorKind::EmptyData`.
     pub fn empty_utf8() -> Data {
         Data::Utf8(Err(Error::new(ErrorKind::EmptyData, "Empty uf8 data")))
     }
 
-    /// Creates new `Data` of type `Data::UTF16` containing a Error with `ErrorKind::EmptyData`.
+    /// Creates new data of type `Data::UTF16` containing a Error with `ErrorKind::EmptyData`.
     pub fn empty_utf16() -> Data {
         Data::Utf16(Err(Error::new(ErrorKind::EmptyData, "Empty uf16 data")))
     }
 
-    /// Creates new `Data` of type `Data::JPEG` containing a Error with `ErrorKind::EmptyData`.
+    /// Creates new data of type `Data::JPEG` containing a Error with `ErrorKind::EmptyData`.
     pub fn empty_jpeg() -> Data {
         Data::Jpeg(Err(Error::new(ErrorKind::EmptyData, "Empty jpeg data")))
     }
 
-    /// Creates new `Data` of type `Data::PNG` containing a Error with `ErrorKind::EmptyData`.
+    /// Creates new data of type `Data::PNG` containing a Error with `ErrorKind::EmptyData`.
     pub fn empty_png() -> Data {
         Data::Jpeg(Err(Error::new(ErrorKind::EmptyData, "Empty png data")))
     }

@@ -1,4 +1,4 @@
-//! A library to read ITunes style MPEG-4 audio metadata
+//! A library to read ITunes style MPEG-4 audio metadata.
 
 pub use crate::atom::Atom;
 pub use crate::content::{Content, Data};

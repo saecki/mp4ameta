@@ -28,17 +28,18 @@ pub const COMMENT: [u8; 4] = *b"\xa9cmt";
 pub const COMPILATION: [u8; 4] = *b"cpil";
 pub const COMPOSER: [u8; 4] = *b"\xa9wrt";
 pub const COPYRIGHT: [u8; 4] = *b"cprt";
+pub const CUSTOM_GENRE: [u8; 4] = *b"\xa9gen";
 pub const DISK_NUMBER: [u8; 4] = *b"disk";
 pub const ENCODER: [u8; 4] = *b"\xa9too";
-pub const GENERIC_GENRE: [u8; 4] = *b"gnre";
-pub const GENRE: [u8; 4] = *b"\xa9gen";
 pub const RATING: [u8; 4] = *b"rtng";
+pub const STANDARD_GENRE: [u8; 4] = *b"gnre";
 pub const TITLE: [u8; 4] = *b"\xa9nam";
 pub const TRACK_NUMBER: [u8; 4] = *b"trkn";
 pub const YEAR: [u8; 4] = *b"\xa9day";
 
 // ITunes 4.2 atoms
 pub const GROUPING: [u8; 4] = *b"\xa9grp";
+pub const MEDIA_TYPE: [u8; 4] = *b"stik";
 
 // ITunes 4.9 atoms
 pub const CATEGORY: [u8; 4] = *b"catg";
@@ -48,7 +49,7 @@ pub const PODCAST: [u8; 4] = *b"pcst";
 pub const PODCAST_URL: [u8; 4] = *b"purl";
 
 // ITunes 5.0
-pub const DESCRIPTION: [u8; 4] = *b"pcst";
+pub const DESCRIPTION: [u8; 4] = *b"desc";
 pub const LYRICS: [u8; 4] = *b"\xa9lyr";
 
 // ITunes 6.0
@@ -64,13 +65,13 @@ pub const PURCHASE_DATE: [u8; 4] = *b"purd";
 // ITunes 7.0
 pub const GAPLESS_PLAYBACK: [u8; 4] = *b"pgap";
 
-/// A structure that represents a MPEG-4 metadata `Atom`.
+/// A structure that represents a MPEG-4 audio metadata `Atom`.
 pub struct Atom {
     /// The 4 byte identifier of the `Atom`.
     pub head: [u8; 4],
-    /// The offset in bytes separating the head from the `Content`.
+    /// The offset in bytes separating the head from the content.
     pub offset: usize,
-    /// The `Content` of an `Atom`.
+    /// The content of an `Atom`.
     pub content: Content,
 }
 
@@ -80,12 +81,12 @@ impl Atom {
         Atom { head: *b"    ", offset: 0, content: Content::Empty }
     }
 
-    /// Creates an `Atom` containing the provided `Content` at a n byte offset.
+    /// Creates an atom containing the provided content at a n byte offset.
     pub fn with(head: [u8; 4], offset: usize, content: Content) -> Atom {
         Atom { head, offset, content }
     }
 
-    /// Creates an `Atom` containing `Content::RawData` with the provided `Data`.
+    /// Creates an atom containing `Content::RawData` with the provided data.
     pub fn with_raw_data(head: [u8; 4], offset: usize, data: Data) -> Atom {
         Atom::with(head, offset, Content::RawData(data))
     }
@@ -94,7 +95,11 @@ impl Atom {
         Atom::with(*b"data", 0, Content::TypedData(Data::Unparsed))
     }
 
-    /// Attempts to read a `Tag` from the
+    pub fn data_atom_with(data: Data) -> Atom {
+        Atom::with(*b"data", 0, Content::TypedData(data))
+    }
+
+    /// Attempts to read a MPEG-4 audio tag from the reader.
     pub fn read_from(reader: &mut impl io::Read) -> crate::Result<Tag> {
         let mut ftyp = Atom::filetype_atom();
         ftyp.parse(reader)?;
@@ -181,7 +186,7 @@ impl Atom {
                 "Error reading atom length",
             )),
         };
-        let mut head = [0_u8; 4];
+        let mut head = [0u8; 4];
         if let Err(e) = reader.read_exact(&mut head) {
             return Err(crate::Error::new(
                 ErrorKind::Io(e),
@@ -210,6 +215,15 @@ impl Atom {
     pub fn first_child(&self) -> Option<&Atom> {
         if let Content::Atoms(v) = &self.content {
             return v.first();
+        }
+
+        None
+    }
+
+    /// Attempts to return the first children `Atom` if it's `Content` is of type `Content::Atoms`.
+    pub fn mut_first_child(&mut self) -> Option<&mut Atom> {
+        if let Content::Atoms(v) = &mut self.content {
+            return v.first_mut();
         }
 
         None
@@ -245,33 +259,34 @@ impl Atom {
                             .add_atom_with(ARTIST, 0, Content::data_atom())
                             .add_atom_with(ARTWORK, 0, Content::data_atom())
                             .add_atom_with(BPM, 0, Content::data_atom())
+                            .add_atom_with(CATEGORY, 0, Content::data_atom())
                             .add_atom_with(COMMENT, 0, Content::data_atom())
                             .add_atom_with(COMPILATION, 0, Content::data_atom())
                             .add_atom_with(COMPOSER, 0, Content::data_atom())
                             .add_atom_with(COPYRIGHT, 0, Content::data_atom())
+                            .add_atom_with(CUSTOM_GENRE, 0, Content::data_atom())
+                            .add_atom_with(DESCRIPTION, 0, Content::data_atom())
                             .add_atom_with(DISK_NUMBER, 0, Content::data_atom())
                             .add_atom_with(ENCODER, 0, Content::data_atom())
-                            .add_atom_with(GENERIC_GENRE, 0, Content::data_atom())
-                            .add_atom_with(GENRE, 0, Content::data_atom())
-                            .add_atom_with(RATING, 0, Content::data_atom())
-                            .add_atom_with(TITLE, 0, Content::data_atom())
-                            .add_atom_with(TRACK_NUMBER, 0, Content::data_atom())
-                            .add_atom_with(YEAR, 0, Content::data_atom())
-                            .add_atom_with(GROUPING, 0, Content::data_atom())
-                            .add_atom_with(CATEGORY, 0, Content::data_atom())
                             .add_atom_with(EPISODE_GLOBAL_UNIQUE_ID, 0, Content::data_atom())
+                            .add_atom_with(GAPLESS_PLAYBACK, 0, Content::data_atom())
+                            .add_atom_with(GROUPING, 0, Content::data_atom())
                             .add_atom_with(KEYWORD, 0, Content::data_atom())
+                            .add_atom_with(LYRICS, 0, Content::data_atom())
+                            .add_atom_with(MEDIA_TYPE, 0, Content::data_atom())
                             .add_atom_with(PODCAST, 0, Content::data_atom())
                             .add_atom_with(PODCAST_URL, 0, Content::data_atom())
-                            .add_atom_with(DESCRIPTION, 0, Content::data_atom())
-                            .add_atom_with(LYRICS, 0, Content::data_atom())
+                            .add_atom_with(PURCHASE_DATE, 0, Content::data_atom())
+                            .add_atom_with(RATING, 0, Content::data_atom())
+                            .add_atom_with(STANDARD_GENRE, 0, Content::data_atom())
+                            .add_atom_with(TITLE, 0, Content::data_atom())
+                            .add_atom_with(TRACK_NUMBER, 0, Content::data_atom())
                             .add_atom_with(TV_EPISODE, 0, Content::data_atom())
                             .add_atom_with(TV_EPISODE_NUMBER, 0, Content::data_atom())
                             .add_atom_with(TV_NETWORK_NAME, 0, Content::data_atom())
                             .add_atom_with(TV_SEASON, 0, Content::data_atom())
                             .add_atom_with(TV_SHOW_NAME, 0, Content::data_atom())
-                            .add_atom_with(PURCHASE_DATE, 0, Content::data_atom())
-                            .add_atom_with(GAPLESS_PLAYBACK, 0, Content::data_atom()),
+                            .add_atom_with(YEAR, 0, Content::data_atom()),
                     ),
                 ),
             ),
