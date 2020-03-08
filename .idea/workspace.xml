@@ -14,8 +14,6 @@
   <component name="ChangeListManager">
     <list default="true" id="e67ee4c5-fde5-4249-8edf-6ec74d9a2eea" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mp4meta/src/atom.rs" beforeDir="false" afterPath="$PROJECT_DIR$/mp4meta/src/atom.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mp4meta/src/tag.rs" beforeDir="false" afterPath="$PROJECT_DIR$/mp4meta/src/tag.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -34,9 +32,10 @@
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="UPDATE_TYPE" value="MERGE" />
   </component>
   <component name="MacroExpansionManager">
-    <option name="directoryName" value="fLFkABjn" />
+    <option name="directoryName" value="jmtXnbdX" />
   </component>
   <component name="MavenImportPreferences">
     <option name="importingSettings">

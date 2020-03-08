@@ -64,91 +64,6 @@ pub const PURCHASE_DATE: [u8; 4] = *b"purd";
 // ITunes 7.0
 pub const GAPLESS_PLAYBACK: [u8; 4] = *b"pgap";
 
-
-/// List of standard genres found in the `gnre` `Atom`.
-pub const GENRES: [(u16, &str); 80] = [
-    (1, "Blues"),
-    (2, "Classic rock"),
-    (3, "Country"),
-    (4, "Dance"),
-    (5, "Disco"),
-    (6, "Funk"),
-    (7, "Grunge"),
-    (8, "Hip,-Hop"),
-    (9, "Jazz"),
-    (10, "Metal"),
-    (11, "New Age"),
-    (12, "Oldies"),
-    (13, "Other"),
-    (14, "Pop"),
-    (15, "Rhythm and Blues"),
-    (16, "Rap"),
-    (17, "Reggae"),
-    (18, "Rock"),
-    (19, "Techno"),
-    (20, "Industrial"),
-    (21, "Alternative"),
-    (22, "Ska"),
-    (23, "Death metal"),
-    (24, "Pranks"),
-    (25, "Soundtrack"),
-    (26, "Euro-Techno"),
-    (27, "Ambient"),
-    (28, "Trip-Hop"),
-    (29, "Vocal"),
-    (30, "Jazz & Funk"),
-    (31, "Fusion"),
-    (32, "Trance"),
-    (33, "Classical"),
-    (34, "Instrumental"),
-    (35, "Acid"),
-    (36, "House"),
-    (37, "Game"),
-    (38, "Sound clip"),
-    (39, "Gospel"),
-    (40, "Noise"),
-    (41, "Alternative Rock"),
-    (42, "Bass"),
-    (43, "Soul"),
-    (44, "Punk"),
-    (45, "Space"),
-    (46, "Meditative"),
-    (47, "Instrumental Pop"),
-    (48, "Instrumental Rock"),
-    (49, "Ethnic"),
-    (50, "Gothic"),
-    (51, "Darkwave"),
-    (52, "Techno-Industrial"),
-    (53, "Electronic"),
-    (54, "Pop-Folk"),
-    (55, "Eurodance"),
-    (56, "Dream"),
-    (57, "Southern Rock"),
-    (58, "Comedy"),
-    (59, "Cult"),
-    (60, "Gangsta"),
-    (61, "Top 41"),
-    (62, "Christian Rap"),
-    (63, "Pop/Funk"),
-    (64, "Jungle"),
-    (65, "Native US"),
-    (66, "Cabaret"),
-    (67, "New Wave"),
-    (68, "Psychedelic"),
-    (69, "Rave"),
-    (70, "Show tunes"),
-    (71, "Trailer"),
-    (72, "Lo,-Fi"),
-    (73, "Tribal"),
-    (74, "Acid Punk"),
-    (75, "Acid Jazz"),
-    (76, "Polka"),
-    (77, "Retro"),
-    (78, "Musical"),
-    (79, "Rock ’n’ Roll"),
-    (80, "Hard Rock"),
-];
-
 /// A structure that represents a MPEG-4 metadata `Atom`.
 pub struct Atom {
     /// The 4 byte identifier of the `Atom`.
@@ -203,13 +118,13 @@ impl Atom {
             let h = match Atom::parse_head(reader) {
                 Ok(h) => h,
                 Err(e) => match &e.kind {
-                    crate::ErrorKind::Io(ioe) => if ioe.kind() == io::ErrorKind::UnexpectedEof {
-                        return Err(crate::Error::new(
+                    crate::ErrorKind::Io(ioe) => return if ioe.kind() == io::ErrorKind::UnexpectedEof {
+                        Err(crate::Error::new(
                             ErrorKind::AtomNotFound(self.head),
                             "Reached EOF without finding a matching atom",
-                        ));
+                        ))
                     } else {
-                        return Err(e);
+                        Err(e)
                     },
                     _ => return Err(e),
                 },
@@ -266,15 +181,15 @@ impl Atom {
                 "Error reading atom length",
             )),
         };
-        let mut f = [0_u8; 4];
-        if let Err(e) = reader.read_exact(&mut f) {
+        let mut head = [0_u8; 4];
+        if let Err(e) = reader.read_exact(&mut head) {
             return Err(crate::Error::new(
                 ErrorKind::Io(e),
-                "Error reading byte data",
+                "Error reading atom head",
             ));
         }
 
-        Ok((length, f))
+        Ok((length, head))
     }
 
     /// Attempts to parse the content of the provided length from the reader.
@@ -291,7 +206,7 @@ impl Atom {
         Ok(())
     }
 
-    /// Attempts to return the first children `Atom` if the `Content` is of type `Content::Atoms`.
+    /// Attempts to return the first children `Atom` if it's `Content` is of type `Content::Atoms`.
     pub fn first_child(&self) -> Option<&Atom> {
         if let Content::Atoms(v) = &self.content {
             return v.first();
@@ -300,9 +215,9 @@ impl Atom {
         None
     }
 
-    /// Return true if the filetype specified in the `ftyp` atom is valid otherwise false.
+    /// Return true if the filetype specified in the `ftyp` atom is valid, false otherwise.
     pub fn is_valid_filetype(&self) -> bool {
-        if let Content::RawData(Data::UTF8(Ok(s))) = &self.content {
+        if let Content::RawData(Data::Utf8(Ok(s))) = &self.content {
             for f in &VALID_FILE_TYPES {
                 if s.starts_with(f) {
                     return true;
@@ -313,13 +228,13 @@ impl Atom {
         return false;
     }
 
-    /// Returns a `Atom` hierarchy needed to parse the filetype.
-    fn filetype_atom() -> Atom {
+    /// Returns a `Atom` hierarchy needed to parse the filetype:
+    pub fn filetype_atom() -> Atom {
         Atom::with_raw_data(FILE_TYPE, 0, Data::empty_utf8())
     }
 
     /// Returns a `Atom` hierarchy needed to parse metadata.
-    fn metadata_atom() -> Atom {
+    pub fn metadata_atom() -> Atom {
         Atom::with(
             MOVIE, 0, Content::with_atom(
                 USER_DATA, 0, Content::with_atom(

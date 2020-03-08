@@ -5,7 +5,7 @@ use byteorder::{BigEndian, ReadBytesExt};
 use crate::{Atom, Error, ErrorKind};
 
 /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) code
-const UNKNOWN: u32 = 0;
+const RESERVED: u32 = 0;
 /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) code
 const UTF8: u32 = 1;
 /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) code
@@ -17,11 +17,11 @@ const PNG: u32 = 14;
 
 /// A structure representing the different types of content an Atom might have.
 pub enum Content {
-    /// A value containing an `Atom` `Vec`.
+    /// A value containing `Vec<Atom>`.
     Atoms(Vec<Atom>),
     /// A value containing raw `Data`.
     RawData(Data),
-    /// A value containing structured `Data`.
+    /// A value containing `Data` defined by a [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) code.
     TypedData(Data),
     /// Empty `Content`.
     Empty,
@@ -44,7 +44,7 @@ impl Content {
     }
 
     /// Creates a new `Content` of type `Content::Atoms` containing a new `Atom` with the provided
-    /// head, offset and `Content`.
+    /// head, offset and content.
     pub fn with_atom(head: [u8; 4], offset: usize, content: Content) -> Content {
         Content::atom(Atom::with(head, offset, content))
     }
@@ -64,10 +64,10 @@ impl Content {
         self.add_atom(Atom::data_atom())
     }
 
-    /// Adds a new `Atom` with the provided  head, offset and `Content` to the list of children if
+    /// Adds a new `Atom` with the provided head, offset and content to the list of children if
     /// `self` is of type `Content::Atoms`.
-    pub fn add_atom_with(self, f: [u8; 4], offset: usize, content: Content) -> Content {
-        self.add_atom(Atom::with(f, offset, content))
+    pub fn add_atom_with(self, head: [u8; 4], offset: usize, content: Content) -> Content {
+        self.add_atom(Atom::with(head, offset, content))
     }
 
     /// Attempts to parse the `Content` from the reader.
@@ -89,49 +89,54 @@ impl fmt::Debug for Content {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Content::Atoms(a) => write!(f, "Content::Atoms{{ {:#?} }}", a),
-            Content::TypedData(d) => write!(f, "{:?}", d),
+            Content::TypedData(d) => write!(f, "Content::TypedData{{ {:?} }}", d),
             Content::RawData(d) => write!(f, "Content::RawData{{ {:?} }}", d),
             Content::Empty => write!(f, "Content::Empty")
         }
     }
 }
 
-/// A struct that holds the different types of `Data` an `Atom` can contain following
+/// A struct that holds the different types of data an `Atom` can contain following
 /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
 pub enum Data {
-    Unknown(crate::Result<Vec<u8>>),
-    UTF8(crate::Result<String>),
-    UTF16(crate::Result<String>),
-    JPEG(crate::Result<Vec<u8>>),
-    PNG(crate::Result<Vec<u8>>),
-    UnknownCode(u32),
+    /// A value containing reserved type data inside a `Result<Vec<u8>>`.
+    Reserved(crate::Result<Vec<u8>>),
+    /// A value containing a `Result<String>` decoded from utf-8.
+    Utf8(crate::Result<String>),
+    /// A value containing a `Result<String>` decoded from utf-16.
+    Utf16(crate::Result<String>),
+    /// A value containing jpeg byte data inside a `Result<Vec<u8>>`.
+    Jpeg(crate::Result<Vec<u8>>),
+    /// A value containing png byte data inside a `Result<Vec<u8>>`.
+    Png(crate::Result<Vec<u8>>),
+    /// A value indicating that the `Content::TypedData` is yet to be parsed.
     Unparsed,
 }
 
 impl Data {
-    /// Creates new `Data` of type `Data::Unknown` containing an `ErrorKind::EmptyData` Error.
-    pub fn empty_unknown() -> Data {
-        Data::Unknown(Err(Error::new(ErrorKind::EmptyData, "Empty data")))
+    /// Creates new `Data` of type `Data::Reserved` containing a Error with `ErrorKind::EmptyData`.
+    pub fn empty_reserved() -> Data {
+        Data::Reserved(Err(Error::new(ErrorKind::EmptyData, "Empty data")))
     }
 
-    /// Creates new `Data` of type `Data::UTF8` containing an `ErrorKind::EmptyData` Error.
+    /// Creates new `Data` of type `Data::UTF8` containing a Error with `ErrorKind::EmptyData`.
     pub fn empty_utf8() -> Data {
-        Data::UTF8(Err(Error::new(ErrorKind::EmptyData, "Empty uf8 data")))
+        Data::Utf8(Err(Error::new(ErrorKind::EmptyData, "Empty uf8 data")))
     }
 
-    /// Creates new `Data` of type `Data::UTF16` containing an `ErrorKind::EmptyData` Error.
+    /// Creates new `Data` of type `Data::UTF16` containing a Error with `ErrorKind::EmptyData`.
     pub fn empty_utf16() -> Data {
-        Data::UTF16(Err(Error::new(ErrorKind::EmptyData, "Empty uf16 data")))
+        Data::Utf16(Err(Error::new(ErrorKind::EmptyData, "Empty uf16 data")))
     }
 
-    /// Creates new `Data` of type `Data::JPEG` containing an `ErrorKind::EmptyData` Error.
+    /// Creates new `Data` of type `Data::JPEG` containing a Error with `ErrorKind::EmptyData`.
     pub fn empty_jpeg() -> Data {
-        Data::JPEG(Err(Error::new(ErrorKind::EmptyData, "Empty jpeg data")))
+        Data::Jpeg(Err(Error::new(ErrorKind::EmptyData, "Empty jpeg data")))
     }
 
-    /// Creates new `Data` of type `Data::PNG` containing an `ErrorKind::EmptyData` Error.
+    /// Creates new `Data` of type `Data::PNG` containing a Error with `ErrorKind::EmptyData`.
     pub fn empty_png() -> Data {
-        Data::JPEG(Err(Error::new(ErrorKind::EmptyData, "Empty png data")))
+        Data::Jpeg(Err(Error::new(ErrorKind::EmptyData, "Empty png data")))
     }
 
     /// Attempts to parse the `Data` from the reader.
@@ -150,21 +155,23 @@ impl Data {
                     }
 
                     match datatype {
-                        UNKNOWN => *self = Data::Unknown(Data::read_to_u8_vec(reader, length - 8)),
-                        UTF8 => *self = Data::UTF8(Data::read_utf8(reader, length - 8)),
-                        UTF16 => *self = Data::UTF16(Data::read_utf16(reader, length - 8)),
-                        JPEG => *self = Data::JPEG(Data::read_to_u8_vec(reader, length - 8)),
-                        PNG => *self = Data::PNG(Data::read_to_u8_vec(reader, length - 8)),
-                        _ => *self = Data::UnknownCode(datatype),
+                        RESERVED => *self = Data::Reserved(Data::read_to_u8_vec(reader, length - 8)),
+                        UTF8 => *self = Data::Utf8(Data::read_utf8(reader, length - 8)),
+                        UTF16 => *self = Data::Utf16(Data::read_utf16(reader, length - 8)),
+                        JPEG => *self = Data::Jpeg(Data::read_to_u8_vec(reader, length - 8)),
+                        PNG => *self = Data::Png(Data::read_to_u8_vec(reader, length - 8)),
+                        _ => *self = Data::Reserved(Err(crate::Error::new(
+                            ErrorKind::UnknownDataType(datatype),
+                            "Unknown datatype code",
+                        ))),
                     }
                 }
             }
-            Data::Unknown(_) => *self = Data::Unknown(Data::read_to_u8_vec(reader, length)),
-            Data::UTF8(_) => *self = Data::UTF8(Data::read_utf8(reader, length)),
-            Data::UTF16(_) => *self = Data::UTF16(Data::read_utf16(reader, length)),
-            Data::JPEG(_) => *self = Data::JPEG(Data::read_to_u8_vec(reader, length)),
-            Data::PNG(_) => *self = Data::PNG(Data::read_to_u8_vec(reader, length)),
-            _ => (),
+            Data::Reserved(_) => *self = Data::Reserved(Data::read_to_u8_vec(reader, length)),
+            Data::Utf8(_) => *self = Data::Utf8(Data::read_utf8(reader, length)),
+            Data::Utf16(_) => *self = Data::Utf16(Data::read_utf16(reader, length)),
+            Data::Jpeg(_) => *self = Data::Jpeg(Data::read_to_u8_vec(reader, length)),
+            Data::Png(_) => *self = Data::Png(Data::read_to_u8_vec(reader, length)),
         }
 
         Ok(())
@@ -220,12 +227,11 @@ impl Data {
 impl fmt::Debug for Data {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Data::Unknown(d) => write!(f, "Unknown{{ {:?} }}", d),
-            Data::UTF8(d) => write!(f, "UTF8{{ {:?} }}", d),
-            Data::UTF16(d) => write!(f, "UTF16{{ {:?} }}", d),
-            Data::JPEG(_) => write!(f, "JPEG"),
-            Data::PNG(_) => write!(f, "PNG"),
-            Data::UnknownCode(c) => write!(f, "UnkownCode{{ {:?} }}", c),
+            Data::Reserved(d) => write!(f, "Reserved{{ {:?} }}", d),
+            Data::Utf8(d) => write!(f, "UTF8{{ {:?} }}", d),
+            Data::Utf16(d) => write!(f, "UTF16{{ {:?} }}", d),
+            Data::Jpeg(_) => write!(f, "JPEG"),
+            Data::Png(_) => write!(f, "PNG"),
             Data::Unparsed => write!(f, "Unparsed"),
         }
     }
