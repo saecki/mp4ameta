@@ -101,7 +101,7 @@ pub struct Tag {
 impl Tag {
     /// Creates a new empty MPEG-4 audio tag.
     pub fn new() -> Tag {
-        Tag { atom: Atom::new() }
+        Tag { atom: Atom::metadata_atom() }
     }
 
     /// Creates a new MPEG-4 audio tag containing the atom.
@@ -111,13 +111,24 @@ impl Tag {
 
     /// Attempts to read a MPEG-4 audio tag from the reader.
     pub fn read_from(reader: &mut impl Read) -> crate::Result<Tag> {
-        Atom::read_from(reader)
+        Ok(Tag::with(Atom::read_from(reader)?))
     }
 
     /// Attempts to read a MPEG-4 audio tag from the file at the indicated path.
     pub fn read_from_path(path: impl AsRef<Path>) -> crate::Result<Tag> {
         let mut file = BufReader::new(File::open(path)?);
         Tag::read_from(&mut file)
+    }
+
+    /// Attempts to write the MPEG-4 audio tag to the writer.
+    pub fn write_to(&self, writer: &mut impl Write) -> crate::Result<()> {
+        self.atom.write_to(writer)
+    }
+
+    /// Attempts to write the MPEG-4 audio tag to the path.
+    pub fn write_to_path(&self, path: impl AsRef<Path>) -> crate::Result<()> {
+        let mut file = BufWriter::new(File::open(path)?);
+        self.write_to(&mut file)
     }
 
     /// Returns the album (©alb).
@@ -623,6 +634,16 @@ impl Tag {
     }
 
     /// Removes the data corresponding to the head.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4meta::{Tag, Data};
+    ///
+    /// let mut tag = Tag::new();
+    /// tag.set_data(*b"test", Data::Utf8(Ok(String::from("data"))));
+    /// tag.remove_data(*b"test");
+    /// assert!(tag.get_data(*b"test").is_none())
+    /// ```
     pub fn remove_data(&mut self, head: [u8; 4]) {
         if let Some(v) = self.get_mut_atoms() {
             for i in 0..v.len() {

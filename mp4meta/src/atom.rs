@@ -2,7 +2,7 @@ use std::{fmt, io};
 
 use byteorder::{BigEndian, ReadBytesExt};
 
-use crate::{Content, Data, ErrorKind, Tag};
+use crate::{Content, Data, ErrorKind};
 
 /// A list of valid file types defined by the `ftyp` `Atom`.
 const VALID_FILE_TYPES: [&str; 2] = ["M4A ", "M4B "];
@@ -91,16 +91,18 @@ impl Atom {
         Atom::with(head, offset, Content::RawData(data))
     }
 
+    /// Creates a data atom containing unparsed `Content::TypedData`.
     pub fn data_atom() -> Atom {
         Atom::with(*b"data", 0, Content::TypedData(Data::Unparsed))
     }
 
+    /// Creates a data atom containing `Content::TypedData` with the provided data.
     pub fn data_atom_with(data: Data) -> Atom {
         Atom::with(*b"data", 0, Content::TypedData(data))
     }
 
-    /// Attempts to read a MPEG-4 audio tag from the reader.
-    pub fn read_from(reader: &mut impl io::Read) -> crate::Result<Tag> {
+    /// Attempts to read MPEG-4 audio metadata from the reader.
+    pub fn read_from(reader: &mut impl io::Read) -> crate::Result<Atom> {
         let mut ftyp = Atom::filetype_atom();
         ftyp.parse(reader)?;
 
@@ -114,7 +116,13 @@ impl Atom {
         let mut moov = Atom::metadata_atom();
         moov.parse(reader)?;
 
-        Ok(Tag::with(moov))
+        Ok(moov)
+    }
+
+    /// Attempts to write the MPEG-4 audio metadata to the writer.
+    pub fn write_to(&self, writer: &mut impl io::Write) -> crate::Result<()> {
+        //TODO write tag
+        Ok(())
     }
 
     /// Attempts to recursively parse the `Atom` from the reader.
@@ -211,7 +219,7 @@ impl Atom {
         Ok(())
     }
 
-    /// Attempts to return the first children `Atom` if it's `Content` is of type `Content::Atoms`.
+    /// Attempts to return the first children atom if it's content is of type `Content::Atoms`.
     pub fn first_child(&self) -> Option<&Atom> {
         if let Content::Atoms(v) = &self.content {
             return v.first();
@@ -220,7 +228,7 @@ impl Atom {
         None
     }
 
-    /// Attempts to return the first children `Atom` if it's `Content` is of type `Content::Atoms`.
+    /// Attempts to return the first children atom if it's content is of type `Content::Atoms`.
     pub fn mut_first_child(&mut self) -> Option<&mut Atom> {
         if let Content::Atoms(v) = &mut self.content {
             return v.first_mut();
@@ -242,12 +250,12 @@ impl Atom {
         return false;
     }
 
-    /// Returns a `Atom` hierarchy needed to parse the filetype:
+    /// Returns a atom filetype hierarchy needed to parse the filetype:
     pub fn filetype_atom() -> Atom {
         Atom::with_raw_data(FILE_TYPE, 0, Data::empty_utf8())
     }
 
-    /// Returns a `Atom` hierarchy needed to parse metadata.
+    /// Returns a atom metadata hierarchy needed to parse metadata.
     pub fn metadata_atom() -> Atom {
         Atom::with(
             MOVIE, 0, Content::with_atom(
@@ -287,6 +295,19 @@ impl Atom {
                             .add_atom_with(TV_SEASON, 0, Content::data_atom())
                             .add_atom_with(TV_SHOW_NAME, 0, Content::data_atom())
                             .add_atom_with(YEAR, 0, Content::data_atom()),
+                    ),
+                ),
+            ),
+        )
+    }
+
+    /// Returns a atom metadata hierarchy.
+    pub fn empty_metadata_atom() -> Atom {
+        Atom::with(
+            MOVIE, 0, Content::with_atom(
+                USER_DATA, 0, Content::with_atom(
+                    METADATA, 4, Content::with_atom(
+                        ITEM_LIST, 0, Content::atoms(),
                     ),
                 ),
             ),
