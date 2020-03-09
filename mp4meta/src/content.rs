@@ -85,6 +85,42 @@ impl Content {
     }
 }
 
+impl PartialEq for Content {
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            Content::Atoms(v) => if let Content::Atoms(ov) = other {
+                return v == ov;
+            }
+            Content::RawData(d) => if let Content::RawData(od) = other {
+                return d == od;
+            }
+            Content::TypedData(d) => if let Content::TypedData(od) = other {
+                return d == od;
+            }
+            Content::Empty => if let Content::Empty = other { return true; }
+        }
+
+        false
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        match self {
+            Content::Atoms(v) => if let Content::Atoms(ov) = other {
+                return v != ov;
+            }
+            Content::RawData(d) => if let Content::RawData(od) = other {
+                return d != od;
+            }
+            Content::TypedData(d) => if let Content::TypedData(od) = other {
+                return d != od;
+            }
+            Content::Empty => if let Content::Empty = other { return true; }
+        }
+
+        true
+    }
+}
+
 impl fmt::Debug for Content {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -221,6 +257,56 @@ impl Data {
             Ok(s) => Ok(s),
             Err(e) => Err(crate::Error::from(e)),
         }
+    }
+}
+
+impl PartialEq for Data {
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            Data::Reserved(Ok(v)) => if let Data::Reserved(Ok(ov)) = other {
+                return v == ov;
+            }
+            Data::Utf8(Ok(s)) => if let Data::Utf8(Ok(os)) = other {
+                return s == os;
+            }
+            Data::Utf16(Ok(s)) => if let Data::Utf16(Ok(os)) = other {
+                return s == os;
+            }
+            Data::Jpeg(Ok(v)) => if let Data::Jpeg(Ok(ov)) = other {
+                return v == ov;
+            }
+            Data::Png(Ok(v)) => if let Data::Png(Ok(ov)) = other {
+                return v == ov;
+            }
+            Data::Unparsed => if let Data::Unparsed = other { return true; }
+            _ => return false,
+        }
+
+        false
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        match self {
+            Data::Reserved(Ok(v)) => if let Data::Reserved(Ok(ov)) = other {
+                return v != ov;
+            }
+            Data::Utf8(Ok(s)) => if let Data::Utf8(Ok(os)) = other {
+                return s != os;
+            }
+            Data::Utf16(Ok(s)) => if let Data::Utf16(Ok(os)) = other {
+                return s != os;
+            }
+            Data::Jpeg(Ok(v)) => if let Data::Jpeg(Ok(ov)) = other {
+                return v != ov;
+            }
+            Data::Png(Ok(v)) => if let Data::Png(Ok(ov)) = other {
+                return v != ov;
+            }
+            Data::Unparsed => if let Data::Unparsed = other { return true; }
+            _ => return true,
+        }
+
+        true
     }
 }
 

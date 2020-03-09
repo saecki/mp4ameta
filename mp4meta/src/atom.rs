@@ -65,18 +65,18 @@ pub const PURCHASE_DATE: [u8; 4] = *b"purd";
 // ITunes 7.0
 pub const GAPLESS_PLAYBACK: [u8; 4] = *b"pgap";
 
-/// A structure that represents a MPEG-4 audio metadata `Atom`.
+/// A structure that represents a MPEG-4 audio metadata atom.
 pub struct Atom {
-    /// The 4 byte identifier of the `Atom`.
+    /// The 4 byte identifier of the atom.
     pub head: [u8; 4],
     /// The offset in bytes separating the head from the content.
     pub offset: usize,
-    /// The content of an `Atom`.
+    /// The content of an atom.
     pub content: Content,
 }
 
 impl Atom {
-    /// Creates a new empty `Atom`.
+    /// Creates a new empty atom.
     pub fn new() -> Atom {
         Atom { head: *b"    ", offset: 0, content: Content::Empty }
     }
@@ -312,6 +312,20 @@ impl Atom {
                 ),
             ),
         )
+    }
+}
+
+impl PartialEq for Atom {
+    fn eq(&self, other: &Self) -> bool {
+        self.head == other.head &&
+            self.offset == other.offset &&
+            self.content == other.content
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        self.head != other.head ||
+            self.offset != other.offset ||
+            self.content != other.content
     }
 }
 

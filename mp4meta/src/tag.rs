@@ -101,12 +101,27 @@ pub struct Tag {
 impl Tag {
     /// Creates a new empty MPEG-4 audio tag.
     pub fn new() -> Tag {
-        Tag { atom: Atom::metadata_atom() }
+        Tag { atom: Atom::empty_metadata_atom() }
     }
 
     /// Creates a new MPEG-4 audio tag containing the atom.
     pub fn with(atom: Atom) -> Tag {
-        Tag { atom }
+        let mut tag = Tag { atom };
+
+        if let Some(atoms) = tag.get_mut_atoms() {
+            let mut i = 0;
+            while i < atoms.len() {
+                if let Some(a) = atoms[i].first_child() {
+                    if let Content::TypedData(Data::Unparsed) = a.content {
+                        atoms.remove(i);
+                        continue;
+                    }
+                }
+                i += 1;
+            }
+        }
+
+        tag
     }
 
     /// Attempts to read a MPEG-4 audio tag from the reader.
@@ -139,7 +154,7 @@ impl Tag {
         self.set_data(atom::ALBUM, Data::Utf8(Ok(album.into())));
     }
 
-    /// Removes the album data (©alb).
+    /// Removes the album (©alb).
     pub fn remove_album(&mut self) {
         self.remove_data(atom::ALBUM);
     }
@@ -154,7 +169,7 @@ impl Tag {
         self.set_data(atom::ALBUM_ARTIST, Data::Utf8(Ok(album_artist.into())));
     }
 
-    /// Removes the album artist data (aART).
+    /// Removes the album artist (aART).
     pub fn remove_album_artist(&mut self) {
         self.remove_data(atom::ALBUM_ARTIST);
     }
@@ -169,7 +184,7 @@ impl Tag {
         self.set_data(atom::ARTIST, Data::Utf8(Ok(artist.into())));
     }
 
-    /// Removes the artist data (©ART).
+    /// Removes the artist (©ART).
     pub fn remove_artist(&mut self) {
         self.remove_data(atom::ARTIST);
     }
@@ -185,7 +200,7 @@ impl Tag {
         self.set_data(atom::CATEGORY, Data::Utf8(Ok(category.into())));
     }
 
-    /// Removes the category data (catg).
+    /// Removes the category (catg).
     pub fn remove_category(&mut self) {
         self.remove_data(atom::CATEGORY);
     }
@@ -200,7 +215,7 @@ impl Tag {
         self.set_data(atom::COMMENT, Data::Utf8(Ok(comment.into())));
     }
 
-    /// Removes the comment data (©cmt).
+    /// Removes the comment (©cmt).
     pub fn remove_comment(&mut self) {
         self.remove_data(atom::COMMENT);
     }
@@ -215,7 +230,7 @@ impl Tag {
         self.set_data(atom::COMPOSER, Data::Utf8(Ok(composer.into())));
     }
 
-    /// Removes the composer data (©wrt).
+    /// Removes the composer (©wrt).
     pub fn remove_composer(&mut self) {
         self.remove_data(atom::COMMENT);
     }
@@ -230,7 +245,7 @@ impl Tag {
         self.set_data(atom::COPYRIGHT, Data::Utf8(Ok(copyright.into())));
     }
 
-    /// Removes the copyright data (cprt).
+    /// Removes the copyright (cprt).
     pub fn remove_copyright(&mut self) {
         self.remove_data(atom::COPYRIGHT);
     }
@@ -245,7 +260,7 @@ impl Tag {
         self.set_data(atom::DESCRIPTION, Data::Utf8(Ok(description.into())));
     }
 
-    /// Removes the description data (desc).
+    /// Removes the description (desc).
     pub fn remove_description(&mut self) {
         self.remove_data(atom::DESCRIPTION);
     }
@@ -260,7 +275,7 @@ impl Tag {
         self.set_data(atom::ENCODER, Data::Utf8(Ok(encoder.into())));
     }
 
-    /// Removes the encoder data (©too).
+    /// Removes the encoder (©too).
     pub fn remove_encoder(&mut self) {
         self.remove_data(atom::ENCODER);
     }
@@ -275,7 +290,7 @@ impl Tag {
         self.set_data(atom::GROUPING, Data::Utf8(Ok(grouping.into())));
     }
 
-    /// Removes the grouping data (©grp).
+    /// Removes the grouping (©grp).
     pub fn remove_grouping(&mut self) {
         self.remove_data(atom::GROUPING);
     }
@@ -290,7 +305,7 @@ impl Tag {
         self.set_data(atom::KEYWORD, Data::Utf8(Ok(keyword.into())));
     }
 
-    /// Removes the keyword data (keyw).
+    /// Removes the keyword (keyw).
     pub fn remove_keyword(&mut self) {
         self.remove_data(atom::KEYWORD);
     }
@@ -305,7 +320,7 @@ impl Tag {
         self.set_data(atom::LYRICS, Data::Utf8(Ok(lyrics.into())));
     }
 
-    /// Removes the lyrics data (©lyr).
+    /// Removes the lyrics (©lyr).
     pub fn remove_lyrics(&mut self) {
         self.remove_data(atom::LYRICS);
     }
@@ -320,7 +335,7 @@ impl Tag {
         self.set_data(atom::TITLE, Data::Utf8(Ok(title.into())));
     }
 
-    /// Removes the title data (©nam).
+    /// Removes the title (©nam).
     pub fn remove_title(&mut self) {
         self.remove_data(atom::TITLE);
     }
@@ -335,7 +350,7 @@ impl Tag {
         self.set_data(atom::TV_EPISODE_NUMBER, Data::Utf8(Ok(tv_episode_number.into())));
     }
 
-    /// Removes the tv episode number data (tven).
+    /// Removes the tv episode number (tven).
     pub fn remove_tv_episode_number(&mut self) {
         self.remove_data(atom::TV_EPISODE_NUMBER);
     }
@@ -350,7 +365,7 @@ impl Tag {
         self.set_data(atom::TV_NETWORK_NAME, Data::Utf8(Ok(tv_network_name.into())));
     }
 
-    /// Removes the tv network name data (tvnn).
+    /// Removes the tv network name (tvnn).
     pub fn remove_tv_network_name(&mut self) {
         self.remove_data(atom::TV_NETWORK_NAME);
     }
@@ -365,7 +380,7 @@ impl Tag {
         self.set_data(atom::TV_SHOW_NAME, Data::Utf8(Ok(tv_show_name.into())));
     }
 
-    /// Removes the tv show name data (tvsh).
+    /// Removes the tv show name (tvsh).
     pub fn remove_tv_show_name(&mut self) {
         self.remove_data(atom::TV_SHOW_NAME);
     }
@@ -380,25 +395,21 @@ impl Tag {
         self.set_data(atom::YEAR, Data::Utf8(Ok(year.into())));
     }
 
-    /// Removes the year data (©day).
+    /// Removes the year (©day).
     pub fn remove_year(&mut self) {
         self.remove_data(atom::YEAR);
     }
 
-    /// Returns the genre (©gen) or (gnre).
+    /// Returns the genre (gnre) or (©gen).
     pub fn genre(&self) -> Option<&str> {
-        if let Some(s) = self.get_string(atom::CUSTOM_GENRE) {
+        if let Some(s) = self.custom_genre() {
             return Some(s);
         }
 
-        if let Some(v) = self.get_reserved(atom::STANDARD_GENRE) {
-            let mut chunks = v.chunks(2);
-
-            if let Ok(genre_code) = chunks.next()?.read_u16::<BigEndian>() {
-                for g in GENRES.iter() {
-                    if g.0 == genre_code {
-                        return Some(g.1);
-                    }
+        if let Some(genre_code) = self.standard_genre() {
+            for g in GENRES.iter() {
+                if g.0 == genre_code {
+                    return Some(g.1);
                 }
             }
         }
@@ -406,25 +417,67 @@ impl Tag {
         None
     }
 
-    /// Sets the standard genre (©gen) if it matches one otherwise a custom genre (gnre).
+    /// Sets the standard genre (gnre) if it matches one otherwise a custom genre (©gen).
     pub fn set_genre(&mut self, genre: impl Into<String>) {
         let gen = genre.into();
 
         for g in GENRES.iter() {
             if g.1 == gen {
-                self.remove_data(atom::CUSTOM_GENRE);
-                self.set_data(atom::STANDARD_GENRE, Data::Reserved(Ok(vec![0u8, g.0 as u8])));
+                self.remove_custom_genre();
+                self.set_standard_genre(g.0);
                 return;
             }
         }
 
-        self.remove_data(atom::STANDARD_GENRE);
-        self.set_data(atom::CUSTOM_GENRE, Data::Utf8(Ok(gen)));
+        self.remove_standard_genre();
+        self.set_custom_genre(gen)
     }
 
-    /// Removes the genre (©gen) or (gnre).
+    /// Removes the genre (gnre) or (©gen).
     pub fn remove_genre(&mut self) {
+        self.remove_standard_genre();
+        self.remove_custom_genre();
+    }
+
+    /// Returns the standard genre (gnre).
+    pub fn standard_genre(&self) -> Option<u16> {
+        if let Some(v) = self.get_reserved(atom::STANDARD_GENRE) {
+            let mut chunks = v.chunks(2);
+
+            if let Ok(genre_code) = chunks.next()?.read_u16::<BigEndian>() {
+                return Some(genre_code);
+            }
+        }
+
+        None
+    }
+
+    /// Sets the standard genre (gnre).
+    pub fn set_standard_genre(&mut self, genre_code: u16) {
+        if genre_code > 0 && genre_code <= 80 {
+            let mut vec: Vec<u8> = Vec::new();
+            let _ = vec.write_u16::<BigEndian>(genre_code).is_ok();
+            self.set_data(atom::STANDARD_GENRE, Data::Reserved(Ok(vec)));
+        }
+    }
+
+    /// Removes the standard genre (gnre).
+    pub fn remove_standard_genre(&mut self) {
         self.remove_data(atom::STANDARD_GENRE);
+    }
+
+    /// Returns the custom genre (©gen).
+    pub fn custom_genre(&self) -> Option<&str> {
+        self.get_string(atom::CUSTOM_GENRE)
+    }
+
+    /// Sets the custom genre (©gen).
+    pub fn set_custom_genre(&mut self, custom_genre: impl Into<String>) {
+        self.set_data(atom::CUSTOM_GENRE, Data::Utf8(Ok(custom_genre.into())));
+    }
+
+    /// Removes the custom genre (©gen).
+    pub fn remove_custom_genre(&mut self) {
         self.remove_data(atom::CUSTOM_GENRE);
     }
 
@@ -460,7 +513,7 @@ impl Tag {
         let mut vec = Vec::new();
 
         for i in vec32 {
-            vec.write_u16::<BigEndian>(i);
+            let _ = vec.write_u16::<BigEndian>(i).is_ok();
         }
 
         self.set_data(atom::TRACK_NUMBER, Data::Reserved(Ok(vec)));
@@ -503,7 +556,7 @@ impl Tag {
         let mut vec = Vec::new();
 
         for i in vec32 {
-            vec.write_u16::<BigEndian>(i);
+            let _ = vec.write_u16::<BigEndian>(i).is_ok();
         }
 
         self.set_data(atom::DISK_NUMBER, Data::Reserved(Ok(vec)));
@@ -544,6 +597,15 @@ impl Tag {
     }
 
     /// Attempts to return a string reference corresponding to the provided head.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4meta::{Tag, Data};
+    ///
+    /// let mut tag = Tag::new();
+    /// tag.set_data(*b"test", Data::Utf8(Ok(String::from("data"))));
+    /// assert_eq!(tag.get_string(*b"test").unwrap(), "data");
+    /// ```
     pub fn get_string(&self, head: [u8; 4]) -> Option<&str> {
         let d = self.get_data(head)?;
 
@@ -641,8 +703,9 @@ impl Tag {
     ///
     /// let mut tag = Tag::new();
     /// tag.set_data(*b"test", Data::Utf8(Ok(String::from("data"))));
+    /// assert!(tag.get_data(*b"test").is_some());
     /// tag.remove_data(*b"test");
-    /// assert!(tag.get_data(*b"test").is_none())
+    /// assert!(tag.get_data(*b"test").is_none());
     /// ```
     pub fn remove_data(&mut self, head: [u8; 4]) {
         if let Some(v) = self.get_mut_atoms() {
@@ -701,6 +764,6 @@ fn test() {
                 _ => (),
             }
         }
-        Err(e) => panic!("error: {:#?}", e),
+        Err(e) => panic!("{:?}", e),
     }
 }
