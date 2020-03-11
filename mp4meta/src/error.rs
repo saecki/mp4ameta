@@ -6,24 +6,26 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// Kinds of errors that may occur while performing metadata operations.
 #[derive(Debug)]
 pub enum ErrorKind {
+    /// An error kind indicating that an atom already exists. Contains the atom's head.
+    AtomAlreadyExists([u8; 4]),
+    /// An error kind indicating that an atom could not be found. Contains the atom's head.
+    AtomNotFound([u8; 4]),
     /// An error kind indicating that an IO error has occurred. Contains the original io::Error.
     Io(io::Error),
+    /// An error kind indicating that the reader does not contain mp4 metadata.
+    NoTag,
+    /// An error kind indicating that an error accured during parsing.
+    Parsing,
+    /// An error kind indicating that the `Content::TypedData` contains an unknown datatype.
+    /// Contains the unknown datatype code.
+    UnknownDataType(i32),
+    /// An error kind indicating that the data can't be written to a file.
+    UnWritableDataType,
     /// An error kind indicating that a string decoding error has occurred. Contains the invalid
     /// data.
     Utf8StringDecoding(string::FromUtf8Error),
     /// An error kind indicating that a string decoding error has occurred.
     Utf16StringDecoding(string::FromUtf16Error),
-    /// An error kind indicating that the reader does not contain mp4 metadata.
-    NoTag,
-    /// An error kind indicating that the `Content::TypedData` contains an unknown datatype.
-    /// Contains the unknown datatype code.
-    UnknownDataType(u32),
-    /// An error kind indicating that the raw data is empty.
-    EmptyData,
-    /// An error kind indicating that an atom could not be found. Contains the atom's head.
-    AtomNotFound([u8; 4]),
-    /// An error kind indicating that an atom already exists. Contains the atom's head.
-    AtomAlreadyExists([u8; 4]),
 }
 
 /// A structure able to represent any error that may occur while performing metadata operations.

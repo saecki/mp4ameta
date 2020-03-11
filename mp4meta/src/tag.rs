@@ -1,13 +1,13 @@
 use std::fmt::Debug;
-use std::fs::File;
-use std::io::{BufReader, BufWriter, Read, Write};
+use std::fs::{File, OpenOptions};
+use std::io::{BufReader, Read, Write};
 use std::path::Path;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::{Atom, atom, Content, Data};
 
-/// List of standard genres found in the `gnre` `Atom`.
+/// A list of standard genres found in the `gnre` `Atom`.
 pub const GENRES: [(u16, &str); 80] = [
     (1, "Blues"),
     (2, "Classic rock"),
@@ -95,30 +95,28 @@ pub const GENRES: [(u16, &str); 80] = [
 #[derive(Debug)]
 pub struct Tag {
     /// A vector containing metadata atoms
-    pub atom: Atom,
+    pub atoms: Vec<Atom>,
 }
 
 impl Tag {
     /// Creates a new empty MPEG-4 audio tag.
     pub fn new() -> Tag {
-        Tag { atom: Atom::empty_metadata_atom() }
+        Tag { atoms: Vec::new() }
     }
 
     /// Creates a new MPEG-4 audio tag containing the atom.
-    pub fn with(atom: Atom) -> Tag {
-        let mut tag = Tag { atom };
+    pub fn with(atoms: Vec<Atom>) -> Tag {
+        let mut tag = Tag { atoms };
 
-        if let Some(atoms) = tag.get_mut_atoms() {
-            let mut i = 0;
-            while i < atoms.len() {
-                if let Some(a) = atoms[i].first_child() {
-                    if let Content::TypedData(Data::Unparsed) = a.content {
-                        atoms.remove(i);
-                        continue;
-                    }
+        let mut i = 0;
+        while i < tag.atoms.len() {
+            if let Some(a) = tag.atoms[i].first_child() {
+                if let Content::TypedData(Data::Unparsed(_)) = a.content {
+                    tag.atoms.remove(i);
+                    continue;
                 }
-                i += 1;
             }
+            i += 1;
         }
 
         tag
@@ -137,21 +135,27 @@ impl Tag {
 
     /// Attempts to write the MPEG-4 audio tag to the writer.
     pub fn write_to(&self, writer: &mut impl Write) -> crate::Result<()> {
-        self.atom.write_to(writer)
+        for a in &self.atoms {
+            a.write_to(writer)?;
+        }
+
+        Ok(())
     }
 
     /// Attempts to write the MPEG-4 audio tag to the path.
     pub fn write_to_path(&self, path: impl AsRef<Path>) -> crate::Result<()> {
-        let mut file = BufWriter::new(File::open(path)?);
+        let mut file = OpenOptions::new().read(true).write(true).open(path)?;
         self.write_to(&mut file)
     }
 
+    // String fields
+
     /// Returns the album (©alb).
-    pub fn album(&self) -> Option<&str> { self.get_string(atom::ALBUM) }
+    pub fn album(&self) -> Option<&str> { self.string(atom::ALBUM) }
 
     /// Sets the album (©alb).
     pub fn set_album(&mut self, album: impl Into<String>) {
-        self.set_data(atom::ALBUM, Data::Utf8(Ok(album.into())));
+        self.set_data(atom::ALBUM, Data::Utf8(album.into()));
     }
 
     /// Removes the album (©alb).
@@ -161,12 +165,12 @@ impl Tag {
 
     /// Returns the album artist (aART).
     pub fn album_artist(&self) -> Option<&str> {
-        self.get_string(atom::ALBUM_ARTIST)
+        self.string(atom::ALBUM_ARTIST)
     }
 
     /// Sets the album artist (aART).
     pub fn set_album_artist(&mut self, album_artist: impl Into<String>) {
-        self.set_data(atom::ALBUM_ARTIST, Data::Utf8(Ok(album_artist.into())));
+        self.set_data(atom::ALBUM_ARTIST, Data::Utf8(album_artist.into()));
     }
 
     /// Removes the album artist (aART).
@@ -176,12 +180,12 @@ impl Tag {
 
     /// Returns the artist (©ART).
     pub fn artist(&self) -> Option<&str> {
-        self.get_string(atom::ARTIST)
+        self.string(atom::ARTIST)
     }
 
     /// Sets the artist (©ART).
     pub fn set_artist(&mut self, artist: impl Into<String>) {
-        self.set_data(atom::ARTIST, Data::Utf8(Ok(artist.into())));
+        self.set_data(atom::ARTIST, Data::Utf8(artist.into()));
     }
 
     /// Removes the artist (©ART).
@@ -191,13 +195,13 @@ impl Tag {
 
     /// Returns the category (catg).
     pub fn category(&self) -> Option<&str> {
-        self.get_string(atom::CATEGORY)
+        self.string(atom::CATEGORY)
     }
 
 
     /// Sets the category (catg).
     pub fn set_category(&mut self, category: impl Into<String>) {
-        self.set_data(atom::CATEGORY, Data::Utf8(Ok(category.into())));
+        self.set_data(atom::CATEGORY, Data::Utf8(category.into()));
     }
 
     /// Removes the category (catg).
@@ -207,12 +211,12 @@ impl Tag {
 
     /// Returns the comment (©cmt).
     pub fn comment(&self) -> Option<&str> {
-        self.get_string(atom::COMMENT)
+        self.string(atom::COMMENT)
     }
 
     /// Sets the comment (©cmt).
     pub fn set_comment(&mut self, comment: impl Into<String>) {
-        self.set_data(atom::COMMENT, Data::Utf8(Ok(comment.into())));
+        self.set_data(atom::COMMENT, Data::Utf8(comment.into()));
     }
 
     /// Removes the comment (©cmt).
@@ -222,12 +226,12 @@ impl Tag {
 
     /// Returns the composer (©wrt).
     pub fn composer(&self) -> Option<&str> {
-        self.get_string(atom::COMPOSER)
+        self.string(atom::COMPOSER)
     }
 
     /// Sets the composer (©wrt).
     pub fn set_composer(&mut self, composer: impl Into<String>) {
-        self.set_data(atom::COMPOSER, Data::Utf8(Ok(composer.into())));
+        self.set_data(atom::COMPOSER, Data::Utf8(composer.into()));
     }
 
     /// Removes the composer (©wrt).
@@ -237,12 +241,12 @@ impl Tag {
 
     /// Returns the copyright (cprt).
     pub fn copyright(&self) -> Option<&str> {
-        self.get_string(atom::COPYRIGHT)
+        self.string(atom::COPYRIGHT)
     }
 
     /// Sets the copyright (cprt).
     pub fn set_copyright(&mut self, copyright: impl Into<String>) {
-        self.set_data(atom::COPYRIGHT, Data::Utf8(Ok(copyright.into())));
+        self.set_data(atom::COPYRIGHT, Data::Utf8(copyright.into()));
     }
 
     /// Removes the copyright (cprt).
@@ -252,12 +256,12 @@ impl Tag {
 
     /// Returns the description (desc).
     pub fn description(&self) -> Option<&str> {
-        self.get_string(atom::DESCRIPTION)
+        self.string(atom::DESCRIPTION)
     }
 
     /// Sets the description (desc).
     pub fn set_description(&mut self, description: impl Into<String>) {
-        self.set_data(atom::DESCRIPTION, Data::Utf8(Ok(description.into())));
+        self.set_data(atom::DESCRIPTION, Data::Utf8(description.into()));
     }
 
     /// Removes the description (desc).
@@ -267,12 +271,12 @@ impl Tag {
 
     /// Returns the encoder (©too).
     pub fn encoder(&self) -> Option<&str> {
-        self.get_string(atom::ENCODER)
+        self.string(atom::ENCODER)
     }
 
     /// Sets the encoder (©too).
     pub fn set_encoder(&mut self, encoder: impl Into<String>) {
-        self.set_data(atom::ENCODER, Data::Utf8(Ok(encoder.into())));
+        self.set_data(atom::ENCODER, Data::Utf8(encoder.into()));
     }
 
     /// Removes the encoder (©too).
@@ -282,12 +286,12 @@ impl Tag {
 
     /// Returns the grouping (©grp).
     pub fn grouping(&self) -> Option<&str> {
-        self.get_string(atom::GROUPING)
+        self.string(atom::GROUPING)
     }
 
     /// Sets the grouping (©grp).
     pub fn set_grouping(&mut self, grouping: impl Into<String>) {
-        self.set_data(atom::GROUPING, Data::Utf8(Ok(grouping.into())));
+        self.set_data(atom::GROUPING, Data::Utf8(grouping.into()));
     }
 
     /// Removes the grouping (©grp).
@@ -297,12 +301,12 @@ impl Tag {
 
     /// Returns the keyword (keyw).
     pub fn keyword(&self) -> Option<&str> {
-        self.get_string(atom::KEYWORD)
+        self.string(atom::KEYWORD)
     }
 
     /// Sets the keyword (keyw).
     pub fn set_keyword(&mut self, keyword: impl Into<String>) {
-        self.set_data(atom::KEYWORD, Data::Utf8(Ok(keyword.into())));
+        self.set_data(atom::KEYWORD, Data::Utf8(keyword.into()));
     }
 
     /// Removes the keyword (keyw).
@@ -312,12 +316,12 @@ impl Tag {
 
     /// Returns the lyrics (©lyr).
     pub fn lyrics(&self) -> Option<&str> {
-        self.get_string(atom::LYRICS)
+        self.string(atom::LYRICS)
     }
 
     /// Sets the lyrics (©lyr).
     pub fn set_lyrics(&mut self, lyrics: impl Into<String>) {
-        self.set_data(atom::LYRICS, Data::Utf8(Ok(lyrics.into())));
+        self.set_data(atom::LYRICS, Data::Utf8(lyrics.into()));
     }
 
     /// Removes the lyrics (©lyr).
@@ -327,12 +331,12 @@ impl Tag {
 
     /// Returns the title (©nam).
     pub fn title(&self) -> Option<&str> {
-        self.get_string(atom::TITLE)
+        self.string(atom::TITLE)
     }
 
     /// Sets the title (©nam).
     pub fn set_title(&mut self, title: impl Into<String>) {
-        self.set_data(atom::TITLE, Data::Utf8(Ok(title.into())));
+        self.set_data(atom::TITLE, Data::Utf8(title.into()));
     }
 
     /// Removes the title (©nam).
@@ -342,12 +346,12 @@ impl Tag {
 
     /// Returns the tv episode number (tven).
     pub fn tv_episode_number(&self) -> Option<&str> {
-        self.get_string(atom::TV_EPISODE_NUMBER)
+        self.string(atom::TV_EPISODE_NUMBER)
     }
 
     /// Sets the tv episode number (tven).
     pub fn set_tv_episode_number(&mut self, tv_episode_number: impl Into<String>) {
-        self.set_data(atom::TV_EPISODE_NUMBER, Data::Utf8(Ok(tv_episode_number.into())));
+        self.set_data(atom::TV_EPISODE_NUMBER, Data::Utf8(tv_episode_number.into()));
     }
 
     /// Removes the tv episode number (tven).
@@ -357,12 +361,12 @@ impl Tag {
 
     /// Returns the tv network name (tvnn).
     pub fn tv_network_name(&self) -> Option<&str> {
-        self.get_string(atom::TV_NETWORK_NAME)
+        self.string(atom::TV_NETWORK_NAME)
     }
 
     /// Sets the tv network name (tvnn).
     pub fn set_tv_network_name(&mut self, tv_network_name: impl Into<String>) {
-        self.set_data(atom::TV_NETWORK_NAME, Data::Utf8(Ok(tv_network_name.into())));
+        self.set_data(atom::TV_NETWORK_NAME, Data::Utf8(tv_network_name.into()));
     }
 
     /// Removes the tv network name (tvnn).
@@ -372,12 +376,12 @@ impl Tag {
 
     /// Returns the tv show name (tvsh).
     pub fn tv_show_name(&self) -> Option<&str> {
-        self.get_string(atom::TV_SHOW_NAME)
+        self.string(atom::TV_SHOW_NAME)
     }
 
     /// Sets the tv show name (tvsh).
     pub fn set_tv_show_name(&mut self, tv_show_name: impl Into<String>) {
-        self.set_data(atom::TV_SHOW_NAME, Data::Utf8(Ok(tv_show_name.into())));
+        self.set_data(atom::TV_SHOW_NAME, Data::Utf8(tv_show_name.into()));
     }
 
     /// Removes the tv show name (tvsh).
@@ -387,18 +391,20 @@ impl Tag {
 
     /// Returns the year (©day).
     pub fn year(&self) -> Option<&str> {
-        self.get_string(atom::YEAR)
+        self.string(atom::YEAR)
     }
 
     /// Sets the year (©day).
     pub fn set_year(&mut self, year: impl Into<String>) {
-        self.set_data(atom::YEAR, Data::Utf8(Ok(year.into())));
+        self.set_data(atom::YEAR, Data::Utf8(year.into()));
     }
 
     /// Removes the year (©day).
     pub fn remove_year(&mut self) {
         self.remove_data(atom::YEAR);
     }
+
+    // Custom fields
 
     /// Returns the genre (gnre) or (©gen).
     pub fn genre(&self) -> Option<&str> {
@@ -441,7 +447,7 @@ impl Tag {
 
     /// Returns the standard genre (gnre).
     pub fn standard_genre(&self) -> Option<u16> {
-        if let Some(v) = self.get_reserved(atom::STANDARD_GENRE) {
+        if let Some(v) = self.reserved(atom::STANDARD_GENRE) {
             let mut chunks = v.chunks(2);
 
             if let Ok(genre_code) = chunks.next()?.read_u16::<BigEndian>() {
@@ -457,7 +463,7 @@ impl Tag {
         if genre_code > 0 && genre_code <= 80 {
             let mut vec: Vec<u8> = Vec::new();
             let _ = vec.write_u16::<BigEndian>(genre_code).is_ok();
-            self.set_data(atom::STANDARD_GENRE, Data::Reserved(Ok(vec)));
+            self.set_data(atom::STANDARD_GENRE, Data::Reserved(vec));
         }
     }
 
@@ -468,12 +474,12 @@ impl Tag {
 
     /// Returns the custom genre (©gen).
     pub fn custom_genre(&self) -> Option<&str> {
-        self.get_string(atom::CUSTOM_GENRE)
+        self.string(atom::CUSTOM_GENRE)
     }
 
     /// Sets the custom genre (©gen).
     pub fn set_custom_genre(&mut self, custom_genre: impl Into<String>) {
-        self.set_data(atom::CUSTOM_GENRE, Data::Utf8(Ok(custom_genre.into())));
+        self.set_data(atom::CUSTOM_GENRE, Data::Utf8(custom_genre.into()));
     }
 
     /// Removes the custom genre (©gen).
@@ -483,7 +489,7 @@ impl Tag {
 
     /// Returns the track number and the total number of tracks (trkn).
     pub fn track_number(&self) -> (Option<u16>, Option<u16>) {
-        let vec = match self.get_reserved(atom::TRACK_NUMBER) {
+        let vec = match self.reserved(atom::TRACK_NUMBER) {
             Some(v) => v,
             None => return (None, None),
         };
@@ -516,7 +522,7 @@ impl Tag {
             let _ = vec.write_u16::<BigEndian>(i).is_ok();
         }
 
-        self.set_data(atom::TRACK_NUMBER, Data::Reserved(Ok(vec)));
+        self.set_data(atom::TRACK_NUMBER, Data::Reserved(vec));
     }
 
     /// Removes the track number and the total number of tracks (trkn).
@@ -526,7 +532,7 @@ impl Tag {
 
     /// Returns the disk number and total number of disks (disk).
     pub fn disk_number(&self) -> (Option<u16>, Option<u16>) {
-        let vec = match self.get_reserved(atom::DISK_NUMBER) {
+        let vec = match self.reserved(atom::DISK_NUMBER) {
             Some(v) => v,
             None => return (None, None),
         };
@@ -559,7 +565,7 @@ impl Tag {
             let _ = vec.write_u16::<BigEndian>(i).is_ok();
         }
 
-        self.set_data(atom::DISK_NUMBER, Data::Reserved(Ok(vec)));
+        self.set_data(atom::DISK_NUMBER, Data::Reserved(vec));
     }
 
     /// Removes the disk number and the total number of disks (disk).
@@ -569,7 +575,7 @@ impl Tag {
 
     /// Returns the artwork image data of type `Data::JPEG` or `Data::PNG` (covr).
     pub fn artwork(&self) -> Option<Data> {
-        self.get_image(atom::ARTWORK)
+        self.image(atom::ARTWORK)
     }
 
     /// Sets the artwork image data of type `Data::JPEG` or `Data::PNG` (covr).
@@ -588,64 +594,71 @@ impl Tag {
         self.remove_data(atom::ARTWORK);
     }
 
-    /// Attempts to return byte data corresponding to the provided head.
-    pub fn get_reserved(&self, head: [u8; 4]) -> Option<&Vec<u8>> {
-        match self.get_data(head) {
-            Some(Data::Reserved(Ok(v))) => Some(v),
+    /// Attempts to return byte data corresponding to the head.
+    pub fn reserved(&self, head: [u8; 4]) -> Option<&Vec<u8>> {
+        match self.data(head) {
+            Some(Data::Reserved(v)) => Some(v),
             _ => None,
         }
     }
 
-    /// Attempts to return a string reference corresponding to the provided head.
+    /// Attempts to return a string reference corresponding to the head.
     ///
     /// # Example
     /// ```
     /// use mp4meta::{Tag, Data};
     ///
     /// let mut tag = Tag::new();
-    /// tag.set_data(*b"test", Data::Utf8(Ok(String::from("data"))));
-    /// assert_eq!(tag.get_string(*b"test").unwrap(), "data");
+    /// tag.set_data(*b"test", Data::Utf8(String::from("data")));
+    /// assert_eq!(tag.string(*b"test").unwrap(), "data");
     /// ```
-    pub fn get_string(&self, head: [u8; 4]) -> Option<&str> {
-        let d = self.get_data(head)?;
+    pub fn string(&self, head: [u8; 4]) -> Option<&str> {
+        let d = self.data(head)?;
 
         match d {
-            Data::Utf8(Ok(s)) => Some(s),
-            Data::Utf16(Ok(s)) => Some(s),
+            Data::Utf8(s) => Some(s),
+            Data::Utf16(s) => Some(s),
             _ => None,
         }
     }
 
-    /// Attempts to return a mutable string reference corresponding to the provided head.
-    pub fn get_mut_string(&mut self, head: [u8; 4]) -> Option<&mut String> {
-        let d = self.get_mut_data(head)?;
+    /// Attempts to return a mutable string reference corresponding to the head.
+    /// # Example
+    /// ```
+    /// use mp4meta::{Tag, Data};
+    ///
+    /// let mut tag = Tag::new();
+    /// tag.set_data(*b"test", Data::Utf8(String::from("data")));
+    /// tag.mut_string(*b"test").unwrap().push('1');
+    /// assert_eq!(tag.string(*b"test").unwrap(), "data1");
+    /// ```
+    pub fn mut_string(&mut self, head: [u8; 4]) -> Option<&mut String> {
+        let d = self.mut_data(head)?;
 
         match d {
-            Data::Utf8(Ok(s)) => Some(s),
-            Data::Utf16(Ok(s)) => Some(s),
+            Data::Utf8(s) => Some(s),
+            Data::Utf16(s) => Some(s),
             _ => None,
         }
     }
 
-    /// Attempts to return image data of type `Data::JPEG` or `Data::PNG` corresponding to the provided head.
-    pub fn get_image(&self, head: [u8; 4]) -> Option<Data> {
-        let d = self.get_data(head)?;
+    /// Attempts to return image data of type `Data::JPEG` or `Data::PNG` corresponding to the head.
+    pub fn image(&self, head: [u8; 4]) -> Option<Data> {
+        let d = self.data(head)?;
 
         match d {
-            Data::Jpeg(Ok(d)) => Some(Data::Jpeg(Ok(d.to_vec()))),
-            Data::Png(Ok(d)) => Some(Data::Png(Ok(d.to_vec()))),
+            Data::Jpeg(d) => Some(Data::Jpeg(d.to_vec())),
+            Data::Png(d) => Some(Data::Png(d.to_vec())),
             _ => None,
         }
     }
 
-    /// Attempts to return a data reference corresponding to the provided head.
-    pub fn get_data(&self, head: [u8; 4]) -> Option<&Data> {
-        if let Some(v) = self.get_atoms() {
-            for a in v {
-                if a.head == head {
-                    if let Content::TypedData(data) = &a.first_child()?.content {
-                        return Some(data);
-                    }
+    /// Attempts to return a data reference corresponding to the head.
+    pub fn data(&self, head: [u8; 4]) -> Option<&Data> {
+        for a in &self.atoms {
+            if a.head == head {
+                if let Content::TypedData(data) = &a.first_child()?.content {
+                    return Some(data);
                 }
             }
         }
@@ -653,14 +666,12 @@ impl Tag {
         None
     }
 
-    /// Attempts to return a mutable data reference corresponding to the provided head.
-    pub fn get_mut_data(&mut self, head: [u8; 4]) -> Option<&mut Data> {
-        if let Some(v) = self.get_mut_atoms() {
-            for a in v {
-                if a.head == head {
-                    if let Content::TypedData(data) = &mut a.mut_first_child()?.content {
-                        return Some(data);
-                    }
+    /// Attempts to return a mutable data reference corresponding to the head.
+    pub fn mut_data(&mut self, head: [u8; 4]) -> Option<&mut Data> {
+        for a in &mut self.atoms {
+            if a.head == head {
+                if let Content::TypedData(data) = &mut a.mut_first_child()?.content {
+                    return Some(data);
                 }
             }
         }
@@ -675,24 +686,22 @@ impl Tag {
     /// use mp4meta::{Tag, Data};
     ///
     /// let mut tag = Tag::new();
-    /// tag.set_data(*b"test", Data::Utf8(Ok(String::from("data"))));
-    /// assert_eq!(tag.get_string(*b"test").unwrap(), "data");
+    /// tag.set_data(*b"test", Data::Utf8(String::from("data")));
+    /// assert_eq!(tag.string(*b"test").unwrap(), "data");
     /// ```
     pub fn set_data(&mut self, head: [u8; 4], data: Data) {
-        if let Some(v) = self.get_mut_atoms() {
-            for i in 0..v.len() {
-                if v[i].head == head {
-                    if let Some(p) = v[i].mut_first_child() {
-                        if let Content::TypedData(d) = &mut p.content {
-                            *d = data;
-                            return;
-                        }
+        for a in &mut self.atoms {
+            if a.head == head {
+                if let Some(p) = a.mut_first_child() {
+                    if let Content::TypedData(d) = &mut p.content {
+                        *d = data;
+                        return;
                     }
                 }
             }
-
-            v.push(Atom::with(head, 0, Content::data_atom_with(data)));
         }
+
+        self.atoms.push(Atom::with(head, 0, Content::data_atom_with(data)));
     }
 
     /// Removes the data corresponding to the head.
@@ -702,41 +711,26 @@ impl Tag {
     /// use mp4meta::{Tag, Data};
     ///
     /// let mut tag = Tag::new();
-    /// tag.set_data(*b"test", Data::Utf8(Ok(String::from("data"))));
-    /// assert!(tag.get_data(*b"test").is_some());
+    /// tag.set_data(*b"test", Data::Utf8(String::from("data")));
+    /// assert!(tag.data(*b"test").is_some());
     /// tag.remove_data(*b"test");
-    /// assert!(tag.get_data(*b"test").is_none());
+    /// assert!(tag.data(*b"test").is_none());
     /// ```
     pub fn remove_data(&mut self, head: [u8; 4]) {
-        if let Some(v) = self.get_mut_atoms() {
-            for i in 0..v.len() {
-                if v[i].head == head {
-                    v.remove(i);
-                    return;
-                }
+        for i in 0..self.atoms.len() {
+            if self.atoms[i].head == head {
+                self.atoms.remove(i);
+                return;
             }
-        }
-    }
-
-    /// Returns a reference to the metadata atoms.
-    pub fn get_atoms(&self) -> Option<&Vec<Atom>> {
-        match &self.atom.first_child()?.first_child()?.first_child()?.content {
-            Content::Atoms(v) => Some(v),
-            _ => None
-        }
-    }
-
-    /// Returns a mutable reference to the metadata atoms.
-    pub fn get_mut_atoms(&mut self) -> Option<&mut Vec<Atom>> {
-        match &mut self.atom.mut_first_child()?.mut_first_child()?.mut_first_child()?.content {
-            Content::Atoms(v) => Some(v),
-            _ => None
         }
     }
 }
 
 #[test]
 fn test() {
+    use std::io::BufWriter;
+
+    println!("parsing tag");
     let mut tag = Tag::read_from_path("/mnt/data/Music/SOiL - Redefine/4 - SOiL - Cross My Heart.m4a");
 
     match &mut tag {
@@ -752,17 +746,19 @@ fn test() {
             println!("track number: {:?}", t.track_number());
             println!("year: {:?}", t.year());
 
-            match t.artwork() {
-                Some(Data::Jpeg(Ok(v))) => {
-                    let mut writer = BufWriter::new(File::create("./cover.jpg").unwrap());
-                    writer.write(&v).expect("error writing artwork");
+            match t.artwork().unwrap() {
+                Data::Jpeg(v) => {
+                    BufWriter::new(File::create("./cover.jpg").unwrap()).write(&v).unwrap();
                 }
-                Some(Data::Png(Ok(v))) => {
-                    let mut writer = BufWriter::new(File::create("./cover.png").unwrap());
-                    writer.write(&v).expect("error writing artwork");
+                Data::Png(v) => {
+                    BufWriter::new(File::create("./cover.png").unwrap()).write(&v).unwrap();
                 }
                 _ => (),
-            }
+            };
+
+            t.remove_artwork();
+
+            t.write_to_path("./tag").unwrap();
         }
         Err(e) => panic!("{:?}", e),
     }
