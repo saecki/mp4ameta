@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
-use std::io::{BufReader, Read, Write};
+use std::io::{BufReader, Read, Write, Seek};
 use std::path::Path;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
@@ -123,7 +123,7 @@ impl Tag {
     }
 
     /// Attempts to read a MPEG-4 audio tag from the reader.
-    pub fn read_from(reader: &mut impl Read) -> crate::Result<Tag> {
+    pub fn read_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
         Ok(Tag::with(Atom::read_from(reader)?))
     }
 

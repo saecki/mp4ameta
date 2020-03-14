@@ -2,7 +2,7 @@ use std::{fmt, io};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
-use crate::{Content, Data, ErrorKind, data};
+use crate::{Content, Data, data, ErrorKind};
 
 /// A list of valid file types defined by the `ftyp` atom.
 const VALID_FILE_TYPES: [&str; 2] = ["M4A ", "M4B "];
@@ -108,7 +108,7 @@ impl Atom {
     }
 
     /// Attempts to read MPEG-4 audio metadata from the reader.
-    pub fn read_from(reader: &mut impl io::Read) -> crate::Result<Vec<Atom>> {
+    pub fn read_from(reader: &mut (impl io::Read + io::Seek)) -> crate::Result<Vec<Atom>> {
         let mut ftyp = Atom::filetype_atom();
         ftyp.parse(reader)?;
 
@@ -146,7 +146,7 @@ impl Atom {
     }
 
     /// Attempts to parse itself from the reader.
-    pub fn parse(&mut self, reader: &mut impl io::Read) -> crate::Result<()> {
+    pub fn parse(&mut self, reader: &mut (impl io::Read + io::Seek)) -> crate::Result<()> {
         loop {
             let h = match Atom::parse_head(reader) {
                 Ok(h) => h,
@@ -168,13 +168,13 @@ impl Atom {
             if head == self.head {
                 return self.parse_content(reader, length);
             } else if length > 8 {
-                Data::read_to_u8_vec(reader, length - 8)?;
+                reader.seek(io::SeekFrom::Current((length - 8) as i64))?;
             }
         }
     }
 
     /// Attempts to parse the list of atoms from the reader.
-    pub fn parse_atoms(atoms: &mut Vec<Atom>, reader: &mut impl io::Read, length: usize) -> crate::Result<()> {
+    pub fn parse_atoms(atoms: &mut Vec<Atom>, reader: &mut (impl io::Read + io::Seek), length: usize) -> crate::Result<()> {
         let mut parsed_atoms = 0;
         let mut parsed_bytes = 0;
         let atom_count = atoms.len();
@@ -195,7 +195,7 @@ impl Atom {
             }
 
             if atom_length > 8 && !parsed {
-                Data::read_to_u8_vec(reader, atom_length - 8)?;
+                reader.seek(io::SeekFrom::Current((atom_length - 8) as i64))?;
             }
 
             parsed_bytes += atom_length;
@@ -206,7 +206,7 @@ impl Atom {
 
     /// Attempts to parse a 32 bit unsigned integer determining the size of the atom in bytes and
     /// the following 4 byte head from the reader.
-    pub fn parse_head(reader: &mut impl io::Read) -> crate::Result<(usize, [u8; 4])> {
+    pub fn parse_head(reader: &mut (impl io::Read + io::Seek)) -> crate::Result<(usize, [u8; 4])> {
         let length = match reader.read_u32::<BigEndian>() {
             Ok(l) => l as usize,
             Err(e) => return Err(crate::Error::new(
@@ -226,10 +226,10 @@ impl Atom {
     }
 
     /// Attempts to parse the content of the provided length from the reader.
-    pub fn parse_content(&mut self, reader: &mut impl io::Read, length: usize) -> crate::Result<()> {
+    pub fn parse_content(&mut self, reader: &mut (impl io::Read + io::Seek), length: usize) -> crate::Result<()> {
         if length > 8 {
             if self.offset != 0 {
-                Data::read_to_u8_vec(reader, self.offset)?;
+                reader.seek(io::SeekFrom::Current(self.offset as i64))?;
             }
             self.content.parse(reader, length - 8)?;
         } else {

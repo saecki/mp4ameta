@@ -70,7 +70,7 @@ impl Content {
     }
 
     /// Attempts to parse itself from the reader.
-    pub fn parse(&mut self, reader: &mut impl io::Read, length: usize) -> crate::Result<()> {
+    pub fn parse(&mut self, reader: &mut (impl io::Read + io::Seek), length: usize) -> crate::Result<()> {
         match self {
             Content::Atoms(v) => Atom::parse_atoms(v, reader, length)?,
             Content::RawData(d) => d.parse(reader, length)?,

@@ -4,6 +4,7 @@ use std::io;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::{Error, ErrorKind};
+use std::io::SeekFrom;
 
 pub const TYPED: i32 = -1;
 /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) code
@@ -49,7 +50,7 @@ impl Data {
     }
 
     /// Attempts to parse itself from the reader.
-    pub fn parse(&mut self, reader: &mut impl io::Read, length: usize) -> crate::Result<()> {
+    pub fn parse(&mut self, reader: &mut (impl io::Read + io::Seek), length: usize) -> crate::Result<()> {
         if let Data::Unparsed(d) = *self {
             let mut datatype = d;
             let mut l = length;
@@ -62,9 +63,7 @@ impl Data {
                     };
 
                     // consuming 4 byte data offset
-                    if let Err(e) = reader.read_u32::<BigEndian>() {
-                        return Err(crate::Error::from(e));
-                    }
+                    reader.seek(SeekFrom::Current(4))?;
 
                     l -= 8;
                 } else {
@@ -146,7 +145,7 @@ impl Data {
     }
 
     /// Attempts to read 8 bit unsigned integers from the reader to a vector of size length.
-    pub fn read_to_u8_vec(reader: &mut impl io::Read, length: usize) -> crate::Result<Vec<u8>> {
+    pub fn read_to_u8_vec(reader: &mut (impl io::Read + io::Seek), length: usize) -> crate::Result<Vec<u8>> {
         let mut buff = vec![0u8; length];
 
         if let Err(e) = reader.read_exact(&mut buff) {
@@ -157,7 +156,7 @@ impl Data {
     }
 
     /// Attempts to read 16 bit unsigned integers from the reader to a vector of size length.
-    pub fn read_to_u16_vec(reader: &mut impl io::Read, length: usize) -> crate::Result<Vec<u16>> {
+    pub fn read_to_u16_vec(reader: &mut (impl io::Read + io::Seek), length: usize) -> crate::Result<Vec<u16>> {
         let mut buff = vec![0u16; length];
 
         if let Err(e) = reader.read_u16_into::<BigEndian>(&mut buff) {
@@ -168,7 +167,7 @@ impl Data {
     }
 
     /// Attempts to read a utf-8 string from the reader.
-    pub fn read_utf8(reader: &mut impl io::Read, length: usize) -> crate::Result<String> {
+    pub fn read_utf8(reader: &mut (impl io::Read + io::Seek), length: usize) -> crate::Result<String> {
         let data = Data::read_to_u8_vec(reader, length)?;
 
         match String::from_utf8(data.clone()) {
@@ -178,11 +177,11 @@ impl Data {
     }
 
     /// Attempts to read a utf-16 string from the reader.
-    pub fn read_utf16(reader: &mut impl io::Read, length: usize) -> crate::Result<String> {
+    pub fn read_utf16(reader: &mut (impl io::Read + io::Seek), length: usize) -> crate::Result<String> {
         let data = Data::read_to_u16_vec(reader, length / 2)?;
 
         if length % 2 == 1 {
-            reader.read_u32::<BigEndian>()?;
+            reader.seek(SeekFrom::Current(1))?;
         }
 
         match String::from_utf16(&data) {
