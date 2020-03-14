@@ -47,17 +47,6 @@ impl Error {
 }
 
 impl error::Error for Error {
-    fn description(&self) -> &str {
-        if let Some(cause) = self.source() {
-            cause.description()
-        } else {
-            match self.kind {
-                ErrorKind::Io(ref err) => error::Error::description(err),
-                _ => self.description,
-            }
-        }
-    }
-
     fn cause(&self) -> Option<&dyn error::Error> {
         match self.kind {
             ErrorKind::Io(ref err) => Some(err),

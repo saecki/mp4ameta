@@ -595,6 +595,16 @@ impl Tag {
     }
 
     /// Attempts to return byte data corresponding to the head.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data};
+    ///
+    /// let mut tag = Tag::new();
+    /// tag.set_data(*b"test", Data::Reserved(vec![1,2,3,4,5,6]));
+    /// assert_eq!(tag.reserved(*b"test").unwrap().to_vec(), vec![1,2,3,4,5,6]);
+    /// ```
+
     pub fn reserved(&self, head: [u8; 4]) -> Option<&Vec<u8>> {
         match self.data(head) {
             Some(Data::Reserved(v)) => Some(v),
@@ -643,6 +653,17 @@ impl Tag {
     }
 
     /// Attempts to return image data of type `Data::JPEG` or `Data::PNG` corresponding to the head.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data};
+    ///
+    /// let mut tag = Tag::new();
+    /// tag.set_data(*b"test", Data::Jpeg("<the image data>".as_bytes().to_vec()));
+    /// if let Data::Jpeg(v) = tag.image(*b"test").unwrap(){
+    ///     assert_eq!(v, "<the image data>".as_bytes())
+    /// }
+    /// ```
     pub fn image(&self, head: [u8; 4]) -> Option<Data> {
         let d = self.data(head)?;
 
@@ -654,6 +675,18 @@ impl Tag {
     }
 
     /// Attempts to return a data reference corresponding to the head.
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data};
+    ///
+    /// let mut tag = Tag::new();
+    /// tag.set_data(*b"test", Data::Utf8(String::from("data")));
+    /// if let Data::Utf8(s) = tag.data(*b"test").unwrap(){
+    ///     assert_eq!(s, "data");
+    /// }else{
+    ///     panic!("data does not match");
+    /// }
+    /// ```
     pub fn data(&self, head: [u8; 4]) -> Option<&Data> {
         for a in &self.atoms {
             if a.head == head {
@@ -667,6 +700,18 @@ impl Tag {
     }
 
     /// Attempts to return a mutable data reference corresponding to the head.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data};
+    ///
+    /// let mut tag = Tag::new();
+    /// tag.set_data(*b"test", Data::Utf8(String::from("data")));
+    /// if let Data::Utf8(s) = tag.mut_data(*b"test").unwrap(){
+    ///     s.push('1');
+    /// }
+    /// assert_eq!(tag.string(*b"test").unwrap(), "data1");
+    /// ```
     pub fn mut_data(&mut self, head: [u8; 4]) -> Option<&mut Data> {
         for a in &mut self.atoms {
             if a.head == head {
@@ -759,7 +804,7 @@ fn test() {
 
             match t.write_to(&mut BufWriter::new(File::create("./tag").unwrap())) {
                 Ok(_) => (),
-                Err(e) => println!("error writing tag"),
+                Err(_) => println!("error writing tag"),
             }
         }
         Err(_) => println!("error reading tag"),

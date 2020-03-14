@@ -13,17 +13,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e67ee4c5-fde5-4249-8edf-6ec74d9a2eea" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mp4meta/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/mp4ameta/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mp4meta/Cargo.toml" beforeDir="false" afterPath="$PROJECT_DIR$/mp4ameta/Cargo.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mp4meta/mp4meta.iml" beforeDir="false" afterPath="$PROJECT_DIR$/mp4ameta/mp4ameta.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mp4meta/src/atom.rs" beforeDir="false" afterPath="$PROJECT_DIR$/mp4ameta/src/atom.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mp4meta/src/content.rs" beforeDir="false" afterPath="$PROJECT_DIR$/mp4ameta/src/content.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mp4meta/src/data.rs" beforeDir="false" afterPath="$PROJECT_DIR$/mp4ameta/src/data.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mp4meta/src/error.rs" beforeDir="false" afterPath="$PROJECT_DIR$/mp4ameta/src/error.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mp4meta/src/lib.rs" beforeDir="false" afterPath="$PROJECT_DIR$/mp4ameta/src/lib.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mp4meta/src/tag.rs" beforeDir="false" afterPath="$PROJECT_DIR$/mp4ameta/src/tag.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mp4ameta/src/error.rs" beforeDir="false" afterPath="$PROJECT_DIR$/mp4ameta/src/error.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mp4ameta/src/tag.rs" beforeDir="false" afterPath="$PROJECT_DIR$/mp4ameta/src/tag.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -87,53 +79,6 @@
       <envs />
       <method v="2">
         <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
-      </method>
-    </configuration>
-    <configuration default="true" type="JetRunConfigurationType" factoryName="Kotlin">
-      <module name="mp4ameta" />
-      <option name="VM_PARAMETERS" />
-      <option name="PROGRAM_PARAMETERS" />
-      <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="false" />
-      <option name="ALTERNATIVE_JRE_PATH" />
-      <option name="PASS_PARENT_ENVS" value="true" />
-      <option name="MAIN_CLASS_NAME" />
-      <option name="WORKING_DIRECTORY" />
-      <method v="2">
-        <option name="Make" enabled="true" />
-      </method>
-    </configuration>
-    <configuration default="true" type="KotlinStandaloneScriptRunConfigurationType" factoryName="Kotlin script">
-      <module name="mp4ameta" />
-      <option name="filePath" />
-      <option name="vmParameters" />
-      <option name="alternativeJrePath" />
-      <option name="programParameters" />
-      <option name="passParentEnvs" value="true" />
-      <option name="workingDirectory" />
-      <option name="isAlternativeJrePathEnabled" value="false" />
-      <option name="VM_PARAMETERS" />
-      <option name="PROGRAM_PARAMETERS" />
-      <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="false" />
-      <option name="ALTERNATIVE_JRE_PATH" />
-      <option name="PASS_PARENT_ENVS" value="true" />
-      <option name="MAIN_CLASS_NAME" />
-      <option name="WORKING_DIRECTORY" />
-      <option name="filePath" />
-      <option name="vmParameters" />
-      <option name="alternativeJrePath" />
-      <option name="programParameters" />
-      <option name="passParentEnvs" value="true" />
-      <option name="workingDirectory" />
-      <option name="isAlternativeJrePathEnabled" value="false" />
-      <option name="VM_PARAMETERS" />
-      <option name="PROGRAM_PARAMETERS" />
-      <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="false" />
-      <option name="ALTERNATIVE_JRE_PATH" />
-      <option name="PASS_PARENT_ENVS" value="true" />
-      <option name="MAIN_CLASS_NAME" />
-      <option name="WORKING_DIRECTORY" />
-      <method v="2">
-        <option name="Make" enabled="true" />
       </method>
     </configuration>
     <recent_temporary>
@@ -213,6 +158,7 @@
       <workItem from="1583944110501" duration="7839000" />
       <workItem from="1583956476815" duration="3105000" />
       <workItem from="1584196248286" duration="2572000" />
+      <workItem from="1584201384125" duration="1902000" />
     </task>
     <servers />
   </component>
@@ -229,11 +175,12 @@
       <screen x="0" y="28" width="1920" height="1052" />
     </state>
     <state x="555" y="215" width="800" height="679" key="#Plugins/0.28.1920.1052@0.28.1920.1052" timestamp="1583578121728" />
-    <state x="418" y="207" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1584199047904">
-      <screen x="0" y="28" width="1920" height="1052" />
+    <state x="2338" y="184" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1584201948257">
+      <screen x="1920" y="0" width="1920" height="1080" />
     </state>
     <state x="418" y="177" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.0.1920.1039@0.0.1920.1039" timestamp="1582315650147" />
     <state x="418" y="207" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.28.1920.1052@0.28.1920.1052" timestamp="1584199047904" />
+    <state x="2338" y="184" key="#com.intellij.execution.impl.EditConfigurationsDialog/1920.0.1920.1080/3840.0.1680.1050/0.0.1920.1002@1920.0.1920.1080" timestamp="1584201948257" />
     <state x="100" y="128" width="1720" height="852" key="#com.intellij.execution.junit2.states.ComparisonFailureState$DiffDialog" timestamp="1583850987262">
       <screen x="0" y="28" width="1920" height="1052" />
     </state>
@@ -261,33 +208,37 @@
     </state>
     <state x="743" y="277" width="424" height="486" key="FileChooserDialogImpl/0.0.1920.1039@0.0.1920.1039" timestamp="1582452136606" />
     <state x="743" y="308" key="FileChooserDialogImpl/0.28.1920.1052@0.28.1920.1052" timestamp="1584200477843" />
-    <state width="1870" height="625" key="GridCell.Tab.0.bottom" timestamp="1584200651506">
-      <screen x="0" y="28" width="1920" height="1052" />
+    <state width="1874" height="612" key="GridCell.Tab.0.bottom" timestamp="1584203262425">
+      <screen x="1920" y="0" width="1920" height="1080" />
     </state>
     <state width="960" height="660" key="GridCell.Tab.0.bottom/0.0.1920.1039@0.0.1920.1039" timestamp="1582455900840" />
     <state width="1874" height="691" key="GridCell.Tab.0.bottom/0.27.1920.1053@0.27.1920.1053" timestamp="1583878316358" />
     <state width="1870" height="625" key="GridCell.Tab.0.bottom/0.28.1920.1052@0.28.1920.1052" timestamp="1584200651506" />
+    <state width="1874" height="612" key="GridCell.Tab.0.bottom/1920.0.1920.1080/3840.0.1680.1050/0.0.1920.1002@1920.0.1920.1080" timestamp="1584203262425" />
     <state width="1874" height="627" key="GridCell.Tab.0.bottom/1920.0.1920.1080/3840.0.1680.1050/0.28.1920.1052@1920.0.1920.1080" timestamp="1583533114492" />
-    <state width="1870" height="625" key="GridCell.Tab.0.center" timestamp="1584200651506">
-      <screen x="0" y="28" width="1920" height="1052" />
+    <state width="1874" height="612" key="GridCell.Tab.0.center" timestamp="1584203262425">
+      <screen x="1920" y="0" width="1920" height="1080" />
     </state>
     <state width="960" height="660" key="GridCell.Tab.0.center/0.0.1920.1039@0.0.1920.1039" timestamp="1582455900840" />
     <state width="1874" height="691" key="GridCell.Tab.0.center/0.27.1920.1053@0.27.1920.1053" timestamp="1583878316358" />
     <state width="1870" height="625" key="GridCell.Tab.0.center/0.28.1920.1052@0.28.1920.1052" timestamp="1584200651506" />
+    <state width="1874" height="612" key="GridCell.Tab.0.center/1920.0.1920.1080/3840.0.1680.1050/0.0.1920.1002@1920.0.1920.1080" timestamp="1584203262425" />
     <state width="1874" height="627" key="GridCell.Tab.0.center/1920.0.1920.1080/3840.0.1680.1050/0.28.1920.1052@1920.0.1920.1080" timestamp="1583533114492" />
-    <state width="1870" height="625" key="GridCell.Tab.0.left" timestamp="1584200651506">
-      <screen x="0" y="28" width="1920" height="1052" />
+    <state width="1874" height="612" key="GridCell.Tab.0.left" timestamp="1584203262425">
+      <screen x="1920" y="0" width="1920" height="1080" />
     </state>
     <state width="960" height="660" key="GridCell.Tab.0.left/0.0.1920.1039@0.0.1920.1039" timestamp="1582455900839" />
     <state width="1874" height="691" key="GridCell.Tab.0.left/0.27.1920.1053@0.27.1920.1053" timestamp="1583878316357" />
     <state width="1870" height="625" key="GridCell.Tab.0.left/0.28.1920.1052@0.28.1920.1052" timestamp="1584200651506" />
+    <state width="1874" height="612" key="GridCell.Tab.0.left/1920.0.1920.1080/3840.0.1680.1050/0.0.1920.1002@1920.0.1920.1080" timestamp="1584203262425" />
     <state width="1874" height="627" key="GridCell.Tab.0.left/1920.0.1920.1080/3840.0.1680.1050/0.28.1920.1052@1920.0.1920.1080" timestamp="1583533114492" />
-    <state width="1870" height="625" key="GridCell.Tab.0.right" timestamp="1584200651506">
-      <screen x="0" y="28" width="1920" height="1052" />
+    <state width="1874" height="612" key="GridCell.Tab.0.right" timestamp="1584203262425">
+      <screen x="1920" y="0" width="1920" height="1080" />
     </state>
     <state width="960" height="660" key="GridCell.Tab.0.right/0.0.1920.1039@0.0.1920.1039" timestamp="1582455900840" />
     <state width="1874" height="691" key="GridCell.Tab.0.right/0.27.1920.1053@0.27.1920.1053" timestamp="1583878316358" />
     <state width="1870" height="625" key="GridCell.Tab.0.right/0.28.1920.1052@0.28.1920.1052" timestamp="1584200651506" />
+    <state width="1874" height="612" key="GridCell.Tab.0.right/1920.0.1920.1080/3840.0.1680.1050/0.0.1920.1002@1920.0.1920.1080" timestamp="1584203262425" />
     <state width="1874" height="627" key="GridCell.Tab.0.right/1920.0.1920.1080/3840.0.1680.1050/0.28.1920.1052@1920.0.1920.1080" timestamp="1583533114492" />
     <state width="1874" height="817" key="GridCell.Tab.1.bottom" timestamp="1582889463750">
       <screen x="0" y="28" width="1920" height="1052" />
@@ -325,10 +276,11 @@
     </state>
     <state x="608" y="226" width="703" height="586" key="find.popup/0.0.1920.1039@0.0.1920.1039" timestamp="1582327361161" />
     <state x="608" y="257" width="866" height="692" key="find.popup/0.28.1920.1052@0.28.1920.1052" timestamp="1584200566898" />
-    <state width="590" height="287" key="javadoc.popup.new" timestamp="1584199933538">
-      <screen x="0" y="28" width="1920" height="1052" />
+    <state width="590" height="295" key="javadoc.popup.new" timestamp="1584202968370">
+      <screen x="1920" y="0" width="1920" height="1080" />
     </state>
     <state width="590" height="287" key="javadoc.popup.new/0.28.1920.1052@0.28.1920.1052" timestamp="1584199933538" />
+    <state width="590" height="295" key="javadoc.popup.new/1920.0.1920.1080/3840.0.1680.1050/0.0.1920.1002@1920.0.1920.1080" timestamp="1584202968370" />
     <state x="281" y="245" width="1347" height="550" key="new project wizard" timestamp="1582059686802">
       <screen x="0" y="0" width="1920" height="1039" />
     </state>
@@ -338,11 +290,12 @@
     </state>
     <state x="624" y="236" width="672" height="677" key="run.anything.popup/0.0.1920.1039@0.0.1920.1039" timestamp="1582367068172" />
     <state x="624" y="267" width="672" height="686" key="run.anything.popup/0.28.1920.1052@0.28.1920.1052" timestamp="1583839144006" />
-    <state x="623" y="259" width="672" height="687" key="search.everywhere.popup" timestamp="1583948673506">
-      <screen x="0" y="28" width="1920" height="1052" />
+    <state x="2543" y="237" width="672" height="706" key="search.everywhere.popup" timestamp="1584203267459">
+      <screen x="1920" y="0" width="1920" height="1080" />
     </state>
     <state x="623" y="228" width="672" height="678" key="search.everywhere.popup/0.0.1920.1039@0.0.1920.1039" timestamp="1582453242170" />
     <state x="623" y="258" width="672" height="688" key="search.everywhere.popup/0.27.1920.1053@0.27.1920.1053" timestamp="1583877776068" />
     <state x="623" y="259" width="672" height="687" key="search.everywhere.popup/0.28.1920.1052@0.28.1920.1052" timestamp="1583948673506" />
+    <state x="2543" y="237" width="672" height="706" key="search.everywhere.popup/1920.0.1920.1080/3840.0.1680.1050/0.0.1920.1002@1920.0.1920.1080" timestamp="1584203267459" />
   </component>
 </project>
