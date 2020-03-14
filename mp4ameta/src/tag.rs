@@ -134,7 +134,7 @@ impl Tag {
     }
 
     /// Attempts to write the MPEG-4 audio tag to the writer.
-    pub fn write_to(&self, writer: &mut impl Write) -> crate::Result<()> {
+    pub fn write_to(&self, writer: &mut (impl Write + Seek)) -> crate::Result<()> {
         for a in &self.atoms {
             a.write_to(writer)?;
         }
@@ -606,7 +606,7 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4meta::{Tag, Data};
+    /// use mp4ameta::{Tag, Data};
     ///
     /// let mut tag = Tag::new();
     /// tag.set_data(*b"test", Data::Utf8(String::from("data")));
@@ -625,7 +625,7 @@ impl Tag {
     /// Attempts to return a mutable string reference corresponding to the head.
     /// # Example
     /// ```
-    /// use mp4meta::{Tag, Data};
+    /// use mp4ameta::{Tag, Data};
     ///
     /// let mut tag = Tag::new();
     /// tag.set_data(*b"test", Data::Utf8(String::from("data")));
@@ -683,7 +683,7 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4meta::{Tag, Data};
+    /// use mp4ameta::{Tag, Data};
     ///
     /// let mut tag = Tag::new();
     /// tag.set_data(*b"test", Data::Utf8(String::from("data")));
@@ -708,7 +708,7 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4meta::{Tag, Data};
+    /// use mp4ameta::{Tag, Data};
     ///
     /// let mut tag = Tag::new();
     /// tag.set_data(*b"test", Data::Utf8(String::from("data")));
@@ -730,8 +730,7 @@ impl Tag {
 fn test() {
     use std::io::BufWriter;
 
-    println!("parsing tag");
-    let mut tag = Tag::read_from_path("/mnt/data/Music/SOiL - Redefine/4 - SOiL - Cross My Heart.m4a");
+    let mut tag = Tag::read_from_path("/mnt/data/Music/Slipknot - Sulfur.m4a");
 
     match &mut tag {
         Ok(t) => {
@@ -758,8 +757,11 @@ fn test() {
 
             t.remove_artwork();
 
-            t.write_to_path("./tag").unwrap();
+            match t.write_to(&mut BufWriter::new(File::create("./tag").unwrap())) {
+                Ok(_) => (),
+                Err(e) => println!("error writing tag"),
+            }
         }
-        Err(e) => panic!("{:?}", e),
+        Err(_) => println!("error reading tag"),
     }
 }

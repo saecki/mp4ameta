@@ -139,6 +139,7 @@ impl Atom {
     pub fn write_to(&self, writer: &mut impl io::Write) -> crate::Result<()> {
         writer.write_u32::<BigEndian>(self.len() as u32)?;
         writer.write(&self.head)?;
+        writer.write(&vec![0u8; self.offset])?;
 
         self.content.write_to(writer)?;
 
