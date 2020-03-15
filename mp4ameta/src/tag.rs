@@ -1,11 +1,11 @@
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
-use std::io::{BufReader, Read, Write, Seek};
+use std::io::{BufReader, Read, Write, Seek, SeekFrom};
 use std::path::Path;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
-use crate::{Atom, atom, Content, Data};
+use crate::{Atom, atom, Content, Data, ErrorKind};
 
 /// A list of standard genres found in the `gnre` `Atom`.
 pub const GENRES: [(u16, &str); 80] = [
@@ -144,14 +144,44 @@ impl Tag {
 
     /// Attempts to write the MPEG-4 audio tag to the path.
     pub fn write_to_path(&self, path: impl AsRef<Path>) -> crate::Result<()> {
-        let mut file = OpenOptions::new().read(true).write(true).open(path)?;
-        self.write_to(&mut file)
+        let file = OpenOptions::new().read(true).write(true).open(path)?;
+
+        let mut reader = BufReader::new(&file);
+
+        let mut ftyp = Atom::filetype_atom();
+        println!("parsing ftyp");
+        ftyp.parse(&mut reader)?;
+
+        println!("validating ftyp");
+        if !ftyp.is_valid_filetype() {
+            return Err(crate::Error::new(
+                ErrorKind::NoTag,
+                "File does not contain MPEG-4 audio metadata",
+            ));
+        }
+
+        let mut atom_pos_and_len = Vec::new();
+
+        while let Ok((length, head)) = Atom::parse_head(&mut reader) {
+            if head == atom::MOVIE {
+                atom_pos_and_len.push((reader.seek(SeekFrom::Current(0))?, length))
+            }
+            reader.seek(SeekFrom::Current((length - 8) as i64));
+        }
+
+        println!("{:?}", atom_pos_and_len);
+
+        //self.write_to(&mut BufWriter::new(file))
+
+        Ok(())
     }
 
     // String fields
 
     /// Returns the album (©alb).
-    pub fn album(&self) -> Option<&str> { self.string(atom::ALBUM) }
+    pub fn album(&self) -> Option<&str> {
+        self.string(atom::ALBUM)
+    }
 
     /// Sets the album (©alb).
     pub fn set_album(&mut self, album: impl Into<String>) {
@@ -619,7 +649,7 @@ impl Tag {
     /// use mp4ameta::{Tag, Data};
     ///
     /// let mut tag = Tag::new();
-    /// tag.set_data(*b"test", Data::Utf8(String::from("data")));
+    /// tag.set_data(*b"test", Data::Utf8("data".into()));
     /// assert_eq!(tag.string(*b"test").unwrap(), "data");
     /// ```
     pub fn string(&self, head: [u8; 4]) -> Option<&str> {
@@ -638,7 +668,7 @@ impl Tag {
     /// use mp4ameta::{Tag, Data};
     ///
     /// let mut tag = Tag::new();
-    /// tag.set_data(*b"test", Data::Utf8(String::from("data")));
+    /// tag.set_data(*b"test", Data::Utf8("data".into()));
     /// tag.mut_string(*b"test").unwrap().push('1');
     /// assert_eq!(tag.string(*b"test").unwrap(), "data1");
     /// ```
@@ -680,7 +710,7 @@ impl Tag {
     /// use mp4ameta::{Tag, Data};
     ///
     /// let mut tag = Tag::new();
-    /// tag.set_data(*b"test", Data::Utf8(String::from("data")));
+    /// tag.set_data(*b"test", Data::Utf8("data".into()));
     /// if let Data::Utf8(s) = tag.data(*b"test").unwrap(){
     ///     assert_eq!(s, "data");
     /// }else{
@@ -706,7 +736,7 @@ impl Tag {
     /// use mp4ameta::{Tag, Data};
     ///
     /// let mut tag = Tag::new();
-    /// tag.set_data(*b"test", Data::Utf8(String::from("data")));
+    /// tag.set_data(*b"test", Data::Utf8("data".into()));
     /// if let Data::Utf8(s) = tag.mut_data(*b"test").unwrap(){
     ///     s.push('1');
     /// }
@@ -731,7 +761,7 @@ impl Tag {
     /// use mp4ameta::{Tag, Data};
     ///
     /// let mut tag = Tag::new();
-    /// tag.set_data(*b"test", Data::Utf8(String::from("data")));
+    /// tag.set_data(*b"test", Data::Utf8("data".into()));
     /// assert_eq!(tag.string(*b"test").unwrap(), "data");
     /// ```
     pub fn set_data(&mut self, head: [u8; 4], data: Data) {
@@ -756,7 +786,7 @@ impl Tag {
     /// use mp4ameta::{Tag, Data};
     ///
     /// let mut tag = Tag::new();
-    /// tag.set_data(*b"test", Data::Utf8(String::from("data")));
+    /// tag.set_data(*b"test", Data::Utf8("data".into()));
     /// assert!(tag.data(*b"test").is_some());
     /// tag.remove_data(*b"test");
     /// assert!(tag.data(*b"test").is_none());
@@ -775,38 +805,45 @@ impl Tag {
 fn test() {
     use std::io::BufWriter;
 
-    let mut tag = Tag::read_from_path("/mnt/data/Music/Slipknot - Sulfur.m4a");
+    let mut tag = Tag::read_from_path("/mnt/data/Music/Slipknot - Sulfur.m4a").unwrap();
 
-    match &mut tag {
-        Ok(t) => {
-            println!("tag: {:#?}", t);
-            println!("album: {:?}", t.album());
-            println!("album artist: {:?}", t.album_artist());
-            println!("artist: {:?}", t.artist());
-            println!("disk number: {:?}", t.disk_number());
-            println!("genre: {:?}", t.genre());
-            println!("lyrics: {:?}", t.lyrics());
-            println!("title: {:?}", t.title());
-            println!("track number: {:?}", t.track_number());
-            println!("year: {:?}", t.year());
+    println!("tag: {:#?}", tag);
+    println!("album: {:?}", tag.album());
+    println!("album artist: {:?}", tag.album_artist());
+    println!("artist: {:?}", tag.artist());
+    println!("disk number: {:?}", tag.disk_number());
+    println!("genre: {:?}", tag.genre());
+    println!("lyrics: {:?}", tag.lyrics());
+    println!("title: {:?}", tag.title());
+    println!("track number: {:?}", tag.track_number());
+    println!("year: {:?}", tag.year());
 
-            match t.artwork().unwrap() {
-                Data::Jpeg(v) => {
-                    BufWriter::new(File::create("./cover.jpg").unwrap()).write(&v).unwrap();
-                }
-                Data::Png(v) => {
-                    BufWriter::new(File::create("./cover.png").unwrap()).write(&v).unwrap();
-                }
-                _ => (),
-            };
-
-            t.remove_artwork();
-
-            match t.write_to(&mut BufWriter::new(File::create("./tag").unwrap())) {
-                Ok(_) => (),
-                Err(_) => println!("error writing tag"),
-            }
+    match tag.artwork().unwrap() {
+        Data::Jpeg(v) => {
+            BufWriter::new(File::create("./cover.jpg").unwrap()).write(&v).unwrap();
         }
-        Err(_) => println!("error reading tag"),
-    }
+        Data::Png(v) => {
+            BufWriter::new(File::create("./cover.png").unwrap()).write(&v).unwrap();
+        }
+        _ => (),
+    };
+
+    tag.remove_artwork();
+
+    let mut w = BufWriter::new(File::create("./tag").unwrap());
+
+    Atom::with(atom::FILE_TYPE, 0, Content::RawData(Data::Utf8("M4A and some other information".into()))).write_to(&mut w).unwrap();
+    Atom::with(*b"mdat", 0, Content::RawData(Data::Utf8("a lot of media data".into()))).write_to(&mut w).unwrap();
+    Atom::with(
+        atom::MOVIE, 0, Content::atom_with(
+            atom::USER_DATA, 0, Content::atom_with(
+                atom::METADATA, 4, Content::atom_with(
+                    atom::ITEM_LIST, 0, Content::atoms()
+                        .add_atom_with(atom::TITLE, 0, Content::data_atom_with(Data::Utf8("title".into()))),
+                ),
+            ),
+        ),
+    ).write_to(&mut w).unwrap();
+
+    tag.write_to_path("/mnt/data/Music/Slipknot - Sulfur.m4a").unwrap();
 }

@@ -149,7 +149,7 @@ impl Atom {
     /// Attempts to parse itself from the reader.
     pub fn parse(&mut self, reader: &mut (impl io::Read + io::Seek)) -> crate::Result<()> {
         loop {
-            let h = match Atom::parse_head(reader) {
+            let (length, head) = match Atom::parse_head(reader) {
                 Ok(h) => h,
                 Err(e) => match &e.kind {
                     crate::ErrorKind::Io(ioe) => if ioe.kind() == io::ErrorKind::UnexpectedEof {
@@ -163,8 +163,6 @@ impl Atom {
                     _ => return Err(e),
                 },
             };
-            let length = h.0;
-            let head = h.1;
 
             if head == self.head {
                 return self.parse_content(reader, length);
@@ -181,9 +179,7 @@ impl Atom {
         let atom_count = atoms.len();
 
         while parsed_bytes < length && parsed_atoms < atom_count {
-            let h = Atom::parse_head(reader)?;
-            let atom_length = h.0;
-            let atom_head = h.1;
+            let (atom_length, atom_head) = Atom::parse_head(reader)?;
 
             let mut parsed = false;
             for a in atoms.into_iter() {
