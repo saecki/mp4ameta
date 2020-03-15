@@ -1,11 +1,11 @@
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
-use std::io::{BufReader, Read, Write, Seek, SeekFrom};
+use std::io::{BufReader, Read, Write, Seek, BufWriter, SeekFrom};
 use std::path::Path;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
-use crate::{Atom, atom, Content, Data, ErrorKind};
+use crate::{Atom, atom, Content, Data};
 
 /// A list of standard genres found in the `gnre` `Atom`.
 pub const GENRES: [(u16, &str); 80] = [
@@ -145,33 +145,38 @@ impl Tag {
     /// Attempts to write the MPEG-4 audio tag to the path.
     pub fn write_to_path(&self, path: impl AsRef<Path>) -> crate::Result<()> {
         let file = OpenOptions::new().read(true).write(true).open(path)?;
-
         let mut reader = BufReader::new(&file);
+        let mut writer = BufWriter::new(&file);
 
-        let mut ftyp = Atom::filetype_atom();
-        println!("parsing ftyp");
-        ftyp.parse(&mut reader)?;
+        let atom_pos_and_len = Atom::locate_metadata_item_list(&mut reader)?;
 
-        println!("validating ftyp");
-        if !ftyp.is_valid_filetype() {
-            return Err(crate::Error::new(
-                ErrorKind::NoTag,
-                "File does not contain MPEG-4 audio metadata",
-            ));
+        let old_file_length = reader.seek(SeekFrom::End(0))?;
+        let metadata_position = atom_pos_and_len[atom_pos_and_len.len() - 1].0 + 8;
+        let old_metadata_length = atom_pos_and_len[atom_pos_and_len.len() - 1].1 - 8;
+        let new_metadata_length = self.atoms.iter().map(|a| a.len()).sum::<usize>();
+        let metadata_length_difference = new_metadata_length as i32 - old_metadata_length as i32;
+
+        // reading additional data after metadata
+        let mut additional_data = Vec::new();
+        reader.seek(SeekFrom::Start((metadata_position + old_metadata_length) as u64))?;
+        reader.read_to_end(&mut additional_data)?;
+
+        // adjusting the file length
+        file.set_len((old_file_length as i64 + metadata_length_difference as i64) as u64)?;
+
+        // adjusting the atom lengths
+        for (pos, len) in atom_pos_and_len {
+            writer.seek(SeekFrom::Start(pos as u64))?;
+            writer.write_u32::<BigEndian>((len as i32 + metadata_length_difference) as u32)?;
         }
 
-        let mut atom_pos_and_len = Vec::new();
+        // writing metadata
+        writer.seek(SeekFrom::Current(4))?;
+        self.write_to(&mut BufWriter::new(&file))?;
 
-        while let Ok((length, head)) = Atom::parse_head(&mut reader) {
-            if head == atom::MOVIE {
-                atom_pos_and_len.push((reader.seek(SeekFrom::Current(0))?, length))
-            }
-            reader.seek(SeekFrom::Current((length - 8) as i64));
-        }
-
-        println!("{:?}", atom_pos_and_len);
-
-        //self.write_to(&mut BufWriter::new(file))
+        // writing additional data after metadata
+        writer.write(&additional_data)?;
+        writer.flush()?;
 
         Ok(())
     }
@@ -818,32 +823,36 @@ fn test() {
     println!("track number: {:?}", tag.track_number());
     println!("year: {:?}", tag.year());
 
-    match tag.artwork().unwrap() {
-        Data::Jpeg(v) => {
+    match tag.artwork() {
+        Some(Data::Jpeg(v)) => {
             BufWriter::new(File::create("./cover.jpg").unwrap()).write(&v).unwrap();
         }
-        Data::Png(v) => {
+        Some(Data::Png(v)) => {
             BufWriter::new(File::create("./cover.png").unwrap()).write(&v).unwrap();
         }
         _ => (),
     };
 
-    tag.remove_artwork();
-
     let mut w = BufWriter::new(File::create("./tag").unwrap());
 
     Atom::with(atom::FILE_TYPE, 0, Content::RawData(Data::Utf8("M4A and some other information".into()))).write_to(&mut w).unwrap();
-    Atom::with(*b"mdat", 0, Content::RawData(Data::Utf8("a lot of media data".into()))).write_to(&mut w).unwrap();
+    Atom::with(*b"mdat", 0, Content::RawData(Data::Utf8("Very long media data".into()))).write_to(&mut w).unwrap();
     Atom::with(
         atom::MOVIE, 0, Content::atom_with(
             atom::USER_DATA, 0, Content::atom_with(
                 atom::METADATA, 4, Content::atom_with(
                     atom::ITEM_LIST, 0, Content::atoms()
-                        .add_atom_with(atom::TITLE, 0, Content::data_atom_with(Data::Utf8("title".into()))),
+                        .add_atom_with(atom::TITLE, 0, Content::data_atom_with(Data::Utf8("<title>".into())))
+                        .add_atom_with(atom::ARTIST, 0, Content::data_atom_with(Data::Utf8("<artist>".into()))),
                 ),
             ),
         ),
     ).write_to(&mut w).unwrap();
 
-    tag.write_to_path("/mnt/data/Music/Slipknot - Sulfur.m4a").unwrap();
+    w.flush().unwrap();
+
+    tag.remove_artwork();
+    tag.set_artist("Dieter");
+
+    tag.write_to_path("./tag").unwrap();
 }

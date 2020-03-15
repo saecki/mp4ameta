@@ -104,7 +104,7 @@ impl Atom {
 
     /// Returns the length in bytes.
     pub fn len(&self) -> usize {
-        8 + self.content.len()
+        8 + self.offset + self.content.len()
     }
 
     /// Attempts to read MPEG-4 audio metadata from the reader.
@@ -127,12 +127,17 @@ impl Atom {
                 if let Some(ilst) = meta.first_child() {
                     if let Content::Atoms(atoms) = &ilst.content {
                         return Ok(atoms.to_vec());
+                    } else if let Content::Empty = &ilst.content {
+                        return Ok(Vec::new());
                     }
                 }
             }
         }
 
-        Err(crate::Error::new(ErrorKind::Parsing, "wrong metadata structure"))
+        Err(crate::Error::new(
+            ErrorKind::Parsing,
+            "Error parsing MPEG-4 audio metadata",
+        ))
     }
 
     /// Attempts to write the MPEG-4 audio metadata to the writer.
@@ -199,6 +204,39 @@ impl Atom {
         }
 
         Ok(())
+    }
+
+    /// Locates the metadata item list atom and returns a list of tuples containing the position from the
+    /// beginning of the file and length in bytes of the atom hierarchy leading to it.
+    pub fn locate_metadata_item_list(reader: &mut (impl io::Read + io::Seek)) -> crate::Result<Vec<(usize, usize)>> {
+        let mut atom_pos_and_len = Vec::new();
+        let mut destination = &Atom::empty_metadata_atom();
+        let mut ftyp = Atom::filetype_atom();
+
+        ftyp.parse(reader)?;
+
+        if !ftyp.is_valid_filetype() {
+            return Err(crate::Error::new(
+                ErrorKind::NoTag,
+                "File does not contain MPEG-4 audio metadata",
+            ));
+        }
+
+        while let Ok((length, head)) = Atom::parse_head(reader) {
+            if head == destination.head {
+                atom_pos_and_len.push((reader.seek(io::SeekFrom::Current(0))? as usize - 8, length));
+                reader.seek(io::SeekFrom::Current(destination.offset as i64))?;
+
+                match destination.first_child() {
+                    Some(a) => destination = a,
+                    None => break,
+                }
+            } else {
+                reader.seek(io::SeekFrom::Current(length as i64 - 8))?;
+            }
+        }
+
+        Ok(atom_pos_and_len)
     }
 
     /// Attempts to parse a 32 bit unsigned integer determining the size of the atom in bytes and
@@ -330,6 +368,11 @@ impl Atom {
             ),
         )
     }
+
+    /// Returns the head formatted as a string.
+    pub fn format_head(head: [u8; 4]) -> String {
+        head.iter().map(|b| char::from(*b)).collect()
+    }
 }
 
 impl PartialEq for Atom {
@@ -348,7 +391,7 @@ impl PartialEq for Atom {
 
 impl fmt::Debug for Atom {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let head_string: String = self.head.iter().map(|b| char::from(*b)).collect();
+        let head_string = Atom::format_head(self.head);
         write!(f, "Atom{{ {}, {}: {:#?} }}", head_string, self.offset, self.content)
     }
 }
