@@ -14,8 +14,6 @@
   <component name="ChangeListManager">
     <list default="true" id="e67ee4c5-fde5-4249-8edf-6ec74d9a2eea" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mp4ameta/src/atom.rs" beforeDir="false" afterPath="$PROJECT_DIR$/mp4ameta/src/atom.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mp4ameta/src/error.rs" beforeDir="false" afterPath="$PROJECT_DIR$/mp4ameta/src/error.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mp4ameta/src/tag.rs" beforeDir="false" afterPath="$PROJECT_DIR$/mp4ameta/src/tag.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -176,6 +174,11 @@
       <workItem from="1584201384125" duration="5293000" />
       <workItem from="1584217618378" duration="8746000" />
       <workItem from="1584277142670" duration="2855000" />
+      <workItem from="1584362306301" duration="44000" />
+      <workItem from="1585182712096" duration="1037000" />
+      <workItem from="1585187223368" duration="30000" />
+      <workItem from="1585187787267" duration="10000" />
+      <workItem from="1585187818137" duration="97000" />
     </task>
     <servers />
   </component>
@@ -221,11 +224,11 @@
       <screen x="0" y="27" width="1920" height="1053" />
     </state>
     <state x="100" y="68" width="1720" height="912" key="DiffContextDialog/0.27.1920.1053@0.27.1920.1053" timestamp="1583877766057" />
-    <state x="743" y="308" width="424" height="486" key="FileChooserDialogImpl" timestamp="1584200477843">
+    <state x="743" y="308" width="424" height="486" key="FileChooserDialogImpl" timestamp="1585187795055">
       <screen x="0" y="28" width="1920" height="1052" />
     </state>
     <state x="743" y="277" width="424" height="486" key="FileChooserDialogImpl/0.0.1920.1039@0.0.1920.1039" timestamp="1582452136606" />
-    <state x="743" y="308" key="FileChooserDialogImpl/0.28.1920.1052@0.28.1920.1052" timestamp="1584200477843" />
+    <state x="743" y="308" width="424" height="486" key="FileChooserDialogImpl/0.28.1920.1052@0.28.1920.1052" timestamp="1585187795055" />
     <state width="1870" height="625" key="GridCell.Tab.0.bottom" timestamp="1584280232264">
       <screen x="0" y="28" width="1920" height="1052" />
     </state>
@@ -315,12 +318,12 @@
     </state>
     <state x="624" y="236" width="672" height="677" key="run.anything.popup/0.0.1920.1039@0.0.1920.1039" timestamp="1582367068172" />
     <state x="624" y="267" width="672" height="686" key="run.anything.popup/0.28.1920.1052@0.28.1920.1052" timestamp="1584278706690" />
-    <state x="623" y="259" width="672" height="687" key="search.everywhere.popup" timestamp="1584277189323">
+    <state x="623" y="259" width="672" height="687" key="search.everywhere.popup" timestamp="1585187788858">
       <screen x="0" y="28" width="1920" height="1052" />
     </state>
     <state x="623" y="228" width="672" height="678" key="search.everywhere.popup/0.0.1920.1039@0.0.1920.1039" timestamp="1582453242170" />
     <state x="623" y="258" width="672" height="688" key="search.everywhere.popup/0.27.1920.1053@0.27.1920.1053" timestamp="1583877776068" />
-    <state x="623" y="259" width="672" height="687" key="search.everywhere.popup/0.28.1920.1052@0.28.1920.1052" timestamp="1584277189323" />
+    <state x="623" y="259" width="672" height="687" key="search.everywhere.popup/0.28.1920.1052@0.28.1920.1052" timestamp="1585187788858" />
     <state x="2543" y="237" width="672" height="706" key="search.everywhere.popup/1920.0.1920.1080/3840.0.1680.1050/0.0.1920.1002@1920.0.1920.1080" timestamp="1584205417353" />
   </component>
 </project>
