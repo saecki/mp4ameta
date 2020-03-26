@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
-use std::io::{BufReader, Read, Write, Seek, BufWriter, SeekFrom};
+use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};

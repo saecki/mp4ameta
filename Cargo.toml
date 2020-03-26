@@ -1,0 +1,12 @@
+[package]
+name = "mp4ameta"
+version = "0.1.0"
+authors = ["Saecki <tobiasschmitz2001@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+description = "A library for reading and writing MPEG-4 audio metadata."
+keywords = ["mp4", "m4a", "audio", "metadata", "parser"]
+repository = "https://bitbucket.org/Saecki/rust-mp4ameta"
+
+[dependencies]
+byteorder = "1.3.4"

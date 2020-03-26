@@ -1,10 +1,10 @@
 use core::fmt;
 use std::io;
+use std::io::SeekFrom;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::{Error, ErrorKind};
-use std::io::SeekFrom;
 
 pub const TYPED: i32 = -1;
 /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) code
