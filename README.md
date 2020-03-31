@@ -1,6 +1,7 @@
 # rust-mp4ameta
-[![Crate](https://img.shields.io/crates/v/id3.svg)](https://crates.io/crates/mp4ameta)
-[![Documentation](https://docs.rs/id3/badge.svg)](https://docs.rs/mp4ameta)
+[![Crate](https://img.shields.io/crates/v/mp4ameta.svg)](https://crates.io/crates/mp4ameta)
+[![Documentation](https://docs.rs/mp4ameta/badge.svg)](https://docs.rs/mp4ameta)
+![CI](https://github.com/Saecki/rust-mp4ameta/workflows/CI/badge.svg)
 
 A library for reading and writing MPEG-4 audio metadata.
 
