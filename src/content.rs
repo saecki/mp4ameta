@@ -32,10 +32,10 @@ impl Content {
     /// Creates a new content of type `Content::Atoms` containing a data `Atom` with the data.
     pub fn data_atom_with(data: Data) -> Content { Content::atom(Atom::data_atom_with(data)) }
 
-    /// Creates a new `Content` of type `Content::Atoms` containing a new `Atom` with the head,
+    /// Creates a new `Content` of type `Content::Atoms` containing a new `Atom` with the identifier,
     /// offset and content.
-    pub fn atom_with(head: [u8; 4], offset: usize, content: Content) -> Content {
-        Content::atom(Atom::with(head, offset, content))
+    pub fn atom_with(identifier: [u8; 4], offset: usize, content: Content) -> Content {
+        Content::atom(Atom::with(identifier, offset, content))
     }
 
     /// Adds the atom to the list of children atoms if `self` is of type `Content::Atoms`.
@@ -53,10 +53,10 @@ impl Content {
         self.add_atom(Atom::data_atom())
     }
 
-    /// Adds a new `Atom` with the provided head, offset and content to the list of children if
+    /// Adds a new `Atom` with the provided identifier, offset and content to the list of children if
     /// `self` is of type `Content::Atoms`.
-    pub fn add_atom_with(self, head: [u8; 4], offset: usize, content: Content) -> Content {
-        self.add_atom(Atom::with(head, offset, content))
+    pub fn add_atom_with(self, identifier: [u8; 4], offset: usize, content: Content) -> Content {
+        self.add_atom(Atom::with(identifier, offset, content))
     }
 
     /// Returns the length in bytes.

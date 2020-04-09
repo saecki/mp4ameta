@@ -96,17 +96,18 @@ pub const GENRES: [(u16, &str); 80] = [
 pub struct Tag {
     /// A vector containing metadata atoms
     pub atoms: Vec<Atom>,
+    pub readonly_atoms: Vec<Atom>,
 }
 
 impl Tag {
     /// Creates a new empty MPEG-4 audio tag.
     pub fn new() -> Tag {
-        Tag { atoms: Vec::new() }
+        Tag { atoms: Vec::new(), readonly_atoms: Vec::new() }
     }
 
     /// Creates a new MPEG-4 audio tag containing the atom.
-    pub fn with(atoms: Vec<Atom>) -> Tag {
-        let mut tag = Tag { atoms };
+    pub fn with(atoms: Vec<Atom>, readonly_atoms: Vec<Atom>) -> Tag {
+        let mut tag = Tag { atoms, readonly_atoms };
 
         let mut i = 0;
         while i < tag.atoms.len() {
@@ -124,7 +125,7 @@ impl Tag {
 
     /// Attempts to read a MPEG-4 audio tag from the reader.
     pub fn read_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
-        Ok(Tag::with(Atom::read_from(reader)?))
+        Atom::read_from(reader)
     }
 
     /// Attempts to read a MPEG-4 audio tag from the file at the indicated path.
@@ -134,19 +135,9 @@ impl Tag {
     }
 
     /// Attempts to write the MPEG-4 audio tag to the writer.
-    pub fn write_to(&self, writer: &mut (impl Write + Seek)) -> crate::Result<()> {
-        for a in &self.atoms {
-            a.write_to(writer)?;
-        }
-
-        Ok(())
-    }
-
-    /// Attempts to write the MPEG-4 audio tag to the path.
-    pub fn write_to_path(&self, path: impl AsRef<Path>) -> crate::Result<()> {
-        let file = OpenOptions::new().read(true).write(true).open(path)?;
-        let mut reader = BufReader::new(&file);
-        let mut writer = BufWriter::new(&file);
+    pub fn write_to(&self, file: &File) -> crate::Result<()> {
+        let mut reader = BufReader::new(file);
+        let mut writer = BufWriter::new(file);
 
         let atom_pos_and_len = Atom::locate_metadata_item_list(&mut reader)?;
 
@@ -172,11 +163,22 @@ impl Tag {
 
         // writing metadata
         writer.seek(SeekFrom::Current(4))?;
-        self.write_to(&mut BufWriter::new(&file))?;
+        for a in &self.atoms {
+            a.write_to(&mut writer)?;
+        }
 
         // writing additional data after metadata
         writer.write(&additional_data)?;
         writer.flush()?;
+
+        Ok(())
+    }
+
+    /// Attempts to write the MPEG-4 audio tag to the path.
+    pub fn write_to_path(&self, path: impl AsRef<Path>) -> crate::Result<()> {
+        let file = OpenOptions::new().read(true).write(true).open(path)?;
+
+        self.write_to(&file)?;
 
         Ok(())
     }
@@ -550,10 +552,10 @@ impl Tag {
 
     /// Sets the track number and the total number of tracks (trkn).
     pub fn set_track_number(&mut self, track_number: u16, total_tracks: u16) {
-        let vec32 = vec![0u16, track_number, total_tracks, 0u16];
+        let vec16 = vec![0u16, track_number, total_tracks, 0u16];
         let mut vec = Vec::new();
 
-        for i in vec32 {
+        for i in vec16 {
             let _ = vec.write_u16::<BigEndian>(i).is_ok();
         }
 
@@ -593,10 +595,10 @@ impl Tag {
 
     /// Sets the disk number and the total number of disks (disk).
     pub fn set_disk_number(&mut self, disk_number: u16, total_disks: u16) {
-        let vec32 = vec![0u16, disk_number, total_disks];
+        let vec16 = vec![0u16, disk_number, total_disks];
         let mut vec = Vec::new();
 
-        for i in vec32 {
+        for i in vec16 {
             let _ = vec.write_u16::<BigEndian>(i).is_ok();
         }
 
@@ -629,7 +631,45 @@ impl Tag {
         self.remove_data(atom::ARTWORK);
     }
 
-    /// Attempts to return byte data corresponding to the head.
+    /// Returns the duration in seconds.
+    /// [Spec](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap2/qtff2.html#//apple_ref/doc/uid/TP40000939-CH204-SW34)
+    pub fn duration(&self) -> Option<f64> {
+        let mut vec = &Vec::new();
+
+        for a in &self.readonly_atoms {
+            if a.identifier == atom::MEDIA_HEADER {
+                if let Content::RawData(Data::Reserved(v)) = &a.content {
+                    vec = v;
+                }
+            }
+        }
+
+        if vec.len() < 24 {
+            return None;
+        }
+
+        let mut buffs = Vec::new();
+
+        for chunk in vec.chunks(4) {
+            buffs.push(chunk);
+        }
+
+        let timescale_unit = match buffs[3].read_u32::<BigEndian>() {
+            Ok(t) => t,
+            Err(_) => return None,
+        };
+
+        let unit_duration = match buffs[4].read_u32::<BigEndian>() {
+            Ok(d) => d,
+            Err(_) => return None,
+        };
+
+        let duration = unit_duration as f64 / timescale_unit as f64;
+
+        Some(duration)
+    }
+
+    /// Attempts to return byte data corresponding to the identifier.
     ///
     /// # Example
     /// ```
@@ -639,15 +679,14 @@ impl Tag {
     /// tag.set_data(*b"test", Data::Reserved(vec![1,2,3,4,5,6]));
     /// assert_eq!(tag.reserved(*b"test").unwrap().to_vec(), vec![1,2,3,4,5,6]);
     /// ```
-
-    pub fn reserved(&self, head: [u8; 4]) -> Option<&Vec<u8>> {
-        match self.data(head) {
+    pub fn reserved(&self, identifier: [u8; 4]) -> Option<&Vec<u8>> {
+        match self.data(identifier) {
             Some(Data::Reserved(v)) => Some(v),
             _ => None,
         }
     }
 
-    /// Attempts to return a string reference corresponding to the head.
+    /// Attempts to return a string reference corresponding to the identifier.
     ///
     /// # Example
     /// ```
@@ -657,8 +696,8 @@ impl Tag {
     /// tag.set_data(*b"test", Data::Utf8("data".into()));
     /// assert_eq!(tag.string(*b"test").unwrap(), "data");
     /// ```
-    pub fn string(&self, head: [u8; 4]) -> Option<&str> {
-        let d = self.data(head)?;
+    pub fn string(&self, identifier: [u8; 4]) -> Option<&str> {
+        let d = self.data(identifier)?;
 
         match d {
             Data::Utf8(s) => Some(s),
@@ -667,7 +706,7 @@ impl Tag {
         }
     }
 
-    /// Attempts to return a mutable string reference corresponding to the head.
+    /// Attempts to return a mutable string reference corresponding to the identifier.
     /// # Example
     /// ```
     /// use mp4ameta::{Tag, Data};
@@ -677,8 +716,8 @@ impl Tag {
     /// tag.mut_string(*b"test").unwrap().push('1');
     /// assert_eq!(tag.string(*b"test").unwrap(), "data1");
     /// ```
-    pub fn mut_string(&mut self, head: [u8; 4]) -> Option<&mut String> {
-        let d = self.mut_data(head)?;
+    pub fn mut_string(&mut self, identifier: [u8; 4]) -> Option<&mut String> {
+        let d = self.mut_data(identifier)?;
 
         match d {
             Data::Utf8(s) => Some(s),
@@ -687,7 +726,7 @@ impl Tag {
         }
     }
 
-    /// Attempts to return image data of type `Data::JPEG` or `Data::PNG` corresponding to the head.
+    /// Attempts to return image data of type `Data::JPEG` or `Data::PNG` corresponding to the identifier.
     ///
     /// # Example
     /// ```
@@ -699,8 +738,8 @@ impl Tag {
     ///     assert_eq!(v, "<the image data>".as_bytes())
     /// }
     /// ```
-    pub fn image(&self, head: [u8; 4]) -> Option<Data> {
-        let d = self.data(head)?;
+    pub fn image(&self, identifier: [u8; 4]) -> Option<Data> {
+        let d = self.data(identifier)?;
 
         match d {
             Data::Jpeg(d) => Some(Data::Jpeg(d.to_vec())),
@@ -709,7 +748,7 @@ impl Tag {
         }
     }
 
-    /// Attempts to return a data reference corresponding to the head.
+    /// Attempts to return a data reference corresponding to the identifier.
     /// # Example
     /// ```
     /// use mp4ameta::{Tag, Data};
@@ -722,9 +761,9 @@ impl Tag {
     ///     panic!("data does not match");
     /// }
     /// ```
-    pub fn data(&self, head: [u8; 4]) -> Option<&Data> {
+    pub fn data(&self, identifier: [u8; 4]) -> Option<&Data> {
         for a in &self.atoms {
-            if a.head == head {
+            if a.identifier == identifier {
                 if let Content::TypedData(data) = &a.first_child()?.content {
                     return Some(data);
                 }
@@ -734,7 +773,7 @@ impl Tag {
         None
     }
 
-    /// Attempts to return a mutable data reference corresponding to the head.
+    /// Attempts to return a mutable data reference corresponding to the identifier.
     ///
     /// # Example
     /// ```
@@ -747,9 +786,9 @@ impl Tag {
     /// }
     /// assert_eq!(tag.string(*b"test").unwrap(), "data1");
     /// ```
-    pub fn mut_data(&mut self, head: [u8; 4]) -> Option<&mut Data> {
+    pub fn mut_data(&mut self, identifier: [u8; 4]) -> Option<&mut Data> {
         for a in &mut self.atoms {
-            if a.head == head {
+            if a.identifier == identifier {
                 if let Content::TypedData(data) = &mut a.mut_first_child()?.content {
                     return Some(data);
                 }
@@ -759,7 +798,7 @@ impl Tag {
         None
     }
 
-    /// Updates or appends a new atom with the data corresponding to the head.
+    /// Updates or appends a new atom with the data corresponding to the identifier.
     ///
     /// # Example
     /// ```
@@ -769,9 +808,9 @@ impl Tag {
     /// tag.set_data(*b"test", Data::Utf8("data".into()));
     /// assert_eq!(tag.string(*b"test").unwrap(), "data");
     /// ```
-    pub fn set_data(&mut self, head: [u8; 4], data: Data) {
+    pub fn set_data(&mut self, identifier: [u8; 4], data: Data) {
         for a in &mut self.atoms {
-            if a.head == head {
+            if a.identifier == identifier {
                 if let Some(p) = a.mut_first_child() {
                     if let Content::TypedData(d) = &mut p.content {
                         *d = data;
@@ -781,10 +820,10 @@ impl Tag {
             }
         }
 
-        self.atoms.push(Atom::with(head, 0, Content::data_atom_with(data)));
+        self.atoms.push(Atom::with(identifier, 0, Content::data_atom_with(data)));
     }
 
-    /// Removes the data corresponding to the head.
+    /// Removes the data corresponding to the identifier.
     ///
     /// # Example
     /// ```
@@ -796,12 +835,24 @@ impl Tag {
     /// tag.remove_data(*b"test");
     /// assert!(tag.data(*b"test").is_none());
     /// ```
-    pub fn remove_data(&mut self, head: [u8; 4]) {
+    pub fn remove_data(&mut self, identifier: [u8; 4]) {
         for i in 0..self.atoms.len() {
-            if self.atoms[i].head == head {
+            if self.atoms[i].identifier == identifier {
                 self.atoms.remove(i);
                 return;
             }
         }
+    }
+
+    pub fn readonly_data(&self, identifier: [u8; 4]) -> Option<&Data> {
+        for a in &self.readonly_atoms {
+            if a.identifier == identifier {
+                if let Content::RawData(data) = &a.content {
+                    return Some(data);
+                }
+            }
+        }
+
+        None
     }
 }

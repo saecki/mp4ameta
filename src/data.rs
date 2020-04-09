@@ -69,7 +69,7 @@ impl Data {
                 } else {
                     return Err(crate::Error::new(
                         ErrorKind::Parsing,
-                        "Typed data header to short",
+                        "Typed data head to short",
                     ));
                 }
             }

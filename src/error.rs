@@ -6,7 +6,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// Kinds of errors that may occur while performing metadata operations.
 #[derive(Debug)]
 pub enum ErrorKind {
-    /// An error kind indicating that an atom could not be found. Contains the atom's head.
+    /// An error kind indicating that an atom could not be found. Contains the atom's identifier.
     AtomNotFound([u8; 4]),
     /// An error kind indicating that an IO error has occurred. Contains the original io::Error.
     Io(io::Error),

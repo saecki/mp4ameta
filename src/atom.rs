@@ -2,7 +2,7 @@ use std::{fmt, io};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
-use crate::{Content, Data, data, ErrorKind};
+use crate::{Content, Data, data, ErrorKind, Tag};
 
 /// A list of valid file types defined by the `ftyp` atom.
 const VALID_FILE_TYPES: [&str; 2] = ["M4A ", "M4B "];
@@ -11,6 +11,9 @@ const VALID_FILE_TYPES: [&str; 2] = ["M4A ", "M4B "];
 pub const FILE_TYPE: [u8; 4] = *b"ftyp";
 /// Identifier of an atom containing a sturcture of children storing metadata.
 pub const MOVIE: [u8; 4] = *b"moov";
+pub const TRACK: [u8; 4] = *b"trak";
+pub const MEDIA: [u8; 4] = *b"mdia";
+pub const MEDIA_HEADER: [u8; 4] = *b"mdhd";
 /// Identifier of an atom containing user metadata.
 pub const USER_DATA: [u8; 4] = *b"udta";
 /// Identifier of an atom containing a metadata item list.
@@ -69,7 +72,7 @@ pub const GAPLESS_PLAYBACK: [u8; 4] = *b"pgap";
 #[derive(Clone)]
 pub struct Atom {
     /// The 4 byte identifier of the atom.
-    pub head: [u8; 4],
+    pub identifier: [u8; 4],
     /// The offset in bytes separating the head from the content.
     pub offset: usize,
     /// The content of an atom.
@@ -79,17 +82,17 @@ pub struct Atom {
 impl Atom {
     /// Creates a new empty atom.
     pub fn new() -> Atom {
-        Atom { head: *b"    ", offset: 0, content: Content::Empty }
+        Atom { identifier: *b"    ", offset: 0, content: Content::Empty }
     }
 
     /// Creates an atom containing the provided content at a n byte offset.
-    pub fn with(head: [u8; 4], offset: usize, content: Content) -> Atom {
-        Atom { head, offset, content }
+    pub fn with(identifier: [u8; 4], offset: usize, content: Content) -> Atom {
+        Atom { identifier, offset, content }
     }
 
     /// Creates an atom containing `Content::RawData` with the provided data.
-    pub fn with_raw_data(head: [u8; 4], offset: usize, data: Data) -> Atom {
-        Atom::with(head, offset, Content::RawData(data))
+    pub fn with_raw_data(identifier: [u8; 4], offset: usize, data: Data) -> Atom {
+        Atom::with(identifier, offset, Content::RawData(data))
     }
 
     /// Creates a data atom containing unparsed `Content::TypedData`.
@@ -108,10 +111,14 @@ impl Atom {
     }
 
     /// Attempts to read MPEG-4 audio metadata from the reader.
-    pub fn read_from(reader: &mut (impl io::Read + io::Seek)) -> crate::Result<Vec<Atom>> {
+    pub fn read_from(reader: &mut (impl io::Read + io::Seek)) -> crate::Result<Tag> {
         let mut ftyp = Atom::filetype_atom();
-        ftyp.parse(reader)?;
+        let mut moov = Atom::metadata_atom();
 
+        let mut tag_atoms = Vec::new();
+        let mut tag_readonly_atoms = Vec::new();
+
+        ftyp.parse(reader)?;
         if !ftyp.is_valid_filetype() {
             return Err(crate::Error::new(
                 ErrorKind::NoTag,
@@ -119,31 +126,33 @@ impl Atom {
             ));
         }
 
-        let mut moov = Atom::metadata_atom();
         moov.parse(reader)?;
 
-        if let Some(udta) = moov.first_child() {
+        if let Some(trak) = moov.child(TRACK) {
+            if let Some(mdia) = trak.child(MEDIA) {
+                if let Some(mdhd) = mdia.child(MEDIA_HEADER) {
+                    tag_readonly_atoms.push(mdhd.clone());
+                }
+            }
+        }
+
+        if let Some(udta) = moov.child(USER_DATA) {
             if let Some(meta) = udta.first_child() {
                 if let Some(ilst) = meta.first_child() {
                     if let Content::Atoms(atoms) = &ilst.content {
-                        return Ok(atoms.to_vec());
-                    } else if let Content::Empty = &ilst.content {
-                        return Ok(Vec::new());
+                        tag_atoms = atoms.to_vec();
                     }
                 }
             }
         }
 
-        Err(crate::Error::new(
-            ErrorKind::Parsing,
-            "Error parsing MPEG-4 audio metadata",
-        ))
+        Ok(Tag::with(tag_atoms, tag_readonly_atoms))
     }
 
-    /// Attempts to write the MPEG-4 audio metadata to the writer.
+    /// Attempts to write the atom to the writer.
     pub fn write_to(&self, writer: &mut impl io::Write) -> crate::Result<()> {
         writer.write_u32::<BigEndian>(self.len() as u32)?;
-        writer.write(&self.head)?;
+        writer.write(&self.identifier)?;
         writer.write(&vec![0u8; self.offset])?;
 
         self.content.write_to(writer)?;
@@ -154,12 +163,12 @@ impl Atom {
     /// Attempts to parse itself from the reader.
     pub fn parse(&mut self, reader: &mut (impl io::Read + io::Seek)) -> crate::Result<()> {
         loop {
-            let (length, head) = match Atom::parse_head(reader) {
+            let (length, identifier) = match Atom::parse_head(reader) {
                 Ok(h) => h,
                 Err(e) => match &e.kind {
                     crate::ErrorKind::Io(ioe) => if ioe.kind() == io::ErrorKind::UnexpectedEof {
                         return Err(crate::Error::new(
-                            ErrorKind::AtomNotFound(self.head),
+                            ErrorKind::AtomNotFound(self.identifier),
                             "Reached EOF without finding a matching atom",
                         ));
                     } else {
@@ -169,7 +178,7 @@ impl Atom {
                 },
             };
 
-            if head == self.head {
+            if identifier == self.identifier {
                 return self.parse_content(reader, length);
             } else if length > 8 {
                 reader.seek(io::SeekFrom::Current((length - 8) as i64))?;
@@ -184,11 +193,11 @@ impl Atom {
         let atom_count = atoms.len();
 
         while parsed_bytes < length && parsed_atoms < atom_count {
-            let (atom_length, atom_head) = Atom::parse_head(reader)?;
+            let (atom_length, atom_identifier) = Atom::parse_head(reader)?;
 
             let mut parsed = false;
             for a in atoms.into_iter() {
-                if atom_head == a.head {
+                if atom_identifier == a.identifier {
                     a.parse_content(reader, atom_length)?;
                     parsed = true;
                     parsed_atoms += 1;
@@ -206,11 +215,12 @@ impl Atom {
         Ok(())
     }
 
-    /// Locates the metadata item list atom and returns a list of tuples containing the position from the
-    /// beginning of the file and length in bytes of the atom hierarchy leading to it.
+    /// Locates the metadata item list atom and returns a list of tuples containing the position
+    /// from the beginning of the file and length in bytes of the atoms inside the hierarchy leading
+    /// to it.
     pub fn locate_metadata_item_list(reader: &mut (impl io::Read + io::Seek)) -> crate::Result<Vec<(usize, usize)>> {
         let mut atom_pos_and_len = Vec::new();
-        let mut destination = &Atom::empty_metadata_atom();
+        let mut destination = &Atom::item_list_atom();
         let mut ftyp = Atom::filetype_atom();
 
         ftyp.parse(reader)?;
@@ -222,8 +232,8 @@ impl Atom {
             ));
         }
 
-        while let Ok((length, head)) = Atom::parse_head(reader) {
-            if head == destination.head {
+        while let Ok((length, identifier)) = Atom::parse_head(reader) {
+            if identifier == destination.identifier {
                 atom_pos_and_len.push((reader.seek(io::SeekFrom::Current(0))? as usize - 8, length));
                 reader.seek(io::SeekFrom::Current(destination.offset as i64))?;
 
@@ -239,8 +249,8 @@ impl Atom {
         Ok(atom_pos_and_len)
     }
 
-    /// Attempts to parse a 32 bit unsigned integer determining the size of the atom in bytes and
-    /// the following 4 byte head from the reader.
+    /// Attempts to parse the atoms head containing a 32 bit unsigned integer determining the size
+    /// of the atom in bytes and the following 4 byte identifier from the reader.
     pub fn parse_head(reader: &mut (impl io::Read + io::Seek)) -> crate::Result<(usize, [u8; 4])> {
         let length = match reader.read_u32::<BigEndian>() {
             Ok(l) => l as usize,
@@ -249,15 +259,15 @@ impl Atom {
                 "Error reading atom length",
             )),
         };
-        let mut head = [0u8; 4];
-        if let Err(e) = reader.read_exact(&mut head) {
+        let mut identifier = [0u8; 4];
+        if let Err(e) = reader.read_exact(&mut identifier) {
             return Err(crate::Error::new(
                 ErrorKind::Io(e),
-                "Error reading atom head",
+                "Error reading atom identifier",
             ));
         }
 
-        Ok((length, head))
+        Ok((length, identifier))
     }
 
     /// Attempts to parse the content of the provided length from the reader.
@@ -274,7 +284,34 @@ impl Atom {
         Ok(())
     }
 
-    /// Attempts to return the first children atom if it's content is of type `Content::Atoms`.
+
+    /// Attempts to return a reference to the first children atom matching the identifier.
+    pub fn child(&self, identifier: [u8; 4]) -> Option<&Atom> {
+        if let Content::Atoms(v) = &self.content {
+            for a in v {
+                if a.identifier == identifier {
+                    return Some(a);
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Attempts to return a mutable reference to the first children atom matching the identifier.
+    pub fn mut_child(&mut self, identifier: [u8; 4]) -> Option<&mut Atom> {
+        if let Content::Atoms(v) = &mut self.content {
+            for a in v {
+                if a.identifier == identifier {
+                    return Some(a);
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Attempts to return a reference to the first children atom.
     pub fn first_child(&self) -> Option<&Atom> {
         if let Content::Atoms(v) = &self.content {
             return v.first();
@@ -283,7 +320,7 @@ impl Atom {
         None
     }
 
-    /// Attempts to return the first children atom if it's content is of type `Content::Atoms`.
+    /// Attempts to return a mutable reference to the first children atom.
     pub fn mut_first_child(&mut self) -> Option<&mut Atom> {
         if let Content::Atoms(v) = &mut self.content {
             return v.first_mut();
@@ -312,44 +349,50 @@ impl Atom {
 
     /// Returns a atom metadata hierarchy needed to parse metadata.
     pub fn metadata_atom() -> Atom {
-        Atom::with(
-            MOVIE, 0, Content::atom_with(
-                USER_DATA, 0, Content::atom_with(
-                    METADATA, 4, Content::atom_with(
-                        ITEM_LIST, 0, Content::atoms()
-                            .add_atom_with(ALBUM, 0, Content::data_atom())
-                            .add_atom_with(ALBUM_ARTIST, 0, Content::data_atom())
-                            .add_atom_with(ARTIST, 0, Content::data_atom())
-                            .add_atom_with(BPM, 0, Content::data_atom())
-                            .add_atom_with(CATEGORY, 0, Content::data_atom())
-                            .add_atom_with(COMMENT, 0, Content::data_atom())
-                            .add_atom_with(COMPILATION, 0, Content::data_atom())
-                            .add_atom_with(COMPOSER, 0, Content::data_atom())
-                            .add_atom_with(COPYRIGHT, 0, Content::data_atom())
-                            .add_atom_with(CUSTOM_GENRE, 0, Content::data_atom())
-                            .add_atom_with(DESCRIPTION, 0, Content::data_atom())
-                            .add_atom_with(DISK_NUMBER, 0, Content::data_atom())
-                            .add_atom_with(ENCODER, 0, Content::data_atom())
-                            .add_atom_with(EPISODE_GLOBAL_UNIQUE_ID, 0, Content::data_atom())
-                            .add_atom_with(GAPLESS_PLAYBACK, 0, Content::data_atom())
-                            .add_atom_with(GROUPING, 0, Content::data_atom())
-                            .add_atom_with(KEYWORD, 0, Content::data_atom())
-                            .add_atom_with(LYRICS, 0, Content::data_atom())
-                            .add_atom_with(MEDIA_TYPE, 0, Content::data_atom())
-                            .add_atom_with(PODCAST, 0, Content::data_atom())
-                            .add_atom_with(PODCAST_URL, 0, Content::data_atom())
-                            .add_atom_with(PURCHASE_DATE, 0, Content::data_atom())
-                            .add_atom_with(RATING, 0, Content::data_atom())
-                            .add_atom_with(STANDARD_GENRE, 0, Content::data_atom())
-                            .add_atom_with(TITLE, 0, Content::data_atom())
-                            .add_atom_with(TRACK_NUMBER, 0, Content::data_atom())
-                            .add_atom_with(TV_EPISODE, 0, Content::data_atom())
-                            .add_atom_with(TV_EPISODE_NUMBER, 0, Content::data_atom())
-                            .add_atom_with(TV_NETWORK_NAME, 0, Content::data_atom())
-                            .add_atom_with(TV_SEASON, 0, Content::data_atom())
-                            .add_atom_with(TV_SHOW_NAME, 0, Content::data_atom())
-                            .add_atom_with(YEAR, 0, Content::data_atom())
-                            .add_atom_with(ARTWORK, 0, Content::data_atom()),
+        Atom::with(MOVIE, 0, Content::atoms()
+            .add_atom_with(TRACK, 0, Content::atoms()
+                .add_atom_with(MEDIA, 0, Content::atoms()
+                    .add_atom_with(MEDIA_HEADER, 0, Content::RawData(
+                        Data::Unparsed(data::RESERVED)
+                    )),
+                ),
+            )
+            .add_atom_with(USER_DATA, 0, Content::atoms()
+                .add_atom_with(METADATA, 4, Content::atoms()
+                    .add_atom_with(ITEM_LIST, 0, Content::atoms()
+                        .add_atom_with(ALBUM, 0, Content::data_atom())
+                        .add_atom_with(ALBUM_ARTIST, 0, Content::data_atom())
+                        .add_atom_with(ARTIST, 0, Content::data_atom())
+                        .add_atom_with(BPM, 0, Content::data_atom())
+                        .add_atom_with(CATEGORY, 0, Content::data_atom())
+                        .add_atom_with(COMMENT, 0, Content::data_atom())
+                        .add_atom_with(COMPILATION, 0, Content::data_atom())
+                        .add_atom_with(COMPOSER, 0, Content::data_atom())
+                        .add_atom_with(COPYRIGHT, 0, Content::data_atom())
+                        .add_atom_with(CUSTOM_GENRE, 0, Content::data_atom())
+                        .add_atom_with(DESCRIPTION, 0, Content::data_atom())
+                        .add_atom_with(DISK_NUMBER, 0, Content::data_atom())
+                        .add_atom_with(ENCODER, 0, Content::data_atom())
+                        .add_atom_with(EPISODE_GLOBAL_UNIQUE_ID, 0, Content::data_atom())
+                        .add_atom_with(GAPLESS_PLAYBACK, 0, Content::data_atom())
+                        .add_atom_with(GROUPING, 0, Content::data_atom())
+                        .add_atom_with(KEYWORD, 0, Content::data_atom())
+                        .add_atom_with(LYRICS, 0, Content::data_atom())
+                        .add_atom_with(MEDIA_TYPE, 0, Content::data_atom())
+                        .add_atom_with(PODCAST, 0, Content::data_atom())
+                        .add_atom_with(PODCAST_URL, 0, Content::data_atom())
+                        .add_atom_with(PURCHASE_DATE, 0, Content::data_atom())
+                        .add_atom_with(RATING, 0, Content::data_atom())
+                        .add_atom_with(STANDARD_GENRE, 0, Content::data_atom())
+                        .add_atom_with(TITLE, 0, Content::data_atom())
+                        .add_atom_with(TRACK_NUMBER, 0, Content::data_atom())
+                        .add_atom_with(TV_EPISODE, 0, Content::data_atom())
+                        .add_atom_with(TV_EPISODE_NUMBER, 0, Content::data_atom())
+                        .add_atom_with(TV_NETWORK_NAME, 0, Content::data_atom())
+                        .add_atom_with(TV_SEASON, 0, Content::data_atom())
+                        .add_atom_with(TV_SHOW_NAME, 0, Content::data_atom())
+                        .add_atom_with(YEAR, 0, Content::data_atom())
+                        .add_atom_with(ARTWORK, 0, Content::data_atom()),
                     ),
                 ),
             ),
@@ -357,7 +400,7 @@ impl Atom {
     }
 
     /// Returns a atom metadata hierarchy.
-    pub fn empty_metadata_atom() -> Atom {
+    pub fn item_list_atom() -> Atom {
         Atom::with(
             MOVIE, 0, Content::atom_with(
                 USER_DATA, 0, Content::atom_with(
@@ -369,21 +412,21 @@ impl Atom {
         )
     }
 
-    /// Returns the head formatted as a string.
-    pub fn format_head(head: [u8; 4]) -> String {
-        head.iter().map(|b| char::from(*b)).collect()
+    /// Returns the identifier formatted as a string.
+    pub fn format_identifier(identifier: [u8; 4]) -> String {
+        identifier.iter().map(|b| char::from(*b)).collect()
     }
 }
 
 impl PartialEq for Atom {
     fn eq(&self, other: &Self) -> bool {
-        self.head == other.head &&
+        self.identifier == other.identifier &&
             self.offset == other.offset &&
             self.content == other.content
     }
 
     fn ne(&self, other: &Self) -> bool {
-        self.head != other.head ||
+        self.identifier != other.identifier ||
             self.offset != other.offset ||
             self.content != other.content
     }
@@ -391,7 +434,7 @@ impl PartialEq for Atom {
 
 impl fmt::Debug for Atom {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let head_string = Atom::format_head(self.head);
-        write!(f, "Atom{{ {}, {}: {:#?} }}", head_string, self.offset, self.content)
+        let identifier_string = Atom::format_identifier(self.identifier);
+        write!(f, "Atom{{ {}, {}, {:#?} }}", identifier_string, self.offset, self.content)
     }
 }
