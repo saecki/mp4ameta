@@ -1,6 +1,5 @@
 use core::fmt;
-use std::io;
-use std::io::SeekFrom;
+use std::io::{Read, Seek, SeekFrom, Write};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
@@ -50,7 +49,7 @@ impl Data {
     }
 
     /// Attempts to parse itself from the reader.
-    pub fn parse(&mut self, reader: &mut (impl io::Read + io::Seek), length: usize) -> crate::Result<()> {
+    pub fn parse(&mut self, reader: &mut (impl Read + Seek), length: usize) -> crate::Result<()> {
         if let Data::Unparsed(d) = *self {
             let mut datatype = d;
             let mut l = length;
@@ -62,7 +61,7 @@ impl Data {
                         Err(e) => return Err(crate::Error::from(e)),
                     };
 
-                    // consuming 4 byte data offset
+                    // skipping 4 byte data offset
                     reader.seek(SeekFrom::Current(4))?;
 
                     l -= 8;
@@ -75,11 +74,11 @@ impl Data {
             }
 
             match datatype {
-                RESERVED => *self = Data::Reserved(Data::read_to_u8_vec(reader, l)?),
+                RESERVED => *self = Data::Reserved(Data::read_u8_vec(reader, l)?),
                 UTF8 => *self = Data::Utf8(Data::read_utf8(reader, l)?),
                 UTF16 => *self = Data::Utf16(Data::read_utf16(reader, l)?),
-                JPEG => *self = Data::Jpeg(Data::read_to_u8_vec(reader, l)?),
-                PNG => *self = Data::Png(Data::read_to_u8_vec(reader, l)?),
+                JPEG => *self = Data::Jpeg(Data::read_u8_vec(reader, l)?),
+                PNG => *self = Data::Png(Data::read_u8_vec(reader, l)?),
                 _ => return Err(crate::Error::new(
                     ErrorKind::UnknownDataType(datatype),
                     "Unknown datatype code",
@@ -95,7 +94,8 @@ impl Data {
         }
     }
 
-    pub fn write_typed(&self, writer: &mut impl io::Write) -> crate::Result<()> {
+    /// Attempts to write the typed data to the writer.
+    pub fn write_typed(&self, writer: &mut impl Write) -> crate::Result<()> {
         let datatype = match self {
             Data::Reserved(_) => RESERVED,
             Data::Utf8(_) => UTF8,
@@ -116,7 +116,8 @@ impl Data {
         Ok(())
     }
 
-    pub fn write_raw(&self, writer: &mut impl io::Write) -> crate::Result<()> {
+    /// Attempts to write the raw data to the writer.
+    pub fn write_raw(&self, writer: &mut impl Write) -> crate::Result<()> {
         match self {
             Data::Reserved(v) => {
                 writer.write(v)?;
@@ -137,7 +138,7 @@ impl Data {
             }
             Data::Unparsed(_) => return Err(crate::Error::new(
                 ErrorKind::UnWritableDataType,
-                "Data of type Data::Unparsed can't be written.",
+                "Data of type Data::Unparsed cannot be written.",
             )),
         }
 
@@ -145,7 +146,7 @@ impl Data {
     }
 
     /// Attempts to read 8 bit unsigned integers from the reader to a vector of size length.
-    pub fn read_to_u8_vec(reader: &mut (impl io::Read + io::Seek), length: usize) -> crate::Result<Vec<u8>> {
+    pub fn read_u8_vec(reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Vec<u8>> {
         let mut buff = vec![0u8; length];
 
         if let Err(e) = reader.read_exact(&mut buff) {
@@ -156,7 +157,7 @@ impl Data {
     }
 
     /// Attempts to read 16 bit unsigned integers from the reader to a vector of size length.
-    pub fn read_to_u16_vec(reader: &mut (impl io::Read + io::Seek), length: usize) -> crate::Result<Vec<u16>> {
+    pub fn read_u16_vec(reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Vec<u16>> {
         let mut buff = vec![0u16; length];
 
         if let Err(e) = reader.read_u16_into::<BigEndian>(&mut buff) {
@@ -167,8 +168,8 @@ impl Data {
     }
 
     /// Attempts to read a utf-8 string from the reader.
-    pub fn read_utf8(reader: &mut (impl io::Read + io::Seek), length: usize) -> crate::Result<String> {
-        let data = Data::read_to_u8_vec(reader, length)?;
+    pub fn read_utf8(reader: &mut (impl Read + Seek), length: usize) -> crate::Result<String> {
+        let data = Data::read_u8_vec(reader, length)?;
 
         match String::from_utf8(data.clone()) {
             Ok(s) => Ok(s),
@@ -177,8 +178,8 @@ impl Data {
     }
 
     /// Attempts to read a utf-16 string from the reader.
-    pub fn read_utf16(reader: &mut (impl io::Read + io::Seek), length: usize) -> crate::Result<String> {
-        let data = Data::read_to_u16_vec(reader, length / 2)?;
+    pub fn read_utf16(reader: &mut (impl Read + Seek), length: usize) -> crate::Result<String> {
+        let data = Data::read_u16_vec(reader, length / 2)?;
 
         if length % 2 == 1 {
             reader.seek(SeekFrom::Current(1))?;

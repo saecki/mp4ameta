@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
-use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
+use std::io::{BufReader, Read, Seek};
 use std::path::Path;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
@@ -136,54 +136,14 @@ impl Tag {
 
     /// Attempts to write the MPEG-4 audio tag to the writer.
     pub fn write_to(&self, file: &File) -> crate::Result<()> {
-        let mut reader = BufReader::new(file);
-        let mut writer = BufWriter::new(file);
-
-        let atom_pos_and_len = Atom::locate_metadata_item_list(&mut reader)?;
-
-        let old_file_length = reader.seek(SeekFrom::End(0))?;
-        let metadata_position = atom_pos_and_len[atom_pos_and_len.len() - 1].0 + 8;
-        let old_metadata_length = atom_pos_and_len[atom_pos_and_len.len() - 1].1 - 8;
-        let new_metadata_length = self.atoms.iter().map(|a| a.len()).sum::<usize>();
-        let metadata_length_difference = new_metadata_length as i32 - old_metadata_length as i32;
-
-        // reading additional data after metadata
-        let mut additional_data = Vec::new();
-        reader.seek(SeekFrom::Start((metadata_position + old_metadata_length) as u64))?;
-        reader.read_to_end(&mut additional_data)?;
-
-        // adjusting the file length
-        file.set_len((old_file_length as i64 + metadata_length_difference as i64) as u64)?;
-
-        // adjusting the atom lengths
-        for (pos, len) in atom_pos_and_len {
-            writer.seek(SeekFrom::Start(pos as u64))?;
-            writer.write_u32::<BigEndian>((len as i32 + metadata_length_difference) as u32)?;
-        }
-
-        // writing metadata
-        writer.seek(SeekFrom::Current(4))?;
-        for a in &self.atoms {
-            a.write_to(&mut writer)?;
-        }
-
-        // writing additional data after metadata
-        writer.write(&additional_data)?;
-        writer.flush()?;
-
-        Ok(())
+        Atom::write_to(file, &self.atoms)
     }
 
     /// Attempts to write the MPEG-4 audio tag to the path.
     pub fn write_to_path(&self, path: impl AsRef<Path>) -> crate::Result<()> {
         let file = OpenOptions::new().read(true).write(true).open(path)?;
-
-        self.write_to(&file)?;
-
-        Ok(())
+        self.write_to(&file)
     }
-
-    // String fields
 
     /// Returns the album (©alb).
     pub fn album(&self) -> Option<&str> {
@@ -440,8 +400,6 @@ impl Tag {
     pub fn remove_year(&mut self) {
         self.remove_data(atom::YEAR);
     }
-
-    // Custom fields
 
     /// Returns the genre (gnre) or (©gen).
     pub fn genre(&self) -> Option<&str> {
@@ -736,6 +694,8 @@ impl Tag {
     /// tag.set_data(*b"test", Data::Jpeg("<the image data>".as_bytes().to_vec()));
     /// if let Data::Jpeg(v) = tag.image(*b"test").unwrap(){
     ///     assert_eq!(v, "<the image data>".as_bytes())
+    /// } else {
+    ///     panic!("data does not match");
     /// }
     /// ```
     pub fn image(&self, identifier: [u8; 4]) -> Option<Data> {
@@ -757,7 +717,7 @@ impl Tag {
     /// tag.set_data(*b"test", Data::Utf8("data".into()));
     /// if let Data::Utf8(s) = tag.data(*b"test").unwrap(){
     ///     assert_eq!(s, "data");
-    /// }else{
+    /// } else {
     ///     panic!("data does not match");
     /// }
     /// ```

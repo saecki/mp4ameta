@@ -1,8 +1,10 @@
-use std::{fmt, io};
+use std::fmt::{Debug, Formatter, Result};
+use std::fs::File;
+use std::io::{BufReader, BufWriter, ErrorKind, Read, Seek, SeekFrom, Write};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
-use crate::{Content, Data, data, ErrorKind, Tag};
+use crate::{Content, Data, data, Tag};
 
 /// A list of valid file types defined by the `ftyp` atom.
 const VALID_FILE_TYPES: [&str; 2] = ["M4A ", "M4B "];
@@ -111,7 +113,7 @@ impl Atom {
     }
 
     /// Attempts to read MPEG-4 audio metadata from the reader.
-    pub fn read_from(reader: &mut (impl io::Read + io::Seek)) -> crate::Result<Tag> {
+    pub fn read_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
         let mut ftyp = Atom::filetype_atom();
         let mut moov = Atom::metadata_atom();
 
@@ -121,7 +123,7 @@ impl Atom {
         ftyp.parse(reader)?;
         if !ftyp.is_valid_filetype() {
             return Err(crate::Error::new(
-                ErrorKind::NoTag,
+                crate::ErrorKind::NoTag,
                 "File does not contain MPEG-4 audio metadata",
             ));
         }
@@ -149,26 +151,66 @@ impl Atom {
         Ok(Tag::with(tag_atoms, tag_readonly_atoms))
     }
 
+    /// Attempts to write the metadata atoms to the file inside the item list atom.
+    pub fn write_to(file: &File, atoms: &Vec<Atom>) -> crate::Result<()> {
+        let mut reader = BufReader::new(file);
+        let mut writer = BufWriter::new(file);
+
+        let atom_pos_and_len = Atom::locate_metadata_item_list(&mut reader)?;
+
+        let old_file_length = reader.seek(SeekFrom::End(0))?;
+        let metadata_position = atom_pos_and_len[atom_pos_and_len.len() - 1].0 + 8;
+        let old_metadata_length = atom_pos_and_len[atom_pos_and_len.len() - 1].1 - 8;
+        let new_metadata_length = atoms.iter().map(|a| a.len()).sum::<usize>();
+        let metadata_length_difference = new_metadata_length as i32 - old_metadata_length as i32;
+
+        // reading additional data after metadata
+        let mut additional_data = Vec::new();
+        reader.seek(SeekFrom::Start((metadata_position + old_metadata_length) as u64))?;
+        reader.read_to_end(&mut additional_data)?;
+
+        // adjusting the file length
+        file.set_len((old_file_length as i64 + metadata_length_difference as i64) as u64)?;
+
+        // adjusting the atom lengths
+        for (pos, len) in atom_pos_and_len {
+            writer.seek(SeekFrom::Start(pos as u64))?;
+            writer.write_u32::<BigEndian>((len as i32 + metadata_length_difference) as u32)?;
+        }
+
+        // writing metadata
+        writer.seek(SeekFrom::Current(4))?;
+        for a in atoms {
+            a.write(&mut writer)?;
+        }
+
+        // writing additional data after metadata
+        writer.write(&additional_data)?;
+        writer.flush()?;
+
+        Ok(())
+    }
+
     /// Attempts to write the atom to the writer.
-    pub fn write_to(&self, writer: &mut impl io::Write) -> crate::Result<()> {
+    pub fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
         writer.write_u32::<BigEndian>(self.len() as u32)?;
         writer.write(&self.identifier)?;
         writer.write(&vec![0u8; self.offset])?;
 
-        self.content.write_to(writer)?;
+        self.content.write(writer)?;
 
         Ok(())
     }
 
     /// Attempts to parse itself from the reader.
-    pub fn parse(&mut self, reader: &mut (impl io::Read + io::Seek)) -> crate::Result<()> {
+    pub fn parse(&mut self, reader: &mut (impl Read + Seek)) -> crate::Result<()> {
         loop {
             let (length, identifier) = match Atom::parse_head(reader) {
                 Ok(h) => h,
                 Err(e) => match &e.kind {
-                    crate::ErrorKind::Io(ioe) => if ioe.kind() == io::ErrorKind::UnexpectedEof {
+                    crate::ErrorKind::Io(ioe) => if ioe.kind() == ErrorKind::UnexpectedEof {
                         return Err(crate::Error::new(
-                            ErrorKind::AtomNotFound(self.identifier),
+                            crate::ErrorKind::AtomNotFound(self.identifier),
                             "Reached EOF without finding a matching atom",
                         ));
                     } else {
@@ -181,13 +223,13 @@ impl Atom {
             if identifier == self.identifier {
                 return self.parse_content(reader, length);
             } else if length > 8 {
-                reader.seek(io::SeekFrom::Current((length - 8) as i64))?;
+                reader.seek(SeekFrom::Current((length - 8) as i64))?;
             }
         }
     }
 
     /// Attempts to parse the list of atoms from the reader.
-    pub fn parse_atoms(atoms: &mut Vec<Atom>, reader: &mut (impl io::Read + io::Seek), length: usize) -> crate::Result<()> {
+    pub fn parse_atoms(atoms: &mut Vec<Atom>, reader: &mut (impl Read + Seek), length: usize) -> crate::Result<()> {
         let mut parsed_atoms = 0;
         let mut parsed_bytes = 0;
         let atom_count = atoms.len();
@@ -206,7 +248,7 @@ impl Atom {
             }
 
             if atom_length > 8 && !parsed {
-                reader.seek(io::SeekFrom::Current((atom_length - 8) as i64))?;
+                reader.seek(SeekFrom::Current((atom_length - 8) as i64))?;
             }
 
             parsed_bytes += atom_length;
@@ -218,7 +260,7 @@ impl Atom {
     /// Locates the metadata item list atom and returns a list of tuples containing the position
     /// from the beginning of the file and length in bytes of the atoms inside the hierarchy leading
     /// to it.
-    pub fn locate_metadata_item_list(reader: &mut (impl io::Read + io::Seek)) -> crate::Result<Vec<(usize, usize)>> {
+    pub fn locate_metadata_item_list(reader: &mut (impl Read + Seek)) -> crate::Result<Vec<(usize, usize)>> {
         let mut atom_pos_and_len = Vec::new();
         let mut destination = &Atom::item_list_atom();
         let mut ftyp = Atom::filetype_atom();
@@ -227,22 +269,22 @@ impl Atom {
 
         if !ftyp.is_valid_filetype() {
             return Err(crate::Error::new(
-                ErrorKind::NoTag,
+                crate::ErrorKind::NoTag,
                 "File does not contain MPEG-4 audio metadata",
             ));
         }
 
         while let Ok((length, identifier)) = Atom::parse_head(reader) {
             if identifier == destination.identifier {
-                atom_pos_and_len.push((reader.seek(io::SeekFrom::Current(0))? as usize - 8, length));
-                reader.seek(io::SeekFrom::Current(destination.offset as i64))?;
+                atom_pos_and_len.push((reader.seek(SeekFrom::Current(0))? as usize - 8, length));
+                reader.seek(SeekFrom::Current(destination.offset as i64))?;
 
                 match destination.first_child() {
                     Some(a) => destination = a,
                     None => break,
                 }
             } else {
-                reader.seek(io::SeekFrom::Current(length as i64 - 8))?;
+                reader.seek(SeekFrom::Current(length as i64 - 8))?;
             }
         }
 
@@ -251,18 +293,18 @@ impl Atom {
 
     /// Attempts to parse the atoms head containing a 32 bit unsigned integer determining the size
     /// of the atom in bytes and the following 4 byte identifier from the reader.
-    pub fn parse_head(reader: &mut (impl io::Read + io::Seek)) -> crate::Result<(usize, [u8; 4])> {
+    pub fn parse_head(reader: &mut (impl Read + Seek)) -> crate::Result<(usize, [u8; 4])> {
         let length = match reader.read_u32::<BigEndian>() {
             Ok(l) => l as usize,
             Err(e) => return Err(crate::Error::new(
-                ErrorKind::Io(e),
+                crate::ErrorKind::Io(e),
                 "Error reading atom length",
             )),
         };
         let mut identifier = [0u8; 4];
         if let Err(e) = reader.read_exact(&mut identifier) {
             return Err(crate::Error::new(
-                ErrorKind::Io(e),
+                crate::ErrorKind::Io(e),
                 "Error reading atom identifier",
             ));
         }
@@ -271,10 +313,10 @@ impl Atom {
     }
 
     /// Attempts to parse the content of the provided length from the reader.
-    pub fn parse_content(&mut self, reader: &mut (impl io::Read + io::Seek), length: usize) -> crate::Result<()> {
+    pub fn parse_content(&mut self, reader: &mut (impl Read + Seek), length: usize) -> crate::Result<()> {
         if length > 8 {
             if self.offset != 0 {
-                reader.seek(io::SeekFrom::Current(self.offset as i64))?;
+                reader.seek(SeekFrom::Current(self.offset as i64))?;
             }
             self.content.parse(reader, length - 8)?;
         } else {
@@ -432,8 +474,8 @@ impl PartialEq for Atom {
     }
 }
 
-impl fmt::Debug for Atom {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Debug for Atom {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         let identifier_string = Atom::format_identifier(self.identifier);
         write!(f, "Atom{{ {}, {}, {:#?} }}", identifier_string, self.offset, self.content)
     }

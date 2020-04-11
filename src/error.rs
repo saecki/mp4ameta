@@ -42,6 +42,14 @@ impl Error {
             description,
         }
     }
+
+    fn format(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.description != "" {
+            write!(f, "{:?}: {}", self.kind, self.description)
+        } else {
+            write!(f, "{:?}", self.kind)
+        }
+    }
 }
 
 impl error::Error for Error {
@@ -82,20 +90,12 @@ impl From<string::FromUtf16Error> for Error {
 
 impl fmt::Debug for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.description != "" {
-            write!(f, "{:?}: {}", self.kind, self.description)
-        } else {
-            write!(f, "{:?}", self.kind)
-        }
+        self.format(f)
     }
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.description != "" {
-            write!(f, "{:?}: {}", self.kind, self.description)
-        } else {
-            write!(f, "{:?}", self.kind)
-        }
+        self.format(f)
     }
 }

@@ -1,4 +1,5 @@
-use std::{fmt, io};
+use std::fmt::{Result, Debug, Formatter};
+use std::io::{Read, Seek, Write};
 
 use crate::{Atom, Data};
 
@@ -70,7 +71,7 @@ impl Content {
     }
 
     /// Attempts to parse itself from the reader.
-    pub fn parse(&mut self, reader: &mut (impl io::Read + io::Seek), length: usize) -> crate::Result<()> {
+    pub fn parse(&mut self, reader: &mut (impl Read + Seek), length: usize) -> crate::Result<()> {
         match self {
             Content::Atoms(v) => Atom::parse_atoms(v, reader, length)?,
             Content::RawData(d) => d.parse(reader, length)?,
@@ -81,10 +82,11 @@ impl Content {
         Ok(())
     }
 
-    pub fn write_to(&self, writer: &mut impl io::Write) -> crate::Result<()> {
+    /// Attempts to write the content to the writer.
+    pub fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
         match self {
             Content::Atoms(v) => for a in v {
-                a.write_to(writer)?;
+                a.write(writer)?;
             }
             Content::RawData(d) => d.write_raw(writer)?,
             Content::TypedData(d) => d.write_typed(writer)?,
@@ -131,8 +133,8 @@ impl PartialEq for Content {
     }
 }
 
-impl fmt::Debug for Content {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Debug for Content {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self {
             Content::Atoms(a) => write!(f, "Content::Atoms{{ {:#?} }}", a),
             Content::TypedData(d) => write!(f, "Content::TypedData{{ {:?} }}", d),
