@@ -803,16 +803,4 @@ impl Tag {
             }
         }
     }
-
-    pub fn readonly_data(&self, identifier: [u8; 4]) -> Option<&Data> {
-        for a in &self.readonly_atoms {
-            if a.identifier == identifier {
-                if let Content::RawData(data) = &a.content {
-                    return Some(data);
-                }
-            }
-        }
-
-        None
-    }
 }
