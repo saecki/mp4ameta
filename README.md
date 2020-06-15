@@ -3,7 +3,7 @@
 [![Documentation](https://docs.rs/mp4ameta/badge.svg)](https://docs.rs/mp4ameta)
 ![CI](https://github.com/Saecki/rust-mp4ameta/workflows/CI/badge.svg)
 
-A library for reading and writing MPEG-4 audio metadata.
+A library for reading and writing iTunes style MPEG-4 audio metadata.
 
 ## Usage
 ```rust

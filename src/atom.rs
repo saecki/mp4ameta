@@ -7,7 +7,7 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use crate::{Content, Data, data, Tag};
 
 /// A list of valid file types defined by the `ftyp` atom.
-const VALID_FILE_TYPES: [&str; 2] = ["M4A ", "M4B "];
+const VALID_FILE_TYPES: [&str; 4] = ["M4A ", "M4B ", "M4P ", "M4V "];
 
 /// Identifier of an atom containing information about the filetype.
 pub const FILE_TYPE: [u8; 4] = *b"ftyp";
