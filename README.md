@@ -21,3 +21,5 @@ fn main() {
 ## Supported Filetypes
 - M4A
 - M4B
+- M4P
+- M4V
