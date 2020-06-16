@@ -4,7 +4,7 @@ use std::io::{Read, Seek, Write};
 use crate::{Atom, Data};
 
 /// A structure representing the different types of content an Atom might have.
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Content {
     /// A value containing `Vec<Atom>`.
     Atoms(Vec<Atom>),
@@ -94,42 +94,6 @@ impl Content {
         }
 
         Ok(())
-    }
-}
-
-impl PartialEq for Content {
-    fn eq(&self, other: &Self) -> bool {
-        match self {
-            Content::Atoms(v) => if let Content::Atoms(ov) = other {
-                return v == ov;
-            }
-            Content::RawData(d) => if let Content::RawData(od) = other {
-                return d == od;
-            }
-            Content::TypedData(d) => if let Content::TypedData(od) = other {
-                return d == od;
-            }
-            Content::Empty => if let Content::Empty = other { return true; }
-        }
-
-        false
-    }
-
-    fn ne(&self, other: &Self) -> bool {
-        match self {
-            Content::Atoms(v) => if let Content::Atoms(ov) = other {
-                return v != ov;
-            }
-            Content::RawData(d) => if let Content::RawData(od) = other {
-                return d != od;
-            }
-            Content::TypedData(d) => if let Content::TypedData(od) = other {
-                return d != od;
-            }
-            Content::Empty => if let Content::Empty = other { return true; }
-        }
-
-        true
     }
 }
 

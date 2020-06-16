@@ -19,7 +19,7 @@ pub const PNG: i32 = 14;
 
 /// A struct that holds the different types of data an `Atom` can contain following
 /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Data {
     /// A value containing reserved type data inside a `Option<Vec<u8>>`.
     Reserved(Vec<u8>),
@@ -189,34 +189,6 @@ impl Data {
             Ok(s) => Ok(s),
             Err(e) => Err(crate::Error::from(e)),
         }
-    }
-}
-
-impl PartialEq for Data {
-    fn eq(&self, other: &Self) -> bool {
-        match self {
-            Data::Reserved(v) => if let Data::Reserved(ov) = other { return v == ov; }
-            Data::Utf8(s) => if let Data::Utf8(os) = other { return s == os; }
-            Data::Utf16(s) => if let Data::Utf16(os) = other { return s == os; }
-            Data::Jpeg(v) => if let Data::Jpeg(ov) = other { return v == ov; }
-            Data::Png(v) => if let Data::Png(ov) = other { return v == ov; }
-            Data::Unparsed(d) => if let Data::Unparsed(od) = other { return d == od; }
-        }
-
-        false
-    }
-
-    fn ne(&self, other: &Self) -> bool {
-        match self {
-            Data::Reserved(v) => if let Data::Reserved(ov) = other { return v != ov; }
-            Data::Utf8(s) => if let Data::Utf8(os) = other { return s != os; }
-            Data::Utf16(s) => if let Data::Utf16(os) = other { return s != os; }
-            Data::Jpeg(v) => if let Data::Jpeg(ov) = other { return v != ov; }
-            Data::Png(v) => if let Data::Png(ov) = other { return v != ov; }
-            Data::Unparsed(d) => if let Data::Unparsed(od) = other { return d != od; }
-        }
-
-        true
     }
 }
 

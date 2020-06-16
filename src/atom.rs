@@ -254,6 +254,10 @@ impl Atom {
             parsed_bytes += atom_length;
         }
 
+        if parsed_bytes < length {
+            reader.seek(SeekFrom::Current((length - parsed_bytes) as i64))?;
+        }
+
         Ok(())
     }
 
