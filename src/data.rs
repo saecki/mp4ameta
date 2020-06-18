@@ -5,17 +5,32 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::{Error, ErrorKind};
 
-pub const TYPED: i32 = -1;
 /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) code
-pub const RESERVED: i32 = 0;
-/// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) code
-pub const UTF8: i32 = 1;
-/// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) code
-pub const UTF16: i32 = 2;
-/// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) code
-pub const JPEG: i32 = 13;
-/// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) code
-pub const PNG: i32 = 14;
+pub const TYPED: i8 = -1;
+pub const RESERVED: i8 = 0;
+pub const UTF8: i8 = 1;
+pub const UTF16: i8 = 2;
+pub const UTF8SORT: i8 = 4;
+pub const UTF16SORT: i8 = 5;
+pub const JPEG: i8 = 13;
+pub const PNG: i8 = 14;
+pub const BESIGNED: i8 = 21;
+pub const BEUNSIGNED: i8 = 22;
+pub const BEFLOAT32: i8 = 23;
+pub const BEFLOAT64: i8 = 24;
+pub const QTMETA: i8 = 28;
+pub const EIGHTBITSIGNED: i8 = 65;
+pub const BE16BITSIGNED: i8 = 66;
+pub const BE32BITSIGNED: i8 = 67;
+pub const BEPOINTF32: i8 = 70;
+pub const BEDIMSF32: i8 = 71;
+pub const BERECTF32: i8 = 72;
+pub const BE64SIGNED: i8 = 74;
+pub const EIGHTBITUNSIGNED: i8 = 75;
+pub const BE16BITUNSIGNED: i8 = 76;
+pub const BE16BITUNSIGNED: i8 = 77;
+pub const BE16BITUNSIGNED: i8 = 78;
+pub const AFFINETRANSFORMF64: i8 = 79;
 
 /// A struct that holds the different types of data an `Atom` can contain following
 /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
