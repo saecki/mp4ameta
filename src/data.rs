@@ -42,12 +42,18 @@ pub enum Data {
     Utf8(String),
     /// A value containing a `Option<String>` decoded from utf-16.
     Utf16(String),
+    /// A value containing a `Option<String>` decoded from utf-8.
+    Utf8Sort(String),
+    /// A value containing a `Option<String>` decoded from utf-16.
+    Utf16Sort(String),
     /// A value containing jpeg byte data inside a `Option<Vec<u8>>`.
     Jpeg(Vec<u8>),
     /// A value containing png byte data inside a `Option<Vec<u8>>`.
     Png(Vec<u8>),
+    BeSigned(i32),
+    BeUnsigned(u32),
     /// A value containing a `u32` determining the datatype of the data that is yet to be parsed.
-    Unparsed(i32),
+    Unparsed(u32),
 }
 
 impl Data {
@@ -57,8 +63,12 @@ impl Data {
             Data::Reserved(v) => v.len(),
             Data::Utf8(s) => s.len(),
             Data::Utf16(s) => s.len() * 2,
+            Data::Utf8Sort(s) => s.len(),
+            Data::Utf16Sort(s) => s.len() * 2,
             Data::Jpeg(v) => v.len(),
             Data::Png(v) => v.len(),
+            Data::BeSigned(v) => v.len(),
+            Data::BeUnsigned(v) => v.len(),
             _ => 0,
         }
     }
