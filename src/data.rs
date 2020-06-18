@@ -28,8 +28,8 @@ pub const BERECTF32: i8 = 72;
 pub const BE64SIGNED: i8 = 74;
 pub const EIGHTBITUNSIGNED: i8 = 75;
 pub const BE16BITUNSIGNED: i8 = 76;
-pub const BE16BITUNSIGNED: i8 = 77;
-pub const BE16BITUNSIGNED: i8 = 78;
+pub const BE32BITUNSIGNED: i8 = 77;
+pub const BE64BITUNSIGNED: i8 = 78;
 pub const AFFINETRANSFORMF64: i8 = 79;
 
 /// A struct that holds the different types of data an `Atom` can contain following
@@ -67,8 +67,6 @@ impl Data {
             Data::Utf16Sort(s) => s.len() * 2,
             Data::Jpeg(v) => v.len(),
             Data::Png(v) => v.len(),
-            Data::BeSigned(v) => v.len(),
-            Data::BeUnsigned(v) => v.len(),
             _ => 0,
         }
     }
