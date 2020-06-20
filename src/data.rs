@@ -6,31 +6,44 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use crate::{Error, ErrorKind};
 
 /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) code
-pub const TYPED: i8 = -1;
-pub const RESERVED: i8 = 0;
-pub const UTF8: i8 = 1;
-pub const UTF16: i8 = 2;
-pub const UTF8SORT: i8 = 4;
-pub const UTF16SORT: i8 = 5;
-pub const JPEG: i8 = 13;
-pub const PNG: i8 = 14;
-pub const BESIGNED: i8 = 21;
-pub const BEUNSIGNED: i8 = 22;
-pub const BEFLOAT32: i8 = 23;
-pub const BEFLOAT64: i8 = 24;
-pub const QTMETA: i8 = 28;
-pub const EIGHTBITSIGNED: i8 = 65;
-pub const BE16BITSIGNED: i8 = 66;
-pub const BE32BITSIGNED: i8 = 67;
-pub const BEPOINTF32: i8 = 70;
-pub const BEDIMSF32: i8 = 71;
-pub const BERECTF32: i8 = 72;
-pub const BE64SIGNED: i8 = 74;
-pub const EIGHTBITUNSIGNED: i8 = 75;
-pub const BE16BITUNSIGNED: i8 = 76;
-pub const BE32BITUNSIGNED: i8 = 77;
-pub const BE64BITUNSIGNED: i8 = 78;
-pub const AFFINETRANSFORMF64: i8 = 79;
+pub const TYPED: i32 = -1;
+pub const RESERVED: i32 = 0;
+pub const UTF8: i32 = 1;
+pub const UTF16: i32 = 2;
+pub const UTF8_SORT: i32 = 4;
+pub const UTF16_SORT: i32 = 5;
+pub const JPEG: i32 = 13;
+pub const PNG: i32 = 14;
+pub const BE_SIGNED: i32 = 21;
+pub const BE_UNSIGNED: i32 = 22;
+pub const BE_F32: i32 = 23;
+pub const BE_F64: i32 = 24;
+pub const QT_META: i32 = 28;
+pub const I8: i32 = 65;
+pub const BE_I16: i32 = 66;
+pub const BE_I32: i32 = 67;
+/// A block of data representing a two dimensional (2D) point with 32-bit big-endian floating point
+/// x and y coordinates. It has the structure:
+/// { BE_F32 x; BE_F32 y; }
+pub const BE_POINT_F32: i32 = 70;
+/// A block of data representing 2D dimensions with 32-bit big-endian floating point width and
+/// height. It has the structure:
+/// { width: BE_F32, height: BE_F32 }
+pub const BE_DIMS_F32: i32 = 71;
+/// A block of data representing a 2D rectangle with 32-bit big-endian floating point x and y
+/// coordinates and a 32-bit big-endian floating point width and height size. It has the structure:
+/// { x: BE_F32, y: BE_F32, width: BEFloat32, height: BE_F32 }
+/// or the equivalent structure:
+/// { origin: BE_Point_F32, size: BE_DIMS_F32 }
+pub const BE_RECT_F32: i32 = 72;
+pub const BE_I64: i32 = 74;
+pub const U8: i32 = 75;
+pub const BE_U16: i32 = 76;
+pub const BE_U32: i32 = 77;
+pub const BE_U64: i32 = 78;
+/// A block of data representing a 3x3 transformation matrix. It has the structure:
+/// { matrix: [[BE_F64; 3]; 3] }
+pub const AFFINE_TRANSFORM_F64: i32 = 79;
 
 /// A struct that holds the different types of data an `Atom` can contain following
 /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
@@ -83,7 +96,7 @@ impl Data {
                 } else {
                     return Err(crate::Error::new(
                         ErrorKind::Parsing,
-                        "Typed data head to short",
+                        "Typed data head to short".into(),
                     ));
                 }
             }
@@ -94,9 +107,10 @@ impl Data {
                 UTF16 => *self = Data::Utf16(Data::read_utf16(reader, l)?),
                 JPEG => *self = Data::Jpeg(Data::read_u8_vec(reader, l)?),
                 PNG => *self = Data::Png(Data::read_u8_vec(reader, l)?),
+                BE_SIGNED => *self = Data::Reserved(Data::read_u8_vec(reader, l)?),
                 _ => return Err(crate::Error::new(
                     ErrorKind::UnknownDataType(datatype),
-                    "Unknown datatype code",
+                    "Unknown datatype code".into(),
                 )),
             }
 
@@ -104,7 +118,7 @@ impl Data {
         } else {
             Err(crate::Error::new(
                 ErrorKind::Parsing,
-                "Data already parsed",
+                "Data already parsed".into(),
             ))
         }
     }
@@ -119,7 +133,7 @@ impl Data {
             Data::Png(_) => PNG,
             Data::Unparsed(_) => return Err(crate::Error::new(
                 ErrorKind::UnWritableDataType,
-                "Data of type Data::Unparsed can't be written.",
+                "Data of type Data::Unparsed can't be written.".into(),
             )),
         };
 
@@ -153,7 +167,7 @@ impl Data {
             }
             Data::Unparsed(_) => return Err(crate::Error::new(
                 ErrorKind::UnWritableDataType,
-                "Data of type Data::Unparsed cannot be written.",
+                "Data of type Data::Unparsed cannot be written.".into(),
             )),
         }
 

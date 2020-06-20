@@ -1,4 +1,4 @@
-use std::{error, fmt, io, str, string};
+use std::{error, fmt, io, string};
 
 /// Type alias for the result of tag operations.
 pub type Result<T> = std::result::Result<T, Error>;
@@ -31,12 +31,12 @@ pub struct Error {
     /// The kind of error.
     pub kind: ErrorKind,
     /// A human readable string describing the error.
-    pub description: &'static str,
+    pub description: String,
 }
 
 impl Error {
     /// Creates a new `Error` using the error kind and description.
-    pub fn new(kind: ErrorKind, description: &'static str) -> Error {
+    pub fn new(kind: ErrorKind, description: String) -> Error {
         Error {
             kind,
             description,
@@ -65,7 +65,7 @@ impl From<io::Error> for Error {
     fn from(err: io::Error) -> Error {
         Error {
             kind: ErrorKind::Io(err),
-            description: "",
+            description: "".into(),
         }
     }
 }
@@ -74,7 +74,7 @@ impl From<string::FromUtf8Error> for Error {
     fn from(err: string::FromUtf8Error) -> Error {
         Error {
             kind: ErrorKind::Utf8StringDecoding(err),
-            description: "Data is not valid utf-8.",
+            description: "Data is not valid utf-8.".into(),
         }
     }
 }
@@ -83,7 +83,7 @@ impl From<string::FromUtf16Error> for Error {
     fn from(err: string::FromUtf16Error) -> Error {
         Error {
             kind: ErrorKind::Utf16StringDecoding(err),
-            description: "Data is not valid utf-16.",
+            description: "Data is not valid utf-16.".into(),
         }
     }
 }
