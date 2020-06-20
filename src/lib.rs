@@ -9,8 +9,10 @@ pub use crate::data::Data;
 pub use crate::error::{Error, ErrorKind, Result};
 pub use crate::tag::Tag;
 
-mod atom;
-mod content;
-mod data;
-mod error;
-mod tag;
+pub mod atom;
+pub mod content;
+pub mod data;
+pub mod error;
+pub mod tag;
+#[cfg(test)]
+mod test;

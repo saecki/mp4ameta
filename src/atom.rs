@@ -124,7 +124,7 @@ impl Atom {
         if !ftyp.is_valid_filetype() {
             return Err(crate::Error::new(
                 crate::ErrorKind::NoTag,
-                "File does not contain MPEG-4 audio metadata",
+                "File does not contain MPEG-4 audio metadata".into(),
             ));
         }
 
@@ -211,7 +211,7 @@ impl Atom {
                     crate::ErrorKind::Io(ioe) => if ioe.kind() == ErrorKind::UnexpectedEof {
                         return Err(crate::Error::new(
                             crate::ErrorKind::AtomNotFound(self.identifier),
-                            "Reached EOF without finding a matching atom",
+                            "Reached EOF without finding a matching atom".into(),
                         ));
                     } else {
                         return Err(e);
@@ -221,7 +221,13 @@ impl Atom {
             };
 
             if identifier == self.identifier {
-                return self.parse_content(reader, length);
+                return match self.parse_content(reader, length) {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(crate::Error::new(
+                        e.kind,
+                        format!("Error reading {}: {}", Atom::format_identifier(identifier), e.description))
+                    ),
+                };
             } else if length > 8 {
                 reader.seek(SeekFrom::Current((length - 8) as i64))?;
             }
@@ -240,7 +246,12 @@ impl Atom {
             let mut parsed = false;
             for a in atoms.into_iter() {
                 if atom_identifier == a.identifier {
-                    a.parse_content(reader, atom_length)?;
+                    if let Err(e) = a.parse_content(reader, atom_length) {
+                        return Err(crate::Error::new(
+                            e.kind,
+                            format!("Error reading {}: {}", Atom::format_identifier(atom_identifier), e.description))
+                        );
+                    }
                     parsed = true;
                     parsed_atoms += 1;
                     break;
@@ -274,7 +285,7 @@ impl Atom {
         if !ftyp.is_valid_filetype() {
             return Err(crate::Error::new(
                 crate::ErrorKind::NoTag,
-                "File does not contain MPEG-4 audio metadata",
+                "File does not contain MPEG-4 audio metadata".into(),
             ));
         }
 
@@ -302,14 +313,14 @@ impl Atom {
             Ok(l) => l as usize,
             Err(e) => return Err(crate::Error::new(
                 crate::ErrorKind::Io(e),
-                "Error reading atom length",
+                "Error reading atom length".into(),
             )),
         };
         let mut identifier = [0u8; 4];
         if let Err(e) = reader.read_exact(&mut identifier) {
             return Err(crate::Error::new(
                 crate::ErrorKind::Io(e),
-                "Error reading atom identifier",
+                "Error reading atom identifier".into(),
             ));
         }
 
