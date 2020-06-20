@@ -6,43 +6,67 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use crate::{Error, ErrorKind};
 
 /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) code
+
+/// A datatype code that is yet to be parsed.
 pub const TYPED: i32 = -1;
+/// Reserved for use where no type needs to be indicated.
 pub const RESERVED: i32 = 0;
+/// UTF-8 without any count or NULL terminator.
 pub const UTF8: i32 = 1;
+/// UTF-16 also known as UTF-16BE.
 pub const UTF16: i32 = 2;
+/// UTF-8 variant storage of a string for sorting only.
 pub const UTF8_SORT: i32 = 4;
+/// UTF-16 variant storage of a string for sorting only.
 pub const UTF16_SORT: i32 = 5;
+/// JPEG in a JFIF wrapper.
 pub const JPEG: i32 = 13;
+/// PNG in a PNG wrapper.
 pub const PNG: i32 = 14;
+/// A big-endian signed integer in 1,2,3 or 4 bytes.
 pub const BE_SIGNED: i32 = 21;
+/// A big-endian unsigned integer in 1,2,3 or 4 bytes.
 pub const BE_UNSIGNED: i32 = 22;
+/// A big-endian 32-bit floating point value (`IEEE754`).
 pub const BE_F32: i32 = 23;
+/// A big-endian 64-bit floating point value (`IEEE754`).
 pub const BE_F64: i32 = 24;
+/// Windows bitmap format graphics.
+pub const BMP: i32 = 27;
+/// QuickTime Metadata atom.
 pub const QT_META: i32 = 28;
+/// An 8-bit signed integer.
 pub const I8: i32 = 65;
+/// A big-endian 16-bit signed integer.
 pub const BE_I16: i32 = 66;
+/// A big-endian 32-bit signed integer.
 pub const BE_I32: i32 = 67;
 /// A block of data representing a two dimensional (2D) point with 32-bit big-endian floating point
-/// x and y coordinates. It has the structure:
-/// { BE_F32 x; BE_F32 y; }
+/// x and y coordinates. It has the structure:<br/>
+/// `{ BE_F32 x; BE_F32 y; }`
 pub const BE_POINT_F32: i32 = 70;
 /// A block of data representing 2D dimensions with 32-bit big-endian floating point width and
-/// height. It has the structure:
-/// { width: BE_F32, height: BE_F32 }
+/// height. It has the structure:<br/>
+/// `{ width: BE_F32, height: BE_F32 }`
 pub const BE_DIMS_F32: i32 = 71;
 /// A block of data representing a 2D rectangle with 32-bit big-endian floating point x and y
-/// coordinates and a 32-bit big-endian floating point width and height size. It has the structure:
-/// { x: BE_F32, y: BE_F32, width: BEFloat32, height: BE_F32 }
-/// or the equivalent structure:
-/// { origin: BE_Point_F32, size: BE_DIMS_F32 }
+/// coordinates and a 32-bit big-endian floating point width and height size. It has the structure:<br/>
+/// `{ x: BE_F32, y: BE_F32, width: BE_F32, height: BE_F32 }`<br/>
+/// or the equivalent structure:<br/>
+/// `{ origin: BE_Point_F32, size: BE_DIMS_F32 }`
 pub const BE_RECT_F32: i32 = 72;
+/// A big-endian 64-bit signed integer.
 pub const BE_I64: i32 = 74;
+/// An 8-bit unsigned integer.
 pub const U8: i32 = 75;
+/// A big-endian 16-bit unsigned integer.
 pub const BE_U16: i32 = 76;
+/// A big-endian 32-bit unsigned integer.
 pub const BE_U32: i32 = 77;
+/// A big-endian 64-bit unsigned integer.
 pub const BE_U64: i32 = 78;
-/// A block of data representing a 3x3 transformation matrix. It has the structure:
-/// { matrix: [[BE_F64; 3]; 3] }
+/// A block of data representing a 3x3 transformation matrix. It has the structure:<br/>
+/// `{ matrix: [[BE_F64; 3]; 3] }`
 pub const AFFINE_TRANSFORM_F64: i32 = 79;
 
 /// A struct that holds the different types of data an `Atom` can contain following
@@ -102,12 +126,12 @@ impl Data {
             }
 
             match datatype {
-                RESERVED => *self = Data::Reserved(Data::read_u8_vec(reader, l)?),
-                UTF8 => *self = Data::Utf8(Data::read_utf8(reader, l)?),
-                UTF16 => *self = Data::Utf16(Data::read_utf16(reader, l)?),
-                JPEG => *self = Data::Jpeg(Data::read_u8_vec(reader, l)?),
-                PNG => *self = Data::Png(Data::read_u8_vec(reader, l)?),
-                BE_SIGNED => *self = Data::Reserved(Data::read_u8_vec(reader, l)?),
+                RESERVED => *self = Data::Reserved(read_u8_vec(reader, l)?),
+                UTF8 => *self = Data::Utf8(read_utf8(reader, l)?),
+                UTF16 => *self = Data::Utf16(read_utf16(reader, l)?),
+                JPEG => *self = Data::Jpeg(read_u8_vec(reader, l)?),
+                PNG => *self = Data::Png(read_u8_vec(reader, l)?),
+                BE_SIGNED => *self = Data::Reserved(read_u8_vec(reader, l)?),
                 _ => return Err(crate::Error::new(
                     ErrorKind::UnknownDataType(datatype),
                     "Unknown datatype code".into(),
@@ -173,52 +197,6 @@ impl Data {
 
         Ok(())
     }
-
-    /// Attempts to read 8 bit unsigned integers from the reader to a vector of size length.
-    pub fn read_u8_vec(reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Vec<u8>> {
-        let mut buff = vec![0u8; length];
-
-        if let Err(e) = reader.read_exact(&mut buff) {
-            return Err(Error::from(e));
-        }
-
-        Ok(buff)
-    }
-
-    /// Attempts to read 16 bit unsigned integers from the reader to a vector of size length.
-    pub fn read_u16_vec(reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Vec<u16>> {
-        let mut buff = vec![0u16; length];
-
-        if let Err(e) = reader.read_u16_into::<BigEndian>(&mut buff) {
-            return Err(Error::from(e));
-        }
-
-        Ok(buff)
-    }
-
-    /// Attempts to read a utf-8 string from the reader.
-    pub fn read_utf8(reader: &mut (impl Read + Seek), length: usize) -> crate::Result<String> {
-        let data = Data::read_u8_vec(reader, length)?;
-
-        match String::from_utf8(data.clone()) {
-            Ok(s) => Ok(s),
-            Err(e) => Err(Error::from(e)),
-        }
-    }
-
-    /// Attempts to read a utf-16 string from the reader.
-    pub fn read_utf16(reader: &mut (impl Read + Seek), length: usize) -> crate::Result<String> {
-        let data = Data::read_u16_vec(reader, length / 2)?;
-
-        if length % 2 == 1 {
-            reader.seek(SeekFrom::Current(1))?;
-        }
-
-        match String::from_utf16(&data) {
-            Ok(s) => Ok(s),
-            Err(e) => Err(crate::Error::from(e)),
-        }
-    }
 }
 
 impl fmt::Debug for Data {
@@ -231,5 +209,51 @@ impl fmt::Debug for Data {
             Data::Png(_) => write!(f, "PNG"),
             Data::Unparsed(d) => write!(f, "Unparsed{{ {:?} }}", d),
         }
+    }
+}
+
+/// Attempts to read 8 bit unsigned integers from the reader to a vector of size length.
+pub fn read_u8_vec(reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Vec<u8>> {
+    let mut buff = vec![0u8; length];
+
+    if let Err(e) = reader.read_exact(&mut buff) {
+        return Err(Error::from(e));
+    }
+
+    Ok(buff)
+}
+
+/// Attempts to read 16 bit unsigned integers from the reader to a vector of size length.
+pub fn read_u16_vec(reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Vec<u16>> {
+    let mut buff = vec![0u16; length];
+
+    if let Err(e) = reader.read_u16_into::<BigEndian>(&mut buff) {
+        return Err(Error::from(e));
+    }
+
+    Ok(buff)
+}
+
+/// Attempts to read a utf-8 string from the reader.
+pub fn read_utf8(reader: &mut (impl Read + Seek), length: usize) -> crate::Result<String> {
+    let data = read_u8_vec(reader, length)?;
+
+    match String::from_utf8(data.clone()) {
+        Ok(s) => Ok(s),
+        Err(e) => Err(Error::from(e)),
+    }
+}
+
+/// Attempts to read a utf-16 string from the reader.
+pub fn read_utf16(reader: &mut (impl Read + Seek), length: usize) -> crate::Result<String> {
+    let data = read_u16_vec(reader, length / 2)?;
+
+    if length % 2 == 1 {
+        reader.seek(SeekFrom::Current(1))?;
+    }
+
+    match String::from_utf16(&data) {
+        Ok(s) => Ok(s),
+        Err(e) => Err(crate::Error::from(e)),
     }
 }
