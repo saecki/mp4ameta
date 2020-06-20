@@ -71,7 +71,7 @@ pub const PURCHASE_DATE: [u8; 4] = *b"purd";
 pub const GAPLESS_PLAYBACK: [u8; 4] = *b"pgap";
 
 /// A structure that represents a MPEG-4 audio metadata atom.
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Atom {
     /// The 4 byte identifier of the atom.
     pub identifier: [u8; 4],
@@ -476,20 +476,6 @@ impl Atom {
     /// Returns the identifier formatted as a string.
     pub fn format_ident(identifier: [u8; 4]) -> String {
         identifier.iter().map(|b| char::from(*b)).collect()
-    }
-}
-
-impl PartialEq for Atom {
-    fn eq(&self, other: &Self) -> bool {
-        self.identifier == other.identifier &&
-            self.offset == other.offset &&
-            self.content == other.content
-    }
-
-    fn ne(&self, other: &Self) -> bool {
-        self.identifier != other.identifier ||
-            self.offset != other.offset ||
-            self.content != other.content
     }
 }
 
