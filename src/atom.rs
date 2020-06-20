@@ -152,7 +152,7 @@ impl Atom {
     }
 
     /// Attempts to write the metadata atoms to the file inside the item list atom.
-    pub fn write_to(file: &File, atoms: &Vec<Atom>) -> crate::Result<()> {
+    pub fn write_to_file(file: &File, atoms: &Vec<Atom>) -> crate::Result<()> {
         let mut reader = BufReader::new(file);
         let mut writer = BufWriter::new(file);
 
@@ -181,7 +181,7 @@ impl Atom {
         // writing metadata
         writer.seek(SeekFrom::Current(4))?;
         for a in atoms {
-            a.write(&mut writer)?;
+            a.write_to(&mut writer)?;
         }
 
         // writing additional data after metadata
@@ -192,7 +192,7 @@ impl Atom {
     }
 
     /// Attempts to write the atom to the writer.
-    pub fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
+    pub fn write_to(&self, writer: &mut impl Write) -> crate::Result<()> {
         writer.write_u32::<BigEndian>(self.len() as u32)?;
         writer.write(&self.identifier)?;
         writer.write(&vec![0u8; self.offset])?;

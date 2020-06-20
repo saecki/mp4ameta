@@ -136,7 +136,7 @@ impl Tag {
 
     /// Attempts to write the MPEG-4 audio tag to the writer.
     pub fn write_to(&self, file: &File) -> crate::Result<()> {
-        Atom::write_to(file, &self.atoms)
+        Atom::write_to_file(file, &self.atoms)
     }
 
     /// Attempts to write the MPEG-4 audio tag to the path.

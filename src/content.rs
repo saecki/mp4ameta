@@ -86,7 +86,7 @@ impl Content {
     pub fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
         match self {
             Content::Atoms(v) => for a in v {
-                a.write(writer)?;
+                a.write_to(writer)?;
             }
             Content::RawData(d) => d.write_raw(writer)?,
             Content::TypedData(d) => d.write_typed(writer)?,
