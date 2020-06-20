@@ -207,17 +207,21 @@ impl Atom {
         loop {
             let (length, identifier) = match Atom::parse_head(reader) {
                 Ok(h) => h,
-                Err(e) => match &e.kind {
-                    crate::ErrorKind::Io(ioe) => if ioe.kind() == ErrorKind::UnexpectedEof {
-                        return Err(crate::Error::new(
-                            crate::ErrorKind::AtomNotFound(self.identifier),
-                            "Reached EOF without finding a matching atom".into(),
-                        ));
-                    } else {
-                        return Err(e);
-                    },
-                    _ => return Err(e),
-                },
+                Err(e) => {
+                    if let crate::ErrorKind::Io(ioe) = &e.kind {
+                        if ioe.kind() == ErrorKind::UnexpectedEof {
+                            return Err(crate::Error::new(
+                                crate::ErrorKind::AtomNotFound(self.identifier),
+                                format!(
+                                    "Reached EOF without finding an atom matching {}:",
+                                    Atom::format_ident(self.identifier)
+                                ),
+                            ));
+                        }
+                    }
+
+                    return Err(e);
+                }
             };
 
             if identifier == self.identifier {
@@ -225,7 +229,7 @@ impl Atom {
                     Ok(_) => Ok(()),
                     Err(e) => Err(crate::Error::new(
                         e.kind,
-                        format!("Error reading {}: {}", Atom::format_identifier(identifier), e.description))
+                        format!("Error reading {}: {}", Atom::format_ident(identifier), e.description))
                     ),
                 };
             } else if length > 8 {
@@ -249,7 +253,7 @@ impl Atom {
                     if let Err(e) = a.parse_content(reader, atom_length) {
                         return Err(crate::Error::new(
                             e.kind,
-                            format!("Error reading {}: {}", Atom::format_identifier(atom_identifier), e.description))
+                            format!("Error reading {}: {}", Atom::format_ident(atom_identifier), e.description))
                         );
                     }
                     parsed = true;
@@ -470,7 +474,7 @@ impl Atom {
     }
 
     /// Returns the identifier formatted as a string.
-    pub fn format_identifier(identifier: [u8; 4]) -> String {
+    pub fn format_ident(identifier: [u8; 4]) -> String {
         identifier.iter().map(|b| char::from(*b)).collect()
     }
 }
@@ -491,7 +495,7 @@ impl PartialEq for Atom {
 
 impl Debug for Atom {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        let identifier_string = Atom::format_identifier(self.identifier);
+        let identifier_string = Atom::format_ident(self.identifier);
         write!(f, "Atom{{ {}, {}, {:#?} }}", identifier_string, self.offset, self.content)
     }
 }
