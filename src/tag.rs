@@ -92,7 +92,7 @@ pub const GENRES: [(u16, &str); 80] = [
 ];
 
 /// A MPEG-4 audio tag containing metadata atoms
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Tag {
     /// A vector containing metadata atoms
     pub atoms: Vec<Atom>,
