@@ -96,6 +96,7 @@ pub const GENRES: [(u16, &str); 80] = [
 pub struct Tag {
     /// A vector containing metadata atoms
     pub atoms: Vec<Atom>,
+    /// A vector containing readonly metadata atoms
     pub readonly_atoms: Vec<Atom>,
 }
 
@@ -595,7 +596,7 @@ impl Tag {
         let mut vec = &Vec::new();
 
         for a in &self.readonly_atoms {
-            if a.identifier == atom::MEDIA_HEADER {
+            if a.ident == atom::MEDIA_HEADER {
                 if let Content::RawData(Data::Reserved(v)) = &a.content {
                     vec = v;
                 }
@@ -637,8 +638,8 @@ impl Tag {
     /// tag.set_data(*b"test", Data::Reserved(vec![1,2,3,4,5,6]));
     /// assert_eq!(tag.reserved(*b"test").unwrap().to_vec(), vec![1,2,3,4,5,6]);
     /// ```
-    pub fn reserved(&self, identifier: [u8; 4]) -> Option<&Vec<u8>> {
-        match self.data(identifier) {
+    pub fn reserved(&self, ident: [u8; 4]) -> Option<&Vec<u8>> {
+        match self.data(ident) {
             Some(Data::Reserved(v)) => Some(v),
             _ => None,
         }
@@ -654,8 +655,8 @@ impl Tag {
     /// tag.set_data(*b"test", Data::Utf8("data".into()));
     /// assert_eq!(tag.string(*b"test").unwrap(), "data");
     /// ```
-    pub fn string(&self, identifier: [u8; 4]) -> Option<&str> {
-        let d = self.data(identifier)?;
+    pub fn string(&self, ident: [u8; 4]) -> Option<&str> {
+        let d = self.data(ident)?;
 
         match d {
             Data::Utf8(s) => Some(s),
@@ -674,8 +675,8 @@ impl Tag {
     /// tag.mut_string(*b"test").unwrap().push('1');
     /// assert_eq!(tag.string(*b"test").unwrap(), "data1");
     /// ```
-    pub fn mut_string(&mut self, identifier: [u8; 4]) -> Option<&mut String> {
-        let d = self.mut_data(identifier)?;
+    pub fn mut_string(&mut self, ident: [u8; 4]) -> Option<&mut String> {
+        let d = self.mut_data(ident)?;
 
         match d {
             Data::Utf8(s) => Some(s),
@@ -698,8 +699,8 @@ impl Tag {
     ///     panic!("data does not match");
     /// }
     /// ```
-    pub fn image(&self, identifier: [u8; 4]) -> Option<Data> {
-        let d = self.data(identifier)?;
+    pub fn image(&self, ident: [u8; 4]) -> Option<Data> {
+        let d = self.data(ident)?;
 
         match d {
             Data::Jpeg(d) => Some(Data::Jpeg(d.to_vec())),
@@ -721,9 +722,9 @@ impl Tag {
     ///     panic!("data does not match");
     /// }
     /// ```
-    pub fn data(&self, identifier: [u8; 4]) -> Option<&Data> {
+    pub fn data(&self, ident: [u8; 4]) -> Option<&Data> {
         for a in &self.atoms {
-            if a.identifier == identifier {
+            if a.ident == ident {
                 if let Content::TypedData(data) = &a.first_child()?.content {
                     return Some(data);
                 }
@@ -746,9 +747,9 @@ impl Tag {
     /// }
     /// assert_eq!(tag.string(*b"test").unwrap(), "data1");
     /// ```
-    pub fn mut_data(&mut self, identifier: [u8; 4]) -> Option<&mut Data> {
+    pub fn mut_data(&mut self, ident: [u8; 4]) -> Option<&mut Data> {
         for a in &mut self.atoms {
-            if a.identifier == identifier {
+            if a.ident == ident {
                 if let Content::TypedData(data) = &mut a.mut_first_child()?.content {
                     return Some(data);
                 }
@@ -768,9 +769,9 @@ impl Tag {
     /// tag.set_data(*b"test", Data::Utf8("data".into()));
     /// assert_eq!(tag.string(*b"test").unwrap(), "data");
     /// ```
-    pub fn set_data(&mut self, identifier: [u8; 4], data: Data) {
+    pub fn set_data(&mut self, ident: [u8; 4], data: Data) {
         for a in &mut self.atoms {
-            if a.identifier == identifier {
+            if a.ident == ident {
                 if let Some(p) = a.mut_first_child() {
                     if let Content::TypedData(d) = &mut p.content {
                         *d = data;
@@ -780,7 +781,7 @@ impl Tag {
             }
         }
 
-        self.atoms.push(Atom::with(identifier, 0, Content::data_atom_with(data)));
+        self.atoms.push(Atom::with(ident, 0, Content::data_atom_with(data)));
     }
 
     /// Removes the data corresponding to the identifier.
@@ -795,9 +796,9 @@ impl Tag {
     /// tag.remove_data(*b"test");
     /// assert!(tag.data(*b"test").is_none());
     /// ```
-    pub fn remove_data(&mut self, identifier: [u8; 4]) {
+    pub fn remove_data(&mut self, ident: [u8; 4]) {
         for i in 0..self.atoms.len() {
-            if self.atoms[i].identifier == identifier {
+            if self.atoms[i].ident == ident {
                 self.atoms.remove(i);
                 return;
             }
