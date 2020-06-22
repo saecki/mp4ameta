@@ -44,10 +44,10 @@ impl Error {
     }
 
     fn format(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.description != "" {
-            write!(f, "{:?}: {}", self.kind, self.description)
-        } else {
+        if self.description.is_empty() {
             write!(f, "{:?}", self.kind)
+        } else {
+            write!(f, "{:?}: {}", self.kind, self.description)
         }
     }
 }

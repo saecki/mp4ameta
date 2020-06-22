@@ -1,4 +1,5 @@
 //! A library to read ITunes style MPEG-4 audio metadata.
+#![warn(missing_docs)]
 
 extern crate byteorder;
 extern crate core;

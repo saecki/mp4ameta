@@ -7,14 +7,17 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use crate::{Content, Data, data, Tag};
 
 /// A list of valid file types defined by the `ftyp` atom.
-const VALID_FILE_TYPES: [&str; 4] = ["M4A ", "M4B ", "M4P ", "M4V "];
+pub const VALID_FILE_TYPES: [&str; 4] = ["M4A ", "M4B ", "M4P ", "M4V "];
 
-/// Identifier of an atom containing information about the filetype.
+/// Identifier of an atom information about the filetype.
 pub const FILE_TYPE: [u8; 4] = *b"ftyp";
 /// Identifier of an atom containing a sturcture of children storing metadata.
 pub const MOVIE: [u8; 4] = *b"moov";
+/// Identifier of an atom containing information about a single track.
 pub const TRACK: [u8; 4] = *b"trak";
+/// Identifier of an atom containing inforamtion about a tracks media type and data.
 pub const MEDIA: [u8; 4] = *b"mdia";
+/// Identifier of an atom specifying the characteristics of a media atom.
 pub const MEDIA_HEADER: [u8; 4] = *b"mdhd";
 /// Identifier of an atom containing user metadata.
 pub const USER_DATA: [u8; 4] = *b"udta";
@@ -74,7 +77,7 @@ pub const GAPLESS_PLAYBACK: [u8; 4] = *b"pgap";
 #[derive(Clone, PartialEq)]
 pub struct Atom {
     /// The 4 byte identifier of the atom.
-    pub identifier: [u8; 4],
+    pub ident: [u8; 4],
     /// The offset in bytes separating the head from the content.
     pub offset: usize,
     /// The content of an atom.
@@ -84,17 +87,17 @@ pub struct Atom {
 impl Atom {
     /// Creates a new empty atom.
     pub fn new() -> Atom {
-        Atom { identifier: *b"    ", offset: 0, content: Content::Empty }
+        Atom { ident: *b"    ", offset: 0, content: Content::Empty }
     }
 
     /// Creates an atom containing the provided content at a n byte offset.
-    pub fn with(identifier: [u8; 4], offset: usize, content: Content) -> Atom {
-        Atom { identifier, offset, content }
+    pub fn with(ident: [u8; 4], offset: usize, content: Content) -> Atom {
+        Atom { ident, offset, content }
     }
 
     /// Creates an atom containing `Content::RawData` with the provided data.
-    pub fn with_raw_data(identifier: [u8; 4], offset: usize, data: Data) -> Atom {
-        Atom::with(identifier, offset, Content::RawData(data))
+    pub fn with_raw_data(ident: [u8; 4], offset: usize, data: Data) -> Atom {
+        Atom::with(ident, offset, Content::RawData(data))
     }
 
     /// Creates a data atom containing unparsed `Content::TypedData`.
@@ -194,10 +197,10 @@ impl Atom {
     /// Attempts to write the atom to the writer.
     pub fn write_to(&self, writer: &mut impl Write) -> crate::Result<()> {
         writer.write_u32::<BigEndian>(self.len() as u32)?;
-        writer.write(&self.identifier)?;
+        writer.write(&self.ident)?;
         writer.write(&vec![0u8; self.offset])?;
 
-        self.content.write(writer)?;
+        self.content.write_to(writer)?;
 
         Ok(())
     }
@@ -205,16 +208,16 @@ impl Atom {
     /// Attempts to parse itself from the reader.
     pub fn parse(&mut self, reader: &mut (impl Read + Seek)) -> crate::Result<()> {
         loop {
-            let (length, identifier) = match Atom::parse_head(reader) {
+            let (length, ident) = match Atom::parse_head(reader) {
                 Ok(h) => h,
                 Err(e) => {
                     if let crate::ErrorKind::Io(ioe) = &e.kind {
                         if ioe.kind() == ErrorKind::UnexpectedEof {
                             return Err(crate::Error::new(
-                                crate::ErrorKind::AtomNotFound(self.identifier),
+                                crate::ErrorKind::AtomNotFound(self.ident),
                                 format!(
                                     "Reached EOF without finding an atom matching {}:",
-                                    Atom::format_ident(self.identifier)
+                                    Atom::format_ident(self.ident)
                                 ),
                             ));
                         }
@@ -224,12 +227,12 @@ impl Atom {
                 }
             };
 
-            if identifier == self.identifier {
+            if ident == self.ident {
                 return match self.parse_content(reader, length) {
                     Ok(_) => Ok(()),
                     Err(e) => Err(crate::Error::new(
                         e.kind,
-                        format!("Error reading {}: {}", Atom::format_ident(identifier), e.description))
+                        format!("Error reading {}: {}", Atom::format_ident(ident), e.description))
                     ),
                 };
             } else if length > 8 {
@@ -245,15 +248,15 @@ impl Atom {
         let atom_count = atoms.len();
 
         while parsed_bytes < length && parsed_atoms < atom_count {
-            let (atom_length, atom_identifier) = Atom::parse_head(reader)?;
+            let (atom_length, atom_ident) = Atom::parse_head(reader)?;
 
             let mut parsed = false;
             for a in atoms.into_iter() {
-                if atom_identifier == a.identifier {
+                if atom_ident == a.ident {
                     if let Err(e) = a.parse_content(reader, atom_length) {
                         return Err(crate::Error::new(
                             e.kind,
-                            format!("Error reading {}: {}", Atom::format_ident(atom_identifier), e.description))
+                            format!("Error reading {}: {}", Atom::format_ident(atom_ident), e.description))
                         );
                     }
                     parsed = true;
@@ -293,8 +296,8 @@ impl Atom {
             ));
         }
 
-        while let Ok((length, identifier)) = Atom::parse_head(reader) {
-            if identifier == destination.identifier {
+        while let Ok((length, ident)) = Atom::parse_head(reader) {
+            if ident == destination.ident {
                 atom_pos_and_len.push((reader.seek(SeekFrom::Current(0))? as usize - 8, length));
                 reader.seek(SeekFrom::Current(destination.offset as i64))?;
 
@@ -320,15 +323,15 @@ impl Atom {
                 "Error reading atom length".into(),
             )),
         };
-        let mut identifier = [0u8; 4];
-        if let Err(e) = reader.read_exact(&mut identifier) {
+        let mut ident = [0u8; 4];
+        if let Err(e) = reader.read_exact(&mut ident) {
             return Err(crate::Error::new(
                 crate::ErrorKind::Io(e),
                 "Error reading atom identifier".into(),
             ));
         }
 
-        Ok((length, identifier))
+        Ok((length, ident))
     }
 
     /// Attempts to parse the content of the provided length from the reader.
@@ -347,10 +350,10 @@ impl Atom {
 
 
     /// Attempts to return a reference to the first children atom matching the identifier.
-    pub fn child(&self, identifier: [u8; 4]) -> Option<&Atom> {
+    pub fn child(&self, ident: [u8; 4]) -> Option<&Atom> {
         if let Content::Atoms(v) = &self.content {
             for a in v {
-                if a.identifier == identifier {
+                if a.ident == ident {
                     return Some(a);
                 }
             }
@@ -360,10 +363,10 @@ impl Atom {
     }
 
     /// Attempts to return a mutable reference to the first children atom matching the identifier.
-    pub fn mut_child(&mut self, identifier: [u8; 4]) -> Option<&mut Atom> {
+    pub fn mut_child(&mut self, ident: [u8; 4]) -> Option<&mut Atom> {
         if let Content::Atoms(v) = &mut self.content {
             for a in v {
-                if a.identifier == identifier {
+                if a.ident == ident {
                     return Some(a);
                 }
             }
@@ -474,14 +477,14 @@ impl Atom {
     }
 
     /// Returns the identifier formatted as a string.
-    pub fn format_ident(identifier: [u8; 4]) -> String {
-        identifier.iter().map(|b| char::from(*b)).collect()
+    pub fn format_ident(ident: [u8; 4]) -> String {
+        ident.iter().map(|b| char::from(*b)).collect()
     }
 }
 
 impl Debug for Atom {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        let identifier_string = Atom::format_ident(self.identifier);
-        write!(f, "Atom{{ {}, {}, {:#?} }}", identifier_string, self.offset, self.content)
+        let ident_string = Atom::format_ident(self.ident);
+        write!(f, "Atom{{ {}, {}, {:#?} }}", ident_string, self.offset, self.content)
     }
 }

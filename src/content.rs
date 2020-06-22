@@ -35,8 +35,8 @@ impl Content {
 
     /// Creates a new `Content` of type `Content::Atoms` containing a new `Atom` with the identifier,
     /// offset and content.
-    pub fn atom_with(identifier: [u8; 4], offset: usize, content: Content) -> Content {
-        Content::atom(Atom::with(identifier, offset, content))
+    pub fn atom_with(ident: [u8; 4], offset: usize, content: Content) -> Content {
+        Content::atom(Atom::with(ident, offset, content))
     }
 
     /// Adds the atom to the list of children atoms if `self` is of type `Content::Atoms`.
@@ -56,8 +56,8 @@ impl Content {
 
     /// Adds a new `Atom` with the provided identifier, offset and content to the list of children if
     /// `self` is of type `Content::Atoms`.
-    pub fn add_atom_with(self, identifier: [u8; 4], offset: usize, content: Content) -> Content {
-        self.add_atom(Atom::with(identifier, offset, content))
+    pub fn add_atom_with(self, ident: [u8; 4], offset: usize, content: Content) -> Content {
+        self.add_atom(Atom::with(ident, offset, content))
     }
 
     /// Returns the length in bytes.
@@ -83,7 +83,7 @@ impl Content {
     }
 
     /// Attempts to write the content to the writer.
-    pub fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
+    pub fn write_to(&self, writer: &mut impl Write) -> crate::Result<()> {
         match self {
             Content::Atoms(v) => for a in v {
                 a.write_to(writer)?;
