@@ -1,11 +1,11 @@
-use crate::Tag;
+use mp4ameta::Tag;
 use std::fs;
 
 const EXTENSIONS: [&str; 4] = [".m4a", ".m4b", ".m4p", ".m4v"];
 
 #[test]
 fn test_sample_files() {
-    for f in fs::read_dir("./test/").unwrap() {
+    for f in fs::read_dir("./tests/files").unwrap() {
         let filename: String = f.unwrap().path().to_str().unwrap().into();
 
         let mut mp4file = false;
