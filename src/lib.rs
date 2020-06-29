@@ -15,5 +15,3 @@ mod content;
 mod data;
 mod error;
 mod tag;
-#[cfg(test)]
-mod test;
