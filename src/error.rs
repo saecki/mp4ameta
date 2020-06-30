@@ -10,6 +10,9 @@ pub enum ErrorKind {
     AtomNotFound([u8; 4]),
     /// An error kind indicating that an IO error has occurred. Contains the original io::Error.
     Io(io::Error),
+    /// An error kind indicating that the filetype read from the ftyp atom was invalid. Contains
+    /// the invalid filetype string.
+    InvalidFiletype(String),
     /// An error kind indicating that the reader does not contain mp4 metadata.
     NoTag,
     /// An error kind indicating that an error accured during parsing.
@@ -37,10 +40,7 @@ pub struct Error {
 impl Error {
     /// Creates a new `Error` using the error kind and description.
     pub fn new(kind: ErrorKind, description: String) -> Error {
-        Error {
-            kind,
-            description,
-        }
+        Error { kind, description }
     }
 
     fn format(&self, f: &mut fmt::Formatter) -> fmt::Result {

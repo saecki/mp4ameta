@@ -5,7 +5,7 @@ use std::path::Path;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
-use crate::{Atom, atom, Content, Data};
+use crate::{atom, Atom, Content, Data};
 
 /// A list of standard genres found in the `gnre` `Atom`.
 pub const GENRES: [(u16, &str); 80] = [
@@ -103,12 +103,18 @@ pub struct Tag {
 impl Tag {
     /// Creates a new empty MPEG-4 audio tag.
     pub fn new() -> Tag {
-        Tag { atoms: Vec::new(), readonly_atoms: Vec::new() }
+        Tag {
+            atoms: Vec::new(),
+            readonly_atoms: Vec::new(),
+        }
     }
 
     /// Creates a new MPEG-4 audio tag containing the atom.
     pub fn with(atoms: Vec<Atom>, readonly_atoms: Vec<Atom>) -> Tag {
-        let mut tag = Tag { atoms, readonly_atoms };
+        let mut tag = Tag {
+            atoms,
+            readonly_atoms,
+        };
 
         let mut i = 0;
         while i < tag.atoms.len() {
@@ -195,7 +201,6 @@ impl Tag {
     pub fn category(&self) -> Option<&str> {
         self.string(atom::CATEGORY)
     }
-
 
     /// Sets the category (catg).
     pub fn set_category(&mut self, category: impl Into<String>) {
@@ -349,7 +354,10 @@ impl Tag {
 
     /// Sets the tv episode number (tven).
     pub fn set_tv_episode_number(&mut self, tv_episode_number: impl Into<String>) {
-        self.set_data(atom::TV_EPISODE_NUMBER, Data::Utf8(tv_episode_number.into()));
+        self.set_data(
+            atom::TV_EPISODE_NUMBER,
+            Data::Utf8(tv_episode_number.into()),
+        );
     }
 
     /// Removes the tv episode number (tven).
@@ -484,29 +492,26 @@ impl Tag {
     }
 
     /// Returns the track number and the total number of tracks (trkn).
-    pub fn track_number(&self) -> (Option<u16>, Option<u16>) {
+    pub fn track_number(&self) -> Option<(u16, u16)> {
         let vec = match self.reserved(atom::TRACK_NUMBER) {
             Some(v) => v,
-            None => return (None, None),
+            None => return None,
         };
 
-        let mut buffs = Vec::new();
-
-        for chunk in vec.chunks(2) {
-            buffs.push(chunk);
+        if vec.len() < 6 {
+            return None;
         }
 
-        let track_number = match buffs[1].read_u16::<BigEndian>() {
-            Ok(tnr) => Some(tnr),
-            Err(_) => None,
-        };
+        let buf: Vec<u16> = vec
+            .chunks_exact(2)
+            .into_iter()
+            .map(|c| u16::from_ne_bytes([c[0], c[1]]))
+            .collect();
 
-        let total_tracks = match buffs[2].read_u16::<BigEndian>() {
-            Ok(atr) => Some(atr),
-            Err(_) => None,
-        };
+        let track_number = buf[1];
+        let total_tracks = buf[2];
 
-        (track_number, total_tracks)
+        Some((track_number, total_tracks))
     }
 
     /// Sets the track number and the total number of tracks (trkn).
@@ -527,29 +532,26 @@ impl Tag {
     }
 
     /// Returns the disk number and total number of disks (disk).
-    pub fn disk_number(&self) -> (Option<u16>, Option<u16>) {
+    pub fn disk_number(&self) -> Option<(u16, u16)> {
         let vec = match self.reserved(atom::DISK_NUMBER) {
             Some(v) => v,
-            None => return (None, None),
+            None => return None,
         };
 
-        let mut buffs = Vec::new();
-
-        for chunk in vec.chunks(2) {
-            buffs.push(chunk);
+        if vec.len() < 6 {
+            return None;
         }
 
-        let disk_number = match buffs[1].read_u16::<BigEndian>() {
-            Ok(tnr) => Some(tnr),
-            Err(_) => None,
-        };
+        let buf: Vec<u16> = vec
+            .chunks_exact(2)
+            .into_iter()
+            .map(|c| u16::from_ne_bytes([c[0], c[1]]))
+            .collect();
 
-        let total_disks = match buffs[2].read_u16::<BigEndian>() {
-            Ok(atr) => Some(atr),
-            Err(_) => None,
-        };
+        let disk_number = buf[1];
+        let total_disks = buf[2];
 
-        (disk_number, total_disks)
+        Some((disk_number, total_disks))
     }
 
     /// Sets the disk number and the total number of disks (disk).
@@ -607,23 +609,16 @@ impl Tag {
             return None;
         }
 
-        let mut buffs = Vec::new();
+        let buf: Vec<u32> = vec
+            .chunks_exact(4)
+            .into_iter()
+            .map(|c| u32::from_ne_bytes([c[0], c[1], c[2], c[3]]))
+            .collect();
 
-        for chunk in vec.chunks(4) {
-            buffs.push(chunk);
-        }
+        let timescale_unit = buf[3];
+        let duration_units = buf[4];
 
-        let timescale_unit = match buffs[3].read_u32::<BigEndian>() {
-            Ok(t) => t,
-            Err(_) => return None,
-        };
-
-        let unit_duration = match buffs[4].read_u32::<BigEndian>() {
-            Ok(d) => d,
-            Err(_) => return None,
-        };
-
-        let duration = unit_duration as f64 / timescale_unit as f64;
+        let duration = duration_units as f64 / timescale_unit as f64;
 
         Some(duration)
     }
@@ -781,7 +776,8 @@ impl Tag {
             }
         }
 
-        self.atoms.push(Atom::with(ident, 0, Content::data_atom_with(data)));
+        self.atoms
+            .push(Atom::with(ident, 0, Content::data_atom_with(data)));
     }
 
     /// Removes the data corresponding to the identifier.

@@ -157,10 +157,12 @@ impl Data {
                 JPEG => *self = Data::Jpeg(read_u8_vec(reader, l)?),
                 PNG => *self = Data::Png(read_u8_vec(reader, l)?),
                 BE_SIGNED => *self = Data::Reserved(read_u8_vec(reader, l)?),
-                _ => return Err(crate::Error::new(
-                    ErrorKind::UnknownDataType(datatype),
-                    "Unknown datatype code".into(),
-                )),
+                _ => {
+                    return Err(crate::Error::new(
+                        ErrorKind::UnknownDataType(datatype),
+                        "Unknown datatype code".into(),
+                    ))
+                }
             }
 
             Ok(())
@@ -180,10 +182,12 @@ impl Data {
             Data::Utf16(_) => UTF16,
             Data::Jpeg(_) => JPEG,
             Data::Png(_) => PNG,
-            Data::Unparsed(_) => return Err(crate::Error::new(
-                ErrorKind::UnWritableDataType,
-                "Data of type Data::Unparsed can't be written.".into(),
-            )),
+            Data::Unparsed(_) => {
+                return Err(crate::Error::new(
+                    ErrorKind::UnWritableDataType,
+                    "Data of type Data::Unparsed can't be written.".into(),
+                ))
+            }
         };
 
         writer.write_i32::<BigEndian>(datatype)?;
@@ -214,10 +218,12 @@ impl Data {
             Data::Png(v) => {
                 writer.write(v)?;
             }
-            Data::Unparsed(_) => return Err(crate::Error::new(
-                ErrorKind::UnWritableDataType,
-                "Data of type Data::Unparsed cannot be written.".into(),
-            )),
+            Data::Unparsed(_) => {
+                return Err(crate::Error::new(
+                    ErrorKind::UnWritableDataType,
+                    "Data of type Data::Unparsed cannot be written.".into(),
+                ))
+            }
         }
 
         Ok(())

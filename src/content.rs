@@ -1,4 +1,4 @@
-use std::fmt::{Result, Debug, Formatter};
+use std::fmt::{Debug, Formatter, Result};
 use std::io::{Read, Seek, Write};
 
 use crate::{Atom, Data};
@@ -28,10 +28,14 @@ impl Content {
     }
 
     /// Creates a new content of type `Content::Atoms` containing a data `Atom`.
-    pub fn data_atom() -> Content { Content::atom(Atom::data_atom()) }
+    pub fn data_atom() -> Content {
+        Content::atom(Atom::data_atom())
+    }
 
     /// Creates a new content of type `Content::Atoms` containing a data `Atom` with the data.
-    pub fn data_atom_with(data: Data) -> Content { Content::atom(Atom::data_atom_with(data)) }
+    pub fn data_atom_with(data: Data) -> Content {
+        Content::atom(Atom::data_atom_with(data))
+    }
 
     /// Creates a new `Content` of type `Content::Atoms` containing a new `Atom` with the identifier,
     /// offset and content.
@@ -85,8 +89,10 @@ impl Content {
     /// Attempts to write the content to the writer.
     pub fn write_to(&self, writer: &mut impl Write) -> crate::Result<()> {
         match self {
-            Content::Atoms(v) => for a in v {
-                a.write_to(writer)?;
+            Content::Atoms(v) => {
+                for a in v {
+                    a.write_to(writer)?;
+                }
             }
             Content::RawData(d) => d.write_raw(writer)?,
             Content::TypedData(d) => d.write_typed(writer)?,
@@ -103,7 +109,7 @@ impl Debug for Content {
             Content::Atoms(a) => write!(f, "Content::Atoms{{ {:#?} }}", a),
             Content::TypedData(d) => write!(f, "Content::TypedData{{ {:?} }}", d),
             Content::RawData(d) => write!(f, "Content::RawData{{ {:?} }}", d),
-            Content::Empty => write!(f, "Content::Empty")
+            Content::Empty => write!(f, "Content::Empty"),
         }
     }
 }
