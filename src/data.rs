@@ -138,7 +138,7 @@ impl Data {
                         Err(e) => return Err(crate::Error::from(e)),
                     };
 
-                    // skipping 4 byte data offset
+                    // skipping 4 locale indicator
                     reader.seek(SeekFrom::Current(4))?;
 
                     l -= 8;
