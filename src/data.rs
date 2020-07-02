@@ -3,7 +3,7 @@ use std::io::{Read, Seek, SeekFrom, Write};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
-use crate::{Error, ErrorKind};
+use crate::ErrorKind;
 
 /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) code
 
@@ -138,7 +138,7 @@ impl Data {
                         Err(e) => return Err(crate::Error::from(e)),
                     };
 
-                    // skipping 4 locale indicator
+                    // Skipping 4 byte locale indicator
                     reader.seek(SeekFrom::Current(4))?;
 
                     l -= 8;
@@ -157,12 +157,10 @@ impl Data {
                 JPEG => *self = Data::Jpeg(read_u8_vec(reader, l)?),
                 PNG => *self = Data::Png(read_u8_vec(reader, l)?),
                 BE_SIGNED => *self = Data::Reserved(read_u8_vec(reader, l)?),
-                _ => {
-                    return Err(crate::Error::new(
-                        ErrorKind::UnknownDataType(datatype),
-                        "Unknown datatype code".into(),
-                    ))
-                }
+                _ => return Err(crate::Error::new(
+                    ErrorKind::UnknownDataType(datatype),
+                    "Unknown datatype code".into(),
+                )),
             }
 
             Ok(())
@@ -182,15 +180,14 @@ impl Data {
             Data::Utf16(_) => UTF16,
             Data::Jpeg(_) => JPEG,
             Data::Png(_) => PNG,
-            Data::Unparsed(_) => {
-                return Err(crate::Error::new(
-                    ErrorKind::UnWritableDataType,
-                    "Data of type Data::Unparsed can't be written.".into(),
-                ))
-            }
+            Data::Unparsed(_) => return Err(crate::Error::new(
+                ErrorKind::UnWritableDataType,
+                "Data of type Data::Unparsed can't be written.".into(),
+            )),
         };
 
         writer.write_i32::<BigEndian>(datatype)?;
+        // Writing 4 byte locale indicator
         writer.write_u32::<BigEndian>(0)?;
 
         self.write_raw(writer)?;
@@ -201,29 +198,19 @@ impl Data {
     /// Attempts to write the raw data to the writer.
     pub fn write_raw(&self, writer: &mut impl Write) -> crate::Result<()> {
         match self {
-            Data::Reserved(v) => {
-                writer.write(v)?;
-            }
-            Data::Utf8(s) => {
-                writer.write(s.as_bytes())?;
-            }
+            Data::Reserved(v) => { writer.write(v)?; }
+            Data::Utf8(s) => { writer.write(s.as_bytes())?; }
             Data::Utf16(s) => {
                 for c in s.encode_utf16() {
                     writer.write_u16::<BigEndian>(c)?;
                 }
             }
-            Data::Jpeg(v) => {
-                writer.write(v)?;
-            }
-            Data::Png(v) => {
-                writer.write(v)?;
-            }
-            Data::Unparsed(_) => {
-                return Err(crate::Error::new(
-                    ErrorKind::UnWritableDataType,
-                    "Data of type Data::Unparsed cannot be written.".into(),
-                ))
-            }
+            Data::Jpeg(v) => { writer.write(v)?; }
+            Data::Png(v) => { writer.write(v)?; }
+            Data::Unparsed(_) => return Err(crate::Error::new(
+                ErrorKind::UnWritableDataType,
+                "Data of type Data::Unparsed cannot be written.".into(),
+            )),
         }
 
         Ok(())
@@ -247,9 +234,7 @@ impl fmt::Debug for Data {
 pub fn read_u8_vec(reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Vec<u8>> {
     let mut buff = vec![0u8; length];
 
-    if let Err(e) = reader.read_exact(&mut buff) {
-        return Err(Error::from(e));
-    }
+    reader.read_exact(&mut buff)?;
 
     Ok(buff)
 }
@@ -258,9 +243,7 @@ pub fn read_u8_vec(reader: &mut (impl Read + Seek), length: usize) -> crate::Res
 pub fn read_u16_vec(reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Vec<u16>> {
     let mut buff = vec![0u16; length];
 
-    if let Err(e) = reader.read_u16_into::<BigEndian>(&mut buff) {
-        return Err(Error::from(e));
-    }
+    reader.read_u16_into::<BigEndian>(&mut buff)?;
 
     Ok(buff)
 }
@@ -269,10 +252,7 @@ pub fn read_u16_vec(reader: &mut (impl Read + Seek), length: usize) -> crate::Re
 pub fn read_utf8(reader: &mut (impl Read + Seek), length: usize) -> crate::Result<String> {
     let data = read_u8_vec(reader, length)?;
 
-    match String::from_utf8(data) {
-        Ok(s) => Ok(s),
-        Err(e) => Err(Error::from(e)),
-    }
+    Ok(String::from_utf8(data)?)
 }
 
 /// Attempts to read a utf-16 string from the reader.

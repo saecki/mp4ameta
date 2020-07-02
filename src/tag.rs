@@ -3,7 +3,7 @@ use std::fs::{File, OpenOptions};
 use std::io::{BufReader, Read, Seek};
 use std::path::Path;
 
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use byteorder::{BigEndian, WriteBytesExt};
 
 use crate::{atom, Atom, Content, Data};
 
@@ -451,15 +451,13 @@ impl Tag {
 
     /// Returns the standard genre (gnre).
     pub fn standard_genre(&self) -> Option<u16> {
-        if let Some(v) = self.reserved(atom::STANDARD_GENRE) {
-            let mut chunks = v.chunks(2);
+        let v = self.reserved(atom::STANDARD_GENRE)?;
 
-            if let Ok(genre_code) = chunks.next()?.read_u16::<BigEndian>() {
-                return Some(genre_code);
-            }
+        if v.len() < 2 {
+            return None;
         }
 
-        None
+        Some(u16::from_ne_bytes([v[0], v[1]]))
     }
 
     /// Sets the standard genre (gnre).
@@ -493,10 +491,7 @@ impl Tag {
 
     /// Returns the track number and the total number of tracks (trkn).
     pub fn track_number(&self) -> Option<(u16, u16)> {
-        let vec = match self.reserved(atom::TRACK_NUMBER) {
-            Some(v) => v,
-            None => return None,
-        };
+        let vec = self.reserved(atom::TRACK_NUMBER)?;
 
         if vec.len() < 6 {
             return None;
