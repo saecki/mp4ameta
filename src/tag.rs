@@ -332,6 +332,67 @@ impl Tag {
         self.remove_data(atom::LYRICS);
     }
 
+    /// Returns the movement (©mvn).
+    pub fn movement(&self) -> Option<&str> {
+        self.string(atom::MOVEMENT_NAME)
+    }
+
+    /// Removes the movement (©mvn).
+    pub fn remove_movement(&mut self) {
+        self.remove_data(atom::MOVEMENT_NAME)
+    }
+
+    /// Sets the movement (©mvn).
+    pub fn set_movement(&mut self, movement: impl Into<String>) {
+        self.set_data(atom::MOVEMENT_NAME, Data::Utf8(movement.into()));
+    }
+
+    /// Returns the movement count (©mvc).
+    pub fn movement_count(&self) -> Option<u16> {
+        todo!()
+    }
+
+    /// Removes the movement count (©mvc).
+    pub fn remove_movement_count(&mut self) {
+        self.remove_data(atom::MOVEMENT_COUNT)
+    }
+
+    /// Sets the movement count (©mvc).
+    pub fn set_movement_count(&mut self, _count: u16) {
+        todo!()
+    }
+
+    /// Returns the movement index (©mvi).
+    pub fn movement_index(&self) -> Option<u16> {
+        todo!()
+    }
+
+    /// Removes the movement index (©mvi).
+    pub fn remove_movement_index(&mut self) {
+        self.remove_data(atom::MOVEMENT_INDEX)
+    }
+
+    /// Sets the movement index (©mvi).
+    pub fn set_movement_index(&mut self, _index: u16) {
+        todo!()
+    }
+
+    /// Returns the show movement flag (shwm).
+    pub fn show_movement(&self) -> Option<u8> {
+        todo!()
+    }
+
+    /// Removes the show movement flag (shwm).
+    pub fn remove_show_movement(&mut self) {
+        self.remove_data(atom::MOVEMENT_INDEX)
+    }
+
+    // TODO: should we allow flag parameter? u8 or bool? assume true?
+    /// Sets the show movement flag to true (shwm).
+    pub fn set_show_movement(&mut self) {
+        todo!()
+    }
+
     /// Returns the title (©nam).
     pub fn title(&self) -> Option<&str> {
         self.string(atom::TITLE)
@@ -408,6 +469,21 @@ impl Tag {
     /// Removes the year (©day).
     pub fn remove_year(&mut self) {
         self.remove_data(atom::YEAR);
+    }
+
+    /// Returns the work (©wrk).
+    pub fn show_work(&self) -> Option<&str> {
+        self.string(atom::WORK)
+    }
+
+    /// Removes the work (©wrk).
+    pub fn remove_work(&mut self) {
+        self.remove_data(atom::WORK)
+    }
+
+    /// Sets the work (©wrk).
+    pub fn set_work(&mut self, work: impl Into<String>) {
+        self.set_data(atom::WORK, Data::Utf8(work.into()));
     }
 
     /// Returns the genre (gnre) or (©gen).

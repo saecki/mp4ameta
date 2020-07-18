@@ -73,6 +73,13 @@ pub const PURCHASE_DATE: [u8; 4] = *b"purd";
 // ITunes 7.0
 pub const GAPLESS_PLAYBACK: [u8; 4] = *b"pgap";
 
+// Work, Movement
+pub const MOVEMENT_NAME: [u8; 4] = *b"\xa9mvn";
+pub const MOVEMENT_COUNT: [u8; 4] = *b"\xa9mvc";
+pub const MOVEMENT_INDEX: [u8; 4] = *b"\xa9mvi";
+pub const WORK: [u8; 4] = *b"\xa9wrk";
+pub const SHOW_MOVEMENT: [u8; 4] = *b"shwm";
+
 /// A structure that represents a MPEG-4 audio metadata atom.
 #[derive(Clone, PartialEq)]
 pub struct Atom {
@@ -464,10 +471,14 @@ pub fn metadata_atom() -> Atom {
                     .add_atom_with(KEYWORD, 0, Content::data_atom())
                     .add_atom_with(LYRICS, 0, Content::data_atom())
                     .add_atom_with(MEDIA_TYPE, 0, Content::data_atom())
+                    .add_atom_with(MOVEMENT_NAME, 0, Content::data_atom())
+                    .add_atom_with(MOVEMENT_COUNT, 0, Content::data_atom())
+                    .add_atom_with(MOVEMENT_INDEX, 0, Content::data_atom())
                     .add_atom_with(PODCAST, 0, Content::data_atom())
                     .add_atom_with(PODCAST_URL, 0, Content::data_atom())
                     .add_atom_with(PURCHASE_DATE, 0, Content::data_atom())
                     .add_atom_with(RATING, 0, Content::data_atom())
+                    .add_atom_with(SHOW_MOVEMENT, 0, Content::data_atom())
                     .add_atom_with(STANDARD_GENRE, 0, Content::data_atom())
                     .add_atom_with(TITLE, 0, Content::data_atom())
                     .add_atom_with(TRACK_NUMBER, 0, Content::data_atom())
@@ -476,6 +487,7 @@ pub fn metadata_atom() -> Atom {
                     .add_atom_with(TV_NETWORK_NAME, 0, Content::data_atom())
                     .add_atom_with(TV_SEASON, 0, Content::data_atom())
                     .add_atom_with(TV_SHOW_NAME, 0, Content::data_atom())
+                    .add_atom_with(WORK, 0, Content::data_atom())
                     .add_atom_with(YEAR, 0, Content::data_atom())
                     .add_atom_with(ARTWORK, 0, Content::data_atom(),
                     ),
