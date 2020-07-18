@@ -355,7 +355,7 @@ impl Tag {
             return None
         }
 
-        Some(u16::from_ne_bytes([vec[0], vec[1]]))
+        Some(u16::from_be_bytes([vec[0], vec[1]]))
     }
 
     /// Removes the movement count (©mvc).
@@ -378,7 +378,7 @@ impl Tag {
             return None
         }
 
-        Some(u16::from_ne_bytes([vec[0], vec[1]]))
+        Some(u16::from_be_bytes([vec[0], vec[1]]))
     }
 
     /// Removes the movement index (©mvi).
