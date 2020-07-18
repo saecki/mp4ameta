@@ -495,7 +495,7 @@ impl Tag {
     }
 
     /// Returns the work (©wrk).
-    pub fn show_work(&self) -> Option<&str> {
+    pub fn work(&self) -> Option<&str> {
         self.string(atom::WORK)
     }
 
