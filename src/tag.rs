@@ -349,7 +349,13 @@ impl Tag {
 
     /// Returns the movement count (©mvc).
     pub fn movement_count(&self) -> Option<u16> {
-        todo!()
+        let vec = self.reserved(atom::MOVEMENT_COUNT)?;
+
+        if vec.len() < 2 {
+            return None
+        }
+
+        Some(u16::from_ne_bytes([vec[0], vec[1]]))
     }
 
     /// Removes the movement count (©mvc).
@@ -358,13 +364,21 @@ impl Tag {
     }
 
     /// Sets the movement count (©mvc).
-    pub fn set_movement_count(&mut self, _count: u16) {
-        todo!()
+    pub fn set_movement_count(&mut self, count: u16) {
+        let mut vec: Vec<u8> = Vec::new();
+        let _ = vec.write_u16::<BigEndian>(count).is_ok();
+        self.set_data(atom::MOVEMENT_COUNT, Data::Reserved(vec));
     }
 
     /// Returns the movement index (©mvi).
     pub fn movement_index(&self) -> Option<u16> {
-        todo!()
+        let vec = self.reserved(atom::MOVEMENT_INDEX)?;
+
+        if vec.len() < 2 {
+            return None
+        }
+
+        Some(u16::from_ne_bytes([vec[0], vec[1]]))
     }
 
     /// Removes the movement index (©mvi).
@@ -373,13 +387,21 @@ impl Tag {
     }
 
     /// Sets the movement index (©mvi).
-    pub fn set_movement_index(&mut self, _index: u16) {
-        todo!()
+    pub fn set_movement_index(&mut self, index: u16) {
+        let mut vec: Vec<u8> = Vec::new();
+        let _ = vec.write_u16::<BigEndian>(index).is_ok();
+        self.set_data(atom::MOVEMENT_COUNT, Data::Reserved(vec));
     }
 
     /// Returns the show movement flag (shwm).
     pub fn show_movement(&self) -> Option<u8> {
-        todo!()
+        let vec = self.reserved(atom::SHOW_MOVEMENT)?;
+
+        if vec.len() < 1 {
+            return None
+        }
+
+        Some(vec[0])
     }
 
     /// Removes the show movement flag (shwm).
@@ -390,7 +412,8 @@ impl Tag {
     // TODO: should we allow flag parameter? u8 or bool? assume true?
     /// Sets the show movement flag to true (shwm).
     pub fn set_show_movement(&mut self) {
-        todo!()
+        let vec = vec![1u8];
+        self.set_data(atom::SHOW_MOVEMENT, Data::Reserved(vec));
     }
 
     /// Returns the title (©nam).
