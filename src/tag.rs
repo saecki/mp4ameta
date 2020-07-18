@@ -390,7 +390,7 @@ impl Tag {
     pub fn set_movement_index(&mut self, index: u16) {
         let mut vec: Vec<u8> = Vec::new();
         let _ = vec.write_u16::<BigEndian>(index).is_ok();
-        self.set_data(atom::MOVEMENT_COUNT, Data::Reserved(vec));
+        self.set_data(atom::MOVEMENT_INDEX, Data::Reserved(vec));
     }
 
     /// Returns the show movement flag (shwm).
@@ -406,7 +406,7 @@ impl Tag {
 
     /// Removes the show movement flag (shwm).
     pub fn remove_show_movement(&mut self) {
-        self.remove_data(atom::MOVEMENT_INDEX)
+        self.remove_data(atom::SHOW_MOVEMENT)
     }
 
     // TODO: should we allow flag parameter? u8 or bool? assume true?
@@ -893,5 +893,37 @@ impl Tag {
                 return;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn work_movement_handling() {
+        let movement = "my movement";
+        let index = 1u16;
+        let count = 8u16;
+        let work = "my work";
+
+        let mut tag = Tag::read_from_path("./tests/files/sample.m4a").unwrap();
+        assert_eq!(tag.movement(), None);
+        assert_eq!(tag.movement_count(), None);
+        assert_eq!(tag.movement_index(), None);
+        assert_eq!(tag.show_movement(), None);
+        assert_eq!(tag.work(), None);
+
+        tag.set_movement(movement);
+        tag.set_movement_count(count);
+        tag.set_movement_index(index);
+        tag.set_show_movement();
+        tag.set_work(work);
+
+        assert_eq!(tag.movement(), Some(movement));
+        assert_eq!(tag.movement_count(), Some(count));
+        assert_eq!(tag.movement_index(), Some(index));
+        assert_eq!(tag.show_movement(), Some(1));
+        assert_eq!(tag.work(), Some(work));
     }
 }
