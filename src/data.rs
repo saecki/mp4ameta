@@ -98,8 +98,10 @@ pub const AFFINE_TRANSFORM_F64: i32 = 79;
 /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
 #[derive(Clone, PartialEq)]
 pub enum Data {
-    /// A value containing reserved type data inside a `Option<Vec<u8>>`.
-    Reserved(Vec<u8>),
+    /// A value containing reserved type data inside a `Option<Vec<u8>>`. It
+    /// also contains optional type identifier (some types - e.g. integer value
+    /// - requires identifier).
+    Reserved(Vec<u8>, Option<i32>),
     /// A value containing a `Option<String>` decoded from utf-8.
     Utf8(String),
     /// A value containing a `Option<String>` decoded from utf-16.
@@ -116,7 +118,7 @@ impl Data {
     /// Returns the length in bytes.
     pub fn len(&self) -> usize {
         match self {
-            Data::Reserved(v) => v.len(),
+            Data::Reserved(v, _) => v.len(),
             Data::Utf8(s) => s.len(),
             Data::Utf16(s) => s.len() * 2,
             Data::Jpeg(v) => v.len(),
@@ -151,12 +153,12 @@ impl Data {
             }
 
             match datatype {
-                RESERVED => *self = Data::Reserved(read_u8_vec(reader, l)?),
+                RESERVED => *self = Data::Reserved(read_u8_vec(reader, l)?, None),
                 UTF8 => *self = Data::Utf8(read_utf8(reader, l)?),
                 UTF16 => *self = Data::Utf16(read_utf16(reader, l)?),
                 JPEG => *self = Data::Jpeg(read_u8_vec(reader, l)?),
                 PNG => *self = Data::Png(read_u8_vec(reader, l)?),
-                BE_SIGNED => *self = Data::Reserved(read_u8_vec(reader, l)?),
+                BE_SIGNED => *self = Data::Reserved(read_u8_vec(reader, l)?, Some(BE_SIGNED)),
                 _ => return Err(crate::Error::new(
                     ErrorKind::UnknownDataType(datatype),
                     "Unknown datatype code".into(),
@@ -175,7 +177,7 @@ impl Data {
     /// Attempts to write the typed data to the writer.
     pub fn write_typed(&self, writer: &mut impl Write) -> crate::Result<()> {
         let datatype = match self {
-            Data::Reserved(_) => RESERVED,
+            Data::Reserved(_, identifier) => identifier.unwrap_or(RESERVED),
             Data::Utf8(_) => UTF8,
             Data::Utf16(_) => UTF16,
             Data::Jpeg(_) => JPEG,
@@ -198,7 +200,7 @@ impl Data {
     /// Attempts to write the raw data to the writer.
     pub fn write_raw(&self, writer: &mut impl Write) -> crate::Result<()> {
         match self {
-            Data::Reserved(v) => { writer.write(v)?; }
+            Data::Reserved(v, _) => { writer.write(v)?; }
             Data::Utf8(s) => { writer.write(s.as_bytes())?; }
             Data::Utf16(s) => {
                 for c in s.encode_utf16() {
@@ -220,7 +222,7 @@ impl Data {
 impl fmt::Debug for Data {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Data::Reserved(d) => write!(f, "Reserved{{ {:?} }}", d),
+            Data::Reserved(d, it) => write!(f, "Reserved{{ {:?} TYPE: {:?} }}", d, it),
             Data::Utf8(d) => write!(f, "UTF8{{ {:?} }}", d),
             Data::Utf16(d) => write!(f, "UTF16{{ {:?} }}", d),
             Data::Jpeg(_) => write!(f, "JPEG"),
