@@ -5,7 +5,7 @@ use std::path::Path;
 
 use byteorder::{BigEndian, WriteBytesExt};
 
-use crate::{atom, Atom, Content, Data};
+use crate::{atom, data::BE_SIGNED, Atom, Content, Data};
 
 /// A list of standard genres found in the `gnre` `Atom`.
 pub const GENRES: [(u16, &str); 80] = [
@@ -332,6 +332,90 @@ impl Tag {
         self.remove_data(atom::LYRICS);
     }
 
+    /// Returns the movement (©mvn).
+    pub fn movement(&self) -> Option<&str> {
+        self.string(atom::MOVEMENT_NAME)
+    }
+
+    /// Removes the movement (©mvn).
+    pub fn remove_movement(&mut self) {
+        self.remove_data(atom::MOVEMENT_NAME)
+    }
+
+    /// Sets the movement (©mvn).
+    pub fn set_movement(&mut self, movement: impl Into<String>) {
+        self.set_data(atom::MOVEMENT_NAME, Data::Utf8(movement.into()));
+    }
+
+    /// Returns the movement count (©mvc).
+    pub fn movement_count(&self) -> Option<u16> {
+        let vec = self.reserved(atom::MOVEMENT_COUNT)?;
+
+        if vec.len() < 2 {
+            return None
+        }
+
+        Some(u16::from_be_bytes([vec[0], vec[1]]))
+    }
+
+    /// Removes the movement count (©mvc).
+    pub fn remove_movement_count(&mut self) {
+        self.remove_data(atom::MOVEMENT_COUNT)
+    }
+
+    /// Sets the movement count (©mvc).
+    pub fn set_movement_count(&mut self, count: u16) {
+        let mut vec: Vec<u8> = Vec::new();
+        let _ = vec.write_u16::<BigEndian>(count).is_ok();
+        self.set_data(atom::MOVEMENT_COUNT, Data::Reserved(vec, Some(BE_SIGNED)));
+    }
+
+    /// Returns the movement index (©mvi).
+    pub fn movement_index(&self) -> Option<u16> {
+        let vec = self.reserved(atom::MOVEMENT_INDEX)?;
+
+        if vec.len() < 2 {
+            return None
+        }
+
+        Some(u16::from_be_bytes([vec[0], vec[1]]))
+    }
+
+    /// Removes the movement index (©mvi).
+    pub fn remove_movement_index(&mut self) {
+        self.remove_data(atom::MOVEMENT_INDEX)
+    }
+
+    /// Sets the movement index (©mvi).
+    pub fn set_movement_index(&mut self, index: u16) {
+        let mut vec: Vec<u8> = Vec::new();
+        let _ = vec.write_u16::<BigEndian>(index).is_ok();
+        self.set_data(atom::MOVEMENT_INDEX, Data::Reserved(vec, Some(BE_SIGNED)));
+    }
+
+    /// Returns the show movement flag (shwm).
+    pub fn show_movement(&self) -> Option<u8> {
+        let vec = self.reserved(atom::SHOW_MOVEMENT)?;
+
+        if vec.len() < 1 {
+            return None
+        }
+
+        Some(vec[0])
+    }
+
+    /// Removes the show movement flag (shwm).
+    pub fn remove_show_movement(&mut self) {
+        self.remove_data(atom::SHOW_MOVEMENT)
+    }
+
+    // TODO: should we allow flag parameter? u8 or bool? assume true?
+    /// Sets the show movement flag to true (shwm).
+    pub fn set_show_movement(&mut self) {
+        let vec = vec![1u8];
+        self.set_data(atom::SHOW_MOVEMENT, Data::Reserved(vec, Some(BE_SIGNED)));
+    }
+
     /// Returns the title (©nam).
     pub fn title(&self) -> Option<&str> {
         self.string(atom::TITLE)
@@ -410,6 +494,21 @@ impl Tag {
         self.remove_data(atom::YEAR);
     }
 
+    /// Returns the work (©wrk).
+    pub fn work(&self) -> Option<&str> {
+        self.string(atom::WORK)
+    }
+
+    /// Removes the work (©wrk).
+    pub fn remove_work(&mut self) {
+        self.remove_data(atom::WORK)
+    }
+
+    /// Sets the work (©wrk).
+    pub fn set_work(&mut self, work: impl Into<String>) {
+        self.set_data(atom::WORK, Data::Utf8(work.into()));
+    }
+
     /// Returns the genre (gnre) or (©gen).
     pub fn genre(&self) -> Option<&str> {
         if let Some(s) = self.custom_genre() {
@@ -465,7 +564,7 @@ impl Tag {
         if genre_code > 0 && genre_code <= 80 {
             let mut vec: Vec<u8> = Vec::new();
             let _ = vec.write_u16::<BigEndian>(genre_code).is_ok();
-            self.set_data(atom::STANDARD_GENRE, Data::Reserved(vec));
+            self.set_data(atom::STANDARD_GENRE, Data::Reserved(vec, None));
         }
     }
 
@@ -518,7 +617,7 @@ impl Tag {
             let _ = vec.write_u16::<BigEndian>(i).is_ok();
         }
 
-        self.set_data(atom::TRACK_NUMBER, Data::Reserved(vec));
+        self.set_data(atom::TRACK_NUMBER, Data::Reserved(vec, None));
     }
 
     /// Removes the track number and the total number of tracks (trkn).
@@ -558,7 +657,7 @@ impl Tag {
             let _ = vec.write_u16::<BigEndian>(i).is_ok();
         }
 
-        self.set_data(atom::DISK_NUMBER, Data::Reserved(vec));
+        self.set_data(atom::DISK_NUMBER, Data::Reserved(vec, None));
     }
 
     /// Removes the disk number and the total number of disks (disk).
@@ -594,7 +693,7 @@ impl Tag {
 
         for a in &self.readonly_atoms {
             if a.ident == atom::MEDIA_HEADER {
-                if let Content::RawData(Data::Reserved(v)) = &a.content {
+                if let Content::RawData(Data::Reserved(v, _)) = &a.content {
                     vec = v;
                 }
             }
@@ -625,12 +724,12 @@ impl Tag {
     /// use mp4ameta::{Tag, Data};
     ///
     /// let mut tag = Tag::new();
-    /// tag.set_data(*b"test", Data::Reserved(vec![1,2,3,4,5,6]));
+    /// tag.set_data(*b"test", Data::Reserved(vec![1,2,3,4,5,6], None));
     /// assert_eq!(tag.reserved(*b"test").unwrap().to_vec(), vec![1,2,3,4,5,6]);
     /// ```
     pub fn reserved(&self, ident: [u8; 4]) -> Option<&Vec<u8>> {
         match self.data(ident) {
-            Some(Data::Reserved(v)) => Some(v),
+            Some(Data::Reserved(v, _)) => Some(v),
             _ => None,
         }
     }
@@ -793,6 +892,68 @@ impl Tag {
                 self.atoms.remove(i);
                 return;
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn work_movement_handling() {
+        let movement = "my movement";
+        let index = 1u16;
+        let count = 8u16;
+        let work = "my work";
+
+        let mut tag = Tag::read_from_path("./tests/files/sample.m4a").unwrap();
+        assert_eq!(tag.movement(), None);
+        assert_eq!(tag.movement_count(), None);
+        assert_eq!(tag.movement_index(), None);
+        assert_eq!(tag.show_movement(), None);
+        assert_eq!(tag.work(), None);
+
+        tag.set_movement(movement);
+        tag.set_movement_count(count);
+        tag.set_movement_index(index);
+        tag.set_show_movement();
+        tag.set_work(work);
+
+        assert_eq!(tag.movement(), Some(movement));
+        assert_eq!(tag.movement_count(), Some(count));
+        assert_eq!(tag.movement_index(), Some(index));
+        assert_eq!(tag.show_movement(), Some(1));
+        assert_eq!(tag.work(), Some(work));
+    }
+
+    #[test]
+    fn tags_with_type_identifier_implementation() {
+        let index = 1u16;
+        let count = 8u16;
+
+        let mut tag = Tag::new();
+
+        tag.set_movement_count(count);
+        tag.set_movement_index(index);
+        tag.set_show_movement();
+
+        if let Data::Reserved(_, ti) = tag.data(atom::MOVEMENT_COUNT).unwrap() {
+            assert_eq!(ti, &Some(BE_SIGNED));
+        } else {
+            assert!(false, "didn't find movement count reserved!")
+        }
+        if let Data::Reserved(_, ti) = tag.data(atom::MOVEMENT_INDEX).unwrap() {
+            assert_eq!(ti, &Some(BE_SIGNED));
+        } else {
+            assert!(false, "didn't find movement count reserved!")
+        }
+
+
+        if let Data::Reserved(_, ti) = tag.data(atom::SHOW_MOVEMENT).unwrap() {
+            assert_eq!(ti, &Some(BE_SIGNED));
+        } else {
+            assert!(false, "didn't find movement count reserved!")
         }
     }
 }
