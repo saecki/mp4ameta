@@ -119,8 +119,8 @@ impl Data {
     pub fn len(&self) -> usize {
         match self {
             Data::Reserved(v) => v.len(),
-            Data::Utf8(s) => s.len(),
-            Data::Utf16(s) => s.len() * 2,
+            Data::Utf8(s) => s.as_bytes().len(),
+            Data::Utf16(s) => s.encode_utf16().count(),
             Data::Jpeg(v) => v.len(),
             Data::Png(v) => v.len(),
             Data::BeSigned(v) => v.len(),
