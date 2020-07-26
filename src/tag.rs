@@ -352,7 +352,7 @@ impl Tag {
         let vec = self.be_signed(atom::MOVEMENT_COUNT)?;
 
         if vec.len() < 2 {
-            return None
+            return None;
         }
 
         Some(u16::from_be_bytes([vec[0], vec[1]]))
@@ -375,7 +375,7 @@ impl Tag {
         let vec = self.be_signed(atom::MOVEMENT_INDEX)?;
 
         if vec.len() < 2 {
-            return None
+            return None;
         }
 
         Some(u16::from_be_bytes([vec[0], vec[1]]))
@@ -394,14 +394,14 @@ impl Tag {
     }
 
     /// Returns the show movement flag (shwm).
-    pub fn show_movement(&self) -> Option<u8> {
+    pub fn show_movement(&self) -> Option<bool> {
         let vec = self.be_signed(atom::SHOW_MOVEMENT)?;
 
-        if vec.len() < 1 {
-            return None
+        if vec.is_empty() {
+            return None;
         }
 
-        Some(vec[0])
+        Some(vec[0] != 0)
     }
 
     /// Removes the show movement flag (shwm).
@@ -409,11 +409,9 @@ impl Tag {
         self.remove_data(atom::SHOW_MOVEMENT)
     }
 
-    // TODO: should we allow flag parameter? u8 or bool? assume true?
     /// Sets the show movement flag to true (shwm).
     pub fn set_show_movement(&mut self) {
-        let vec = vec![1u8];
-        self.set_data(atom::SHOW_MOVEMENT, Data::BeSigned(vec));
+        self.set_data(atom::SHOW_MOVEMENT, Data::BeSigned(vec![1u8]));
     }
 
     /// Returns the title (©nam).
@@ -438,10 +436,7 @@ impl Tag {
 
     /// Sets the tv episode number (tven).
     pub fn set_tv_episode_number(&mut self, tv_episode_number: impl Into<String>) {
-        self.set_data(
-            atom::TV_EPISODE_NUMBER,
-            Data::Utf8(tv_episode_number.into()),
-        );
+        self.set_data(atom::TV_EPISODE_NUMBER, Data::Utf8(tv_episode_number.into()));
     }
 
     /// Removes the tv episode number (tven).
@@ -556,7 +551,7 @@ impl Tag {
             return None;
         }
 
-        Some(u16::from_ne_bytes([v[0], v[1]]))
+        Some(u16::from_be_bytes([v[0], v[1]]))
     }
 
     /// Sets the standard genre (gnre).
@@ -599,7 +594,7 @@ impl Tag {
         let buf: Vec<u16> = vec
             .chunks_exact(2)
             .into_iter()
-            .map(|c| u16::from_ne_bytes([c[0], c[1]]))
+            .map(|c| u16::from_be_bytes([c[0], c[1]]))
             .collect();
 
         let track_number = buf[1];
@@ -639,7 +634,7 @@ impl Tag {
         let buf: Vec<u16> = vec
             .chunks_exact(2)
             .into_iter()
-            .map(|c| u16::from_ne_bytes([c[0], c[1]]))
+            .map(|c| u16::from_be_bytes([c[0], c[1]]))
             .collect();
 
         let disk_number = buf[1];
@@ -706,7 +701,7 @@ impl Tag {
         let buf: Vec<u32> = vec
             .chunks_exact(4)
             .into_iter()
-            .map(|c| u32::from_ne_bytes([c[0], c[1], c[2], c[3]]))
+            .map(|c| u32::from_be_bytes([c[0], c[1], c[2], c[3]]))
             .collect();
 
         let timescale_unit = buf[3];
@@ -887,8 +882,7 @@ impl Tag {
             }
         }
 
-        self.atoms
-            .push(Atom::with(ident, 0, Content::data_atom_with(data)));
+        self.atoms.push(Atom::with(ident, 0, Content::data_atom_with(data)));
     }
 
     /// Removes the data corresponding to the identifier.
@@ -940,7 +934,7 @@ mod tests {
         assert_eq!(tag.movement(), Some(movement));
         assert_eq!(tag.movement_count(), Some(count));
         assert_eq!(tag.movement_index(), Some(index));
-        assert_eq!(tag.show_movement(), Some(1));
+        assert_eq!(tag.show_movement(), Some(true));
         assert_eq!(tag.work(), Some(work));
     }
 }

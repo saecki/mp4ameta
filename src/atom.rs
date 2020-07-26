@@ -156,7 +156,28 @@ impl Atom {
         let mut reader = BufReader::new(file);
         let mut writer = BufWriter::new(file);
 
-        let atom_pos_and_len = locate_metadata_item_list(&mut reader)?;
+        let mut atom_pos_and_len = Vec::new();
+        let mut destination = &item_list_atom();
+        let mut ftyp = filetype_atom();
+
+        ftyp.parse(&mut reader)?;
+        ftyp.check_filetype()?;
+
+        while let Ok((length, ident)) = parse_head(&mut reader) {
+            if ident == destination.ident {
+                let pos = reader.seek(SeekFrom::Current(0))? as usize - 8;
+                atom_pos_and_len.push((pos, length));
+
+                reader.seek(SeekFrom::Current(destination.offset as i64))?;
+
+                match destination.first_child() {
+                    Some(a) => destination = a,
+                    None => break,
+                }
+            } else {
+                reader.seek(SeekFrom::Current(length as i64 - 8))?;
+            }
+        }
 
         let old_file_length = reader.seek(SeekFrom::End(0))?;
         let metadata_position = atom_pos_and_len[atom_pos_and_len.len() - 1].0 + 8;
@@ -166,9 +187,7 @@ impl Atom {
 
         // reading additional data after metadata
         let mut additional_data = Vec::new();
-        reader.seek(SeekFrom::Start(
-            (metadata_position + old_metadata_length) as u64,
-        ))?;
+        reader.seek(SeekFrom::Start((metadata_position + old_metadata_length) as u64))?;
         reader.read_to_end(&mut additional_data)?;
 
         // adjusting the file length
@@ -400,38 +419,6 @@ pub fn parse_head(reader: &mut (impl Read + Seek)) -> crate::Result<(usize, [u8;
 /// Returns the identifier formatted as a string.
 pub fn format_ident(ident: [u8; 4]) -> String {
     ident.iter().map(|b| char::from(*b)).collect()
-}
-
-/// Locates the metadata item list atom and returns a list of tuples containing the position
-/// from the beginning of the file and length in bytes of the atoms inside the hierarchy leading
-/// to it.
-pub fn locate_metadata_item_list(
-    reader: &mut (impl Read + Seek),
-) -> crate::Result<Vec<(usize, usize)>> {
-    let mut atom_pos_and_len = Vec::new();
-    let mut destination = &item_list_atom();
-    let mut ftyp = filetype_atom();
-
-    ftyp.parse(reader)?;
-    ftyp.check_filetype()?;
-
-    while let Ok((length, ident)) = parse_head(reader) {
-        if ident == destination.ident {
-            let pos = reader.seek(SeekFrom::Current(0))? as usize - 8;
-            atom_pos_and_len.push((pos, length));
-
-            reader.seek(SeekFrom::Current(destination.offset as i64))?;
-
-            match destination.first_child() {
-                Some(a) => destination = a,
-                None => break,
-            }
-        } else {
-            reader.seek(SeekFrom::Current(length as i64 - 8))?;
-        }
-    }
-
-    Ok(atom_pos_and_len)
 }
 
 /// Returns a atom filetype hierarchy needed to parse the filetype:
