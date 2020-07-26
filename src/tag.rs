@@ -394,14 +394,17 @@ impl Tag {
     }
 
     /// Returns the show movement flag (shwm).
-    pub fn show_movement(&self) -> Option<bool> {
-        let vec = self.be_signed(atom::SHOW_MOVEMENT)?;
+    pub fn show_movement(&self) -> bool {
+        let vec = match self.be_signed(atom::SHOW_MOVEMENT) {
+            Some(v) => v,
+            None => return false,
+        };
 
         if vec.is_empty() {
-            return None;
+            return false;
         }
 
-        Some(vec[0] != 0)
+        vec[0] != 0
     }
 
     /// Removes the show movement flag (shwm).
@@ -904,37 +907,5 @@ impl Tag {
                 return;
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn work_movement_handling() {
-        let movement = "my movement";
-        let index = 1u16;
-        let count = 8u16;
-        let work = "my work";
-
-        let mut tag = Tag::read_from_path("./tests/files/sample.m4a").unwrap();
-        assert_eq!(tag.movement(), None);
-        assert_eq!(tag.movement_count(), None);
-        assert_eq!(tag.movement_index(), None);
-        assert_eq!(tag.show_movement(), None);
-        assert_eq!(tag.work(), None);
-
-        tag.set_movement(movement);
-        tag.set_movement_count(count);
-        tag.set_movement_index(index);
-        tag.set_show_movement();
-        tag.set_work(work);
-
-        assert_eq!(tag.movement(), Some(movement));
-        assert_eq!(tag.movement_count(), Some(count));
-        assert_eq!(tag.movement_index(), Some(index));
-        assert_eq!(tag.show_movement(), Some(true));
-        assert_eq!(tag.work(), Some(work));
     }
 }
