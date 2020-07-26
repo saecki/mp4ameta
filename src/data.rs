@@ -98,18 +98,18 @@ pub const AFFINE_TRANSFORM_F64: i32 = 79;
 /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
 #[derive(Clone, PartialEq)]
 pub enum Data {
-    /// A value containing reserved type data inside a `Option<Vec<u8>>`.
+    /// A value containing reserved type data inside a `Vec<u8>`.
     Reserved(Vec<u8>),
-    /// A value containing signed integer inside a `Option<Vec<u8>>`.
-    BeSigned(Vec<u8>),
-    /// A value containing a `Option<String>` decoded from utf-8.
+    /// A value containing a `String` decoded from utf-8.
     Utf8(String),
-    /// A value containing a `Option<String>` decoded from utf-16.
+    /// A value containing a `String` decoded from utf-16.
     Utf16(String),
-    /// A value containing jpeg byte data inside a `Option<Vec<u8>>`.
+    /// A value containing jpeg byte data inside a `Vec<u8>`.
     Jpeg(Vec<u8>),
-    /// A value containing png byte data inside a `Option<Vec<u8>>`.
+    /// A value containing png byte data inside a `Vec<u8>`.
     Png(Vec<u8>),
+    /// A value containing big endian signed integer inside a `Vec<u8>`.
+    BeSigned(Vec<u8>),
     /// A value containing a `u32` determining the datatype of the data that is yet to be parsed.
     Unparsed(i32),
 }
@@ -119,11 +119,11 @@ impl Data {
     pub fn len(&self) -> usize {
         match self {
             Data::Reserved(v) => v.len(),
-            Data::BeSigned(v) => v.len(),
             Data::Utf8(s) => s.len(),
             Data::Utf16(s) => s.len() * 2,
             Data::Jpeg(v) => v.len(),
             Data::Png(v) => v.len(),
+            Data::BeSigned(v) => v.len(),
             Data::Unparsed(_) => 0,
         }
     }
@@ -179,11 +179,11 @@ impl Data {
     pub fn write_typed(&self, writer: &mut impl Write) -> crate::Result<()> {
         let datatype = match self {
             Data::Reserved(_) => RESERVED,
-            Data::BeSigned(_) => BE_SIGNED,
             Data::Utf8(_) => UTF8,
             Data::Utf16(_) => UTF16,
             Data::Jpeg(_) => JPEG,
             Data::Png(_) => PNG,
+            Data::BeSigned(_) => BE_SIGNED,
             Data::Unparsed(_) => return Err(crate::Error::new(
                 ErrorKind::UnWritableDataType,
                 "Data of type Data::Unparsed can't be written.".into(),
@@ -203,7 +203,6 @@ impl Data {
     pub fn write_raw(&self, writer: &mut impl Write) -> crate::Result<()> {
         match self {
             Data::Reserved(v) => { writer.write(v)?; }
-            Data::BeSigned(v) => { writer.write(v)?; }
             Data::Utf8(s) => { writer.write(s.as_bytes())?; }
             Data::Utf16(s) => {
                 for c in s.encode_utf16() {
@@ -212,6 +211,7 @@ impl Data {
             }
             Data::Jpeg(v) => { writer.write(v)?; }
             Data::Png(v) => { writer.write(v)?; }
+            Data::BeSigned(v) => { writer.write(v)?; }
             Data::Unparsed(_) => return Err(crate::Error::new(
                 ErrorKind::UnWritableDataType,
                 "Data of type Data::Unparsed cannot be written.".into(),
@@ -226,11 +226,11 @@ impl fmt::Debug for Data {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Data::Reserved(d) => write!(f, "Reserved{{ {:?} }}", d),
-            Data::BeSigned(d) => write!(f, "Reserved{{ {:?} }}", d),
             Data::Utf8(d) => write!(f, "UTF8{{ {:?} }}", d),
             Data::Utf16(d) => write!(f, "UTF16{{ {:?} }}", d),
             Data::Jpeg(_) => write!(f, "JPEG"),
             Data::Png(_) => write!(f, "PNG"),
+            Data::BeSigned(d) => write!(f, "Reserved{{ {:?} }}", d),
             Data::Unparsed(d) => write!(f, "Unparsed{{ {:?} }}", d),
         }
     }
