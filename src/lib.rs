@@ -9,9 +9,12 @@ pub use crate::content::Content;
 pub use crate::data::Data;
 pub use crate::error::{Error, ErrorKind, Result};
 pub use crate::tag::Tag;
+pub use crate::types::MediaType;
+pub use crate::types::Rating;
 
 mod atom;
 mod content;
 mod data;
 mod error;
 mod tag;
+mod types;

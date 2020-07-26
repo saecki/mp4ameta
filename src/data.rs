@@ -94,7 +94,7 @@ pub const BE_U64: i32 = 78;
 #[allow(dead_code)]
 pub const AFFINE_TRANSFORM_F64: i32 = 79;
 
-/// A struct that holds the different types of data an `Atom` can contain following
+/// An enum that holds the different types of data an `Atom` can contain, following
 /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
 #[derive(Clone, PartialEq)]
 pub enum Data {

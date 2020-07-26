@@ -1,11 +1,11 @@
-use mp4ameta::Tag;
+use mp4ameta::{Tag, MediaType, Rating};
 use std::fs;
 
 const EXTENSIONS: [&str; 4] = [".m4a", ".m4b", ".m4p", ".m4v"];
 
 #[test]
 fn test_sample_files() {
-    for f in fs::read_dir("./tests/files").unwrap() {
+    for f in fs::read_dir("./files").unwrap() {
         let filename: String = f.unwrap().path().to_str().unwrap().into();
 
         let mut mp4file = false;
@@ -28,27 +28,32 @@ fn test_sample_files() {
 
 #[test]
 fn verify_sample_data() {
-    let tag = Tag::read_from_path("./tests/files/sample.m4a").unwrap();
+    let tag = Tag::read_from_path("./files/sample.m4a").unwrap();
 
     assert_eq!(tag.album(), Some("TEST ALBUM"));
     assert_eq!(tag.album_artist(), Some("TEST ALBUM ARTIST"));
     assert_eq!(tag.artist(), Some("TEST ARTIST"));
+    assert_eq!(tag.bpm(), Some(132));
     assert_eq!(tag.category(), Some("TEST CATEGORY"));
     assert_eq!(tag.comment(), Some("TEST COMMENT"));
+    assert_eq!(tag.compilation(), true);
     assert_eq!(tag.composer(), Some("TEST COMPOSER"));
     assert_eq!(tag.copyright(), Some("TEST COPYRIGHT"));
     assert_eq!(tag.description(), Some("TEST DESCRIPTION"));
     assert_eq!(tag.disk_number(), Some((1, 2)));
     assert_eq!(tag.encoder(), Some("Lavf58.29.100"));
+    assert_eq!(tag.gapless_playback(), true);
     assert_eq!(tag.genre(), Some("Hard Rock"));
     assert_eq!(tag.grouping(), Some("TEST GROUPING"));
     assert_eq!(tag.keyword(), Some("TEST KEYWORD"));
     assert_eq!(tag.lyrics(), Some("TEST LYRICS"));
+    assert_eq!(tag.media_type(), Some(MediaType::Normal));
+    assert_eq!(tag.rating(), Some(Rating::Explicit));
     assert_eq!(tag.title(), Some("TEST TITLE"));
     assert_eq!(tag.track_number(), Some((7, 13)));
     assert_eq!(tag.year(), Some("2013"));
 }
-    
+
 #[test]
 fn work_movement_handling() {
     let movement = "TEST MOVEMENT";
@@ -56,7 +61,7 @@ fn work_movement_handling() {
     let count = 8u16;
     let work = "TEST WORK";
 
-    let mut tag = Tag::read_from_path("./tests/files/sample.m4a").unwrap();
+    let mut tag = Tag::new();
     assert_eq!(tag.movement(), None);
     assert_eq!(tag.movement_count(), None);
     assert_eq!(tag.movement_index(), None);

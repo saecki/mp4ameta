@@ -5,7 +5,7 @@ use std::path::Path;
 
 use byteorder::{BigEndian, WriteBytesExt};
 
-use crate::{atom, Atom, Content, Data};
+use crate::{atom, Atom, Content, Data, MediaType, Rating};
 
 /// A list of standard genres found in the `gnre` `Atom`.
 pub const GENRES: [(u16, &str); 80] = [
@@ -152,6 +152,7 @@ impl Tag {
         self.write_to(&file)
     }
 
+
     /// Returns the album (©alb).
     pub fn album(&self) -> Option<&str> {
         self.string(atom::ALBUM)
@@ -197,6 +198,34 @@ impl Tag {
         self.remove_data(atom::ARTIST);
     }
 
+    /// Returns the bpm (tmpo)
+    pub fn bpm(&self) -> Option<u16> {
+        let vec = match self.data(atom::BPM) {
+            Some(Data::Reserved(v)) => v,
+            Some(Data::BeSigned(v)) => v,
+            _ => return None,
+        };
+
+        if vec.len() < 2 {
+            return None;
+        }
+
+        Some(u16::from_be_bytes([vec[0], vec[1]]))
+    }
+
+    /// Sets the bpm (tmpo)
+    pub fn set_bpm(&mut self, bpm: u16) {
+        let mut vec = Vec::new();
+        let _ = vec.write_u16::<BigEndian>(bpm).is_ok();
+
+        self.set_data(atom::BPM, Data::BeSigned(vec));
+    }
+
+    /// Removes the bpm (tmpo).
+    pub fn remove_bpm(&mut self) {
+        self.remove_data(atom::BPM);
+    }
+
     /// Returns the category (catg).
     pub fn category(&self) -> Option<&str> {
         self.string(atom::CATEGORY)
@@ -225,6 +254,31 @@ impl Tag {
     /// Removes the comment (©cmt).
     pub fn remove_comment(&mut self) {
         self.remove_data(atom::COMMENT);
+    }
+
+    /// Returns the compilation flag (cpil).
+    pub fn compilation(&self) -> bool {
+        let vec = match self.data(atom::COMPILATION) {
+            Some(Data::Reserved(v)) => v,
+            Some(Data::BeSigned(v)) => v,
+            _ => return false,
+        };
+
+        if vec.is_empty() {
+            return false;
+        }
+
+        vec[0] != 0
+    }
+
+    /// Sets the compilation flag to true (cpil).
+    pub fn set_compilation(&mut self) {
+        self.set_data(atom::COMPILATION, Data::BeSigned(vec![1u8]));
+    }
+
+    /// Removes the compilation flag (cpil).
+    pub fn remove_compilation(&mut self) {
+        self.remove_data(atom::COMPILATION)
     }
 
     /// Returns the composer (©wrt).
@@ -287,6 +341,30 @@ impl Tag {
         self.remove_data(atom::ENCODER);
     }
 
+    /// Returns the gapless playback flag (pgap).
+    pub fn gapless_playback(&self) -> bool {
+        let vec = match self.be_signed(atom::GAPLESS_PLAYBACK) {
+            Some(v) => v,
+            None => return false,
+        };
+
+        if vec.is_empty() {
+            return false;
+        }
+
+        vec[0] != 0
+    }
+
+    /// Sets the gapless playback flag to true (pgap).
+    pub fn set_gapless_playback(&mut self) {
+        self.set_data(atom::GAPLESS_PLAYBACK, Data::BeSigned(vec![1u8]));
+    }
+
+    /// Removes the gapless playback flag (pgap).
+    pub fn remove_gapless_playback(&mut self) {
+        self.remove_data(atom::GAPLESS_PLAYBACK)
+    }
+
     /// Returns the grouping (©grp).
     pub fn grouping(&self) -> Option<&str> {
         self.string(atom::GROUPING)
@@ -332,19 +410,44 @@ impl Tag {
         self.remove_data(atom::LYRICS);
     }
 
+    /// Returns the media type (stik).
+    pub fn media_type(&self) -> Option<MediaType> {
+        let vec = match self.data(atom::MEDIA_TYPE) {
+            Some(Data::Reserved(v)) => v,
+            Some(Data::BeSigned(v)) => v,
+            _ => return None,
+        };
+
+        if vec.is_empty() {
+            return None;
+        }
+
+        MediaType::from(vec[0])
+    }
+
+    /// Sets the media type (stik).
+    pub fn set_media_type(&mut self, media_type: MediaType) {
+        self.set_data(atom::MEDIA_TYPE, Data::Reserved(vec![media_type.value()]));
+    }
+
+    /// Removes the media type (stik).
+    pub fn remove_media_type(&mut self) {
+        self.remove_data(atom::MEDIA_TYPE);
+    }
+
     /// Returns the movement (©mvn).
     pub fn movement(&self) -> Option<&str> {
         self.string(atom::MOVEMENT_NAME)
     }
 
-    /// Removes the movement (©mvn).
-    pub fn remove_movement(&mut self) {
-        self.remove_data(atom::MOVEMENT_NAME)
-    }
-
     /// Sets the movement (©mvn).
     pub fn set_movement(&mut self, movement: impl Into<String>) {
         self.set_data(atom::MOVEMENT_NAME, Data::Utf8(movement.into()));
+    }
+
+    /// Removes the movement (©mvn).
+    pub fn remove_movement(&mut self) {
+        self.remove_data(atom::MOVEMENT_NAME)
     }
 
     /// Returns the movement count (©mvc).
@@ -358,16 +461,17 @@ impl Tag {
         Some(u16::from_be_bytes([vec[0], vec[1]]))
     }
 
-    /// Removes the movement count (©mvc).
-    pub fn remove_movement_count(&mut self) {
-        self.remove_data(atom::MOVEMENT_COUNT)
-    }
-
     /// Sets the movement count (©mvc).
     pub fn set_movement_count(&mut self, count: u16) {
         let mut vec: Vec<u8> = Vec::new();
         let _ = vec.write_u16::<BigEndian>(count).is_ok();
+
         self.set_data(atom::MOVEMENT_COUNT, Data::BeSigned(vec));
+    }
+
+    /// Removes the movement count (©mvc).
+    pub fn remove_movement_count(&mut self) {
+        self.remove_data(atom::MOVEMENT_COUNT)
     }
 
     /// Returns the movement index (©mvi).
@@ -381,16 +485,17 @@ impl Tag {
         Some(u16::from_be_bytes([vec[0], vec[1]]))
     }
 
-    /// Removes the movement index (©mvi).
-    pub fn remove_movement_index(&mut self) {
-        self.remove_data(atom::MOVEMENT_INDEX)
-    }
-
     /// Sets the movement index (©mvi).
     pub fn set_movement_index(&mut self, index: u16) {
         let mut vec: Vec<u8> = Vec::new();
         let _ = vec.write_u16::<BigEndian>(index).is_ok();
+
         self.set_data(atom::MOVEMENT_INDEX, Data::BeSigned(vec));
+    }
+
+    /// Removes the movement index (©mvi).
+    pub fn remove_movement_index(&mut self) {
+        self.remove_data(atom::MOVEMENT_INDEX)
     }
 
     /// Returns the show movement flag (shwm).
@@ -407,14 +512,39 @@ impl Tag {
         vec[0] != 0
     }
 
+    /// Sets the show movement flag to true (shwm).
+    pub fn set_show_movement(&mut self) {
+        self.set_data(atom::SHOW_MOVEMENT, Data::BeSigned(vec![1u8]));
+    }
+
     /// Removes the show movement flag (shwm).
     pub fn remove_show_movement(&mut self) {
         self.remove_data(atom::SHOW_MOVEMENT)
     }
 
-    /// Sets the show movement flag to true (shwm).
-    pub fn set_show_movement(&mut self) {
-        self.set_data(atom::SHOW_MOVEMENT, Data::BeSigned(vec![1u8]));
+    /// Returns the rating (rtng).
+    pub fn rating(&self) -> Option<Rating> {
+        let vec = match self.data(atom::RATING) {
+            Some(Data::Reserved(v)) => v,
+            Some(Data::BeSigned(v)) => v,
+            _ => return None,
+        };
+
+        if vec.is_empty() {
+            return None;
+        }
+
+        Rating::from(vec[0])
+    }
+
+    /// Sets the rating (rtng).
+    pub fn set_rating(&mut self, rating: Rating) {
+        self.set_data(atom::RATING, Data::Reserved(vec![rating.value()]));
+    }
+
+    /// Removes the rating (rtng).
+    pub fn remove_rating(&mut self) {
+        self.remove_data(atom::RATING);
     }
 
     /// Returns the title (©nam).
@@ -594,14 +724,8 @@ impl Tag {
             return None;
         }
 
-        let buf: Vec<u16> = vec
-            .chunks_exact(2)
-            .into_iter()
-            .map(|c| u16::from_be_bytes([c[0], c[1]]))
-            .collect();
-
-        let track_number = buf[1];
-        let total_tracks = buf[2];
+        let track_number = u16::from_be_bytes([vec[2], vec[3]]);
+        let total_tracks = u16::from_be_bytes([vec[4], vec[5]]);
 
         Some((track_number, total_tracks))
     }
@@ -634,14 +758,8 @@ impl Tag {
             return None;
         }
 
-        let buf: Vec<u16> = vec
-            .chunks_exact(2)
-            .into_iter()
-            .map(|c| u16::from_be_bytes([c[0], c[1]]))
-            .collect();
-
-        let disk_number = buf[1];
-        let total_disks = buf[2];
+        let disk_number = u16::from_be_bytes([vec[2], vec[3]]);
+        let total_disks = u16::from_be_bytes([vec[4], vec[5]]);
 
         Some((disk_number, total_disks))
     }
@@ -714,6 +832,7 @@ impl Tag {
 
         Some(duration)
     }
+
 
     /// Attempts to return byte data corresponding to the identifier.
     ///

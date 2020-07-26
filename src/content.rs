@@ -3,7 +3,7 @@ use std::io::{Read, Seek, Write};
 
 use crate::{Atom, Data};
 
-/// A structure representing the different types of content an Atom might have.
+/// An enum representing the different types of content an Atom might have.
 #[derive(Clone, PartialEq)]
 pub enum Content {
     /// A value containing `Vec<Atom>`.

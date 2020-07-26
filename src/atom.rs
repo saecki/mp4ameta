@@ -51,9 +51,9 @@ pub const MEDIA_TYPE: [u8; 4] = *b"stik";
 
 // ITunes 4.9 atoms
 pub const CATEGORY: [u8; 4] = *b"catg";
-pub const EPISODE_GLOBAL_UNIQUE_ID: [u8; 4] = *b"egid";
 pub const KEYWORD: [u8; 4] = *b"keyw";
 pub const PODCAST: [u8; 4] = *b"pcst";
+pub const PODCAST_EPISODE_GLOBAL_UNIQUE_ID: [u8; 4] = *b"egid";
 pub const PODCAST_URL: [u8; 4] = *b"purl";
 
 // ITunes 5.0
@@ -452,7 +452,7 @@ pub fn metadata_atom() -> Atom {
                     .add_atom_with(DESCRIPTION, 0, Content::data_atom())
                     .add_atom_with(DISK_NUMBER, 0, Content::data_atom())
                     .add_atom_with(ENCODER, 0, Content::data_atom())
-                    .add_atom_with(EPISODE_GLOBAL_UNIQUE_ID, 0, Content::data_atom())
+                    .add_atom_with(PODCAST_EPISODE_GLOBAL_UNIQUE_ID, 0, Content::data_atom())
                     .add_atom_with(GAPLESS_PLAYBACK, 0, Content::data_atom())
                     .add_atom_with(GROUPING, 0, Content::data_atom())
                     .add_atom_with(KEYWORD, 0, Content::data_atom())

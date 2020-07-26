@@ -23,3 +23,9 @@ fn main() {
 - M4B
 - M4P
 - M4V
+
+## Useful Links
+- [AtomicParsley Doc](http://atomicparsley.sourceforge.net/mpeg-4files.html)
+- [Mutagen Doc](https://mutagen.readthedocs.io/en/latest/api/mp4.html)
+- [QuickTime Metadata Doc](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html)
+- [QuickTime Movie Atom Doc](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap2/qtff2.html)
