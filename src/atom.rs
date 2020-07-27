@@ -39,7 +39,7 @@ pub const COPYRIGHT: [u8; 4] = *b"cprt";
 pub const CUSTOM_GENRE: [u8; 4] = *b"\xa9gen";
 pub const DISK_NUMBER: [u8; 4] = *b"disk";
 pub const ENCODER: [u8; 4] = *b"\xa9too";
-pub const RATING: [u8; 4] = *b"rtng";
+pub const ADVISORY_RATING: [u8; 4] = *b"rtng";
 pub const STANDARD_GENRE: [u8; 4] = *b"gnre";
 pub const TITLE: [u8; 4] = *b"\xa9nam";
 pub const TRACK_NUMBER: [u8; 4] = *b"trkn";
@@ -439,6 +439,7 @@ pub fn metadata_atom() -> Atom {
         .add_atom_with(USER_DATA, 0, Content::atoms()
             .add_atom_with(METADATA, 4, Content::atoms()
                 .add_atom_with(ITEM_LIST, 0, Content::atoms()
+                    .add_atom_with(ADVISORY_RATING, 0, Content::data_atom())
                     .add_atom_with(ALBUM, 0, Content::data_atom())
                     .add_atom_with(ALBUM_ARTIST, 0, Content::data_atom())
                     .add_atom_with(ARTIST, 0, Content::data_atom())
@@ -452,19 +453,18 @@ pub fn metadata_atom() -> Atom {
                     .add_atom_with(DESCRIPTION, 0, Content::data_atom())
                     .add_atom_with(DISK_NUMBER, 0, Content::data_atom())
                     .add_atom_with(ENCODER, 0, Content::data_atom())
-                    .add_atom_with(PODCAST_EPISODE_GLOBAL_UNIQUE_ID, 0, Content::data_atom())
                     .add_atom_with(GAPLESS_PLAYBACK, 0, Content::data_atom())
                     .add_atom_with(GROUPING, 0, Content::data_atom())
                     .add_atom_with(KEYWORD, 0, Content::data_atom())
                     .add_atom_with(LYRICS, 0, Content::data_atom())
                     .add_atom_with(MEDIA_TYPE, 0, Content::data_atom())
-                    .add_atom_with(MOVEMENT_NAME, 0, Content::data_atom())
                     .add_atom_with(MOVEMENT_COUNT, 0, Content::data_atom())
                     .add_atom_with(MOVEMENT_INDEX, 0, Content::data_atom())
+                    .add_atom_with(MOVEMENT_NAME, 0, Content::data_atom())
                     .add_atom_with(PODCAST, 0, Content::data_atom())
+                    .add_atom_with(PODCAST_EPISODE_GLOBAL_UNIQUE_ID, 0, Content::data_atom())
                     .add_atom_with(PODCAST_URL, 0, Content::data_atom())
                     .add_atom_with(PURCHASE_DATE, 0, Content::data_atom())
-                    .add_atom_with(RATING, 0, Content::data_atom())
                     .add_atom_with(SHOW_MOVEMENT, 0, Content::data_atom())
                     .add_atom_with(STANDARD_GENRE, 0, Content::data_atom())
                     .add_atom_with(TITLE, 0, Content::data_atom())

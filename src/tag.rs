@@ -5,7 +5,7 @@ use std::path::Path;
 
 use byteorder::{BigEndian, WriteBytesExt};
 
-use crate::{atom, Atom, Content, Data, MediaType, Rating};
+use crate::{atom, Atom, Content, Data, MediaType, AdvisoryRating};
 
 /// A list of standard genres found in the `gnre` `Atom`.
 pub const GENRES: [(u16, &str); 80] = [
@@ -523,8 +523,8 @@ impl Tag {
     }
 
     /// Returns the rating (rtng).
-    pub fn rating(&self) -> Option<Rating> {
-        let vec = match self.data(atom::RATING) {
+    pub fn advisory_rating(&self) -> Option<AdvisoryRating> {
+        let vec = match self.data(atom::ADVISORY_RATING) {
             Some(Data::Reserved(v)) => v,
             Some(Data::BeSigned(v)) => v,
             _ => return None,
@@ -534,17 +534,17 @@ impl Tag {
             return None;
         }
 
-        Rating::from(vec[0])
+        Some(AdvisoryRating::from(vec[0]))
     }
 
     /// Sets the rating (rtng).
-    pub fn set_rating(&mut self, rating: Rating) {
-        self.set_data(atom::RATING, Data::Reserved(vec![rating.value()]));
+    pub fn set_advisory_rating(&mut self, rating: AdvisoryRating) {
+        self.set_data(atom::ADVISORY_RATING, Data::Reserved(vec![rating.value()]));
     }
 
     /// Removes the rating (rtng).
-    pub fn remove_rating(&mut self) {
-        self.remove_data(atom::RATING);
+    pub fn remove_advisory_rating(&mut self) {
+        self.remove_data(atom::ADVISORY_RATING);
     }
 
     /// Returns the title (©nam).

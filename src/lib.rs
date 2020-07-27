@@ -10,7 +10,7 @@ pub use crate::data::Data;
 pub use crate::error::{Error, ErrorKind, Result};
 pub use crate::tag::Tag;
 pub use crate::types::MediaType;
-pub use crate::types::Rating;
+pub use crate::types::AdvisoryRating;
 
 mod atom;
 mod content;

@@ -1,4 +1,4 @@
-use mp4ameta::{Tag, MediaType, Rating};
+use mp4ameta::{Tag, MediaType, AdvisoryRating};
 use std::fs;
 
 const EXTENSIONS: [&str; 4] = [".m4a", ".m4b", ".m4p", ".m4v"];
@@ -30,6 +30,7 @@ fn test_sample_files() {
 fn verify_sample_data() {
     let tag = Tag::read_from_path("./files/sample.m4a").unwrap();
 
+    assert_eq!(tag.advisory_rating(), Some(AdvisoryRating::Explicit(4)));
     assert_eq!(tag.album(), Some("TEST ALBUM"));
     assert_eq!(tag.album_artist(), Some("TEST ALBUM ARTIST"));
     assert_eq!(tag.artist(), Some("TEST ARTIST"));
@@ -48,7 +49,6 @@ fn verify_sample_data() {
     assert_eq!(tag.keyword(), Some("TEST KEYWORD"));
     assert_eq!(tag.lyrics(), Some("TEST LYRICS"));
     assert_eq!(tag.media_type(), Some(MediaType::Normal));
-    assert_eq!(tag.rating(), Some(Rating::Explicit));
     assert_eq!(tag.title(), Some("TEST TITLE"));
     assert_eq!(tag.track_number(), Some((7, 13)));
     assert_eq!(tag.year(), Some("2013"));

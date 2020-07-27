@@ -1,31 +1,40 @@
 // ITunes Media types
-const MOVIE: u8 = 0;
-const NORMAL: u8 = 1;
-const AUDIOBOOK: u8 = 2;
-const WHACKED_BOOKMARK: u8 = 5;
-const MUSIC_VIDEO: u8 = 6;
-const SHORT_FILM: u8 = 9;
-const TV_SHOW: u8 = 10;
-const BOOKLET: u8 = 11;
+pub const MOVIE: u8 = 0;
+pub const NORMAL: u8 = 1;
+pub const AUDIOBOOK: u8 = 2;
+pub const WHACKED_BOOKMARK: u8 = 5;
+pub const MUSIC_VIDEO: u8 = 6;
+pub const SHORT_FILM: u8 = 9;
+pub const TV_SHOW: u8 = 10;
+pub const BOOKLET: u8 = 11;
 
 // ITunes Ratings
-const CLEAN: u8 = 2;
-const EXPLICIT: u8 = 4;
+pub const CLEAN: u8 = 2;
+pub const INOFFENSIVE: u8 = 0;
 
-/// An enum describing the media type of a file.
+/// An enum describing the media type of a file stored in the `stik` atom.
 #[derive(Debug, Clone, PartialEq)]
 pub enum MediaType {
+    /// A media type stored as 0 in the `stik` atom.
     Movie,
+    /// A media type stored as 1 in the `stik` atom.
     Normal,
+    /// A media type stored as 2 in the `stik` atom.
     AudioBook,
+    /// A media type stored as 5 in the `stik` atom.
     WhackedBookmark,
+    /// A media type stored as 6 in the `stik` atom.
     MusicVideo,
+    /// A media type stored as 9 in the `stik` atom.
     ShortFilm,
+    /// A media type stored as 10 in the `stik` atom.
     TvShow,
+    /// A media type stored as 10 in the `stik` atom.
     Booklet,
 }
 
 impl MediaType {
+    /// Returns the media type corresponding to the integer value.
     pub fn from(media_type: u8) -> Option<Self> {
         match media_type {
             MOVIE => Some(Self::Movie),
@@ -40,6 +49,7 @@ impl MediaType {
         }
     }
 
+    /// Returns the integer value corresponding to the media type.
     pub fn value(&self) -> u8 {
         match self {
             Self::Movie => MOVIE,
@@ -56,25 +66,31 @@ impl MediaType {
 
 /// An enum describing the rating of a file.
 #[derive(Debug, Clone, PartialEq)]
-pub enum Rating {
+pub enum AdvisoryRating {
+    /// A rating stored as 2 in the `stik` atom.
     Clean,
-    Explicit,
+    /// A rating stored as 0 in the `stik` atom.
+    Inoffensive,
+    /// A rating indicated by any other value than 0 or 2 in the `stik` atom, containing the value.
+    Explicit(u8),
 }
 
-impl Rating {
-    pub fn from(rating: u8) -> Option<Self> {
+impl AdvisoryRating {
+    /// Returns the rating corresponding to the integer value.
+    pub fn from(rating: u8) -> Self {
         match rating {
-            CLEAN => Some(Self::Clean),
-            EXPLICIT => Some(Self::Explicit),
-            _ => None,
+            CLEAN => Self::Clean,
+            INOFFENSIVE => Self::Inoffensive,
+            _ => Self::Explicit(rating),
         }
     }
 
-    /// Returns the integer value
+    /// Returns the integer value corresponding to the rating.
     pub fn value(&self) -> u8 {
         match self {
-            Rating::Clean => CLEAN,
-            Rating::Explicit => EXPLICIT,
+            Self::Clean => CLEAN,
+            Self::Inoffensive => INOFFENSIVE,
+            Self::Explicit(r) => *r,
         }
     }
 }
