@@ -127,6 +127,7 @@ impl Atom {
 
         ftyp.parse(reader)?;
         ftyp.check_filetype()?;
+        tag_readonly_atoms.push(ftyp);
 
         moov.parse(reader)?;
 
@@ -421,7 +422,7 @@ pub fn format_ident(ident: [u8; 4]) -> String {
     ident.iter().map(|b| char::from(*b)).collect()
 }
 
-/// Returns a atom filetype hierarchy needed to parse the filetype:
+/// Returns a atom filetype hierarchy needed to parse the filetype.
 pub fn filetype_atom() -> Atom {
     Atom::with_raw_data(FILE_TYPE, 0, Data::Unparsed(data::UTF8))
 }

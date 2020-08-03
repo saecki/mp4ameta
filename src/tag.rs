@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
-use std::io::{BufReader, Read, Seek};
+use std::io::{BufReader, Read, Seek, Write};
 use std::path::Path;
 
 use byteorder::{BigEndian, WriteBytesExt};
@@ -150,6 +150,20 @@ impl Tag {
     pub fn write_to_path(&self, path: impl AsRef<Path>) -> crate::Result<()> {
         let file = OpenOptions::new().read(true).write(true).open(path)?;
         self.write_to(&file)
+    }
+
+    /// Attempts to dump the MPEG-4 audio tag to the writer.
+    pub fn dump_to(&self, writer: &mut impl Write) -> crate::Result<()> {
+        let atom = Atom::with(atom::FILE_TYPE, 0, Content::RawData(Data::Utf8("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".into())));
+        //TODO: write necessary atoms
+        atom.write_to(writer)?;
+        Ok(())
+    }
+
+    /// Attempts to dump the MPEG-4 audio tag to the writer.
+    pub fn dump_to_path(&self, path: impl AsRef<Path>) -> crate::Result<()> {
+        let mut file = File::create(path)?;
+        self.dump_to(&mut file)
     }
 
 
@@ -811,6 +825,7 @@ impl Tag {
             if a.ident == atom::MEDIA_HEADER {
                 if let Content::RawData(Data::Reserved(v)) = &a.content {
                     vec = v;
+                    break;
                 }
             }
         }
@@ -831,6 +846,19 @@ impl Tag {
         let duration = duration_units as f64 / timescale_unit as f64;
 
         Some(duration)
+    }
+
+    /// returns the filetype (ftyp).
+    pub fn filetype(&self) -> Option<String> {
+        for a in &self.readonly_atoms {
+            if a.ident == atom::FILE_TYPE {
+                if let Content::RawData(Data::Utf8(s)) = &a.content {
+                    return Some(s.to_string());
+                }
+            }
+        }
+
+        None
     }
 
 
