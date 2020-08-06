@@ -241,8 +241,8 @@ impl Tag {
 
     /// Sets the bpm (tmpo)
     pub fn set_bpm(&mut self, bpm: u16) {
-        let mut vec = Vec::new();
-        let _ = vec.write_u16::<BigEndian>(bpm).is_ok();
+        let mut vec = Vec::with_capacity(2);
+        vec.write_u16::<BigEndian>(bpm).unwrap();
 
         self.set_data(atom::BPM, Data::BeSigned(vec));
     }
@@ -489,8 +489,8 @@ impl Tag {
 
     /// Sets the movement count (©mvc).
     pub fn set_movement_count(&mut self, count: u16) {
-        let mut vec: Vec<u8> = Vec::new();
-        let _ = vec.write_u16::<BigEndian>(count).is_ok();
+        let mut vec: Vec<u8> = Vec::with_capacity(2);
+        vec.write_u16::<BigEndian>(count).unwrap();
 
         self.set_data(atom::MOVEMENT_COUNT, Data::BeSigned(vec));
     }
@@ -513,8 +513,8 @@ impl Tag {
 
     /// Sets the movement index (©mvi).
     pub fn set_movement_index(&mut self, index: u16) {
-        let mut vec: Vec<u8> = Vec::new();
-        let _ = vec.write_u16::<BigEndian>(index).is_ok();
+        let mut vec: Vec<u8> = Vec::with_capacity(2);
+        vec.write_u16::<BigEndian>(index).unwrap();
 
         self.set_data(atom::MOVEMENT_INDEX, Data::BeSigned(vec));
     }
@@ -716,8 +716,8 @@ impl Tag {
     /// Sets the standard genre (gnre).
     pub fn set_standard_genre(&mut self, genre_code: u16) {
         if genre_code > 0 && genre_code <= 80 {
-            let mut vec: Vec<u8> = Vec::new();
-            let _ = vec.write_u16::<BigEndian>(genre_code).is_ok();
+            let mut vec: Vec<u8> = Vec::with_capacity(2);
+             vec.write_u16::<BigEndian>(genre_code).unwrap();
             self.set_data(atom::STANDARD_GENRE, Data::Reserved(vec));
         }
     }
@@ -759,10 +759,10 @@ impl Tag {
     /// Sets the track number and the total number of tracks (trkn).
     pub fn set_track_number(&mut self, track_number: u16, total_tracks: u16) {
         let vec16 = vec![0u16, track_number, total_tracks, 0u16];
-        let mut vec = Vec::new();
+        let mut vec = Vec::with_capacity(8);
 
         for i in vec16 {
-            let _ = vec.write_u16::<BigEndian>(i).is_ok();
+             vec.write_u16::<BigEndian>(i).unwrap();
         }
 
         self.set_data(atom::TRACK_NUMBER, Data::Reserved(vec));
@@ -793,10 +793,10 @@ impl Tag {
     /// Sets the disk number and the total number of disks (disk).
     pub fn set_disk_number(&mut self, disk_number: u16, total_disks: u16) {
         let vec16 = vec![0u16, disk_number, total_disks];
-        let mut vec = Vec::new();
+        let mut vec = Vec::with_capacity(6);
 
         for i in vec16 {
-            let _ = vec.write_u16::<BigEndian>(i).is_ok();
+             vec.write_u16::<BigEndian>(i).unwrap();
         }
 
         self.set_data(atom::DISK_NUMBER, Data::Reserved(vec));
@@ -831,16 +831,22 @@ impl Tag {
     /// Returns the duration in seconds.
     /// [Spec](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap2/qtff2.html#//apple_ref/doc/uid/TP40000939-CH204-SW34)
     pub fn duration(&self) -> Option<f64> {
-        let mut vec = &Vec::new();
+        let mut vec = None;
 
         for a in &self.readonly_atoms {
             if a.ident == atom::MEDIA_HEADER {
                 if let Content::RawData(Data::Reserved(v)) = &a.content {
-                    vec = v;
+                    vec = Some(v);
                     break;
                 }
             }
         }
+
+        if vec.is_none() {
+            return None;
+        }
+
+        let vec = vec.unwrap();
 
         if vec.len() < 24 {
             return None;
@@ -848,7 +854,6 @@ impl Tag {
 
         let buf: Vec<u32> = vec
             .chunks_exact(4)
-            .into_iter()
             .map(|c| u32::from_be_bytes([c[0], c[1], c[2], c[3]]))
             .collect();
 

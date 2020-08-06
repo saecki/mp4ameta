@@ -117,6 +117,11 @@ impl Atom {
         8 + self.offset + self.content.len()
     }
 
+    /// Returns true if the atom has no content and only consists of it's 8 byte head.
+    pub fn is_empty(&self) -> bool {
+        self.offset + self.content.len() == 0
+    }
+
     /// Attempts to read MPEG-4 audio metadata from the reader.
     pub fn read_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
         let mut ftyp = filetype_atom();
@@ -153,7 +158,7 @@ impl Atom {
     }
 
     /// Attempts to write the metadata atoms to the file inside the item list atom.
-    pub fn write_to_file(file: &File, atoms: &Vec<Atom>) -> crate::Result<()> {
+    pub fn write_to_file(file: &File, atoms: &[Atom]) -> crate::Result<()> {
         let mut reader = BufReader::new(file);
         let mut writer = BufWriter::new(file);
 
@@ -187,7 +192,7 @@ impl Atom {
         let metadata_length_difference = new_metadata_length as i32 - old_metadata_length as i32;
 
         // reading additional data after metadata
-        let mut additional_data = Vec::new();
+        let mut additional_data = Vec::with_capacity(old_file_length as usize - (metadata_position + old_metadata_length));
         reader.seek(SeekFrom::Start((metadata_position + old_metadata_length) as u64))?;
         reader.read_to_end(&mut additional_data)?;
 
@@ -274,7 +279,7 @@ impl Atom {
             let (atom_length, atom_ident) = parse_head(reader)?;
 
             let mut parsed = false;
-            for a in atoms.into_iter() {
+            for a in atoms.iter_mut() {
                 if atom_ident == a.ident {
                     if let Err(e) = a.parse_content(reader, atom_length) {
                         return Err(crate::Error::new(
@@ -374,10 +379,10 @@ impl Atom {
                     }
                 }
 
-                return Err(crate::Error::new(
+                Err(crate::Error::new(
                     ErrorKind::InvalidFiletype(s.clone()),
                     "Invalid filetype.".into(),
-                ));
+                ))
             }
             _ => Err(crate::Error::new(
                 ErrorKind::NoTag,
