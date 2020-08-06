@@ -52,6 +52,8 @@ fn verify_sample_data() {
     assert_eq!(tag.title(), Some("TEST TITLE"));
     assert_eq!(tag.track_number(), Some((7, 13)));
     assert_eq!(tag.year(), Some("2013"));
+
+    println!("duration: {}", tag.duration().unwrap());
 }
 
 #[test]

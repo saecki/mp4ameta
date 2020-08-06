@@ -8,17 +8,17 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum ErrorKind {
     /// An error kind indicating that an atom could not be found. Contains the atom's identifier.
     AtomNotFound([u8; 4]),
-    /// An error kind indicating that an IO error has occurred. Contains the original io::Error.
+    /// An error kind indicating that an IO error has occurred. Contains the original `io::Error`.
     Io(io::Error),
     /// An error kind indicating that the filetype read from the ftyp atom was invalid. Contains
     /// the invalid filetype string.
     InvalidFiletype(String),
     /// An error kind indicating that the reader does not contain mp4 metadata.
     NoTag,
-    /// An error kind indicating that an error accured during parsing.
+    /// An error kind indicating that an error occurred during parsing.
     Parsing,
-    /// An error kind indicating that the `Content::TypedData` contains an unknown datatype.
-    /// Contains the unknown datatype code.
+    /// An error kind indicating that the datatype integer describing the typed data is unknown.
+    /// Contains the unknown datatype.
     UnknownDataType(i32),
     /// An error kind indicating that the data can't be written to a file.
     UnWritableDataType,
@@ -27,6 +27,9 @@ pub enum ErrorKind {
     Utf8StringDecoding(string::FromUtf8Error),
     /// An error kind indicating that a string decoding error has occurred.
     Utf16StringDecoding(string::FromUtf16Error),
+    /// An error kind indicating that the media type integer is unknown.
+    /// Contains the unknown media type.
+    UnknownMediaType(u8),
 }
 
 /// A structure able to represent any error that may occur while performing metadata operations.

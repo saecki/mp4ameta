@@ -238,7 +238,7 @@ impl fmt::Debug for Data {
 
 /// Attempts to read 8 bit unsigned integers from the reader to a vector of size length.
 pub fn read_u8_vec(reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Vec<u8>> {
-    let mut buff = vec![0u8; length];
+    let mut buff = Vec::with_capacity(length);
 
     reader.read_exact(&mut buff)?;
 
@@ -247,7 +247,7 @@ pub fn read_u8_vec(reader: &mut (impl Read + Seek), length: usize) -> crate::Res
 
 /// Attempts to read 16 bit unsigned integers from the reader to a vector of size length.
 pub fn read_u16_vec(reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Vec<u16>> {
-    let mut buff = vec![0u16; length];
+    let mut buff = Vec::with_capacity(length);
 
     reader.read_u16_into::<BigEndian>(&mut buff)?;
 
@@ -269,8 +269,5 @@ pub fn read_utf16(reader: &mut (impl Read + Seek), length: usize) -> crate::Resu
         reader.seek(SeekFrom::Current(1))?;
     }
 
-    match String::from_utf16(&data) {
-        Ok(s) => Ok(s),
-        Err(e) => Err(crate::Error::from(e)),
-    }
+    Ok(String::from_utf16(&data)?)
 }

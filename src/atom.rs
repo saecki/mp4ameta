@@ -1,10 +1,10 @@
 use std::fmt::{Debug, Formatter, Result};
 use std::fs::File;
-use std::io::{BufReader, BufWriter, ErrorKind, Read, Seek, SeekFrom, Write};
+use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
-use crate::{data, Content, Data, Tag};
+use crate::{data, Content, Data, Tag, ErrorKind};
 
 /// A list of valid file types defined by the `ftyp` atom.
 pub const VALID_FILE_TYPES: [&str; 5] = ["M4A ", "M4B ", "M4P ", "M4V ", "isom"];
@@ -230,10 +230,10 @@ impl Atom {
             let (length, ident) = match parse_head(reader) {
                 Ok(h) => h,
                 Err(e) => {
-                    if let crate::ErrorKind::Io(ioe) = &e.kind {
-                        if ioe.kind() == ErrorKind::UnexpectedEof {
+                    if let ErrorKind::Io(ioe) = &e.kind {
+                        if ioe.kind() == std::io::ErrorKind::UnexpectedEof {
                             return Err(crate::Error::new(
-                                crate::ErrorKind::AtomNotFound(self.ident),
+                                ErrorKind::AtomNotFound(self.ident),
                                 format!(
                                     "Reached EOF without finding an atom matching {}:",
                                     format_ident(self.ident)
@@ -375,12 +375,12 @@ impl Atom {
                 }
 
                 return Err(crate::Error::new(
-                    crate::ErrorKind::InvalidFiletype(s.clone()),
+                    ErrorKind::InvalidFiletype(s.clone()),
                     "Invalid filetype.".into(),
                 ));
             }
             _ => Err(crate::Error::new(
-                crate::ErrorKind::NoTag,
+                ErrorKind::NoTag,
                 "No filetype atom found.".into(),
             )),
         }
@@ -401,7 +401,7 @@ pub fn parse_head(reader: &mut (impl Read + Seek)) -> crate::Result<(usize, [u8;
         Ok(l) => l as usize,
         Err(e) => {
             return Err(crate::Error::new(
-                crate::ErrorKind::Io(e),
+                ErrorKind::Io(e),
                 "Error reading atom length".into(),
             ));
         }
@@ -409,7 +409,7 @@ pub fn parse_head(reader: &mut (impl Read + Seek)) -> crate::Result<(usize, [u8;
     let mut ident = [0u8; 4];
     if let Err(e) = reader.read_exact(&mut ident) {
         return Err(crate::Error::new(
-            crate::ErrorKind::Io(e),
+            ErrorKind::Io(e),
             "Error reading atom identifier".into(),
         ));
     }

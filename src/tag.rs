@@ -6,6 +6,7 @@ use std::path::Path;
 use byteorder::{BigEndian, WriteBytesExt};
 
 use crate::{atom, Atom, Content, Data, MediaType, AdvisoryRating};
+use std::convert::TryFrom;
 
 /// A list of standard genres found in the `gnre` `Atom`.
 pub const GENRES: [(u16, &str); 80] = [
@@ -154,9 +155,20 @@ impl Tag {
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.
     pub fn dump_to(&self, writer: &mut impl Write) -> crate::Result<()> {
-        let atom = Atom::with(atom::FILE_TYPE, 0, Content::RawData(Data::Utf8("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".into())));
-        //TODO: write necessary atoms
-        atom.write_to(writer)?;
+        let ftyp = Atom::with(atom::FILE_TYPE, 0, Content::RawData(
+            Data::Utf8("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".into())
+        ));
+        let moov = Atom::with(atom::MOVIE, 0, Content::atoms()
+            .add_atom_with(atom::USER_DATA, 0, Content::atoms()
+                .add_atom_with(atom::METADATA, 4, Content::atoms()
+                    .add_atom_with(atom::ITEM_LIST, 0, Content::Atoms(self.atoms.clone())),
+                ),
+            ),
+        );
+
+        ftyp.write_to(writer)?;
+        moov.write_to(writer)?;
+
         Ok(())
     }
 
@@ -436,7 +448,7 @@ impl Tag {
             return None;
         }
 
-        MediaType::from(vec[0])
+        MediaType::try_from(vec[0]).ok()
     }
 
     /// Sets the media type (stik).

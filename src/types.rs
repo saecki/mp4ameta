@@ -1,3 +1,6 @@
+use std::convert::TryFrom;
+use crate::ErrorKind;
+
 // ITunes Media types
 pub const MOVIE: u8 = 0;
 pub const NORMAL: u8 = 1;
@@ -34,21 +37,6 @@ pub enum MediaType {
 }
 
 impl MediaType {
-    /// Returns the media type corresponding to the integer value.
-    pub fn from(media_type: u8) -> Option<Self> {
-        match media_type {
-            MOVIE => Some(Self::Movie),
-            NORMAL => Some(Self::Normal),
-            AUDIOBOOK => Some(Self::AudioBook),
-            WHACKED_BOOKMARK => Some(Self::WhackedBookmark),
-            MUSIC_VIDEO => Some(Self::MusicVideo),
-            SHORT_FILM => Some(Self::ShortFilm),
-            TV_SHOW => Some(Self::TvShow),
-            BOOKLET => Some(Self::Booklet),
-            _ => None,
-        }
-    }
-
     /// Returns the integer value corresponding to the media type.
     pub fn value(&self) -> u8 {
         match self {
@@ -60,6 +48,27 @@ impl MediaType {
             Self::ShortFilm => SHORT_FILM,
             Self::TvShow => TV_SHOW,
             Self::Booklet => BOOKLET,
+        }
+    }
+}
+
+impl TryFrom<u8> for MediaType {
+    type Error = crate::Error;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            MOVIE => Ok(Self::Movie),
+            NORMAL => Ok(Self::Normal),
+            AUDIOBOOK => Ok(Self::AudioBook),
+            WHACKED_BOOKMARK => Ok(Self::WhackedBookmark),
+            MUSIC_VIDEO => Ok(Self::MusicVideo),
+            SHORT_FILM => Ok(Self::ShortFilm),
+            TV_SHOW => Ok(Self::TvShow),
+            BOOKLET => Ok(Self::Booklet),
+            _ => Err(crate::Error::new(
+                ErrorKind::UnknownMediaType(value),
+                "Unknown media type".into(),
+            )),
         }
     }
 }
@@ -76,21 +85,22 @@ pub enum AdvisoryRating {
 }
 
 impl AdvisoryRating {
-    /// Returns the rating corresponding to the integer value.
-    pub fn from(rating: u8) -> Self {
-        match rating {
-            CLEAN => Self::Clean,
-            INOFFENSIVE => Self::Inoffensive,
-            _ => Self::Explicit(rating),
-        }
-    }
-
     /// Returns the integer value corresponding to the rating.
     pub fn value(&self) -> u8 {
         match self {
             Self::Clean => CLEAN,
             Self::Inoffensive => INOFFENSIVE,
             Self::Explicit(r) => *r,
+        }
+    }
+}
+
+impl From<u8> for AdvisoryRating {
+    fn from(rating: u8) -> Self {
+        match rating {
+            CLEAN => Self::Clean,
+            INOFFENSIVE => Self::Inoffensive,
+            _ => Self::Explicit(rating),
         }
     }
 }
