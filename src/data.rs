@@ -119,13 +119,18 @@ impl Data {
     pub fn len(&self) -> usize {
         match self {
             Data::Reserved(v) => v.len(),
-            Data::Utf8(s) => s.as_bytes().len(),
+            Data::Utf8(s) => s.len(),
             Data::Utf16(s) => s.encode_utf16().count(),
             Data::Jpeg(v) => v.len(),
             Data::Png(v) => v.len(),
             Data::BeSigned(v) => v.len(),
             Data::Unparsed(_) => 0,
         }
+    }
+
+    /// Returns true if the data is empty.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     /// Attempts to parse itself from the reader.
@@ -202,16 +207,16 @@ impl Data {
     /// Attempts to write the raw data to the writer.
     pub fn write_raw(&self, writer: &mut impl Write) -> crate::Result<()> {
         match self {
-            Data::Reserved(v) => { writer.write(v)?; }
-            Data::Utf8(s) => { writer.write(s.as_bytes())?; }
+            Data::Reserved(v) => { writer.write_all(v)?; }
+            Data::Utf8(s) => { writer.write_all(s.as_bytes())?; }
             Data::Utf16(s) => {
                 for c in s.encode_utf16() {
                     writer.write_u16::<BigEndian>(c)?;
                 }
             }
-            Data::Jpeg(v) => { writer.write(v)?; }
-            Data::Png(v) => { writer.write(v)?; }
-            Data::BeSigned(v) => { writer.write(v)?; }
+            Data::Jpeg(v) => { writer.write_all(v)?; }
+            Data::Png(v) => { writer.write_all(v)?; }
+            Data::BeSigned(v) => { writer.write_all(v)?; }
             Data::Unparsed(_) => return Err(crate::Error::new(
                 ErrorKind::UnWritableDataType,
                 "Data of type Data::Unparsed cannot be written.".into(),

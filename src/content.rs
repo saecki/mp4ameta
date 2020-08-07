@@ -74,6 +74,11 @@ impl Content {
         }
     }
 
+    /// Returns true if the content is empty.
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Attempts to parse itself from the reader.
     pub fn parse(&mut self, reader: &mut (impl Read + Seek), length: usize) -> crate::Result<()> {
         match self {

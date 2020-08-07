@@ -63,7 +63,7 @@ fn work_movement_handling() {
     let count = 8u16;
     let work = "TEST WORK";
 
-    let mut tag = Tag::new();
+    let mut tag = Tag::default();
     assert_eq!(tag.movement(), None);
     assert_eq!(tag.movement_count(), None);
     assert_eq!(tag.movement_index(), None);

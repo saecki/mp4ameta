@@ -93,7 +93,7 @@ pub const GENRES: [(u16, &str); 80] = [
 ];
 
 /// A MPEG-4 audio tag containing metadata atoms
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct Tag {
     /// A vector containing metadata atoms
     pub atoms: Vec<Atom>,
@@ -102,14 +102,6 @@ pub struct Tag {
 }
 
 impl Tag {
-    /// Creates a new empty MPEG-4 audio tag.
-    pub fn new() -> Tag {
-        Tag {
-            atoms: Vec::new(),
-            readonly_atoms: Vec::new(),
-        }
-    }
-
     /// Creates a new MPEG-4 audio tag containing the atom.
     pub fn with(atoms: Vec<Atom>, readonly_atoms: Vec<Atom>) -> Tag {
         let mut tag = Tag {
@@ -717,7 +709,7 @@ impl Tag {
     pub fn set_standard_genre(&mut self, genre_code: u16) {
         if genre_code > 0 && genre_code <= 80 {
             let mut vec: Vec<u8> = Vec::with_capacity(2);
-             vec.write_u16::<BigEndian>(genre_code).unwrap();
+            vec.write_u16::<BigEndian>(genre_code).unwrap();
             self.set_data(atom::STANDARD_GENRE, Data::Reserved(vec));
         }
     }
@@ -762,7 +754,7 @@ impl Tag {
         let mut vec = Vec::with_capacity(8);
 
         for i in vec16 {
-             vec.write_u16::<BigEndian>(i).unwrap();
+            vec.write_u16::<BigEndian>(i).unwrap();
         }
 
         self.set_data(atom::TRACK_NUMBER, Data::Reserved(vec));
@@ -796,7 +788,7 @@ impl Tag {
         let mut vec = Vec::with_capacity(6);
 
         for i in vec16 {
-             vec.write_u16::<BigEndian>(i).unwrap();
+            vec.write_u16::<BigEndian>(i).unwrap();
         }
 
         self.set_data(atom::DISK_NUMBER, Data::Reserved(vec));
@@ -842,11 +834,7 @@ impl Tag {
             }
         }
 
-        if vec.is_none() {
-            return None;
-        }
-
-        let vec = vec.unwrap();
+        let vec = vec?;
 
         if vec.len() < 24 {
             return None;
@@ -885,7 +873,7 @@ impl Tag {
     /// ```
     /// use mp4ameta::{Tag, Data};
     ///
-    /// let mut tag = Tag::new();
+    /// let mut tag = Tag::default();
     /// tag.set_data(*b"test", Data::Reserved(vec![1,2,3,4,5,6]));
     /// assert_eq!(tag.reserved(*b"test").unwrap().to_vec(), vec![1,2,3,4,5,6]);
     /// ```
@@ -902,7 +890,7 @@ impl Tag {
     /// ```
     /// use mp4ameta::{Tag, Data};
     ///
-    /// let mut tag = Tag::new();
+    /// let mut tag = Tag::default();
     /// tag.set_data(*b"test", Data::BeSigned(vec![1,2,3,4,5,6]));
     /// assert_eq!(tag.be_signed(*b"test").unwrap().to_vec(), vec![1,2,3,4,5,6]);
     /// ```
@@ -919,7 +907,7 @@ impl Tag {
     /// ```
     /// use mp4ameta::{Tag, Data};
     ///
-    /// let mut tag = Tag::new();
+    /// let mut tag = Tag::default();
     /// tag.set_data(*b"test", Data::Utf8("data".into()));
     /// assert_eq!(tag.string(*b"test").unwrap(), "data");
     /// ```
@@ -938,7 +926,7 @@ impl Tag {
     /// ```
     /// use mp4ameta::{Tag, Data};
     ///
-    /// let mut tag = Tag::new();
+    /// let mut tag = Tag::default();
     /// tag.set_data(*b"test", Data::Utf8("data".into()));
     /// tag.mut_string(*b"test").unwrap().push('1');
     /// assert_eq!(tag.string(*b"test").unwrap(), "data1");
@@ -959,7 +947,7 @@ impl Tag {
     /// ```
     /// use mp4ameta::{Tag, Data};
     ///
-    /// let mut tag = Tag::new();
+    /// let mut tag = Tag::default();
     /// tag.set_data(*b"test", Data::Jpeg("<the image data>".as_bytes().to_vec()));
     /// if let Data::Jpeg(v) = tag.image(*b"test").unwrap(){
     ///     assert_eq!(v, "<the image data>".as_bytes())
@@ -982,7 +970,7 @@ impl Tag {
     /// ```
     /// use mp4ameta::{Tag, Data};
     ///
-    /// let mut tag = Tag::new();
+    /// let mut tag = Tag::default();
     /// tag.set_data(*b"test", Data::Utf8("data".into()));
     /// if let Data::Utf8(s) = tag.data(*b"test").unwrap(){
     ///     assert_eq!(s, "data");
@@ -1008,7 +996,7 @@ impl Tag {
     /// ```
     /// use mp4ameta::{Tag, Data};
     ///
-    /// let mut tag = Tag::new();
+    /// let mut tag = Tag::default();
     /// tag.set_data(*b"test", Data::Utf8("data".into()));
     /// if let Data::Utf8(s) = tag.mut_data(*b"test").unwrap(){
     ///     s.push('1');
@@ -1033,7 +1021,7 @@ impl Tag {
     /// ```
     /// use mp4ameta::{Tag, Data};
     ///
-    /// let mut tag = Tag::new();
+    /// let mut tag = Tag::default();
     /// tag.set_data(*b"test", Data::Utf8("data".into()));
     /// assert_eq!(tag.string(*b"test").unwrap(), "data");
     /// ```
@@ -1058,7 +1046,7 @@ impl Tag {
     /// ```
     /// use mp4ameta::{Tag, Data};
     ///
-    /// let mut tag = Tag::new();
+    /// let mut tag = Tag::default();
     /// tag.set_data(*b"test", Data::Utf8("data".into()));
     /// assert!(tag.data(*b"test").is_some());
     /// tag.remove_data(*b"test");

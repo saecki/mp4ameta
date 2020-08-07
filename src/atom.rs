@@ -212,7 +212,7 @@ impl Atom {
         }
 
         // writing additional data after metadata
-        writer.write(&additional_data)?;
+        writer.write_all(&additional_data)?;
         writer.flush()?;
 
         Ok(())
@@ -221,8 +221,8 @@ impl Atom {
     /// Attempts to write the atom to the writer.
     pub fn write_to(&self, writer: &mut impl Write) -> crate::Result<()> {
         writer.write_u32::<BigEndian>(self.len() as u32)?;
-        writer.write(&self.ident)?;
-        writer.write(&vec![0u8; self.offset])?;
+        writer.write_all(&self.ident)?;
+        writer.write_all(&vec![0u8; self.offset])?;
 
         self.content.write_to(writer)?;
 
