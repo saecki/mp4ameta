@@ -53,9 +53,6 @@ fn verify_sample_data() {
     assert_eq!(tag.track_number(), Some((7, 13)));
     assert_eq!(tag.year(), Some("2013"));
     println!("duration: {}", tag.duration().unwrap());
-
-    std::fs::copy("./files/sample.m4a", "./files/temp.m4a").unwrap();
-
 }
 
 #[test]
@@ -84,10 +81,10 @@ fn write_read() {
     tag.set_track_number(3, 7);
     tag.set_year("1998");
 
+    std::fs::copy("./files/sample.m4a", "./files/temp.m4a").unwrap();
     tag.write_to_path("./files/temp.m4a").unwrap();
 
     let tag = Tag::read_from_path("./files/temp.m4a").unwrap();
-
     assert_eq!(tag.advisory_rating(), Some(AdvisoryRating::Inoffensive));
     assert_eq!(tag.album(), Some("NEW ALBUM"));
     assert_eq!(tag.album_artist(), Some("NEW ALBUM ARTIST"));
@@ -110,6 +107,61 @@ fn write_read() {
     assert_eq!(tag.title(), Some("NEW TITLE"));
     assert_eq!(tag.track_number(), Some((3, 7)));
     assert_eq!(tag.year(), Some("1998"));
+
+    std::fs::remove_file("./files/temp.m4a").unwrap();
+}
+
+#[test]
+fn dump_read() {
+    let mut tag = Tag::default();
+    tag.set_advisory_rating(AdvisoryRating::Explicit(4));
+    tag.set_album("TEST ALBUM");
+    tag.set_album_artist("TEST ALBUM ARTIST");
+    tag.set_artist("TEST ARTIST");
+    tag.set_bpm(132);
+    tag.set_category("TEST CATEGORY");
+    tag.set_comment("TEST COMMENT");
+    tag.set_compilation();
+    tag.set_composer("TEST COMPOSER");
+    tag.set_copyright("TEST COPYRIGHT");
+    tag.set_description("TEST DESCRIPTION");
+    tag.set_disk_number(1, 2);
+    tag.set_encoder("Lavf58.29.100");
+    tag.set_gapless_playback();
+    tag.set_genre("Hard Rock");
+    tag.set_grouping("TEST GROUPING");
+    tag.set_keyword("TEST KEYWORD");
+    tag.set_lyrics("TEST LYRICS");
+    tag.set_media_type(MediaType::Normal);
+    tag.set_title("TEST TITLE");
+    tag.set_track_number(7, 13);
+    tag.set_year("2013");
+
+    tag.dump_to_path("./files/temp.m4a").unwrap();
+
+    let tag = Tag::read_from_path("./files/temp.m4a").unwrap();
+    assert_eq!(tag.advisory_rating(), Some(AdvisoryRating::Explicit(4)));
+    assert_eq!(tag.album(), Some("TEST ALBUM"));
+    assert_eq!(tag.album_artist(), Some("TEST ALBUM ARTIST"));
+    assert_eq!(tag.artist(), Some("TEST ARTIST"));
+    assert_eq!(tag.bpm(), Some(132));
+    assert_eq!(tag.category(), Some("TEST CATEGORY"));
+    assert_eq!(tag.comment(), Some("TEST COMMENT"));
+    assert_eq!(tag.compilation(), true);
+    assert_eq!(tag.composer(), Some("TEST COMPOSER"));
+    assert_eq!(tag.copyright(), Some("TEST COPYRIGHT"));
+    assert_eq!(tag.description(), Some("TEST DESCRIPTION"));
+    assert_eq!(tag.disk_number(), Some((1, 2)));
+    assert_eq!(tag.encoder(), Some("Lavf58.29.100"));
+    assert_eq!(tag.gapless_playback(), true);
+    assert_eq!(tag.genre(), Some("Hard Rock"));
+    assert_eq!(tag.grouping(), Some("TEST GROUPING"));
+    assert_eq!(tag.keyword(), Some("TEST KEYWORD"));
+    assert_eq!(tag.lyrics(), Some("TEST LYRICS"));
+    assert_eq!(tag.media_type(), Some(MediaType::Normal));
+    assert_eq!(tag.title(), Some("TEST TITLE"));
+    assert_eq!(tag.track_number(), Some((7, 13)));
+    assert_eq!(tag.year(), Some("2013"));
 
     std::fs::remove_file("./files/temp.m4a").unwrap();
 }
