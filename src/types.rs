@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 use crate::ErrorKind;
 
-// ITunes Media types
+// iTunes Media types
 pub const MOVIE: u8 = 0;
 pub const NORMAL: u8 = 1;
 pub const AUDIOBOOK: u8 = 2;
@@ -11,7 +11,7 @@ pub const SHORT_FILM: u8 = 9;
 pub const TV_SHOW: u8 = 10;
 pub const BOOKLET: u8 = 11;
 
-// ITunes Ratings
+// iTunes Ratings
 pub const CLEAN: u8 = 2;
 pub const INOFFENSIVE: u8 = 0;
 

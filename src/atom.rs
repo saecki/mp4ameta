@@ -26,7 +26,7 @@ pub const METADATA: [u8; 4] = *b"meta";
 /// Identifier of an atom containing a list of metadata atoms.
 pub const ITEM_LIST: [u8; 4] = *b"ilst";
 
-// ITunes 4.0 atoms
+// iTunes 4.0 atoms
 pub const ALBUM: [u8; 4] = *b"\xa9alb";
 pub const ALBUM_ARTIST: [u8; 4] = *b"aART";
 pub const ARTIST: [u8; 4] = *b"\xa9ART";
@@ -45,32 +45,32 @@ pub const TITLE: [u8; 4] = *b"\xa9nam";
 pub const TRACK_NUMBER: [u8; 4] = *b"trkn";
 pub const YEAR: [u8; 4] = *b"\xa9day";
 
-// ITunes 4.2 atoms
+// iTunes 4.2 atoms
 pub const GROUPING: [u8; 4] = *b"\xa9grp";
 pub const MEDIA_TYPE: [u8; 4] = *b"stik";
 
-// ITunes 4.9 atoms
+// iTunes 4.9 atoms
 pub const CATEGORY: [u8; 4] = *b"catg";
 pub const KEYWORD: [u8; 4] = *b"keyw";
 pub const PODCAST: [u8; 4] = *b"pcst";
 pub const PODCAST_EPISODE_GLOBAL_UNIQUE_ID: [u8; 4] = *b"egid";
 pub const PODCAST_URL: [u8; 4] = *b"purl";
 
-// ITunes 5.0
+// iTunes 5.0
 pub const DESCRIPTION: [u8; 4] = *b"desc";
 pub const LYRICS: [u8; 4] = *b"\xa9lyr";
 
-// ITunes 6.0
+// iTunes 6.0
 pub const TV_EPISODE: [u8; 4] = *b"tves";
 pub const TV_EPISODE_NUMBER: [u8; 4] = *b"tven";
 pub const TV_NETWORK_NAME: [u8; 4] = *b"tvnn";
 pub const TV_SEASON: [u8; 4] = *b"tvsn";
 pub const TV_SHOW_NAME: [u8; 4] = *b"tvsh";
 
-// ITunes 6.0.2
+// iTunes 6.0.2
 pub const PURCHASE_DATE: [u8; 4] = *b"purd";
 
-// ITunes 7.0
+// iTunes 7.0
 pub const GAPLESS_PLAYBACK: [u8; 4] = *b"pgap";
 
 // Work, Movement
