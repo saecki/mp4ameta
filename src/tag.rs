@@ -134,12 +134,14 @@ impl Tag {
         Tag::read_from(&mut file)
     }
 
-    /// Attempts to write the MPEG-4 audio tag to the writer.
+    /// Attempts to write the MPEG-4 audio tag to the writer. This will overwrite any metadata
+    /// previously present on the file.
     pub fn write_to(&self, file: &File) -> crate::Result<()> {
         Atom::write_to_file(file, &self.atoms)
     }
 
-    /// Attempts to write the MPEG-4 audio tag to the path.
+    /// Attempts to write the MPEG-4 audio tag to the path. This will overwrite any metadata
+    /// previously present on the file.
     pub fn write_to_path(&self, path: impl AsRef<Path>) -> crate::Result<()> {
         let file = OpenOptions::new().read(true).write(true).open(path)?;
         self.write_to(&file)
@@ -884,7 +886,7 @@ impl Tag {
         }
     }
 
-    /// Attempts to return integer as byte data corresponding to the identifier.
+    /// Attempts to return byte data representing an integer corresponding to the identifier.
     ///
     /// # Example
     /// ```
