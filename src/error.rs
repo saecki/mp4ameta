@@ -19,7 +19,7 @@ pub enum ErrorKind {
     Parsing,
     /// An error kind indicating that the datatype integer describing the typed data is unknown.
     /// Contains the unknown datatype.
-    UnknownDataType(i32),
+    UnknownDataType(u32),
     /// An error kind indicating that the data can't be written to a file.
     UnWritableDataType,
     /// An error kind indicating that a string decoding error has occurred. Contains the invalid

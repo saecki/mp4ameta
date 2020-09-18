@@ -1,3 +1,4 @@
+use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
 use std::io::{BufReader, Read, Seek, Write};
@@ -5,8 +6,7 @@ use std::path::Path;
 
 use byteorder::{BigEndian, WriteBytesExt};
 
-use crate::{atom, Atom, Content, Data, MediaType, AdvisoryRating};
-use std::convert::TryFrom;
+use crate::{AdvisoryRating, atom, Atom, Content, Data, MediaType};
 
 /// A list of standard genres found in the `gnre` `Atom`.
 pub const GENRES: [(u16, &str); 80] = [
@@ -104,23 +104,7 @@ pub struct Tag {
 impl Tag {
     /// Creates a new MPEG-4 audio tag containing the atom.
     pub fn with(atoms: Vec<Atom>, readonly_atoms: Vec<Atom>) -> Tag {
-        let mut tag = Tag {
-            atoms,
-            readonly_atoms,
-        };
-
-        let mut i = 0;
-        while i < tag.atoms.len() {
-            if let Some(a) = tag.atoms[i].first_child() {
-                if let Content::TypedData(Data::Unparsed(_)) = a.content {
-                    tag.atoms.remove(i);
-                    continue;
-                }
-            }
-            i += 1;
-        }
-
-        tag
+        Tag { atoms, readonly_atoms }
     }
 
     /// Attempts to read a MPEG-4 audio tag from the reader.

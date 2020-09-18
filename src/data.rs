@@ -7,92 +7,90 @@ use crate::ErrorKind;
 
 /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) code
 
-/// A datatype code that is yet to be parsed.
-pub const TYPED: i32 = -1;
 /// Reserved for use where no type needs to be indicated.
 #[allow(dead_code)]
-pub const RESERVED: i32 = 0;
+pub const RESERVED: u32 = 0;
 /// UTF-8 without any count or NULL terminator.
 #[allow(dead_code)]
-pub const UTF8: i32 = 1;
+pub const UTF8: u32 = 1;
 /// UTF-16 also known as UTF-16BE.
 #[allow(dead_code)]
-pub const UTF16: i32 = 2;
+pub const UTF16: u32 = 2;
 /// UTF-8 variant storage of a string for sorting only.
 #[allow(dead_code)]
-pub const UTF8_SORT: i32 = 4;
+pub const UTF8_SORT: u32 = 4;
 /// UTF-16 variant storage of a string for sorting only.
 #[allow(dead_code)]
-pub const UTF16_SORT: i32 = 5;
+pub const UTF16_SORT: u32 = 5;
 /// JPEG in a JFIF wrapper.
 #[allow(dead_code)]
-pub const JPEG: i32 = 13;
+pub const JPEG: u32 = 13;
 /// PNG in a PNG wrapper.
 #[allow(dead_code)]
-pub const PNG: i32 = 14;
+pub const PNG: u32 = 14;
 /// A big-endian signed integer in 1,2,3 or 4 bytes.
 #[allow(dead_code)]
-pub const BE_SIGNED: i32 = 21;
+pub const BE_SIGNED: u32 = 21;
 /// A big-endian unsigned integer in 1,2,3 or 4 bytes.
 #[allow(dead_code)]
-pub const BE_UNSIGNED: i32 = 22;
+pub const BE_UNSIGNED: u32 = 22;
 /// A big-endian 32-bit floating point value (`IEEE754`).
 #[allow(dead_code)]
-pub const BE_F32: i32 = 23;
+pub const BE_F32: u32 = 23;
 /// A big-endian 64-bit floating point value (`IEEE754`).
 #[allow(dead_code)]
-pub const BE_F64: i32 = 24;
+pub const BE_F64: u32 = 24;
 /// Windows bitmap format graphics.
 #[allow(dead_code)]
-pub const BMP: i32 = 27;
+pub const BMP: u32 = 27;
 /// QuickTime Metadata atom.
 #[allow(dead_code)]
-pub const QT_META: i32 = 28;
+pub const QT_META: u32 = 28;
 /// An 8-bit signed integer.
 #[allow(dead_code)]
-pub const I8: i32 = 65;
+pub const I8: u32 = 65;
 /// A big-endian 16-bit signed integer.
 #[allow(dead_code)]
-pub const BE_I16: i32 = 66;
+pub const BE_I16: u32 = 66;
 /// A big-endian 32-bit signed integer.
 #[allow(dead_code)]
-pub const BE_I32: i32 = 67;
+pub const BE_I32: u32 = 67;
 /// A block of data representing a two dimensional (2D) point with 32-bit big-endian floating point
 /// x and y coordinates. It has the structure:<br/>
 /// `{ BE_F32 x; BE_F32 y; }`
 #[allow(dead_code)]
-pub const BE_POINT_F32: i32 = 70;
+pub const BE_POINT_F32: u32 = 70;
 /// A block of data representing 2D dimensions with 32-bit big-endian floating point width and
 /// height. It has the structure:<br/>
 /// `{ width: BE_F32, height: BE_F32 }`
 #[allow(dead_code)]
-pub const BE_DIMS_F32: i32 = 71;
+pub const BE_DIMS_F32: u32 = 71;
 /// A block of data representing a 2D rectangle with 32-bit big-endian floating point x and y
 /// coordinates and a 32-bit big-endian floating point width and height size. It has the structure:<br/>
 /// `{ x: BE_F32, y: BE_F32, width: BE_F32, height: BE_F32 }`<br/>
 /// or the equivalent structure:<br/>
 /// `{ origin: BE_Point_F32, size: BE_DIMS_F32 }`
 #[allow(dead_code)]
-pub const BE_RECT_F32: i32 = 72;
+pub const BE_RECT_F32: u32 = 72;
 /// A big-endian 64-bit signed integer.
 #[allow(dead_code)]
-pub const BE_I64: i32 = 74;
+pub const BE_I64: u32 = 74;
 /// An 8-bit unsigned integer.
 #[allow(dead_code)]
-pub const U8: i32 = 75;
+pub const U8: u32 = 75;
 /// A big-endian 16-bit unsigned integer.
 #[allow(dead_code)]
-pub const BE_U16: i32 = 76;
+pub const BE_U16: u32 = 76;
 /// A big-endian 32-bit unsigned integer.
 #[allow(dead_code)]
-pub const BE_U32: i32 = 77;
+pub const BE_U32: u32 = 77;
 /// A big-endian 64-bit unsigned integer.
 #[allow(dead_code)]
-pub const BE_U64: i32 = 78;
+pub const BE_U64: u32 = 78;
 /// A block of data representing a 3x3 transformation matrix. It has the structure:<br/>
 /// `{ matrix: [[BE_F64; 3]; 3] }`
 #[allow(dead_code)]
-pub const AFFINE_TRANSFORM_F64: i32 = 79;
+pub const AFFINE_TRANSFORM_F64: u32 = 79;
 
 /// An enum that holds the different types of data an `Atom` can contain, following
 /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
@@ -110,8 +108,11 @@ pub enum Data {
     Png(Vec<u8>),
     /// A value containing big endian signed integer inside a `Vec<u8>`.
     BeSigned(Vec<u8>),
-    /// A value containing a `u32` determining the datatype of the data that is yet to be parsed.
-    Unparsed(i32),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct DataTemplate {
+    datatype: u32,
 }
 
 impl Data {
@@ -124,60 +125,12 @@ impl Data {
             Data::Jpeg(v) => v.len(),
             Data::Png(v) => v.len(),
             Data::BeSigned(v) => v.len(),
-            Data::Unparsed(_) => 0,
         }
     }
 
     /// Returns true if the data is empty.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
-    }
-
-    /// Attempts to parse itself from the reader.
-    pub fn parse(&mut self, reader: &mut (impl Read + Seek), length: usize) -> crate::Result<()> {
-        if let Data::Unparsed(d) = *self {
-            let mut datatype = d;
-            let mut l = length;
-
-            if d == TYPED {
-                if length >= 8 {
-                    datatype = match reader.read_i32::<BigEndian>() {
-                        Ok(d) => d,
-                        Err(e) => return Err(crate::Error::from(e)),
-                    };
-
-                    // Skipping 4 byte locale indicator
-                    reader.seek(SeekFrom::Current(4))?;
-
-                    l -= 8;
-                } else {
-                    return Err(crate::Error::new(
-                        ErrorKind::Parsing,
-                        "Typed data head to short".into(),
-                    ));
-                }
-            }
-
-            match datatype {
-                RESERVED => *self = Data::Reserved(read_u8_vec(reader, l)?),
-                UTF8 => *self = Data::Utf8(read_utf8(reader, l)?),
-                UTF16 => *self = Data::Utf16(read_utf16(reader, l)?),
-                JPEG => *self = Data::Jpeg(read_u8_vec(reader, l)?),
-                PNG => *self = Data::Png(read_u8_vec(reader, l)?),
-                BE_SIGNED => *self = Data::BeSigned(read_u8_vec(reader, l)?),
-                _ => return Err(crate::Error::new(
-                    ErrorKind::UnknownDataType(datatype),
-                    "Unknown datatype code".into(),
-                )),
-            }
-
-            Ok(())
-        } else {
-            Err(crate::Error::new(
-                ErrorKind::Parsing,
-                "Data already parsed".into(),
-            ))
-        }
     }
 
     /// Attempts to write the typed data to the writer.
@@ -189,13 +142,9 @@ impl Data {
             Data::Jpeg(_) => JPEG,
             Data::Png(_) => PNG,
             Data::BeSigned(_) => BE_SIGNED,
-            Data::Unparsed(_) => return Err(crate::Error::new(
-                ErrorKind::UnWritableDataType,
-                "Data of type Data::Unparsed can't be written.".into(),
-            )),
         };
 
-        writer.write_i32::<BigEndian>(datatype)?;
+        writer.write_u32::<BigEndian>(datatype)?;
         // Writing 4 byte locale indicator
         writer.write_u32::<BigEndian>(0)?;
 
@@ -217,10 +166,6 @@ impl Data {
             Data::Jpeg(v) => { writer.write_all(v)?; }
             Data::Png(v) => { writer.write_all(v)?; }
             Data::BeSigned(v) => { writer.write_all(v)?; }
-            Data::Unparsed(_) => return Err(crate::Error::new(
-                ErrorKind::UnWritableDataType,
-                "Data of type Data::Unparsed cannot be written.".into(),
-            )),
         }
 
         Ok(())
@@ -236,8 +181,30 @@ impl fmt::Debug for Data {
             Data::Jpeg(_) => write!(f, "JPEG"),
             Data::Png(_) => write!(f, "PNG"),
             Data::BeSigned(d) => write!(f, "Reserved{{ {:?} }}", d),
-            Data::Unparsed(d) => write!(f, "Unparsed{{ {:?} }}", d),
         }
+    }
+}
+
+impl DataTemplate {
+    /// Creates a data template
+    pub fn with(datatype: u32) -> Self {
+        DataTemplate { datatype }
+    }
+
+    /// Attempts to parse corresponding data from the reader.
+    pub fn parse(&self, reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Data> {
+        Ok(match self.datatype {
+            RESERVED => Data::Reserved(read_u8_vec(reader, length)?),
+            UTF8 => Data::Utf8(read_utf8(reader, length)?),
+            UTF16 => Data::Utf16(read_utf16(reader, length)?),
+            JPEG => Data::Jpeg(read_u8_vec(reader, length)?),
+            PNG => Data::Png(read_u8_vec(reader, length)?),
+            BE_SIGNED => Data::BeSigned(read_u8_vec(reader, length)?),
+            _ => return Err(crate::Error::new(
+                ErrorKind::UnknownDataType(self.datatype),
+                "Unknown datatype code".into(),
+            )),
+        })
     }
 }
 
@@ -259,7 +226,7 @@ pub fn read_u16_vec(reader: &mut (impl Read + Seek), length: usize) -> crate::Re
     unsafe {
         buf.set_len(length);
     }
-    
+
     reader.read_u16_into::<BigEndian>(&mut buf)?;
 
     Ok(buf)
