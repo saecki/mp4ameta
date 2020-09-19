@@ -1,6 +1,7 @@
-use std::fmt::{Debug, Formatter, Result};
+use std::fmt::{Debug, Display, Formatter, Result};
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
+use std::ops::Deref;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
@@ -12,80 +13,95 @@ use crate::data::DataT;
 pub const VALID_FILE_TYPES: [&str; 5] = ["M4A ", "M4B ", "M4P ", "M4V ", "isom"];
 
 /// Identifier of an atom information about the filetype.
-pub const FILE_TYPE: Ident = *b"ftyp";
+pub const FILE_TYPE: Ident = Ident(*b"ftyp");
 /// Identifier of an atom containing a sturcture of children storing metadata.
-pub const MOVIE: Ident = *b"moov";
+pub const MOVIE: Ident = Ident(*b"moov");
 /// Identifier of an atom containing information about a single track.
-pub const TRACK: Ident = *b"trak";
+pub const TRACK: Ident = Ident(*b"trak");
 /// Identifier of an atom containing inforamtion about a tracks media type and data.
-pub const MEDIA: Ident = *b"mdia";
+pub const MEDIA: Ident = Ident(*b"mdia");
 /// Identifier of an atom specifying the characteristics of a media atom.
-pub const MEDIA_HEADER: Ident = *b"mdhd";
+pub const MEDIA_HEADER: Ident = Ident(*b"mdhd");
 /// Identifier of an atom containing user metadata.
-pub const USER_DATA: Ident = *b"udta";
+pub const USER_DATA: Ident = Ident(*b"udta");
 /// Identifier of an atom containing a metadata item list.
-pub const METADATA: Ident = *b"meta";
+pub const METADATA: Ident = Ident(*b"meta");
 /// Identifier of an atom containing a list of metadata atoms.
-pub const ITEM_LIST: Ident = *b"ilst";
+pub const ITEM_LIST: Ident = Ident(*b"ilst");
 /// Identifier of an atom containing typed data.
-pub const DATA: Ident = *b"data";
+pub const DATA: Ident = Ident(*b"data");
 
 // iTunes 4.0 atoms
-pub const ALBUM: Ident = *b"\xa9alb";
-pub const ALBUM_ARTIST: Ident = *b"aART";
-pub const ARTIST: Ident = *b"\xa9ART";
-pub const ARTWORK: Ident = *b"covr";
-pub const BPM: Ident = *b"tmpo";
-pub const COMMENT: Ident = *b"\xa9cmt";
-pub const COMPILATION: Ident = *b"cpil";
-pub const COMPOSER: Ident = *b"\xa9wrt";
-pub const COPYRIGHT: Ident = *b"cprt";
-pub const CUSTOM_GENRE: Ident = *b"\xa9gen";
-pub const DISK_NUMBER: Ident = *b"disk";
-pub const ENCODER: Ident = *b"\xa9too";
-pub const ADVISORY_RATING: Ident = *b"rtng";
-pub const STANDARD_GENRE: Ident = *b"gnre";
-pub const TITLE: Ident = *b"\xa9nam";
-pub const TRACK_NUMBER: Ident = *b"trkn";
-pub const YEAR: Ident = *b"\xa9day";
+pub const ALBUM: Ident = Ident(*b"\xa9alb");
+pub const ALBUM_ARTIST: Ident = Ident(*b"aART");
+pub const ARTIST: Ident = Ident(*b"\xa9ART");
+pub const ARTWORK: Ident = Ident(*b"covr");
+pub const BPM: Ident = Ident(*b"tmpo");
+pub const COMMENT: Ident = Ident(*b"\xa9cmt");
+pub const COMPILATION: Ident = Ident(*b"cpil");
+pub const COMPOSER: Ident = Ident(*b"\xa9wrt");
+pub const COPYRIGHT: Ident = Ident(*b"cprt");
+pub const CUSTOM_GENRE: Ident = Ident(*b"\xa9gen");
+pub const DISK_NUMBER: Ident = Ident(*b"disk");
+pub const ENCODER: Ident = Ident(*b"\xa9too");
+pub const ADVISORY_RATING: Ident = Ident(*b"rtng");
+pub const STANDARD_GENRE: Ident = Ident(*b"gnre");
+pub const TITLE: Ident = Ident(*b"\xa9nam");
+pub const TRACK_NUMBER: Ident = Ident(*b"trkn");
+pub const YEAR: Ident = Ident(*b"\xa9day");
 
 // iTunes 4.2 atoms
-pub const GROUPING: Ident = *b"\xa9grp";
-pub const MEDIA_TYPE: Ident = *b"stik";
+pub const GROUPING: Ident = Ident(*b"\xa9grp");
+pub const MEDIA_TYPE: Ident = Ident(*b"stik");
 
 // iTunes 4.9 atoms
-pub const CATEGORY: Ident = *b"catg";
-pub const KEYWORD: Ident = *b"keyw";
-pub const PODCAST: Ident = *b"pcst";
-pub const PODCAST_EPISODE_GLOBAL_UNIQUE_ID: Ident = *b"egid";
-pub const PODCAST_URL: Ident = *b"purl";
+pub const CATEGORY: Ident = Ident(*b"catg");
+pub const KEYWORD: Ident = Ident(*b"keyw");
+pub const PODCAST: Ident = Ident(*b"pcst");
+pub const PODCAST_EPISODE_GLOBAL_UNIQUE_ID: Ident = Ident(*b"egid");
+pub const PODCAST_URL: Ident = Ident(*b"purl");
 
 // iTunes 5.0
-pub const DESCRIPTION: Ident = *b"desc";
-pub const LYRICS: Ident = *b"\xa9lyr";
+pub const DESCRIPTION: Ident = Ident(*b"desc");
+pub const LYRICS: Ident = Ident(*b"\xa9lyr");
 
 // iTunes 6.0
-pub const TV_EPISODE: Ident = *b"tves";
-pub const TV_EPISODE_NUMBER: Ident = *b"tven";
-pub const TV_NETWORK_NAME: Ident = *b"tvnn";
-pub const TV_SEASON: Ident = *b"tvsn";
-pub const TV_SHOW_NAME: Ident = *b"tvsh";
+pub const TV_EPISODE: Ident = Ident(*b"tves");
+pub const TV_EPISODE_NUMBER: Ident = Ident(*b"tven");
+pub const TV_NETWORK_NAME: Ident = Ident(*b"tvnn");
+pub const TV_SEASON: Ident = Ident(*b"tvsn");
+pub const TV_SHOW_NAME: Ident = Ident(*b"tvsh");
 
 // iTunes 6.0.2
-pub const PURCHASE_DATE: Ident = *b"purd";
+pub const PURCHASE_DATE: Ident = Ident(*b"purd");
 
 // iTunes 7.0
-pub const GAPLESS_PLAYBACK: Ident = *b"pgap";
+pub const GAPLESS_PLAYBACK: Ident = Ident(*b"pgap");
 
 // Work, Movement
-pub const MOVEMENT_NAME: Ident = *b"\xa9mvn";
-pub const MOVEMENT_COUNT: Ident = *b"\xa9mvc";
-pub const MOVEMENT_INDEX: Ident = *b"\xa9mvi";
-pub const WORK: Ident = *b"\xa9wrk";
-pub const SHOW_MOVEMENT: Ident = *b"shwm";
+pub const MOVEMENT_NAME: Ident = Ident(*b"\xa9mvn");
+pub const MOVEMENT_COUNT: Ident = Ident(*b"\xa9mvc");
+pub const MOVEMENT_INDEX: Ident = Ident(*b"\xa9mvi");
+pub const WORK: Ident = Ident(*b"\xa9wrk");
+pub const SHOW_MOVEMENT: Ident = Ident(*b"shwm");
 
-/// Type alias for atom identifiers.
-pub type Ident = [u8; 4];
+/// A 4 byte atom identifier.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Ident(pub [u8; 4]);
+
+impl Deref for Ident {
+    type Target = [u8; 4];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl Display for Ident {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        write!(f, "{}", self.0.iter().map(|b| char::from(*b)).collect::<String>())
+    }
+}
 
 /// A structure that represents a MPEG-4 audio metadata atom.
 #[derive(Clone, PartialEq)]
@@ -100,7 +116,7 @@ pub struct Atom {
 
 impl Debug for Atom {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        write!(f, "Atom{{ {}, {}, {:#?} }}", format_ident(self.ident), self.offset, self.content)
+        write!(f, "Atom{{ {}, {}, {:#?} }}", self.ident, self.offset, self.content)
     }
 }
 
@@ -180,7 +196,7 @@ impl Atom {
     /// Attempts to write the atom to the writer.
     pub fn write_to(&self, writer: &mut impl Write) -> crate::Result<()> {
         writer.write_u32::<BigEndian>(self.len() as u32)?;
-        writer.write_all(&self.ident)?;
+        writer.write_all(&*self.ident)?;
         writer.write_all(&vec![0u8; self.offset])?;
 
         self.content.write_to(writer)?;
@@ -224,7 +240,7 @@ pub struct AtomT {
 
 impl Debug for AtomT {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        write!(f, "Atom{{ {}, {}, {:#?} }}", format_ident(self.ident), self.offset, self.content)
+        write!(f, "Atom{{ {}, {}, {:#?} }}", self.ident, self.offset, self.content)
     }
 }
 
@@ -303,7 +319,7 @@ impl AtomT {
                     e.kind,
                     format!(
                         "Error reading {}: {}",
-                        format_ident(ident),
+                        ident,
                         e.description
                     ),
                 )),
@@ -313,8 +329,8 @@ impl AtomT {
                 ErrorKind::AtomNotFound(self.ident),
                 format!(
                     "Expected {} found {}",
-                    format_ident(self.ident),
-                    format_ident(ident)
+                    self.ident,
+                    ident
                 ),
             ))
         }
@@ -341,7 +357,7 @@ impl AtomT {
                                 e.kind,
                                 format!(
                                     "Error reading {}: {}",
-                                    format_ident(atom_ident),
+                                    atom_ident,
                                     e.description
                                 ),
                             ));
@@ -504,12 +520,7 @@ pub fn parse_head(reader: &mut (impl Read + Seek)) -> crate::Result<(usize, Iden
         ));
     }
 
-    Ok((length, ident))
-}
-
-/// Returns the identifier formatted as a string.
-pub fn format_ident(ident: Ident) -> String {
-    ident.iter().map(|b| char::from(*b)).collect()
+    Ok((length, Ident(ident)))
 }
 
 /// Returns a atom filetype hierarchy needed to parse the filetype.

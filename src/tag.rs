@@ -857,11 +857,11 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data};
+    /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(*b"test", Data::Reserved(vec![1,2,3,4,5,6]));
-    /// assert_eq!(tag.reserved(*b"test").unwrap().to_vec(), vec![1,2,3,4,5,6]);
+    /// tag.set_data(Ident(*b"test"), Data::Reserved(vec![1,2,3,4,5,6]));
+    /// assert_eq!(tag.reserved(Ident(*b"test")).unwrap().to_vec(), vec![1,2,3,4,5,6]);
     /// ```
     pub fn reserved(&self, ident: Ident) -> Option<&Vec<u8>> {
         match self.data(ident) {
@@ -874,11 +874,11 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data};
+    /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(*b"test", Data::BeSigned(vec![1,2,3,4,5,6]));
-    /// assert_eq!(tag.be_signed(*b"test").unwrap().to_vec(), vec![1,2,3,4,5,6]);
+    /// tag.set_data(Ident(*b"test"), Data::BeSigned(vec![1,2,3,4,5,6]));
+    /// assert_eq!(tag.be_signed(Ident(*b"test")).unwrap().to_vec(), vec![1,2,3,4,5,6]);
     /// ```
     pub fn be_signed(&self, ident: Ident) -> Option<&Vec<u8>> {
         match self.data(ident) {
@@ -891,11 +891,11 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data};
+    /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(*b"test", Data::Utf8("data".into()));
-    /// assert_eq!(tag.string(*b"test").unwrap(), "data");
+    /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
+    /// assert_eq!(tag.string(Ident(*b"test")).unwrap(), "data");
     /// ```
     pub fn string(&self, ident: Ident) -> Option<&str> {
         let d = self.data(ident)?;
@@ -910,12 +910,12 @@ impl Tag {
     /// Attempts to return a mutable string reference corresponding to the identifier.
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data};
+    /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(*b"test", Data::Utf8("data".into()));
-    /// tag.mut_string(*b"test").unwrap().push('1');
-    /// assert_eq!(tag.string(*b"test").unwrap(), "data1");
+    /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
+    /// tag.mut_string(Ident(*b"test")).unwrap().push('1');
+    /// assert_eq!(tag.string(Ident(*b"test")).unwrap(), "data1");
     /// ```
     pub fn mut_string(&mut self, ident: Ident) -> Option<&mut String> {
         let d = self.mut_data(ident)?;
@@ -931,11 +931,11 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data};
+    /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(*b"test", Data::Jpeg("<the image data>".as_bytes().to_vec()));
-    /// if let Data::Jpeg(v) = tag.image(*b"test").unwrap(){
+    /// tag.set_data(Ident(*b"test"), Data::Jpeg("<the image data>".as_bytes().to_vec()));
+    /// if let Data::Jpeg(v) = tag.image(Ident(*b"test")).unwrap(){
     ///     assert_eq!(v, "<the image data>".as_bytes())
     /// } else {
     ///     panic!("data does not match");
@@ -954,11 +954,11 @@ impl Tag {
     /// Attempts to return a data reference corresponding to the identifier.
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data};
+    /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(*b"test", Data::Utf8("data".into()));
-    /// if let Data::Utf8(s) = tag.data(*b"test").unwrap(){
+    /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
+    /// if let Data::Utf8(s) = tag.data(Ident(*b"test")).unwrap(){
     ///     assert_eq!(s, "data");
     /// } else {
     ///     panic!("data does not match");
@@ -980,14 +980,14 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data};
+    /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(*b"test", Data::Utf8("data".into()));
-    /// if let Data::Utf8(s) = tag.mut_data(*b"test").unwrap(){
+    /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
+    /// if let Data::Utf8(s) = tag.mut_data(Ident(*b"test")).unwrap(){
     ///     s.push('1');
     /// }
-    /// assert_eq!(tag.string(*b"test").unwrap(), "data1");
+    /// assert_eq!(tag.string(Ident(*b"test")).unwrap(), "data1");
     /// ```
     pub fn mut_data(&mut self, ident: Ident) -> Option<&mut Data> {
         for a in &mut self.atoms {
@@ -1005,11 +1005,11 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data};
+    /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(*b"test", Data::Utf8("data".into()));
-    /// assert_eq!(tag.string(*b"test").unwrap(), "data");
+    /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
+    /// assert_eq!(tag.string(Ident(*b"test")).unwrap(), "data");
     /// ```
     pub fn set_data(&mut self, ident: Ident, data: Data) {
         for a in &mut self.atoms {
@@ -1030,13 +1030,13 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data};
+    /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(*b"test", Data::Utf8("data".into()));
-    /// assert!(tag.data(*b"test").is_some());
-    /// tag.remove_data(*b"test");
-    /// assert!(tag.data(*b"test").is_none());
+    /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
+    /// assert!(tag.data(Ident(*b"test")).is_some());
+    /// tag.remove_data(Ident(*b"test"));
+    /// assert!(tag.data(Ident(*b"test")).is_none());
     /// ```
     pub fn remove_data(&mut self, ident: Ident) {
         for i in 0..self.atoms.len() {
