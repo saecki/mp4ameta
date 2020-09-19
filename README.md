@@ -1,7 +1,7 @@
 # rust-mp4ameta
 [![Crate](https://img.shields.io/crates/v/mp4ameta.svg)](https://crates.io/crates/mp4ameta)
 [![Documentation](https://docs.rs/mp4ameta/badge.svg)](https://docs.rs/mp4ameta)
-![CI](https://github.com/Saecki/rust-mp4ameta/workflows/CI/badge.svg)
+[![CI](https://github.com/Saecki/rust-mp4ameta/workflows/CI/badge.svg)](https://github.com/Saecki/rust-mp4ameta/actions?query=workflow%3ACI)
 
 A library for reading and writing iTunes style MPEG-4 audio metadata.
 
@@ -12,7 +12,7 @@ fn main() {
 
   	println!("{}", tag.artist().unwrap());
 
-  	tag.set_artist("<artist>");
+  	tag.set_artist("artist");
 
   	tag.write_to_path("music.m4a").unwrap();
 }
@@ -27,6 +27,11 @@ fn main() {
 ## Useful Links
 - [AtomicParsley Doc](http://atomicparsley.sourceforge.net/mpeg-4files.html)
 - [Mutagen Doc](https://mutagen.readthedocs.io/en/latest/api/mp4.html)
-- QuickTime Doc 
+- QuickTime Spec
     - [Movie Atoms](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap2/qtff2.html)
     - [Metadata](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html)
+
+## Testing
+```
+cargo test -- --test-threads=1
+```

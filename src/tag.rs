@@ -6,7 +6,7 @@ use std::path::Path;
 
 use byteorder::{BigEndian, WriteBytesExt};
 
-use crate::{AdvisoryRating, atom, Atom, Content, Data, MediaType};
+use crate::{AdvisoryRating, atom, Atom, Content, Data, Ident, MediaType};
 
 /// A list of standard genres found in the `gnre` `Atom`.
 pub const GENRES: [(u16, &str); 80] = [
@@ -109,7 +109,7 @@ impl Tag {
 
     /// Attempts to read a MPEG-4 audio tag from the reader.
     pub fn read_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
-        Atom::read_from(reader)
+        atom::read_tag_from(reader)
     }
 
     /// Attempts to read a MPEG-4 audio tag from the file at the indicated path.
@@ -121,7 +121,7 @@ impl Tag {
     /// Attempts to write the MPEG-4 audio tag to the writer. This will overwrite any metadata
     /// previously present on the file.
     pub fn write_to(&self, file: &File) -> crate::Result<()> {
-        Atom::write_to_file(file, &self.atoms)
+        atom::write_tag_to(file, &self.atoms)
     }
 
     /// Attempts to write the MPEG-4 audio tag to the path. This will overwrite any metadata
@@ -863,7 +863,7 @@ impl Tag {
     /// tag.set_data(*b"test", Data::Reserved(vec![1,2,3,4,5,6]));
     /// assert_eq!(tag.reserved(*b"test").unwrap().to_vec(), vec![1,2,3,4,5,6]);
     /// ```
-    pub fn reserved(&self, ident: [u8; 4]) -> Option<&Vec<u8>> {
+    pub fn reserved(&self, ident: Ident) -> Option<&Vec<u8>> {
         match self.data(ident) {
             Some(Data::Reserved(v)) => Some(v),
             _ => None,
@@ -880,7 +880,7 @@ impl Tag {
     /// tag.set_data(*b"test", Data::BeSigned(vec![1,2,3,4,5,6]));
     /// assert_eq!(tag.be_signed(*b"test").unwrap().to_vec(), vec![1,2,3,4,5,6]);
     /// ```
-    pub fn be_signed(&self, ident: [u8; 4]) -> Option<&Vec<u8>> {
+    pub fn be_signed(&self, ident: Ident) -> Option<&Vec<u8>> {
         match self.data(ident) {
             Some(Data::BeSigned(v)) => Some(v),
             _ => None,
@@ -897,7 +897,7 @@ impl Tag {
     /// tag.set_data(*b"test", Data::Utf8("data".into()));
     /// assert_eq!(tag.string(*b"test").unwrap(), "data");
     /// ```
-    pub fn string(&self, ident: [u8; 4]) -> Option<&str> {
+    pub fn string(&self, ident: Ident) -> Option<&str> {
         let d = self.data(ident)?;
 
         match d {
@@ -917,7 +917,7 @@ impl Tag {
     /// tag.mut_string(*b"test").unwrap().push('1');
     /// assert_eq!(tag.string(*b"test").unwrap(), "data1");
     /// ```
-    pub fn mut_string(&mut self, ident: [u8; 4]) -> Option<&mut String> {
+    pub fn mut_string(&mut self, ident: Ident) -> Option<&mut String> {
         let d = self.mut_data(ident)?;
 
         match d {
@@ -941,7 +941,7 @@ impl Tag {
     ///     panic!("data does not match");
     /// }
     /// ```
-    pub fn image(&self, ident: [u8; 4]) -> Option<Data> {
+    pub fn image(&self, ident: Ident) -> Option<Data> {
         let d = self.data(ident)?;
 
         match d {
@@ -964,7 +964,7 @@ impl Tag {
     ///     panic!("data does not match");
     /// }
     /// ```
-    pub fn data(&self, ident: [u8; 4]) -> Option<&Data> {
+    pub fn data(&self, ident: Ident) -> Option<&Data> {
         for a in &self.atoms {
             if a.ident == ident {
                 if let Content::TypedData(data) = &a.first_child()?.content {
@@ -989,7 +989,7 @@ impl Tag {
     /// }
     /// assert_eq!(tag.string(*b"test").unwrap(), "data1");
     /// ```
-    pub fn mut_data(&mut self, ident: [u8; 4]) -> Option<&mut Data> {
+    pub fn mut_data(&mut self, ident: Ident) -> Option<&mut Data> {
         for a in &mut self.atoms {
             if a.ident == ident {
                 if let Content::TypedData(data) = &mut a.mut_first_child()?.content {
@@ -1011,7 +1011,7 @@ impl Tag {
     /// tag.set_data(*b"test", Data::Utf8("data".into()));
     /// assert_eq!(tag.string(*b"test").unwrap(), "data");
     /// ```
-    pub fn set_data(&mut self, ident: [u8; 4], data: Data) {
+    pub fn set_data(&mut self, ident: Ident, data: Data) {
         for a in &mut self.atoms {
             if a.ident == ident {
                 if let Some(p) = a.mut_first_child() {
@@ -1038,7 +1038,7 @@ impl Tag {
     /// tag.remove_data(*b"test");
     /// assert!(tag.data(*b"test").is_none());
     /// ```
-    pub fn remove_data(&mut self, ident: [u8; 4]) {
+    pub fn remove_data(&mut self, ident: Ident) {
         for i in 0..self.atoms.len() {
             if self.atoms[i].ident == ident {
                 self.atoms.remove(i);

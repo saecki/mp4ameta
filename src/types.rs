@@ -32,7 +32,7 @@ pub enum MediaType {
     ShortFilm,
     /// A media type stored as 10 in the `stik` atom.
     TvShow,
-    /// A media type stored as 10 in the `stik` atom.
+    /// A media type stored as 11 in the `stik` atom.
     Booklet,
 }
 

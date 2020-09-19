@@ -1,5 +1,6 @@
-use mp4ameta::{Tag, MediaType, AdvisoryRating};
 use std::fs;
+
+use mp4ameta::{AdvisoryRating, MediaType, Tag};
 
 const EXTENSIONS: [&str; 4] = [".m4a", ".m4b", ".m4p", ".m4v"];
 

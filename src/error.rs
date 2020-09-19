@@ -1,5 +1,7 @@
 use std::{error, fmt, io, string};
 
+use crate::Ident;
+
 /// Type alias for the result of tag operations.
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -7,7 +9,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug)]
 pub enum ErrorKind {
     /// An error kind indicating that an atom could not be found. Contains the atom's identifier.
-    AtomNotFound([u8; 4]),
+    AtomNotFound(Ident),
     /// An error kind indicating that an IO error has occurred. Contains the original `io::Error`.
     Io(io::Error),
     /// An error kind indicating that the filetype read from the ftyp atom was invalid. Contains

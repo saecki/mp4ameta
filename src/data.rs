@@ -5,7 +5,7 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::ErrorKind;
 
-/// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) code
+// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) code
 
 /// Reserved for use where no type needs to be indicated.
 #[allow(dead_code)]
@@ -92,7 +92,7 @@ pub const BE_U64: u32 = 78;
 #[allow(dead_code)]
 pub const AFFINE_TRANSFORM_F64: u32 = 79;
 
-/// An enum that holds the different types of data an `Atom` can contain, following
+/// An enum that holds different types of data defined by
 /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
 #[derive(Clone, PartialEq)]
 pub enum Data {
@@ -110,9 +110,17 @@ pub enum Data {
     BeSigned(Vec<u8>),
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct DataTemplate {
-    datatype: u32,
+impl fmt::Debug for Data {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Data::Reserved(d) => write!(f, "Reserved{{ {:?} }}", d),
+            Data::Utf8(d) => write!(f, "UTF8{{ {:?} }}", d),
+            Data::Utf16(d) => write!(f, "UTF16{{ {:?} }}", d),
+            Data::Jpeg(_) => write!(f, "JPEG"),
+            Data::Png(_) => write!(f, "PNG"),
+            Data::BeSigned(d) => write!(f, "Reserved{{ {:?} }}", d),
+        }
+    }
 }
 
 impl Data {
@@ -172,23 +180,19 @@ impl Data {
     }
 }
 
-impl fmt::Debug for Data {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Data::Reserved(d) => write!(f, "Reserved{{ {:?} }}", d),
-            Data::Utf8(d) => write!(f, "UTF8{{ {:?} }}", d),
-            Data::Utf16(d) => write!(f, "UTF16{{ {:?} }}", d),
-            Data::Jpeg(_) => write!(f, "JPEG"),
-            Data::Png(_) => write!(f, "PNG"),
-            Data::BeSigned(d) => write!(f, "Reserved{{ {:?} }}", d),
-        }
-    }
+/// A template used for parsing data defined by
+/// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
+#[derive(Clone, Debug, PartialEq)]
+pub struct DataT {
+    /// A datatype defined by
+    /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
+    datatype: u32,
 }
 
-impl DataTemplate {
-    /// Creates a data template
+impl DataT {
+    /// Creates a data template containing the datatype.
     pub fn with(datatype: u32) -> Self {
-        DataTemplate { datatype }
+        DataT { datatype }
     }
 
     /// Attempts to parse corresponding data from the reader.

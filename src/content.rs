@@ -3,28 +3,22 @@ use std::io::{Read, Seek, SeekFrom, Write};
 
 use byteorder::{BigEndian, ReadBytesExt};
 
-use crate::{Atom, Data, ErrorKind};
-use crate::atom::AtomTemplate;
-use crate::data::DataTemplate;
+use crate::{Atom, Data, ErrorKind, Ident};
+use crate::atom::AtomT;
+use crate::data::DataT;
 
-/// An enum representing the different types of content an Atom might have.
+/// An enum representing the different types of content an atom might have.
 #[derive(Clone, PartialEq)]
 pub enum Content {
     /// A value containing `Vec<Atom>`.
     Atoms(Vec<Atom>),
     /// A value containing raw `Data`.
     RawData(Data),
-    /// A value containing `Data` defined by a [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) code.
+    /// A value containing `Data` defined by a
+    /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34)
+    /// code.
     TypedData(Data),
-    /// Empty `Content`.
-    Empty,
-}
-
-#[derive(Clone, PartialEq)]
-pub enum ContentTemplate {
-    Atoms(Vec<AtomTemplate>),
-    RawData(DataTemplate),
-    TypedData,
+    /// Empty content.
     Empty,
 }
 
@@ -32,58 +26,58 @@ impl Debug for Content {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self {
             Content::Atoms(a) => write!(f, "Content::Atoms{{ {:#?} }}", a),
-            Content::TypedData(d) => write!(f, "Content::TypedData{{ {:?} }}", d),
             Content::RawData(d) => write!(f, "Content::RawData{{ {:?} }}", d),
+            Content::TypedData(d) => write!(f, "Content::TypedData{{ {:?} }}", d),
             Content::Empty => write!(f, "Content::Empty"),
         }
     }
 }
 
 impl Content {
-    /// Creates a new content of type `Content::Atoms` containing an empty `Vec`.
-    pub fn atoms() -> Content {
-        Content::Atoms(Vec::new())
+    /// Creates a new content of type `Self::Atoms` containing an empty `Vec`.
+    pub fn atoms() -> Self {
+        Self::Atoms(Vec::new())
     }
 
-    /// Creates a new content of type `Content::Atoms` containing the atom.
-    pub fn atom(atom: Atom) -> Content {
-        Content::Atoms(vec![atom])
+    /// Creates a new content of type `Self::Atoms` containing the atom.
+    pub fn atom(atom: Atom) -> Self {
+        Self::Atoms(vec![atom])
     }
 
-    /// Creates a new content of type `Content::Atoms` containing a data `Atom` with the data.
-    pub fn data_atom_with(data: Data) -> Content {
-        Content::atom(Atom::data_atom_with(data))
+    /// Creates a new content of type `Self::Atoms` containing a data `Atom` with the data.
+    pub fn data_atom_with(data: Data) -> Self {
+        Self::atom(Atom::data_atom_with(data))
     }
 
-    /// Creates a new `Content` of type `Content::Atoms` containing a new `Atom` with the identifier,
+    /// Creates a new `Self` of type `Self::Atoms` containing a new `Atom` with the identifier,
     /// offset and content.
-    pub fn atom_with(ident: [u8; 4], offset: usize, content: Content) -> Content {
-        Content::atom(Atom::with(ident, offset, content))
+    pub fn atom_with(ident: Ident, offset: usize, content: Self) -> Self {
+        Self::atom(Atom::with(ident, offset, content))
     }
 
-    /// Adds the atom to the list of children atoms if `self` is of type `Content::Atoms`.
-    pub fn add_atom(self, atom: Atom) -> Content {
-        if let Content::Atoms(mut atoms) = self {
+    /// Adds the atom to the list of children atoms if `self` is of type `Self::Atoms`.
+    pub fn add_atom(self, atom: Atom) -> Self {
+        if let Self::Atoms(mut atoms) = self {
             atoms.push(atom);
-            Content::Atoms(atoms)
+            Self::Atoms(atoms)
         } else {
             self
         }
     }
 
-    /// Adds a new `Atom` with the provided identifier, offset and content to the list of children if
-    /// `self` is of type `Content::Atoms`.
-    pub fn add_atom_with(self, ident: [u8; 4], offset: usize, content: Content) -> Content {
+    /// Adds a new `Atom` with the provided identifier, offset and content to the list of children
+    /// if `self` is of type `Self::Atoms`.
+    pub fn add_atom_with(self, ident: Ident, offset: usize, content: Self) -> Self {
         self.add_atom(Atom::with(ident, offset, content))
     }
 
     /// Returns the length in bytes.
     pub fn len(&self) -> usize {
         match self {
-            Content::Atoms(v) => v.iter().map(|a| a.len()).sum(),
-            Content::TypedData(d) => 8 + d.len(),
-            Content::RawData(d) => d.len(),
-            Content::Empty => 0,
+            Self::Atoms(v) => v.iter().map(|a| a.len()).sum(),
+            Self::RawData(d) => d.len(),
+            Self::TypedData(d) => 8 + d.len(),
+            Self::Empty => 0,
         }
     }
 
@@ -95,55 +89,70 @@ impl Content {
     /// Attempts to write the content to the writer.
     pub fn write_to(&self, writer: &mut impl Write) -> crate::Result<()> {
         match self {
-            Content::Atoms(v) => {
+            Self::Atoms(v) => {
                 for a in v {
                     a.write_to(writer)?;
                 }
             }
-            Content::RawData(d) => d.write_raw(writer)?,
-            Content::TypedData(d) => d.write_typed(writer)?,
-            Content::Empty => (),
+            Self::RawData(d) => d.write_raw(writer)?,
+            Self::TypedData(d) => d.write_typed(writer)?,
+            Self::Empty => (),
         }
 
         Ok(())
     }
 }
 
-impl Debug for ContentTemplate {
+/// A template representing the different types of content an atom template might have.
+#[derive(Clone, PartialEq)]
+pub enum ContentT {
+    /// A
+    Atoms(Vec<AtomT>),
+    /// A value containing a data template specifying the datatype.
+    RawData(DataT),
+    /// A template representing typed data that is defined by a
+    /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34)
+    /// code prior to the data parsed.
+    TypedData,
+    /// Empty content.
+    Empty,
+}
+
+impl Debug for ContentT {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self {
-            ContentTemplate::Atoms(a) => write!(f, "ContentTemplate::Atoms{{ {:#?} }}", a),
-            ContentTemplate::TypedData => write!(f, "ContentTemplate::TypedData"),
-            ContentTemplate::RawData(d) => write!(f, "ContentTemplate::RawData{{ {:?} }}", d),
-            ContentTemplate::Empty => write!(f, "ContentTemplate::Empty"),
+            ContentT::Atoms(a) => write!(f, "ContentT::Atoms{{ {:#?} }}", a),
+            ContentT::RawData(d) => write!(f, "ContentT::RawData{{ {:?} }}", d),
+            ContentT::TypedData => write!(f, "ContentT::TypedData"),
+            ContentT::Empty => write!(f, "ContentT::Empty"),
         }
     }
 }
 
-impl ContentTemplate {
-    /// Creates a new content of type `Content::Atoms` containing an empty `Vec`.
-    pub fn atoms_template() -> Self {
+impl ContentT {
+    /// Creates a new content template of type `Self::Atoms` containing an empty `Vec`.
+    pub fn atoms_t() -> Self {
         Self::Atoms(Vec::new())
     }
 
-    /// Creates a new content of type `Self::Atoms` containing the atom.
-    pub fn atom(atom: AtomTemplate) -> Self {
+    /// Creates a new content template of type `Self::Atoms` containing the atom template.
+    pub fn atom_t(atom: AtomT) -> Self {
         Self::Atoms(vec![atom])
     }
 
-    /// Creates a new content of type `Self::Atoms` containing a data `Atom`.
-    pub fn data_atom_template() -> Self {
-        Self::atom(AtomTemplate::data_atom())
+    /// Creates a new content template of type `Self::Atoms` containing a data atom template.
+    pub fn data_atom_t() -> Self {
+        Self::atom_t(AtomT::data_atom())
     }
 
-    /// Creates a new `Self` of type `Self::Atoms` containing a new `Atom` with the identifier,
-    /// offset and content.
-    pub fn atom_with(ident: [u8; 4], offset: usize, content: Self) -> Self {
-        Self::atom(AtomTemplate::with(ident, offset, content))
+    /// Creates a new content template of type `Self::Atoms` containing a new atom template with the
+    /// identifier, offset and content.
+    pub fn atom_t_with(ident: Ident, offset: usize, content: Self) -> Self {
+        Self::atom_t(AtomT::with(ident, offset, content))
     }
 
-    /// Adds the atom to the list of children atoms if `self` is of type `Self::Atoms`.
-    pub fn add_atom(self, atom: AtomTemplate) -> Self {
+    /// Adds the atom template to the list of children atom templates if `self` is of type `Self::Atoms`.
+    pub fn add_atom_t(self, atom: AtomT) -> Self {
         if let Self::Atoms(mut atoms) = self {
             atoms.push(atom);
             Self::Atoms(atoms)
@@ -152,23 +161,23 @@ impl ContentTemplate {
         }
     }
 
-    /// Adds a data `Atom` to the list of children if `self` is of type `Self::Atoms`.
-    pub fn add_data_atom(self) -> Self {
-        self.add_atom(AtomTemplate::data_atom())
+    /// Adds a data atom template to the list of children if `self` is of type `Self::Atoms`.
+    pub fn add_data_atom_t(self) -> Self {
+        self.add_atom_t(AtomT::data_atom())
     }
 
-    /// Adds a new atom with the provided identifier, offset and content to the list of children
-    /// if `self` is of type `ContentTemplate::Atoms`.
-    pub fn add_atom_template_with(self, ident: [u8; 4], offset: usize, content: Self) -> Self {
-        self.add_atom(AtomTemplate::with(ident, offset, content))
+    /// Adds a new atom template with the provided identifier, offset and content template to the
+    /// list of children, if `self` is of type `Self::Atoms`.
+    pub fn add_atom_t_with(self, ident: Ident, offset: usize, content: Self) -> Self {
+        self.add_atom_t(AtomT::with(ident, offset, content))
     }
 
-    /// Attempts to parse itself from the reader.
+    /// Attempts to parse corresponding content from the reader.
     pub fn parse(&self, reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Content> {
         Ok(match self {
-            ContentTemplate::Atoms(v) => Content::Atoms(AtomTemplate::parse_atoms(v, reader, length)?),
-            ContentTemplate::RawData(d) => Content::RawData(d.parse(reader, length)?),
-            ContentTemplate::TypedData => {
+            ContentT::Atoms(v) => Content::Atoms(AtomT::parse_atoms(v, reader, length)?),
+            ContentT::RawData(d) => Content::RawData(d.parse(reader, length)?),
+            ContentT::TypedData => {
                 if length >= 8 {
                     let datatype = match reader.read_u32::<BigEndian>() {
                         Ok(d) => d,
@@ -181,7 +190,7 @@ impl ContentTemplate {
                     // Skipping 4 byte locale indicator
                     reader.seek(SeekFrom::Current(4))?;
 
-                    Content::TypedData(DataTemplate::with(datatype).parse(reader, length - 8)?)
+                    Content::TypedData(DataT::with(datatype).parse(reader, length - 8)?)
                 } else {
                     return Err(crate::Error::new(
                         ErrorKind::Parsing,
@@ -189,7 +198,7 @@ impl ContentTemplate {
                     ));
                 }
             }
-            ContentTemplate::Empty => Content::Empty,
+            ContentT::Empty => Content::Empty,
         })
     }
 }
