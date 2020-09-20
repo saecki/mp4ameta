@@ -47,14 +47,6 @@ impl Error {
     pub fn new(kind: ErrorKind, description: String) -> Error {
         Error { kind, description }
     }
-
-    fn format(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.description.is_empty() {
-            write!(f, "{:?}", self.kind)
-        } else {
-            write!(f, "{:?}: {}", self.kind, self.description)
-        }
-    }
 }
 
 impl error::Error for Error {
@@ -95,12 +87,20 @@ impl From<string::FromUtf16Error> for Error {
 
 impl fmt::Debug for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.format(f)
+        if self.description.is_empty() {
+            write!(f, "{:?}", self.kind)
+        } else {
+            write!(f, "{:?}: {}", self.kind, self.description)
+        }
     }
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.format(f)
+        if self.description.is_empty() {
+            write!(f, "{:?}", self.kind)
+        } else {
+            write!(f, "{:?}: {}", self.kind, self.description)
+        }
     }
 }

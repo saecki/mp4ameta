@@ -8,7 +8,7 @@ use byteorder::{BigEndian, WriteBytesExt};
 
 use crate::{AdvisoryRating, atom, Atom, Content, Data, Ident, MediaType};
 
-/// A list of standard genres found in the `gnre` `Atom`.
+/// A list of standard genre codes and values found in the `gnre` atom.
 pub const GENRES: [(u16, &str); 80] = [
     (1, "Blues"),
     (2, "Classic rock"),
@@ -155,11 +155,13 @@ impl Tag {
         let mut file = File::create(path)?;
         self.dump_to(&mut file)
     }
+}
 
-
+/// ## Individual string values
+impl Tag {
     /// Returns the album (©alb).
     pub fn album(&self) -> Option<&str> {
-        self.string(atom::ALBUM)
+        self.string(atom::ALBUM).next()
     }
 
     /// Sets the album (©alb).
@@ -172,41 +174,462 @@ impl Tag {
         self.remove_data(atom::ALBUM);
     }
 
-    /// Returns the album artist (aART).
-    pub fn album_artist(&self) -> Option<&str> {
+
+    /// Returns the copyright (cprt).
+    pub fn copyright(&self) -> Option<&str> {
+        self.string(atom::COPYRIGHT).next()
+    }
+
+    /// Sets the copyright (cprt).
+    pub fn set_copyright(&mut self, copyright: impl Into<String>) {
+        self.set_data(atom::COPYRIGHT, Data::Utf8(copyright.into()));
+    }
+
+    /// Removes the copyright (cprt).
+    pub fn remove_copyright(&mut self) {
+        self.remove_data(atom::COPYRIGHT);
+    }
+
+
+    /// Returns the encoder (©too).
+    pub fn encoder(&self) -> Option<&str> {
+        self.string(atom::ENCODER).next()
+    }
+
+    /// Sets the encoder (©too).
+    pub fn set_encoder(&mut self, encoder: impl Into<String>) {
+        self.set_data(atom::ENCODER, Data::Utf8(encoder.into()));
+    }
+
+    /// Removes the encoder (©too).
+    pub fn remove_encoder(&mut self) {
+        self.remove_data(atom::ENCODER);
+    }
+
+
+    /// Returns the title (©nam).
+    pub fn title(&self) -> Option<&str> {
+        self.string(atom::TITLE).next()
+    }
+
+    /// Sets the title (©nam).
+    pub fn set_title(&mut self, title: impl Into<String>) {
+        self.set_data(atom::TITLE, Data::Utf8(title.into()));
+    }
+
+    /// Removes the title (©nam).
+    pub fn remove_title(&mut self) {
+        self.remove_data(atom::TITLE);
+    }
+
+
+    /// Returns the lyrics (©lyr).
+    pub fn lyrics(&self) -> Option<&str> {
+        self.string(atom::LYRICS).next()
+    }
+
+    /// Sets the lyrics (©lyr).
+    pub fn set_lyrics(&mut self, lyrics: impl Into<String>) {
+        self.set_data(atom::LYRICS, Data::Utf8(lyrics.into()));
+    }
+
+    /// Removes the lyrics (©lyr).
+    pub fn remove_lyrics(&mut self) {
+        self.remove_data(atom::LYRICS);
+    }
+
+
+    /// Returns the movement (©mvn).
+    pub fn movement(&self) -> Option<&str> {
+        self.string(atom::MOVEMENT_NAME).next()
+    }
+
+    /// Sets the movement (©mvn).
+    pub fn set_movement(&mut self, movement: impl Into<String>) {
+        self.set_data(atom::MOVEMENT_NAME, Data::Utf8(movement.into()));
+    }
+
+    /// Removes the movement (©mvn).
+    pub fn remove_movement(&mut self) {
+        self.remove_data(atom::MOVEMENT_NAME)
+    }
+
+
+    /// Returns the tv episode number (tven).
+    pub fn tv_episode_number(&self) -> Option<&str> {
+        self.string(atom::TV_EPISODE_NUMBER).next()
+    }
+
+    /// Sets the tv episode number (tven).
+    pub fn set_tv_episode_number(&mut self, tv_episode_number: impl Into<String>) {
+        self.set_data(atom::TV_EPISODE_NUMBER, Data::Utf8(tv_episode_number.into()));
+    }
+
+    /// Removes the tv episode number (tven).
+    pub fn remove_tv_episode_number(&mut self) {
+        self.remove_data(atom::TV_EPISODE_NUMBER);
+    }
+
+
+    /// Returns the tv network name (tvnn).
+    pub fn tv_network_name(&self) -> Option<&str> {
+        self.string(atom::TV_NETWORK_NAME).next()
+    }
+
+    /// Sets the tv network name (tvnn).
+    pub fn set_tv_network_name(&mut self, tv_network_name: impl Into<String>) {
+        self.set_data(atom::TV_NETWORK_NAME, Data::Utf8(tv_network_name.into()));
+    }
+
+    /// Removes the tv network name (tvnn).
+    pub fn remove_tv_network_name(&mut self) {
+        self.remove_data(atom::TV_NETWORK_NAME);
+    }
+
+
+    /// Returns the tv show name (tvsh).
+    pub fn tv_show_name(&self) -> Option<&str> {
+        self.string(atom::TV_SHOW_NAME).next()
+    }
+
+    /// Sets the tv show name (tvsh).
+    pub fn set_tv_show_name(&mut self, tv_show_name: impl Into<String>) {
+        self.set_data(atom::TV_SHOW_NAME, Data::Utf8(tv_show_name.into()));
+    }
+
+    /// Removes the tv show name (tvsh).
+    pub fn remove_tv_show_name(&mut self) {
+        self.remove_data(atom::TV_SHOW_NAME);
+    }
+
+
+    /// Returns the year (©day).
+    pub fn year(&self) -> Option<&str> {
+        self.string(atom::YEAR).next()
+    }
+
+    /// Sets the year (©day).
+    pub fn set_year(&mut self, year: impl Into<String>) {
+        self.set_data(atom::YEAR, Data::Utf8(year.into()));
+    }
+
+    /// Removes the year (©day).
+    pub fn remove_year(&mut self) {
+        self.remove_data(atom::YEAR);
+    }
+
+
+    /// Returns the work (©wrk).
+    pub fn work(&self) -> Option<&str> {
+        self.string(atom::WORK).next()
+    }
+
+    /// Removes the work (©wrk).
+    pub fn remove_work(&mut self) {
+        self.remove_data(atom::WORK)
+    }
+
+    /// Sets the work (©wrk).
+    pub fn set_work(&mut self, work: impl Into<String>) {
+        self.set_data(atom::WORK, Data::Utf8(work.into()));
+    }
+}
+
+/// ## Multiple string values
+impl Tag {
+    /// Returns all album artists (aART).
+    pub fn album_artists(&self) -> impl Iterator<Item=&str> {
         self.string(atom::ALBUM_ARTIST)
     }
 
-    /// Sets the album artist (aART).
+    /// Returns the first album artist (aART).
+    pub fn album_artist(&self) -> Option<&str> {
+        self.album_artists().next()
+    }
+
+    /// Sets the album artist (aART). This will remove all other album artists.
     pub fn set_album_artist(&mut self, album_artist: impl Into<String>) {
         self.set_data(atom::ALBUM_ARTIST, Data::Utf8(album_artist.into()));
     }
 
-    /// Removes the album artist (aART).
-    pub fn remove_album_artist(&mut self) {
+    /// Adds an album artist (aART).
+    pub fn add_album_artist(&mut self, album_artist: impl Into<String>) {
+        self.add_data(atom::ALBUM_ARTIST, Data::Utf8(album_artist.into()));
+    }
+
+    /// Removes all album artists (aART).
+    pub fn remove_album_artists(&mut self) {
         self.remove_data(atom::ALBUM_ARTIST);
     }
 
-    /// Returns the artist (©ART).
-    pub fn artist(&self) -> Option<&str> {
+
+    /// Returns all artists (©ART).
+    pub fn artists(&self) -> impl Iterator<Item=&str> {
         self.string(atom::ARTIST)
     }
 
-    /// Sets the artist (©ART).
+    /// Returns the first artist (©ART).
+    pub fn artist(&self) -> Option<&str> {
+        self.artists().next()
+    }
+
+    /// Sets the artist (©ART). This will remove all other artists.
     pub fn set_artist(&mut self, artist: impl Into<String>) {
         self.set_data(atom::ARTIST, Data::Utf8(artist.into()));
     }
 
-    /// Removes the artist (©ART).
-    pub fn remove_artist(&mut self) {
+    /// Adds an artist (©ART).
+    pub fn add_artist(&mut self, artist: impl Into<String>) {
+        self.add_data(atom::ARTIST, Data::Utf8(artist.into()));
+    }
+
+    /// Removes all artists (©ART).
+    pub fn remove_artists(&mut self) {
         self.remove_data(atom::ARTIST);
     }
 
-    /// Returns the bpm (tmpo)
-    pub fn bpm(&self) -> Option<u16> {
-        let vec = match self.data(atom::BPM) {
+
+    /// Returns all categories (catg).
+    pub fn categories(&self) -> impl Iterator<Item=&str> {
+        self.string(atom::CATEGORY)
+    }
+
+    /// Returns the first category (catg).
+    pub fn category(&self) -> Option<&str> {
+        self.categories().next()
+    }
+
+    /// Sets the category (catg). This will remove all other categories.
+    pub fn set_category(&mut self, category: impl Into<String>) {
+        self.set_data(atom::CATEGORY, Data::Utf8(category.into()));
+    }
+
+    /// Adds a category (catg).
+    pub fn add_category(&mut self, category: impl Into<String>) {
+        self.add_data(atom::CATEGORY, Data::Utf8(category.into()));
+    }
+
+    /// Removes all categories (catg).
+    pub fn remove_categories(&mut self) {
+        self.remove_data(atom::CATEGORY);
+    }
+
+
+    /// Returns all comments (©cmt).
+    pub fn comments(&self) -> impl Iterator<Item=&str> {
+        self.string(atom::COMMENT)
+    }
+
+    /// Returns the first comment (©cmt).
+    pub fn comment(&self) -> Option<&str> {
+        self.comments().next()
+    }
+
+    /// Sets the comment (©cmt). This will remove all other comments.
+    pub fn set_comment(&mut self, comment: impl Into<String>) {
+        self.set_data(atom::COMMENT, Data::Utf8(comment.into()));
+    }
+
+    /// Adds a comment (©cmt).
+    pub fn add_comment(&mut self, comment: impl Into<String>) {
+        self.add_data(atom::COMMENT, Data::Utf8(comment.into()));
+    }
+
+    /// Removes all comments (©cmt).
+    pub fn remove_comments(&mut self) {
+        self.remove_data(atom::COMMENT);
+    }
+
+
+    /// Returns all composers (©wrt).
+    pub fn composers(&self) -> impl Iterator<Item=&str> {
+        self.string(atom::COMPOSER)
+    }
+
+    /// Returns the first composer (©wrt).
+    pub fn composer(&self) -> Option<&str> {
+        self.composers().next()
+    }
+
+    /// Sets the composer (©wrt). This will remove all other composers.
+    pub fn set_composer(&mut self, composer: impl Into<String>) {
+        self.set_data(atom::COMPOSER, Data::Utf8(composer.into()));
+    }
+
+    /// Adds a composer (©wrt).
+    pub fn add_composer(&mut self, composer: impl Into<String>) {
+        self.add_data(atom::COMPOSER, Data::Utf8(composer.into()));
+    }
+
+    /// Removes the composer (©wrt).
+    pub fn remove_composers(&mut self) {
+        self.remove_data(atom::COMMENT);
+    }
+
+
+    /// Returns all descriptions (desc).
+    pub fn descriptions(&self) -> impl Iterator<Item=&str> {
+        self.string(atom::DESCRIPTION)
+    }
+
+    /// Returns the first description (desc).
+    pub fn description(&self) -> Option<&str> {
+        self.descriptions().next()
+    }
+
+    /// Sets the description (desc). This will remove all other descriptions.
+    pub fn set_description(&mut self, description: impl Into<String>) {
+        self.set_data(atom::DESCRIPTION, Data::Utf8(description.into()));
+    }
+
+    /// Adds a description (desc).
+    pub fn add_description(&mut self, description: impl Into<String>) {
+        self.add_data(atom::DESCRIPTION, Data::Utf8(description.into()));
+    }
+
+    /// Removes the description (desc).
+    pub fn remove_descriptions(&mut self) {
+        self.remove_data(atom::DESCRIPTION);
+    }
+
+
+    /// Returns all groupings (©grp).
+    pub fn groupings(&self) -> impl Iterator<Item=&str> {
+        self.string(atom::GROUPING)
+    }
+
+    /// Returns the first grouping (©grp).
+    pub fn grouping(&self) -> Option<&str> {
+        self.groupings().next()
+    }
+
+    /// Sets the grouping (©grp). This will remove all other groupings.
+    pub fn set_grouping(&mut self, grouping: impl Into<String>) {
+        self.set_data(atom::GROUPING, Data::Utf8(grouping.into()));
+    }
+
+    /// Adds a grouping (©grp).
+    pub fn add_grouping(&mut self, grouping: impl Into<String>) {
+        self.add_data(atom::GROUPING, Data::Utf8(grouping.into()));
+    }
+
+    /// Removes the grouping (©grp).
+    pub fn remove_groupings(&mut self) {
+        self.remove_data(atom::GROUPING);
+    }
+
+
+    /// Returns all keywords (keyw).
+    pub fn keywords(&self) -> impl Iterator<Item=&str> {
+        self.string(atom::KEYWORD)
+    }
+
+    /// Returns the first keyword (keyw).
+    pub fn keyword(&self) -> Option<&str> {
+        self.keywords().next()
+    }
+
+    /// Sets the keyword (keyw). This will remove all other keywords.
+    pub fn set_keyword(&mut self, keyword: impl Into<String>) {
+        self.set_data(atom::KEYWORD, Data::Utf8(keyword.into()));
+    }
+
+    /// Adds a keyword (keyw).
+    pub fn add_keyword(&mut self, keyword: impl Into<String>) {
+        self.set_data(atom::KEYWORD, Data::Utf8(keyword.into()));
+    }
+
+    /// Removes the keyword (keyw).
+    pub fn remove_keywords(&mut self) {
+        self.remove_data(atom::KEYWORD);
+    }
+}
+
+/// ## Flags
+impl Tag {
+    /// Returns the compilation flag (cpil).
+    pub fn compilation(&self) -> bool {
+        let vec = match self.data(atom::COMPILATION).next() {
             Some(Data::Reserved(v)) => v,
             Some(Data::BeSigned(v)) => v,
+            _ => return false,
+        };
+
+        if vec.is_empty() {
+            return false;
+        }
+
+        vec[0] != 0
+    }
+
+    /// Sets the compilation flag to true (cpil).
+    pub fn set_compilation(&mut self) {
+        self.set_data(atom::COMPILATION, Data::BeSigned(vec![1u8]));
+    }
+
+    /// Removes the compilation flag (cpil).
+    pub fn remove_compilation(&mut self) {
+        self.remove_data(atom::COMPILATION)
+    }
+
+
+    /// Returns the gapless playback flag (pgap).
+    pub fn gapless_playback(&self) -> bool {
+        let vec = match self.be_signed(atom::GAPLESS_PLAYBACK).next() {
+            Some(v) => v,
+            None => return false,
+        };
+
+        if vec.is_empty() {
+            return false;
+        }
+
+        vec[0] != 0
+    }
+
+    /// Sets the gapless playback flag to true (pgap).
+    pub fn set_gapless_playback(&mut self) {
+        self.set_data(atom::GAPLESS_PLAYBACK, Data::BeSigned(vec![1u8]));
+    }
+
+    /// Removes the gapless playback flag (pgap).
+    pub fn remove_gapless_playback(&mut self) {
+        self.remove_data(atom::GAPLESS_PLAYBACK)
+    }
+
+
+    /// Returns the show movement flag (shwm).
+    pub fn show_movement(&self) -> bool {
+        let vec = match self.be_signed(atom::SHOW_MOVEMENT).next() {
+            Some(v) => v,
+            None => return false,
+        };
+
+        if vec.is_empty() {
+            return false;
+        }
+
+        vec[0] != 0
+    }
+
+    /// Sets the show movement flag to true (shwm).
+    pub fn set_show_movement(&mut self) {
+        self.set_data(atom::SHOW_MOVEMENT, Data::BeSigned(vec![1u8]));
+    }
+
+    /// Removes the show movement flag (shwm).
+    pub fn remove_show_movement(&mut self) {
+        self.remove_data(atom::SHOW_MOVEMENT)
+    }
+}
+
+/// ## Integer values
+impl Tag {
+    /// Returns the bpm (tmpo)
+    pub fn bpm(&self) -> Option<u16> {
+        let vec = match self.data(atom::BPM).next()? {
+            Data::Reserved(v) => v,
+            Data::BeSigned(v) => v,
             _ => return None,
         };
 
@@ -230,233 +653,10 @@ impl Tag {
         self.remove_data(atom::BPM);
     }
 
-    /// Returns the category (catg).
-    pub fn category(&self) -> Option<&str> {
-        self.string(atom::CATEGORY)
-    }
-
-    /// Sets the category (catg).
-    pub fn set_category(&mut self, category: impl Into<String>) {
-        self.set_data(atom::CATEGORY, Data::Utf8(category.into()));
-    }
-
-    /// Removes the category (catg).
-    pub fn remove_category(&mut self) {
-        self.remove_data(atom::CATEGORY);
-    }
-
-    /// Returns the comment (©cmt).
-    pub fn comment(&self) -> Option<&str> {
-        self.string(atom::COMMENT)
-    }
-
-    /// Sets the comment (©cmt).
-    pub fn set_comment(&mut self, comment: impl Into<String>) {
-        self.set_data(atom::COMMENT, Data::Utf8(comment.into()));
-    }
-
-    /// Removes the comment (©cmt).
-    pub fn remove_comment(&mut self) {
-        self.remove_data(atom::COMMENT);
-    }
-
-    /// Returns the compilation flag (cpil).
-    pub fn compilation(&self) -> bool {
-        let vec = match self.data(atom::COMPILATION) {
-            Some(Data::Reserved(v)) => v,
-            Some(Data::BeSigned(v)) => v,
-            _ => return false,
-        };
-
-        if vec.is_empty() {
-            return false;
-        }
-
-        vec[0] != 0
-    }
-
-    /// Sets the compilation flag to true (cpil).
-    pub fn set_compilation(&mut self) {
-        self.set_data(atom::COMPILATION, Data::BeSigned(vec![1u8]));
-    }
-
-    /// Removes the compilation flag (cpil).
-    pub fn remove_compilation(&mut self) {
-        self.remove_data(atom::COMPILATION)
-    }
-
-    /// Returns the composer (©wrt).
-    pub fn composer(&self) -> Option<&str> {
-        self.string(atom::COMPOSER)
-    }
-
-    /// Sets the composer (©wrt).
-    pub fn set_composer(&mut self, composer: impl Into<String>) {
-        self.set_data(atom::COMPOSER, Data::Utf8(composer.into()));
-    }
-
-    /// Removes the composer (©wrt).
-    pub fn remove_composer(&mut self) {
-        self.remove_data(atom::COMMENT);
-    }
-
-    /// Returns the copyright (cprt).
-    pub fn copyright(&self) -> Option<&str> {
-        self.string(atom::COPYRIGHT)
-    }
-
-    /// Sets the copyright (cprt).
-    pub fn set_copyright(&mut self, copyright: impl Into<String>) {
-        self.set_data(atom::COPYRIGHT, Data::Utf8(copyright.into()));
-    }
-
-    /// Removes the copyright (cprt).
-    pub fn remove_copyright(&mut self) {
-        self.remove_data(atom::COPYRIGHT);
-    }
-
-    /// Returns the description (desc).
-    pub fn description(&self) -> Option<&str> {
-        self.string(atom::DESCRIPTION)
-    }
-
-    /// Sets the description (desc).
-    pub fn set_description(&mut self, description: impl Into<String>) {
-        self.set_data(atom::DESCRIPTION, Data::Utf8(description.into()));
-    }
-
-    /// Removes the description (desc).
-    pub fn remove_description(&mut self) {
-        self.remove_data(atom::DESCRIPTION);
-    }
-
-    /// Returns the encoder (©too).
-    pub fn encoder(&self) -> Option<&str> {
-        self.string(atom::ENCODER)
-    }
-
-    /// Sets the encoder (©too).
-    pub fn set_encoder(&mut self, encoder: impl Into<String>) {
-        self.set_data(atom::ENCODER, Data::Utf8(encoder.into()));
-    }
-
-    /// Removes the encoder (©too).
-    pub fn remove_encoder(&mut self) {
-        self.remove_data(atom::ENCODER);
-    }
-
-    /// Returns the gapless playback flag (pgap).
-    pub fn gapless_playback(&self) -> bool {
-        let vec = match self.be_signed(atom::GAPLESS_PLAYBACK) {
-            Some(v) => v,
-            None => return false,
-        };
-
-        if vec.is_empty() {
-            return false;
-        }
-
-        vec[0] != 0
-    }
-
-    /// Sets the gapless playback flag to true (pgap).
-    pub fn set_gapless_playback(&mut self) {
-        self.set_data(atom::GAPLESS_PLAYBACK, Data::BeSigned(vec![1u8]));
-    }
-
-    /// Removes the gapless playback flag (pgap).
-    pub fn remove_gapless_playback(&mut self) {
-        self.remove_data(atom::GAPLESS_PLAYBACK)
-    }
-
-    /// Returns the grouping (©grp).
-    pub fn grouping(&self) -> Option<&str> {
-        self.string(atom::GROUPING)
-    }
-
-    /// Sets the grouping (©grp).
-    pub fn set_grouping(&mut self, grouping: impl Into<String>) {
-        self.set_data(atom::GROUPING, Data::Utf8(grouping.into()));
-    }
-
-    /// Removes the grouping (©grp).
-    pub fn remove_grouping(&mut self) {
-        self.remove_data(atom::GROUPING);
-    }
-
-    /// Returns the keyword (keyw).
-    pub fn keyword(&self) -> Option<&str> {
-        self.string(atom::KEYWORD)
-    }
-
-    /// Sets the keyword (keyw).
-    pub fn set_keyword(&mut self, keyword: impl Into<String>) {
-        self.set_data(atom::KEYWORD, Data::Utf8(keyword.into()));
-    }
-
-    /// Removes the keyword (keyw).
-    pub fn remove_keyword(&mut self) {
-        self.remove_data(atom::KEYWORD);
-    }
-
-    /// Returns the lyrics (©lyr).
-    pub fn lyrics(&self) -> Option<&str> {
-        self.string(atom::LYRICS)
-    }
-
-    /// Sets the lyrics (©lyr).
-    pub fn set_lyrics(&mut self, lyrics: impl Into<String>) {
-        self.set_data(atom::LYRICS, Data::Utf8(lyrics.into()));
-    }
-
-    /// Removes the lyrics (©lyr).
-    pub fn remove_lyrics(&mut self) {
-        self.remove_data(atom::LYRICS);
-    }
-
-    /// Returns the media type (stik).
-    pub fn media_type(&self) -> Option<MediaType> {
-        let vec = match self.data(atom::MEDIA_TYPE) {
-            Some(Data::Reserved(v)) => v,
-            Some(Data::BeSigned(v)) => v,
-            _ => return None,
-        };
-
-        if vec.is_empty() {
-            return None;
-        }
-
-        MediaType::try_from(vec[0]).ok()
-    }
-
-    /// Sets the media type (stik).
-    pub fn set_media_type(&mut self, media_type: MediaType) {
-        self.set_data(atom::MEDIA_TYPE, Data::Reserved(vec![media_type.value()]));
-    }
-
-    /// Removes the media type (stik).
-    pub fn remove_media_type(&mut self) {
-        self.remove_data(atom::MEDIA_TYPE);
-    }
-
-    /// Returns the movement (©mvn).
-    pub fn movement(&self) -> Option<&str> {
-        self.string(atom::MOVEMENT_NAME)
-    }
-
-    /// Sets the movement (©mvn).
-    pub fn set_movement(&mut self, movement: impl Into<String>) {
-        self.set_data(atom::MOVEMENT_NAME, Data::Utf8(movement.into()));
-    }
-
-    /// Removes the movement (©mvn).
-    pub fn remove_movement(&mut self) {
-        self.remove_data(atom::MOVEMENT_NAME)
-    }
 
     /// Returns the movement count (©mvc).
     pub fn movement_count(&self) -> Option<u16> {
-        let vec = self.be_signed(atom::MOVEMENT_COUNT)?;
+        let vec = self.be_signed(atom::MOVEMENT_COUNT).next()?;
 
         if vec.len() < 2 {
             return None;
@@ -478,9 +678,10 @@ impl Tag {
         self.remove_data(atom::MOVEMENT_COUNT)
     }
 
+
     /// Returns the movement index (©mvi).
     pub fn movement_index(&self) -> Option<u16> {
-        let vec = self.be_signed(atom::MOVEMENT_INDEX)?;
+        let vec = self.be_signed(atom::MOVEMENT_INDEX).next()?;
 
         if vec.len() < 2 {
             return None;
@@ -501,237 +702,30 @@ impl Tag {
     pub fn remove_movement_index(&mut self) {
         self.remove_data(atom::MOVEMENT_INDEX)
     }
+}
 
-    /// Returns the show movement flag (shwm).
-    pub fn show_movement(&self) -> bool {
-        let vec = match self.be_signed(atom::SHOW_MOVEMENT) {
-            Some(v) => v,
-            None => return false,
-        };
-
-        if vec.is_empty() {
-            return false;
-        }
-
-        vec[0] != 0
-    }
-
-    /// Sets the show movement flag to true (shwm).
-    pub fn set_show_movement(&mut self) {
-        self.set_data(atom::SHOW_MOVEMENT, Data::BeSigned(vec![1u8]));
-    }
-
-    /// Removes the show movement flag (shwm).
-    pub fn remove_show_movement(&mut self) {
-        self.remove_data(atom::SHOW_MOVEMENT)
-    }
-
-    /// Returns the rating (rtng).
-    pub fn advisory_rating(&self) -> Option<AdvisoryRating> {
-        let vec = match self.data(atom::ADVISORY_RATING) {
-            Some(Data::Reserved(v)) => v,
-            Some(Data::BeSigned(v)) => v,
-            _ => return None,
-        };
-
-        if vec.is_empty() {
-            return None;
-        }
-
-        Some(AdvisoryRating::from(vec[0]))
-    }
-
-    /// Sets the rating (rtng).
-    pub fn set_advisory_rating(&mut self, rating: AdvisoryRating) {
-        self.set_data(atom::ADVISORY_RATING, Data::Reserved(vec![rating.value()]));
-    }
-
-    /// Removes the rating (rtng).
-    pub fn remove_advisory_rating(&mut self) {
-        self.remove_data(atom::ADVISORY_RATING);
-    }
-
-    /// Returns the title (©nam).
-    pub fn title(&self) -> Option<&str> {
-        self.string(atom::TITLE)
-    }
-
-    /// Sets the title (©nam).
-    pub fn set_title(&mut self, title: impl Into<String>) {
-        self.set_data(atom::TITLE, Data::Utf8(title.into()));
-    }
-
-    /// Removes the title (©nam).
-    pub fn remove_title(&mut self) {
-        self.remove_data(atom::TITLE);
-    }
-
-    /// Returns the tv episode number (tven).
-    pub fn tv_episode_number(&self) -> Option<&str> {
-        self.string(atom::TV_EPISODE_NUMBER)
-    }
-
-    /// Sets the tv episode number (tven).
-    pub fn set_tv_episode_number(&mut self, tv_episode_number: impl Into<String>) {
-        self.set_data(atom::TV_EPISODE_NUMBER, Data::Utf8(tv_episode_number.into()));
-    }
-
-    /// Removes the tv episode number (tven).
-    pub fn remove_tv_episode_number(&mut self) {
-        self.remove_data(atom::TV_EPISODE_NUMBER);
-    }
-
-    /// Returns the tv network name (tvnn).
-    pub fn tv_network_name(&self) -> Option<&str> {
-        self.string(atom::TV_NETWORK_NAME)
-    }
-
-    /// Sets the tv network name (tvnn).
-    pub fn set_tv_network_name(&mut self, tv_network_name: impl Into<String>) {
-        self.set_data(atom::TV_NETWORK_NAME, Data::Utf8(tv_network_name.into()));
-    }
-
-    /// Removes the tv network name (tvnn).
-    pub fn remove_tv_network_name(&mut self) {
-        self.remove_data(atom::TV_NETWORK_NAME);
-    }
-
-    /// Returns the tv show name (tvsh).
-    pub fn tv_show_name(&self) -> Option<&str> {
-        self.string(atom::TV_SHOW_NAME)
-    }
-
-    /// Sets the tv show name (tvsh).
-    pub fn set_tv_show_name(&mut self, tv_show_name: impl Into<String>) {
-        self.set_data(atom::TV_SHOW_NAME, Data::Utf8(tv_show_name.into()));
-    }
-
-    /// Removes the tv show name (tvsh).
-    pub fn remove_tv_show_name(&mut self) {
-        self.remove_data(atom::TV_SHOW_NAME);
-    }
-
-    /// Returns the year (©day).
-    pub fn year(&self) -> Option<&str> {
-        self.string(atom::YEAR)
-    }
-
-    /// Sets the year (©day).
-    pub fn set_year(&mut self, year: impl Into<String>) {
-        self.set_data(atom::YEAR, Data::Utf8(year.into()));
-    }
-
-    /// Removes the year (©day).
-    pub fn remove_year(&mut self) {
-        self.remove_data(atom::YEAR);
-    }
-
-    /// Returns the work (©wrk).
-    pub fn work(&self) -> Option<&str> {
-        self.string(atom::WORK)
-    }
-
-    /// Removes the work (©wrk).
-    pub fn remove_work(&mut self) {
-        self.remove_data(atom::WORK)
-    }
-
-    /// Sets the work (©wrk).
-    pub fn set_work(&mut self, work: impl Into<String>) {
-        self.set_data(atom::WORK, Data::Utf8(work.into()));
-    }
-
-    /// Returns the genre (gnre) or (©gen).
-    pub fn genre(&self) -> Option<&str> {
-        if let Some(s) = self.custom_genre() {
-            return Some(s);
-        }
-
-        if let Some(genre_code) = self.standard_genre() {
-            for g in GENRES.iter() {
-                if g.0 == genre_code {
-                    return Some(g.1);
-                }
-            }
-        }
-
-        None
-    }
-
-    /// Sets the standard genre (gnre) if it matches one otherwise a custom genre (©gen).
-    pub fn set_genre(&mut self, genre: impl Into<String>) {
-        let gen = genre.into();
-
-        for g in GENRES.iter() {
-            if g.1 == gen {
-                self.remove_custom_genre();
-                self.set_standard_genre(g.0);
-                return;
-            }
-        }
-
-        self.remove_standard_genre();
-        self.set_custom_genre(gen)
-    }
-
-    /// Removes the genre (gnre) or (©gen).
-    pub fn remove_genre(&mut self) {
-        self.remove_standard_genre();
-        self.remove_custom_genre();
-    }
-
-    /// Returns the standard genre (gnre).
-    pub fn standard_genre(&self) -> Option<u16> {
-        let v = self.reserved(atom::STANDARD_GENRE)?;
-
-        if v.len() < 2 {
-            return None;
-        }
-
-        Some(u16::from_be_bytes([v[0], v[1]]))
-    }
-
-    /// Sets the standard genre (gnre).
-    pub fn set_standard_genre(&mut self, genre_code: u16) {
-        if genre_code > 0 && genre_code <= 80 {
-            let mut vec: Vec<u8> = Vec::with_capacity(2);
-            vec.write_u16::<BigEndian>(genre_code).unwrap();
-            self.set_data(atom::STANDARD_GENRE, Data::Reserved(vec));
-        }
-    }
-
-    /// Removes the standard genre (gnre).
-    pub fn remove_standard_genre(&mut self) {
-        self.remove_data(atom::STANDARD_GENRE);
-    }
-
-    /// Returns the custom genre (©gen).
-    pub fn custom_genre(&self) -> Option<&str> {
-        self.string(atom::CUSTOM_GENRE)
-    }
-
-    /// Sets the custom genre (©gen).
-    pub fn set_custom_genre(&mut self, custom_genre: impl Into<String>) {
-        self.set_data(atom::CUSTOM_GENRE, Data::Utf8(custom_genre.into()));
-    }
-
-    /// Removes the custom genre (©gen).
-    pub fn remove_custom_genre(&mut self) {
-        self.remove_data(atom::CUSTOM_GENRE);
-    }
-
+/// ## Tuple values
+impl Tag {
     /// Returns the track number and the total number of tracks (trkn).
-    pub fn track_number(&self) -> Option<(u16, u16)> {
-        let vec = self.reserved(atom::TRACK_NUMBER)?;
+    pub fn track_number(&self) -> (Option<u16>, Option<u16>) {
+        let vec = match self.reserved(atom::TRACK_NUMBER).next() {
+            Some(v) => v,
+            None => return (None, None),
+        };
 
-        if vec.len() < 6 {
-            return None;
-        }
+        let track_number = if vec.len() < 4 {
+            None
+        } else {
+            Some(u16::from_be_bytes([vec[2], vec[3]]))
+        };
 
-        let track_number = u16::from_be_bytes([vec[2], vec[3]]);
-        let total_tracks = u16::from_be_bytes([vec[4], vec[5]]);
+        let total_tracks = if vec.len() < 6 {
+            None
+        } else {
+            Some(u16::from_be_bytes([vec[4], vec[5]]))
+        };
 
-        Some((track_number, total_tracks))
+        (track_number, total_tracks)
     }
 
     /// Sets the track number and the total number of tracks (trkn).
@@ -751,45 +745,186 @@ impl Tag {
         self.remove_data(atom::TRACK_NUMBER);
     }
 
-    /// Returns the disk number and total number of disks (disk).
-    pub fn disk_number(&self) -> Option<(u16, u16)> {
-        let vec = match self.reserved(atom::DISK_NUMBER) {
+    /// Returns the disc number and total number of discs (disk).
+    pub fn disc_number(&self) -> (Option<u16>, Option<u16>) {
+        let vec = match self.reserved(atom::DISC_NUMBER).next() {
             Some(v) => v,
-            None => return None,
+            None => return (None, None),
         };
 
-        if vec.len() < 6 {
-            return None;
-        }
+        let disc_number = if vec.len() < 4 {
+            None
+        } else {
+            Some(u16::from_be_bytes([vec[2], vec[3]]))
+        };
 
-        let disk_number = u16::from_be_bytes([vec[2], vec[3]]);
-        let total_disks = u16::from_be_bytes([vec[4], vec[5]]);
+        let total_discs = if vec.len() < 6 {
+            None
+        } else {
+            Some(u16::from_be_bytes([vec[4], vec[5]]))
+        };
 
-        Some((disk_number, total_disks))
+        (disc_number, total_discs)
     }
 
-    /// Sets the disk number and the total number of disks (disk).
-    pub fn set_disk_number(&mut self, disk_number: u16, total_disks: u16) {
-        let vec16 = vec![0u16, disk_number, total_disks];
+    /// Sets the disc number and the total number of discs (disk).
+    pub fn set_disc_number(&mut self, disc_number: u16, total_discs: u16) {
+        let vec16 = vec![0u16, disc_number, total_discs];
         let mut vec = Vec::with_capacity(6);
 
         for i in vec16 {
             vec.write_u16::<BigEndian>(i).unwrap();
         }
 
-        self.set_data(atom::DISK_NUMBER, Data::Reserved(vec));
+        self.set_data(atom::DISC_NUMBER, Data::Reserved(vec));
     }
 
-    /// Removes the disk number and the total number of disks (disk).
-    pub fn remove_disk_number(&mut self) {
-        self.remove_data(atom::DISK_NUMBER);
+    /// Removes the disc number and the total number of discs (disk).
+    pub fn remove_disc_number(&mut self) {
+        self.remove_data(atom::DISC_NUMBER);
+    }
+}
+
+/// ## Genre
+impl Tag {
+    /// Returns all genres (gnre) or (©gen).
+    pub fn genres(&self) -> impl Iterator<Item=&str> {
+        self.standard_genres().filter_map(|genre_code| {
+            for g in GENRES.iter() {
+                if g.0 == genre_code {
+                    return Some(g.1);
+                }
+            }
+            None
+        }).chain(
+            self.custom_genres()
+        )
     }
 
+    /// Returns the first genre (gnre) or (©gen).
+    pub fn genre(&self) -> Option<&str> {
+        if let Some(genre_code) = self.standard_genre() {
+            for g in GENRES.iter() {
+                if g.0 == genre_code {
+                    return Some(g.1);
+                }
+            }
+        }
+
+        self.custom_genre()
+    }
+
+    /// Sets the standard genre (gnre) if it matches one otherwise a custom genre (©gen).
+    pub fn set_genre(&mut self, genre: impl Into<String>) {
+        let gen = genre.into();
+
+
+        for g in GENRES.iter() {
+            if g.1 == gen {
+                self.remove_custom_genres();
+                self.set_standard_genre(g.0);
+                return;
+            }
+        }
+
+        self.remove_standard_genres();
+        self.set_custom_genre(gen)
+    }
+
+    /// Adds the standard genre (gnre) if it matches one otherwise a custom genre (©gen).
+    pub fn add_genre(&mut self, genre: impl Into<String>) {
+        let gen = genre.into();
+
+        for g in GENRES.iter() {
+            if g.1 == gen {
+                self.add_standard_genre(g.0);
+                return;
+            }
+        }
+
+        self.add_custom_genre(gen)
+    }
+
+    /// Removes the genre (gnre) or (©gen).
+    pub fn remove_genres(&mut self) {
+        self.remove_standard_genres();
+        self.remove_custom_genres();
+    }
+
+
+    /// Returns all standard genres (gnre).
+    pub fn standard_genres(&self) -> impl Iterator<Item=u16> + '_ {
+        self.reserved(atom::STANDARD_GENRE)
+            .filter_map(|v| {
+                if v.len() < 2 {
+                    None
+                } else {
+                    Some(u16::from_be_bytes([v[0], v[1]]))
+                }
+            })
+    }
+
+    /// Returns the first standard genre (gnre).
+    pub fn standard_genre(&self) -> Option<u16> {
+        self.standard_genres().next()
+    }
+
+    /// Sets the standard genre (gnre). This will remove all other standard genres.
+    pub fn set_standard_genre(&mut self, genre_code: u16) {
+        if genre_code > 0 && genre_code <= 80 {
+            let mut vec: Vec<u8> = Vec::with_capacity(2);
+            vec.write_u16::<BigEndian>(genre_code).unwrap();
+            self.set_data(atom::STANDARD_GENRE, Data::Reserved(vec));
+        }
+    }
+
+    /// Adds a standard genre (gnre).
+    pub fn add_standard_genre(&mut self, genre_code: u16) {
+        if genre_code > 0 && genre_code <= 80 {
+            let mut vec: Vec<u8> = Vec::with_capacity(2);
+            vec.write_u16::<BigEndian>(genre_code).unwrap();
+            self.add_data(atom::STANDARD_GENRE, Data::Reserved(vec))
+        }
+    }
+
+    /// Removes all standard genres (gnre).
+    pub fn remove_standard_genres(&mut self) {
+        self.remove_data(atom::STANDARD_GENRE);
+    }
+
+
+    /// Returns all custom genres (©gen).
+    pub fn custom_genres(&self) -> impl Iterator<Item=&str> {
+        self.string(atom::CUSTOM_GENRE)
+    }
+
+    /// Returns the first custom genre (©gen).
+    pub fn custom_genre(&self) -> Option<&str> {
+        self.string(atom::CUSTOM_GENRE).next()
+    }
+
+    /// Sets the custom genre (©gen). This will remove all other custom genres.
+    pub fn set_custom_genre(&mut self, custom_genre: impl Into<String>) {
+        self.set_data(atom::CUSTOM_GENRE, Data::Utf8(custom_genre.into()));
+    }
+
+    /// Adds a custom genre (©gen).
+    pub fn add_custom_genre(&mut self, custom_genre: impl Into<String>) {
+        self.add_data(atom::CUSTOM_GENRE, Data::Utf8(custom_genre.into()));
+    }
+
+    /// Removes the custom genre (©gen).
+    pub fn remove_custom_genres(&mut self) {
+        self.remove_data(atom::CUSTOM_GENRE);
+    }
+}
+
+/// ## Custom values
+impl Tag {
     /// Returns the artwork image data of type `Data::JPEG` or `Data::PNG` (covr).
-    pub fn artwork(&self) -> Option<Data> {
+    pub fn artwork(&self) -> impl Iterator<Item=&Data> {
         self.image(atom::ARTWORK)
     }
-
     /// Sets the artwork image data of type `Data::JPEG` or `Data::PNG` (covr).
     pub fn set_artwork(&mut self, image: Data) {
         match &image {
@@ -801,11 +936,77 @@ impl Tag {
         self.set_data(atom::ARTWORK, image);
     }
 
+    /// Sets the artwork image data of type `Data::JPEG` or `Data::PNG` (covr).
+    pub fn add_artwork(&mut self, image: Data) {
+        match &image {
+            Data::Jpeg(_) => (),
+            Data::Png(_) => (),
+            _ => return,
+        }
+
+        self.add_data(atom::ARTWORK, image);
+    }
+
     /// Removes the artwork image data (covr).
     pub fn remove_artwork(&mut self) {
         self.remove_data(atom::ARTWORK);
     }
 
+
+    /// Returns the media type (stik).
+    pub fn media_type(&self) -> Option<MediaType> {
+        let vec = match self.data(atom::MEDIA_TYPE).next()? {
+            Data::Reserved(v) => v,
+            Data::BeSigned(v) => v,
+            _ => return None,
+        };
+
+        if vec.is_empty() {
+            return None;
+        }
+
+        MediaType::try_from(vec[0]).ok()
+    }
+
+    /// Sets the media type (stik).
+    pub fn set_media_type(&mut self, media_type: MediaType) {
+        self.set_data(atom::MEDIA_TYPE, Data::Reserved(vec![media_type.value()]));
+    }
+
+    /// Removes the media type (stik).
+    pub fn remove_media_type(&mut self) {
+        self.remove_data(atom::MEDIA_TYPE);
+    }
+
+
+    /// Returns the rating (rtng).
+    pub fn advisory_rating(&self) -> Option<AdvisoryRating> {
+        let vec = match self.data(atom::ADVISORY_RATING).next()? {
+            Data::Reserved(v) => v,
+            Data::BeSigned(v) => v,
+            _ => return None,
+        };
+
+        if vec.is_empty() {
+            return None;
+        }
+
+        Some(AdvisoryRating::from(vec[0]))
+    }
+
+    /// Sets the rating (rtng).
+    pub fn set_advisory_rating(&mut self, rating: AdvisoryRating) {
+        self.set_data(atom::ADVISORY_RATING, Data::Reserved(vec![rating.value()]));
+    }
+
+    /// Removes the rating (rtng).
+    pub fn remove_advisory_rating(&mut self) {
+        self.remove_data(atom::ADVISORY_RATING);
+    }
+}
+
+/// ## Readonly values
+impl Tag {
     /// Returns the duration in seconds.
     /// [Spec](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap2/qtff2.html#//apple_ref/doc/uid/TP40000939-CH204-SW34)
     pub fn duration(&self) -> Option<f64> {
@@ -851,9 +1052,11 @@ impl Tag {
 
         None
     }
+}
 
-
-    /// Attempts to return byte data corresponding to the identifier.
+/// ## Accessors
+impl Tag {
+    /// Returns all byte data corresponding to the identifier.
     ///
     /// # Example
     /// ```
@@ -861,16 +1064,18 @@ impl Tag {
     ///
     /// let mut tag = Tag::default();
     /// tag.set_data(Ident(*b"test"), Data::Reserved(vec![1,2,3,4,5,6]));
-    /// assert_eq!(tag.reserved(Ident(*b"test")).unwrap().to_vec(), vec![1,2,3,4,5,6]);
+    /// assert_eq!(tag.reserved(Ident(*b"test")).next().unwrap().to_vec(), vec![1,2,3,4,5,6]);
     /// ```
-    pub fn reserved(&self, ident: Ident) -> Option<&Vec<u8>> {
-        match self.data(ident) {
-            Some(Data::Reserved(v)) => Some(v),
-            _ => None,
-        }
+    pub fn reserved(&self, ident: Ident) -> impl Iterator<Item=&Vec<u8>> {
+        self.data(ident).filter_map(|d| {
+            match d {
+                Data::Reserved(v) => Some(v),
+                _ => None,
+            }
+        })
     }
 
-    /// Attempts to return byte data representing an integer corresponding to the identifier.
+    /// Returns all byte data representing a big endian integer corresponding to the identifier.
     ///
     /// # Example
     /// ```
@@ -878,16 +1083,18 @@ impl Tag {
     ///
     /// let mut tag = Tag::default();
     /// tag.set_data(Ident(*b"test"), Data::BeSigned(vec![1,2,3,4,5,6]));
-    /// assert_eq!(tag.be_signed(Ident(*b"test")).unwrap().to_vec(), vec![1,2,3,4,5,6]);
+    /// assert_eq!(tag.be_signed(Ident(*b"test")).next().unwrap().to_vec(), vec![1,2,3,4,5,6]);
     /// ```
-    pub fn be_signed(&self, ident: Ident) -> Option<&Vec<u8>> {
-        match self.data(ident) {
-            Some(Data::BeSigned(v)) => Some(v),
-            _ => None,
-        }
+    pub fn be_signed(&self, ident: Ident) -> impl Iterator<Item=&Vec<u8>> {
+        self.data(ident).filter_map(|d| {
+            match d {
+                Data::BeSigned(v) => Some(v),
+                _ => None,
+            }
+        })
     }
 
-    /// Attempts to return a string reference corresponding to the identifier.
+    /// Returns all string references corresponding to the identifier.
     ///
     /// # Example
     /// ```
@@ -895,39 +1102,40 @@ impl Tag {
     ///
     /// let mut tag = Tag::default();
     /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
-    /// assert_eq!(tag.string(Ident(*b"test")).unwrap(), "data");
+    /// assert_eq!(tag.string(Ident(*b"test")).next().unwrap(), "data");
     /// ```
-    pub fn string(&self, ident: Ident) -> Option<&str> {
-        let d = self.data(ident)?;
-
-        match d {
-            Data::Utf8(s) => Some(s),
-            Data::Utf16(s) => Some(s),
-            _ => None,
-        }
+    pub fn string(&self, ident: Ident) -> impl Iterator<Item=&str> {
+        self.data(ident).filter_map(|d| {
+            match d {
+                Data::Utf8(s) => Some(&**s),
+                Data::Utf16(s) => Some(&**s),
+                _ => None,
+            }
+        })
     }
 
-    /// Attempts to return a mutable string reference corresponding to the identifier.
+    /// Returns all mutable string references corresponding to the identifier.
+    ///
     /// # Example
     /// ```
     /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
     /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
-    /// tag.mut_string(Ident(*b"test")).unwrap().push('1');
-    /// assert_eq!(tag.string(Ident(*b"test")).unwrap(), "data1");
+    /// tag.mut_string(Ident(*b"test")).next().unwrap().push('1');
+    /// assert_eq!(tag.string(Ident(*b"test")).next().unwrap(), "data1");
     /// ```
-    pub fn mut_string(&mut self, ident: Ident) -> Option<&mut String> {
-        let d = self.mut_data(ident)?;
-
-        match d {
-            Data::Utf8(s) => Some(s),
-            Data::Utf16(s) => Some(s),
-            _ => None,
-        }
+    pub fn mut_string(&mut self, ident: Ident) -> impl Iterator<Item=&mut String> {
+        self.mut_data(ident).filter_map(|d| {
+            match d {
+                Data::Utf8(s) => Some(s),
+                Data::Utf16(s) => Some(s),
+                _ => None,
+            }
+        })
     }
 
-    /// Attempts to return image data of type `Data::JPEG` or `Data::PNG` corresponding to the identifier.
+    /// Returns all image data of type `Data::JPEG` or `Data::PNG` corresponding to the identifier.
     ///
     /// # Example
     /// ```
@@ -935,73 +1143,70 @@ impl Tag {
     ///
     /// let mut tag = Tag::default();
     /// tag.set_data(Ident(*b"test"), Data::Jpeg("<the image data>".as_bytes().to_vec()));
-    /// if let Data::Jpeg(v) = tag.image(Ident(*b"test")).unwrap(){
-    ///     assert_eq!(v, "<the image data>".as_bytes())
-    /// } else {
-    ///     panic!("data does not match");
-    /// }
+    /// match tag.image(Ident(*b"test")).next().unwrap() {
+    ///     Data::Jpeg(v) => assert_eq!(*v, "<the image data>".as_bytes()),
+    ///     _ => panic!("data does not match"),
+    /// };
     /// ```
-    pub fn image(&self, ident: Ident) -> Option<Data> {
-        let d = self.data(ident)?;
-
-        match d {
-            Data::Jpeg(d) => Some(Data::Jpeg(d.to_vec())),
-            Data::Png(d) => Some(Data::Png(d.to_vec())),
-            _ => None,
-        }
+    pub fn image(&self, ident: Ident) -> impl Iterator<Item=&Data> {
+        self.data(ident).filter(|d| {
+            match d {
+                Data::Jpeg(_) => true,
+                Data::Png(_) => true,
+                _ => false,
+            }
+        })
     }
 
-    /// Attempts to return a data reference corresponding to the identifier.
+    /// Returns all data references corresponding to the identifier.
+    ///
     /// # Example
     /// ```
     /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
     /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
-    /// if let Data::Utf8(s) = tag.data(Ident(*b"test")).unwrap(){
-    ///     assert_eq!(s, "data");
-    /// } else {
-    ///     panic!("data does not match");
-    /// }
+    /// match tag.data(Ident(*b"test")).next().unwrap() {
+    ///     Data::Utf8(s) =>  assert_eq!(s, "data"),
+    ///     _ => panic!("data does not match"),
+    /// };
     /// ```
-    pub fn data(&self, ident: Ident) -> Option<&Data> {
-        for a in &self.atoms {
+    pub fn data(&self, ident: Ident) -> impl Iterator<Item=&Data> {
+        self.atoms.iter().filter_map(|a| {
             if a.ident == ident {
-                if let Content::TypedData(data) = &a.first_child()?.content {
-                    return Some(data);
+                if let Content::TypedData(d) = &a.first_child()?.content {
+                    return Some(d);
                 }
             }
-        }
-
-        None
+            None
+        }).collect::<Vec<&Data>>().into_iter()
     }
 
-    /// Attempts to return a mutable data reference corresponding to the identifier.
+    /// Returns all mutable data references corresponding to the identifier.
     ///
     /// # Example
     /// ```
     /// use mp4ameta::{Tag, Data, Ident};
-    ///
     /// let mut tag = Tag::default();
     /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
-    /// if let Data::Utf8(s) = tag.mut_data(Ident(*b"test")).unwrap(){
+    /// if let Data::Utf8(s) = tag.mut_data(Ident(*b"test")).next().unwrap() {
     ///     s.push('1');
     /// }
-    /// assert_eq!(tag.string(Ident(*b"test")).unwrap(), "data1");
+    /// assert_eq!(tag.string(Ident(*b"test")).next().unwrap(), "data1");
     /// ```
-    pub fn mut_data(&mut self, ident: Ident) -> Option<&mut Data> {
-        for a in &mut self.atoms {
+    pub fn mut_data(&mut self, ident: Ident) -> impl Iterator<Item=&mut Data> {
+        self.atoms.iter_mut().filter_map(|a| {
             if a.ident == ident {
-                if let Content::TypedData(data) = &mut a.mut_first_child()?.content {
-                    return Some(data);
+                if let Content::TypedData(d) = &mut a.mut_first_child()?.content {
+                    return Some(d);
                 }
             }
-        }
-
-        None
+            None
+        }).collect::<Vec<&mut Data>>().into_iter()
     }
 
-    /// Updates or appends a new atom with the data corresponding to the identifier.
+    /// Removes all other atoms, corresponding to the identifier, and adds a new atom containing the
+    /// provided data.
     ///
     /// # Example
     /// ```
@@ -1009,20 +1214,27 @@ impl Tag {
     ///
     /// let mut tag = Tag::default();
     /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
-    /// assert_eq!(tag.string(Ident(*b"test")).unwrap(), "data");
+    /// assert_eq!(tag.string(Ident(*b"test")).next().unwrap(), "data");
     /// ```
     pub fn set_data(&mut self, ident: Ident, data: Data) {
-        for a in &mut self.atoms {
-            if a.ident == ident {
-                if let Some(p) = a.mut_first_child() {
-                    if let Content::TypedData(d) = &mut p.content {
-                        *d = data;
-                        return;
-                    }
-                }
-            }
-        }
+        self.remove_data(ident);
+        self.atoms.push(Atom::with(ident, 0, Content::data_atom_with(data)));
+    }
 
+    /// Adds a new atom, corresponding to the identifier, containing the provided data.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, Ident};
+    ///
+    /// let mut tag = Tag::default();
+    /// tag.add_data(Ident(*b"test"), Data::Utf8("data1".into()));
+    /// tag.add_data(Ident(*b"test"), Data::Utf8("data2".into()));
+    /// let mut strings = tag.string(Ident(*b"test"));
+    /// assert_eq!(strings.next().unwrap(), "data1");
+    /// assert_eq!(strings.next().unwrap(), "data2");
+    /// ```
+    pub fn add_data(&mut self, ident: Ident, data: Data) {
         self.atoms.push(Atom::with(ident, 0, Content::data_atom_with(data)));
     }
 
@@ -1034,15 +1246,17 @@ impl Tag {
     ///
     /// let mut tag = Tag::default();
     /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
-    /// assert!(tag.data(Ident(*b"test")).is_some());
+    /// assert!(tag.data(Ident(*b"test")).next().is_some());
     /// tag.remove_data(Ident(*b"test"));
-    /// assert!(tag.data(Ident(*b"test")).is_none());
+    /// assert!(tag.data(Ident(*b"test")).next().is_none());
     /// ```
     pub fn remove_data(&mut self, ident: Ident) {
-        for i in 0..self.atoms.len() {
+        let mut i = 0;
+        while i < self.atoms.len() {
             if self.atoms[i].ident == ident {
                 self.atoms.remove(i);
-                return;
+            } else {
+                i += 1;
             }
         }
     }

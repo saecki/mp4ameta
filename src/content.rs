@@ -3,7 +3,7 @@ use std::io::{Read, Seek, SeekFrom, Write};
 
 use byteorder::{BigEndian, ReadBytesExt};
 
-use crate::{Atom, Data, ErrorKind, Ident};
+use crate::{Atom, atom, Data, ErrorKind, Ident};
 use crate::atom::AtomT;
 use crate::data::DataT;
 
@@ -175,7 +175,7 @@ impl ContentT {
     /// Attempts to parse corresponding content from the reader.
     pub fn parse(&self, reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Content> {
         Ok(match self {
-            ContentT::Atoms(v) => Content::Atoms(AtomT::parse_atoms(v, reader, length)?),
+            ContentT::Atoms(v) => Content::Atoms(atom::parse_atoms(v, reader, length)?),
             ContentT::RawData(d) => Content::RawData(d.parse(reader, length)?),
             ContentT::TypedData => {
                 if length >= 8 {

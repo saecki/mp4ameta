@@ -1,10 +1,10 @@
 [package]
 name = "mp4ameta"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Saecki <tobiasschmitz2001@gmail.com>"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
-description = "A library for reading and writing MPEG-4 audio metadata."
+description = "A library for reading and writing iTunes style MPEG-4 audio metadata."
 categories = ["multimedia::audio", "parsing"]
 keywords = ["mp4", "m4a", "audio", "metadata", "parser"]
 repository = "https://github.com/Saecki/rust-mp4ameta"

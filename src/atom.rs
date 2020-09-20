@@ -42,7 +42,7 @@ pub const COMPILATION: Ident = Ident(*b"cpil");
 pub const COMPOSER: Ident = Ident(*b"\xa9wrt");
 pub const COPYRIGHT: Ident = Ident(*b"cprt");
 pub const CUSTOM_GENRE: Ident = Ident(*b"\xa9gen");
-pub const DISK_NUMBER: Ident = Ident(*b"disk");
+pub const DISC_NUMBER: Ident = Ident(*b"disk");
 pub const ENCODER: Ident = Ident(*b"\xa9too");
 pub const ADVISORY_RATING: Ident = Ident(*b"rtng");
 pub const STANDARD_GENRE: Ident = Ident(*b"gnre");
@@ -306,7 +306,7 @@ impl AtomT {
     /// Attempts to parse an atom, matching the template, from the reader. This should only be used
     /// if the atom has to be in this exact position, if the parsed atom's identifier doesn't match
     /// the expected one this will return an error.
-    pub fn parse(&self, reader: &mut (impl Read + Seek)) -> crate::Result<Atom> {
+    pub fn parse_next(&self, reader: &mut (impl Read + Seek)) -> crate::Result<Atom> {
         let (length, ident) = match parse_head(reader) {
             Ok(h) => h,
             Err(e) => return Err(e),
@@ -336,49 +336,24 @@ impl AtomT {
         }
     }
 
-    /// Attempts to parse the list of atoms, matching the templates, from the reader.
-    pub fn parse_atoms(atoms: &[AtomT], reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Vec<Atom>> {
-        let mut parsed_bytes = 0;
-        let mut parsed_atoms = Vec::with_capacity(atoms.len());
+    /// Attempts to parse an atom, matching the template, from the reader. This is a convenience
+    /// method that calls `parse_atoms` under the hood after determining the length from the reader.
+    pub fn parse(&self, reader: &mut (impl Read + Seek)) -> crate::Result<Atom> {
+        let current_position = reader.seek(SeekFrom::Current(0))?;
+        let complete_length = reader.seek(SeekFrom::End(0))?;
+        let length = (complete_length - current_position) as usize;
 
-        while parsed_bytes < length {
-            let (atom_length, atom_ident) = parse_head(reader)?;
+        reader.seek(SeekFrom::Start(current_position))?;
 
-            let mut parsed = false;
-            for a in atoms {
-                if atom_ident == a.ident {
-                    match a.parse_content(reader, atom_length) {
-                        Ok(c) => {
-                            parsed_atoms.push(Atom::with(a.ident, a.offset, c));
-                            parsed = true;
-                        }
-                        Err(e) => {
-                            return Err(crate::Error::new(
-                                e.kind,
-                                format!(
-                                    "Error reading {}: {}",
-                                    atom_ident,
-                                    e.description
-                                ),
-                            ));
-                        }
-                    }
-                    break;
-                }
-            }
-
-            if atom_length > 8 && !parsed {
-                reader.seek(SeekFrom::Current((atom_length - 8) as i64))?;
-            }
-
-            parsed_bytes += atom_length;
+        let atoms = parse_atoms(&[metadata_atom()], reader, length)?;
+        if atoms.is_empty() {
+            Err(crate::Error::new(
+                ErrorKind::AtomNotFound(self.ident),
+                format!("No {} atom found", self.ident),
+            ))
+        } else {
+            Ok(atoms.into_iter().next().unwrap())
         }
-
-        if parsed_bytes < length {
-            reader.seek(SeekFrom::Current((length - parsed_bytes) as i64))?;
-        }
-
-        Ok(parsed_atoms)
     }
 
     /// Attempts to parse the atom template's content from the reader.
@@ -399,26 +374,11 @@ pub fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
     let mut tag_atoms = Vec::new();
     let mut tag_readonly_atoms = Vec::new();
 
-    let ftyp = filetype_atom().parse(reader)?;
+    let ftyp = filetype_atom().parse_next(reader)?;
     ftyp.check_filetype()?;
     tag_readonly_atoms.push(ftyp);
 
-    let current_position = reader.seek(SeekFrom::Current(0))?;
-    let complete_length = reader.seek(SeekFrom::End(0))?;
-    let length = (complete_length - current_position) as usize;
-
-    reader.seek(SeekFrom::Start(current_position))?;
-
-    let moov_atoms = AtomT::parse_atoms(&[metadata_atom()], reader, length)?;
-    let moov = match moov_atoms.first() {
-        Some(m) => m,
-        None => {
-            return Err(crate::Error::new(
-                ErrorKind::AtomNotFound(MOVIE),
-                "No moov atom found".into(),
-            ));
-        }
-    };
+    let moov = metadata_atom().parse(reader)?;
 
     if let Some(trak) = moov.child(TRACK) {
         if let Some(mdia) = trak.child(MEDIA) {
@@ -448,7 +408,7 @@ pub fn write_tag_to(file: &File, atoms: &[Atom]) -> crate::Result<()> {
 
     let mut atom_pos_and_len = Vec::new();
     let mut destination = &item_list_atom_t();
-    let ftyp = filetype_atom().parse(&mut reader)?;
+    let ftyp = filetype_atom().parse_next(&mut reader)?;
     ftyp.check_filetype()?;
 
     while let Ok((length, ident)) = parse_head(&mut reader) {
@@ -498,6 +458,51 @@ pub fn write_tag_to(file: &File, atoms: &[Atom]) -> crate::Result<()> {
     writer.flush()?;
 
     Ok(())
+}
+
+/// Attempts to parse the list of atoms, matching the templates, from the reader.
+pub fn parse_atoms(atoms: &[AtomT], reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Vec<Atom>> {
+    let mut parsed_bytes = 0;
+    let mut parsed_atoms = Vec::with_capacity(atoms.len());
+
+    while parsed_bytes < length {
+        let (atom_length, atom_ident) = parse_head(reader)?;
+
+        let mut parsed = false;
+        for a in atoms {
+            if atom_ident == a.ident {
+                match a.parse_content(reader, atom_length) {
+                    Ok(c) => {
+                        parsed_atoms.push(Atom::with(a.ident, a.offset, c));
+                        parsed = true;
+                    }
+                    Err(e) => {
+                        return Err(crate::Error::new(
+                            e.kind,
+                            format!(
+                                "Error reading {}: {}",
+                                atom_ident,
+                                e.description
+                            ),
+                        ));
+                    }
+                }
+                break;
+            }
+        }
+
+        if atom_length > 8 && !parsed {
+            reader.seek(SeekFrom::Current((atom_length - 8) as i64))?;
+        }
+
+        parsed_bytes += atom_length;
+    }
+
+    if parsed_bytes < length {
+        reader.seek(SeekFrom::Current((length - parsed_bytes) as i64))?;
+    }
+
+    Ok(parsed_atoms)
 }
 
 /// Attempts to parse the atom's head containing a 32 bit unsigned integer determining the size
@@ -553,7 +558,7 @@ pub fn metadata_atom() -> AtomT {
                     .add_atom_t_with(COPYRIGHT, 0, ContentT::data_atom_t())
                     .add_atom_t_with(CUSTOM_GENRE, 0, ContentT::data_atom_t())
                     .add_atom_t_with(DESCRIPTION, 0, ContentT::data_atom_t())
-                    .add_atom_t_with(DISK_NUMBER, 0, ContentT::data_atom_t())
+                    .add_atom_t_with(DISC_NUMBER, 0, ContentT::data_atom_t())
                     .add_atom_t_with(ENCODER, 0, ContentT::data_atom_t())
                     .add_atom_t_with(GAPLESS_PLAYBACK, 0, ContentT::data_atom_t())
                     .add_atom_t_with(GROUPING, 0, ContentT::data_atom_t())

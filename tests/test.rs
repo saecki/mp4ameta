@@ -42,7 +42,7 @@ fn verify_sample_data() {
     assert_eq!(tag.composer(), Some("TEST COMPOSER"));
     assert_eq!(tag.copyright(), Some("TEST COPYRIGHT"));
     assert_eq!(tag.description(), Some("TEST DESCRIPTION"));
-    assert_eq!(tag.disk_number(), Some((1, 2)));
+    assert_eq!(tag.disc_number(), (Some(1), Some(2)));
     assert_eq!(tag.encoder(), Some("Lavf58.29.100"));
     assert_eq!(tag.gapless_playback(), true);
     assert_eq!(tag.genre(), Some("Hard Rock"));
@@ -51,7 +51,7 @@ fn verify_sample_data() {
     assert_eq!(tag.lyrics(), Some("TEST LYRICS"));
     assert_eq!(tag.media_type(), Some(MediaType::Normal));
     assert_eq!(tag.title(), Some("TEST TITLE"));
-    assert_eq!(tag.track_number(), Some((7, 13)));
+    assert_eq!(tag.track_number(), (Some(7), Some(13)));
     assert_eq!(tag.year(), Some("2013"));
     println!("duration: {}", tag.duration().unwrap());
 }
@@ -70,7 +70,7 @@ fn write_read() {
     tag.set_composer("NEW COMPOSER");
     tag.set_copyright("NEW COPYRIGHT");
     tag.set_description("NEW DESCRIPTION");
-    tag.set_disk_number(2, 0);
+    tag.set_disc_number(2, 0);
     tag.set_encoder("Lavf58.12.100");
     tag.set_gapless_playback();
     tag.set_genre("Hard Rock");
@@ -97,7 +97,7 @@ fn write_read() {
     assert_eq!(tag.composer(), Some("NEW COMPOSER"));
     assert_eq!(tag.copyright(), Some("NEW COPYRIGHT"));
     assert_eq!(tag.description(), Some("NEW DESCRIPTION"));
-    assert_eq!(tag.disk_number(), Some((2, 0)));
+    assert_eq!(tag.disc_number(), (Some(2), Some(0)));
     assert_eq!(tag.encoder(), Some("Lavf58.12.100"));
     assert_eq!(tag.gapless_playback(), true);
     assert_eq!(tag.genre(), Some("Hard Rock"));
@@ -106,7 +106,7 @@ fn write_read() {
     assert_eq!(tag.lyrics(), Some("NEW LYRICS"));
     assert_eq!(tag.media_type(), Some(MediaType::AudioBook));
     assert_eq!(tag.title(), Some("NEW TITLE"));
-    assert_eq!(tag.track_number(), Some((3, 7)));
+    assert_eq!(tag.track_number(), (Some(3), Some(7)));
     assert_eq!(tag.year(), Some("1998"));
 
     std::fs::remove_file("./files/temp.m4a").unwrap();
@@ -126,7 +126,7 @@ fn dump_read() {
     tag.set_composer("TEST COMPOSER");
     tag.set_copyright("TEST COPYRIGHT");
     tag.set_description("TEST DESCRIPTION");
-    tag.set_disk_number(1, 2);
+    tag.set_disc_number(1, 2);
     tag.set_encoder("Lavf58.29.100");
     tag.set_gapless_playback();
     tag.set_genre("Hard Rock");
@@ -152,7 +152,7 @@ fn dump_read() {
     assert_eq!(tag.composer(), Some("TEST COMPOSER"));
     assert_eq!(tag.copyright(), Some("TEST COPYRIGHT"));
     assert_eq!(tag.description(), Some("TEST DESCRIPTION"));
-    assert_eq!(tag.disk_number(), Some((1, 2)));
+    assert_eq!(tag.disc_number(), (Some(1), Some(2)));
     assert_eq!(tag.encoder(), Some("Lavf58.29.100"));
     assert_eq!(tag.gapless_playback(), true);
     assert_eq!(tag.genre(), Some("Hard Rock"));
@@ -161,7 +161,7 @@ fn dump_read() {
     assert_eq!(tag.lyrics(), Some("TEST LYRICS"));
     assert_eq!(tag.media_type(), Some(MediaType::Normal));
     assert_eq!(tag.title(), Some("TEST TITLE"));
-    assert_eq!(tag.track_number(), Some((7, 13)));
+    assert_eq!(tag.track_number(), (Some(7), Some(13)));
     assert_eq!(tag.year(), Some("2013"));
 
     std::fs::remove_file("./files/temp.m4a").unwrap();
