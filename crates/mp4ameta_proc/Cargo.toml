@@ -1,0 +1,8 @@
+[package]
+name = "mp4ameta_proc"
+version = "0.1.0"
+authors = ["Saecki <tobiasschmitz2001@gmail.com>"]
+edition = "2018"
+
+[lib]
+proc-macro = true

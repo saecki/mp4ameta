@@ -79,7 +79,7 @@ pub const PURCHASE_DATE: Ident = Ident(*b"purd");
 pub const GAPLESS_PLAYBACK: Ident = Ident(*b"pgap");
 
 // Work, Movement
-pub const MOVEMENT_NAME: Ident = Ident(*b"\xa9mvn");
+pub const MOVEMENT: Ident = Ident(*b"\xa9mvn");
 pub const MOVEMENT_COUNT: Ident = Ident(*b"\xa9mvc");
 pub const MOVEMENT_INDEX: Ident = Ident(*b"\xa9mvi");
 pub const WORK: Ident = Ident(*b"\xa9wrk");
@@ -567,7 +567,7 @@ pub fn metadata_atom() -> AtomT {
                     .add_atom_t_with(MEDIA_TYPE, 0, ContentT::data_atom_t())
                     .add_atom_t_with(MOVEMENT_COUNT, 0, ContentT::data_atom_t())
                     .add_atom_t_with(MOVEMENT_INDEX, 0, ContentT::data_atom_t())
-                    .add_atom_t_with(MOVEMENT_NAME, 0, ContentT::data_atom_t())
+                    .add_atom_t_with(MOVEMENT, 0, ContentT::data_atom_t())
                     .add_atom_t_with(PODCAST, 0, ContentT::data_atom_t())
                     .add_atom_t_with(PODCAST_EPISODE_GLOBAL_UNIQUE_ID, 0, ContentT::data_atom_t())
                     .add_atom_t_with(PODCAST_URL, 0, ContentT::data_atom_t())
