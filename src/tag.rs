@@ -4,8 +4,6 @@ use std::fs::{File, OpenOptions};
 use std::io::{BufReader, Read, Seek, Write};
 use std::path::Path;
 
-use byteorder::{BigEndian, WriteBytesExt};
-
 use crate::{AdvisoryRating, atom, Atom, Content, Data, Ident, MediaType};
 
 /// A list of standard genre codes and values found in the `gnre` atom.
@@ -161,15 +159,14 @@ impl Tag {
 mp4ameta_proc::individual_string_value_accessor!("album", "©alb");
 mp4ameta_proc::individual_string_value_accessor!("copyright", "cprt");
 mp4ameta_proc::individual_string_value_accessor!("encoder", "©too");
-mp4ameta_proc::individual_string_value_accessor!("title", "©nam");
 mp4ameta_proc::individual_string_value_accessor!("lyrics", "©lyr");
 mp4ameta_proc::individual_string_value_accessor!("movement", "©mvn");
+mp4ameta_proc::individual_string_value_accessor!("title", "©nam");
+mp4ameta_proc::individual_string_value_accessor!("tv_episode_number", "tven");
 mp4ameta_proc::individual_string_value_accessor!("tv_network_name", "tvnn");
 mp4ameta_proc::individual_string_value_accessor!("tv_show_name", "tvsh");
-mp4ameta_proc::individual_string_value_accessor!("tv_episode_number", "tven");
-mp4ameta_proc::individual_string_value_accessor!("year", "©day");
 mp4ameta_proc::individual_string_value_accessor!("work", "©wrk");
-
+mp4ameta_proc::individual_string_value_accessor!("year", "©day");
 
 // ## Multiple string values
 mp4ameta_proc::multiple_string_values_accessor!("album_artist", "aART");
@@ -177,168 +174,20 @@ mp4ameta_proc::multiple_string_values_accessor!("artist", "©ART");
 mp4ameta_proc::multiple_string_values_accessor!("category", "catg");
 mp4ameta_proc::multiple_string_values_accessor!("comment", "©cmt");
 mp4ameta_proc::multiple_string_values_accessor!("composer", "©wrt");
+mp4ameta_proc::multiple_string_values_accessor!("custom_genre", "©gen");
 mp4ameta_proc::multiple_string_values_accessor!("description", "desc");
 mp4ameta_proc::multiple_string_values_accessor!("grouping", "©grp");
 mp4ameta_proc::multiple_string_values_accessor!("keyword", "keyw");
 
-/// ## Flags
-impl Tag {
-    /// Returns the compilation flag (cpil).
-    pub fn compilation(&self) -> bool {
-        let vec = match self.data(atom::COMPILATION).next() {
-            Some(Data::Reserved(v)) => v,
-            Some(Data::BeSigned(v)) => v,
-            _ => return false,
-        };
+// ## Flags
+mp4ameta_proc::flag_value_accessor!("compilation", "cpil");
+mp4ameta_proc::flag_value_accessor!("gapless_playback", "pgap");
+mp4ameta_proc::flag_value_accessor!("show_movement", "shwm");
 
-        if vec.is_empty() {
-            return false;
-        }
-
-        vec[0] != 0
-    }
-
-    /// Sets the compilation flag to true (cpil).
-    pub fn set_compilation(&mut self) {
-        self.set_data(atom::COMPILATION, Data::BeSigned(vec![1u8]));
-    }
-
-    /// Removes the compilation flag (cpil).
-    pub fn remove_compilation(&mut self) {
-        self.remove_data(atom::COMPILATION)
-    }
-
-
-    /// Returns the gapless playback flag (pgap).
-    pub fn gapless_playback(&self) -> bool {
-        let vec = match self.be_signed(atom::GAPLESS_PLAYBACK).next() {
-            Some(v) => v,
-            None => return false,
-        };
-
-        if vec.is_empty() {
-            return false;
-        }
-
-        vec[0] != 0
-    }
-
-    /// Sets the gapless playback flag to true (pgap).
-    pub fn set_gapless_playback(&mut self) {
-        self.set_data(atom::GAPLESS_PLAYBACK, Data::BeSigned(vec![1u8]));
-    }
-
-    /// Removes the gapless playback flag (pgap).
-    pub fn remove_gapless_playback(&mut self) {
-        self.remove_data(atom::GAPLESS_PLAYBACK)
-    }
-
-
-    /// Returns the show movement flag (shwm).
-    pub fn show_movement(&self) -> bool {
-        let vec = match self.be_signed(atom::SHOW_MOVEMENT).next() {
-            Some(v) => v,
-            None => return false,
-        };
-
-        if vec.is_empty() {
-            return false;
-        }
-
-        vec[0] != 0
-    }
-
-    /// Sets the show movement flag to true (shwm).
-    pub fn set_show_movement(&mut self) {
-        self.set_data(atom::SHOW_MOVEMENT, Data::BeSigned(vec![1u8]));
-    }
-
-    /// Removes the show movement flag (shwm).
-    pub fn remove_show_movement(&mut self) {
-        self.remove_data(atom::SHOW_MOVEMENT)
-    }
-}
-
-/// ## Integer values
-impl Tag {
-    /// Returns the bpm (tmpo)
-    pub fn bpm(&self) -> Option<u16> {
-        let vec = match self.data(atom::BPM).next()? {
-            Data::Reserved(v) => v,
-            Data::BeSigned(v) => v,
-            _ => return None,
-        };
-
-        if vec.len() < 2 {
-            return None;
-        }
-
-        Some(u16::from_be_bytes([vec[0], vec[1]]))
-    }
-
-    /// Sets the bpm (tmpo)
-    pub fn set_bpm(&mut self, bpm: u16) {
-        let mut vec = Vec::with_capacity(2);
-        vec.write_u16::<BigEndian>(bpm).unwrap();
-
-        self.set_data(atom::BPM, Data::BeSigned(vec));
-    }
-
-    /// Removes the bpm (tmpo).
-    pub fn remove_bpm(&mut self) {
-        self.remove_data(atom::BPM);
-    }
-
-
-    /// Returns the movement count (©mvc).
-    pub fn movement_count(&self) -> Option<u16> {
-        let vec = self.be_signed(atom::MOVEMENT_COUNT).next()?;
-
-        if vec.len() < 2 {
-            return None;
-        }
-
-        Some(u16::from_be_bytes([vec[0], vec[1]]))
-    }
-
-    /// Sets the movement count (©mvc).
-    pub fn set_movement_count(&mut self, count: u16) {
-        let mut vec: Vec<u8> = Vec::with_capacity(2);
-        vec.write_u16::<BigEndian>(count).unwrap();
-
-        self.set_data(atom::MOVEMENT_COUNT, Data::BeSigned(vec));
-    }
-
-    /// Removes the movement count (©mvc).
-    pub fn remove_movement_count(&mut self) {
-        self.remove_data(atom::MOVEMENT_COUNT)
-    }
-
-
-    /// Returns the movement index (©mvi).
-    pub fn movement_index(&self) -> Option<u16> {
-        let vec = self.be_signed(atom::MOVEMENT_INDEX).next()?;
-
-        if vec.len() < 2 {
-            return None;
-        }
-
-        Some(u16::from_be_bytes([vec[0], vec[1]]))
-    }
-
-    /// Sets the movement index (©mvi).
-    pub fn set_movement_index(&mut self, index: u16) {
-        let mut vec: Vec<u8> = Vec::with_capacity(2);
-        vec.write_u16::<BigEndian>(index).unwrap();
-
-        self.set_data(atom::MOVEMENT_INDEX, Data::BeSigned(vec));
-    }
-
-    /// Removes the movement index (©mvi).
-    pub fn remove_movement_index(&mut self) {
-        self.remove_data(atom::MOVEMENT_INDEX)
-    }
-}
+// ## Integer values
+mp4ameta_proc::integer_value_accessor!("bpm", "tmpo");
+mp4ameta_proc::integer_value_accessor!("movement_count", "©mvc");
+mp4ameta_proc::integer_value_accessor!("movement_index", "©mvi");
 
 /// ## Tuple values
 impl Tag {
@@ -366,12 +215,9 @@ impl Tag {
 
     /// Sets the track number and the total number of tracks (trkn).
     pub fn set_track_number(&mut self, track_number: u16, total_tracks: u16) {
-        let vec16 = vec![0u16, track_number, total_tracks, 0u16];
-        let mut vec = Vec::with_capacity(8);
-
-        for i in vec16 {
-            vec.write_u16::<BigEndian>(i).unwrap();
-        }
+        let vec = vec![0u16, track_number, total_tracks, 0u16].into_iter()
+            .flat_map(|u| u.to_be_bytes().to_vec())
+            .collect();
 
         self.set_data(atom::TRACK_NUMBER, Data::Reserved(vec));
     }
@@ -405,12 +251,9 @@ impl Tag {
 
     /// Sets the disc number and the total number of discs (disk).
     pub fn set_disc_number(&mut self, disc_number: u16, total_discs: u16) {
-        let vec16 = vec![0u16, disc_number, total_discs];
-        let mut vec = Vec::with_capacity(6);
-
-        for i in vec16 {
-            vec.write_u16::<BigEndian>(i).unwrap();
-        }
+        let vec = vec![0u16, disc_number, total_discs].into_iter()
+            .flat_map(|u| u.to_be_bytes().to_vec())
+            .collect();
 
         self.set_data(atom::DISC_NUMBER, Data::Reserved(vec));
     }
@@ -421,9 +264,9 @@ impl Tag {
     }
 }
 
-/// ## Genre
+/// ### Genre
 impl Tag {
-    /// Returns all genres (gnre) or (©gen).
+    /// Returns all genres (gnre) or {5}()(©gen).
     pub fn genres(&self) -> impl Iterator<Item=&str> {
         self.standard_genres().filter_map(|genre_code| {
             for g in GENRES.iter() {
@@ -486,8 +329,10 @@ impl Tag {
         self.remove_standard_genres();
         self.remove_custom_genres();
     }
+}
 
-
+/// ### Standard genre
+impl Tag {
     /// Returns all standard genres (gnre).
     pub fn standard_genres(&self) -> impl Iterator<Item=u16> + '_ {
         self.reserved(atom::STANDARD_GENRE)
@@ -508,8 +353,7 @@ impl Tag {
     /// Sets the standard genre (gnre). This will remove all other standard genres.
     pub fn set_standard_genre(&mut self, genre_code: u16) {
         if genre_code > 0 && genre_code <= 80 {
-            let mut vec: Vec<u8> = Vec::with_capacity(2);
-            vec.write_u16::<BigEndian>(genre_code).unwrap();
+            let vec: Vec<u8> = genre_code.to_be_bytes().to_vec();
             self.set_data(atom::STANDARD_GENRE, Data::Reserved(vec));
         }
     }
@@ -517,8 +361,7 @@ impl Tag {
     /// Adds a standard genre (gnre).
     pub fn add_standard_genre(&mut self, genre_code: u16) {
         if genre_code > 0 && genre_code <= 80 {
-            let mut vec: Vec<u8> = Vec::with_capacity(2);
-            vec.write_u16::<BigEndian>(genre_code).unwrap();
+            let vec: Vec<u8> = genre_code.to_be_bytes().to_vec();
             self.add_data(atom::STANDARD_GENRE, Data::Reserved(vec))
         }
     }
@@ -527,40 +370,21 @@ impl Tag {
     pub fn remove_standard_genres(&mut self) {
         self.remove_data(atom::STANDARD_GENRE);
     }
-
-
-    /// Returns all custom genres (©gen).
-    pub fn custom_genres(&self) -> impl Iterator<Item=&str> {
-        self.string(atom::CUSTOM_GENRE)
-    }
-
-    /// Returns the first custom genre (©gen).
-    pub fn custom_genre(&self) -> Option<&str> {
-        self.string(atom::CUSTOM_GENRE).next()
-    }
-
-    /// Sets the custom genre (©gen). This will remove all other custom genres.
-    pub fn set_custom_genre(&mut self, custom_genre: impl Into<String>) {
-        self.set_data(atom::CUSTOM_GENRE, Data::Utf8(custom_genre.into()));
-    }
-
-    /// Adds a custom genre (©gen).
-    pub fn add_custom_genre(&mut self, custom_genre: impl Into<String>) {
-        self.add_data(atom::CUSTOM_GENRE, Data::Utf8(custom_genre.into()));
-    }
-
-    /// Removes the custom genre (©gen).
-    pub fn remove_custom_genres(&mut self) {
-        self.remove_data(atom::CUSTOM_GENRE);
-    }
 }
 
-/// ## Custom values
+// ## Custom values
+/// ### Artwork
 impl Tag {
     /// Returns the artwork image data of type `Data::JPEG` or `Data::PNG` (covr).
-    pub fn artwork(&self) -> impl Iterator<Item=&Data> {
+    pub fn artworks(&self) -> impl Iterator<Item=&Data> {
         self.image(atom::ARTWORK)
     }
+
+    /// Returns the artwork image data of type `Data::JPEG` or `Data::PNG` (covr).
+    pub fn artwork(&self) -> Option<&Data> {
+        self.image(atom::ARTWORK).next()
+    }
+
     /// Sets the artwork image data of type `Data::JPEG` or `Data::PNG` (covr).
     pub fn set_artwork(&mut self, image: Data) {
         match &image {
@@ -587,8 +411,10 @@ impl Tag {
     pub fn remove_artwork(&mut self) {
         self.remove_data(atom::ARTWORK);
     }
+}
 
-
+/// ### Media type
+impl Tag {
     /// Returns the media type (stik).
     pub fn media_type(&self) -> Option<MediaType> {
         let vec = match self.data(atom::MEDIA_TYPE).next()? {
@@ -613,9 +439,12 @@ impl Tag {
     pub fn remove_media_type(&mut self) {
         self.remove_data(atom::MEDIA_TYPE);
     }
+}
 
 
-    /// Returns the rating (rtng).
+/// ### Advisory rating
+impl Tag {
+    /// Returns the advisory rating (rtng).
     pub fn advisory_rating(&self) -> Option<AdvisoryRating> {
         let vec = match self.data(atom::ADVISORY_RATING).next()? {
             Data::Reserved(v) => v,
@@ -630,22 +459,23 @@ impl Tag {
         Some(AdvisoryRating::from(vec[0]))
     }
 
-    /// Sets the rating (rtng).
+    /// Sets the advisory rating (rtng).
     pub fn set_advisory_rating(&mut self, rating: AdvisoryRating) {
         self.set_data(atom::ADVISORY_RATING, Data::Reserved(vec![rating.value()]));
     }
 
-    /// Removes the rating (rtng).
+    /// Removes the advisory rating (rtng).
     pub fn remove_advisory_rating(&mut self) {
         self.remove_data(atom::ADVISORY_RATING);
     }
 }
 
-/// ## Readonly values
+// ## Readonly values
+/// ### Duration
 impl Tag {
     /// Returns the duration in seconds.
-    /// [Spec](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap2/qtff2.html#//apple_ref/doc/uid/TP40000939-CH204-SW34)
     pub fn duration(&self) -> Option<f64> {
+        // [Spec](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap2/qtff2.html#//apple_ref/doc/uid/TP40000939-CH204-SW34)
         let mut vec = None;
 
         for a in &self.readonly_atoms {
