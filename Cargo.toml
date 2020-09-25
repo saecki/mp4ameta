@@ -1,6 +1,6 @@
 [package]
 name = "mp4ameta"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Saecki <tobiasschmitz2001@gmail.com>"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
@@ -12,4 +12,4 @@ edition = "2018"
 
 [dependencies]
 byteorder = "1.3.4"
-mp4ameta_proc = { path = "crates/mp4ameta_proc" }
+mp4ameta_proc = { path = "mp4ameta_proc" }

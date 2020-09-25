@@ -189,7 +189,49 @@ mp4ameta_proc::integer_value_accessor!("bpm", "tmpo");
 mp4ameta_proc::integer_value_accessor!("movement_count", "©mvc");
 mp4ameta_proc::integer_value_accessor!("movement_index", "©mvi");
 
-/// ## Tuple values
+/// ### Standard genre
+impl Tag {
+    /// Returns all standard genres (gnre).
+    pub fn standard_genres(&self) -> impl Iterator<Item=u16> + '_ {
+        self.reserved(atom::STANDARD_GENRE)
+            .filter_map(|v| {
+                if v.len() < 2 {
+                    None
+                } else {
+                    Some(u16::from_be_bytes([v[0], v[1]]))
+                }
+            })
+    }
+
+    /// Returns the first standard genre (gnre).
+    pub fn standard_genre(&self) -> Option<u16> {
+        self.standard_genres().next()
+    }
+
+    /// Sets the standard genre (gnre). This will remove all other standard genres.
+    pub fn set_standard_genre(&mut self, genre_code: u16) {
+        if genre_code > 0 && genre_code <= 80 {
+            let vec: Vec<u8> = genre_code.to_be_bytes().to_vec();
+            self.set_data(atom::STANDARD_GENRE, Data::Reserved(vec));
+        }
+    }
+
+    /// Adds a standard genre (gnre).
+    pub fn add_standard_genre(&mut self, genre_code: u16) {
+        if genre_code > 0 && genre_code <= 80 {
+            let vec: Vec<u8> = genre_code.to_be_bytes().to_vec();
+            self.add_data(atom::STANDARD_GENRE, Data::Reserved(vec))
+        }
+    }
+
+    /// Removes all standard genres (gnre).
+    pub fn remove_standard_genres(&mut self) {
+        self.remove_data(atom::STANDARD_GENRE);
+    }
+}
+
+// ## Tuple values
+/// ### Track number
 impl Tag {
     /// Returns the track number and the total number of tracks (trkn).
     pub fn track_number(&self) -> (Option<u16>, Option<u16>) {
@@ -226,7 +268,10 @@ impl Tag {
     pub fn remove_track_number(&mut self) {
         self.remove_data(atom::TRACK_NUMBER);
     }
+}
 
+/// ### Disc number
+impl Tag {
     /// Returns the disc number and total number of discs (disk).
     pub fn disc_number(&self) -> (Option<u16>, Option<u16>) {
         let vec = match self.reserved(atom::DISC_NUMBER).next() {
@@ -328,47 +373,6 @@ impl Tag {
     pub fn remove_genres(&mut self) {
         self.remove_standard_genres();
         self.remove_custom_genres();
-    }
-}
-
-/// ### Standard genre
-impl Tag {
-    /// Returns all standard genres (gnre).
-    pub fn standard_genres(&self) -> impl Iterator<Item=u16> + '_ {
-        self.reserved(atom::STANDARD_GENRE)
-            .filter_map(|v| {
-                if v.len() < 2 {
-                    None
-                } else {
-                    Some(u16::from_be_bytes([v[0], v[1]]))
-                }
-            })
-    }
-
-    /// Returns the first standard genre (gnre).
-    pub fn standard_genre(&self) -> Option<u16> {
-        self.standard_genres().next()
-    }
-
-    /// Sets the standard genre (gnre). This will remove all other standard genres.
-    pub fn set_standard_genre(&mut self, genre_code: u16) {
-        if genre_code > 0 && genre_code <= 80 {
-            let vec: Vec<u8> = genre_code.to_be_bytes().to_vec();
-            self.set_data(atom::STANDARD_GENRE, Data::Reserved(vec));
-        }
-    }
-
-    /// Adds a standard genre (gnre).
-    pub fn add_standard_genre(&mut self, genre_code: u16) {
-        if genre_code > 0 && genre_code <= 80 {
-            let vec: Vec<u8> = genre_code.to_be_bytes().to_vec();
-            self.add_data(atom::STANDARD_GENRE, Data::Reserved(vec))
-        }
-    }
-
-    /// Removes all standard genres (gnre).
-    pub fn remove_standard_genres(&mut self) {
-        self.remove_data(atom::STANDARD_GENRE);
     }
 }
 
@@ -505,7 +509,10 @@ impl Tag {
 
         Some(duration)
     }
+}
 
+/// ### Filetype
+impl Tag {
     /// returns the filetype (ftyp).
     pub fn filetype(&self) -> Option<String> {
         for a in &self.readonly_atoms {
