@@ -1,6 +1,6 @@
 use std::fs;
 
-use mp4ameta::{AdvisoryRating, MediaType, Tag};
+use mp4ameta::{AdvisoryRating, MediaType, Tag, Data};
 
 const EXTENSIONS: [&str; 4] = [".m4a", ".m4b", ".m4p", ".m4v"];
 
@@ -53,7 +53,9 @@ fn verify_sample_data() {
     assert_eq!(tag.title(), Some("TEST TITLE"));
     assert_eq!(tag.track_number(), (Some(7), Some(13)));
     assert_eq!(tag.year(), Some("2013"));
-    println!("duration: {}", tag.duration().unwrap());
+    assert_eq!(tag.artwork(), Some(&Data::Png(fs::read("./files/artwork.png").unwrap())));
+    assert_eq!(tag.duration(), Some(0.48523809523809525));
+    assert_eq!(tag.filetype(), Some("M4A \u{0}\u{0}\u{2}\u{0}isomiso2"));
 }
 
 #[test]
@@ -81,6 +83,7 @@ fn write_read() {
     tag.set_title("NEW TITLE");
     tag.set_track_number(3, 7);
     tag.set_year("1998");
+    tag.set_artwork(Data::Jpeg(b"NEW ARTWORK".to_vec()));
 
     std::fs::copy("./files/sample.m4a", "./files/temp.m4a").unwrap();
     tag.write_to_path("./files/temp.m4a").unwrap();
@@ -108,6 +111,9 @@ fn write_read() {
     assert_eq!(tag.title(), Some("NEW TITLE"));
     assert_eq!(tag.track_number(), (Some(3), Some(7)));
     assert_eq!(tag.year(), Some("1998"));
+    assert_eq!(tag.artwork(), Some(&Data::Jpeg(b"NEW ARTWORK".to_vec())));
+    assert_eq!(tag.duration(), Some(0.48523809523809525));
+    assert_eq!(tag.filetype(), Some("M4A \u{0}\u{0}\u{2}\u{0}isomiso2"));
 
     std::fs::remove_file("./files/temp.m4a").unwrap();
 }
@@ -137,6 +143,7 @@ fn dump_read() {
     tag.set_title("TEST TITLE");
     tag.set_track_number(7, 13);
     tag.set_year("2013");
+    tag.set_artwork(Data::Png(b"TEST ARTWORK".to_vec()));
 
     tag.dump_to_path("./files/temp.m4a").unwrap();
 
@@ -163,6 +170,7 @@ fn dump_read() {
     assert_eq!(tag.title(), Some("TEST TITLE"));
     assert_eq!(tag.track_number(), (Some(7), Some(13)));
     assert_eq!(tag.year(), Some("2013"));
+    assert_eq!(tag.artwork(), Some(&Data::Png(b"TEST ARTWORK".to_vec())));
 
     std::fs::remove_file("./files/temp.m4a").unwrap();
 }

@@ -8,7 +8,7 @@ pub use crate::atom::{Atom, AtomT, Ident};
 pub use crate::content::{Content, ContentT};
 pub use crate::data::{Data, DataT};
 pub use crate::error::{Error, ErrorKind, Result};
-pub use crate::tag::Tag;
+pub use crate::tag::{Tag, GENRES};
 pub use crate::types::{AdvisoryRating, MediaType};
 
 mod atom;

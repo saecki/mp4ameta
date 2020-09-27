@@ -12,4 +12,4 @@ edition = "2018"
 
 [dependencies]
 byteorder = "1.3.4"
-mp4ameta_proc = { path = "mp4ameta_proc" }
+mp4ameta_proc = { path = "mp4ameta_proc", version = "0.1.0" }

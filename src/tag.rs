@@ -6,7 +6,8 @@ use std::path::Path;
 
 use crate::{AdvisoryRating, atom, Atom, Content, Data, Ident, MediaType};
 
-/// A list of standard genre codes and values found in the `gnre` atom.
+/// A list of standard genre codes and values found in the `gnre` atom. This list is equal to the
+/// ID3 genre list but the code is incremented by 1.
 pub const GENRES: [(u16, &str); 80] = [
     (1, "Blues"),
     (2, "Classic rock"),
@@ -309,73 +310,6 @@ impl Tag {
     }
 }
 
-/// ### Genre
-impl Tag {
-    /// Returns all genres (gnre) or {5}()(©gen).
-    pub fn genres(&self) -> impl Iterator<Item=&str> {
-        self.standard_genres().filter_map(|genre_code| {
-            for g in GENRES.iter() {
-                if g.0 == genre_code {
-                    return Some(g.1);
-                }
-            }
-            None
-        }).chain(
-            self.custom_genres()
-        )
-    }
-
-    /// Returns the first genre (gnre) or (©gen).
-    pub fn genre(&self) -> Option<&str> {
-        if let Some(genre_code) = self.standard_genre() {
-            for g in GENRES.iter() {
-                if g.0 == genre_code {
-                    return Some(g.1);
-                }
-            }
-        }
-
-        self.custom_genre()
-    }
-
-    /// Sets the standard genre (gnre) if it matches one otherwise a custom genre (©gen).
-    pub fn set_genre(&mut self, genre: impl Into<String>) {
-        let gen = genre.into();
-
-
-        for g in GENRES.iter() {
-            if g.1 == gen {
-                self.remove_custom_genres();
-                self.set_standard_genre(g.0);
-                return;
-            }
-        }
-
-        self.remove_standard_genres();
-        self.set_custom_genre(gen)
-    }
-
-    /// Adds the standard genre (gnre) if it matches one otherwise a custom genre (©gen).
-    pub fn add_genre(&mut self, genre: impl Into<String>) {
-        let gen = genre.into();
-
-        for g in GENRES.iter() {
-            if g.1 == gen {
-                self.add_standard_genre(g.0);
-                return;
-            }
-        }
-
-        self.add_custom_genre(gen)
-    }
-
-    /// Removes the genre (gnre) or (©gen).
-    pub fn remove_genres(&mut self) {
-        self.remove_standard_genres();
-        self.remove_custom_genres();
-    }
-}
-
 // ## Custom values
 /// ### Artwork
 impl Tag {
@@ -400,7 +334,8 @@ impl Tag {
         self.set_data(atom::ARTWORK, image);
     }
 
-    /// Sets the artwork image data of type `Data::JPEG` or `Data::PNG` (covr).
+    /// Adds artwork image data of type `Data::JPEG` or `Data::PNG` (covr). This will remove all
+    /// other artworks.
     pub fn add_artwork(&mut self, image: Data) {
         match &image {
             Data::Jpeg(_) => (),
@@ -474,6 +409,77 @@ impl Tag {
     }
 }
 
+/// ### Genre
+///
+/// These are convenience functions that combine the values from the standard genre (gnre) and
+/// custom genre (©gen).
+impl Tag {
+    /// Returns all genres (gnre or ©gen).
+    pub fn genres(&self) -> impl Iterator<Item=&str> {
+        self.standard_genres().filter_map(|genre_code| {
+            for g in GENRES.iter() {
+                if g.0 == genre_code {
+                    return Some(g.1);
+                }
+            }
+            None
+        }).chain(
+            self.custom_genres()
+        )
+    }
+
+    /// Returns the first genre (gnre or ©gen).
+    pub fn genre(&self) -> Option<&str> {
+        if let Some(genre_code) = self.standard_genre() {
+            for g in GENRES.iter() {
+                if g.0 == genre_code {
+                    return Some(g.1);
+                }
+            }
+        }
+
+        self.custom_genre()
+    }
+
+    /// Sets the standard genre (gnre) if it matches a predefined value otherwise a custom genre
+    /// (©gen). This will remove all other standard or custom genres.
+    pub fn set_genre(&mut self, genre: impl Into<String>) {
+        let gen = genre.into();
+
+
+        for g in GENRES.iter() {
+            if g.1 == gen {
+                self.remove_custom_genres();
+                self.set_standard_genre(g.0);
+                return;
+            }
+        }
+
+        self.remove_standard_genres();
+        self.set_custom_genre(gen)
+    }
+
+    /// Adds the standard genre (gnre) if it matches one otherwise a custom genre (©gen).
+    pub fn add_genre(&mut self, genre: impl Into<String>) {
+        let gen = genre.into();
+
+        for g in GENRES.iter() {
+            if g.1 == gen {
+                self.add_standard_genre(g.0);
+                return;
+            }
+        }
+
+        self.add_custom_genre(gen)
+    }
+
+    /// Removes the genre (gnre or ©gen).
+    pub fn remove_genres(&mut self) {
+        self.remove_standard_genres();
+        self.remove_custom_genres();
+    }
+}
+
 // ## Readonly values
 /// ### Duration
 impl Tag {
@@ -514,11 +520,11 @@ impl Tag {
 /// ### Filetype
 impl Tag {
     /// returns the filetype (ftyp).
-    pub fn filetype(&self) -> Option<String> {
+    pub fn filetype(&self) -> Option<&str> {
         for a in &self.readonly_atoms {
             if a.ident == atom::FILE_TYPE {
                 if let Content::RawData(Data::Utf8(s)) = &a.content {
-                    return Some(s.to_string());
+                    return Some(s);
                 }
             }
         }
