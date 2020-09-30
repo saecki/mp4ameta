@@ -132,7 +132,7 @@ impl Tag {
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.
     pub fn dump_to(&self, writer: &mut impl Write) -> crate::Result<()> {
-        let ftyp = Atom::with(atom::FILE_TYPE, 0, Content::RawData(
+        let ftyp = Atom::with(atom::FILETYPE, 0, Content::RawData(
             Data::Utf8("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".into())
         ));
         let moov = Atom::with(atom::MOVIE, 0, Content::atoms()
@@ -522,7 +522,7 @@ impl Tag {
     /// returns the filetype (ftyp).
     pub fn filetype(&self) -> Option<&str> {
         for a in &self.readonly_atoms {
-            if a.ident == atom::FILE_TYPE {
+            if a.ident == atom::FILETYPE {
                 if let Content::RawData(Data::Utf8(s)) = &a.content {
                     return Some(s);
                 }

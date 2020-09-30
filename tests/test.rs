@@ -1,19 +1,23 @@
 use std::fs;
 
 use mp4ameta::{AdvisoryRating, MediaType, Tag, Data};
+use walkdir::WalkDir;
 
 const EXTENSIONS: [&str; 4] = [".m4a", ".m4b", ".m4p", ".m4v"];
 
 #[test]
 fn sample_files() {
-    for f in fs::read_dir("./files").unwrap() {
-        let filename: String = f.unwrap().path().to_str().unwrap().into();
-
+    for d in WalkDir::new("./files")
+        .follow_links(true)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.metadata().map(|m| m.is_file()).unwrap_or(false))
+    {
+        let filename = d.file_name().to_str().unwrap();
         let mut mp4file = false;
         for e in EXTENSIONS.iter() {
             if filename.ends_with(e) {
                 mp4file = true;
-                break;
             }
         }
 
@@ -21,8 +25,10 @@ fn sample_files() {
             continue;
         }
 
-        println!("{}:", &filename);
-        let tag_sample = Tag::read_from_path(&filename).unwrap();
+        let filepath = d.into_path();
+
+        println!("{}:", filepath.display());
+        let tag_sample = Tag::read_from_path(&filepath).unwrap();
         println!("{:#?}", tag_sample);
     }
 }

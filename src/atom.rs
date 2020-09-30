@@ -9,11 +9,12 @@ use crate::{Content, data, Data, ErrorKind, Tag};
 use crate::content::ContentT;
 use crate::data::DataT;
 
+
 /// A list of valid file types defined by the `ftyp` atom.
-pub const VALID_FILE_TYPES: [&str; 5] = ["M4A ", "M4B ", "M4P ", "M4V ", "isom"];
+pub const VALID_FILETYPES: [&str; 5] = ["M4A ", "M4B ", "M4P ", "M4V ", "isom"];
 
 /// Identifier of an atom information about the filetype.
-pub const FILE_TYPE: Ident = Ident(*b"ftyp");
+pub const FILETYPE: Ident = Ident(*b"ftyp");
 /// Identifier of an atom containing a sturcture of children storing metadata.
 pub const MOVIE: Ident = Ident(*b"moov");
 /// Identifier of an atom containing information about a single track.
@@ -84,6 +85,12 @@ pub const MOVEMENT_COUNT: Ident = Ident(*b"\xa9mvc");
 pub const MOVEMENT_INDEX: Ident = Ident(*b"\xa9mvi");
 pub const WORK: Ident = Ident(*b"\xa9wrk");
 pub const SHOW_MOVEMENT: Ident = Ident(*b"shwm");
+
+lazy_static! {
+    pub static ref FILETYPE_ATOM_T: AtomT = filetype_atom_t();
+    pub static ref ITEM_LIST_ATOM_T: AtomT = item_list_atom_t();
+    pub static ref METADATA_ATOM_T: AtomT = metadata_atom_t();
+}
 
 /// A 4 byte atom identifier.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -208,7 +215,7 @@ impl Atom {
     pub fn check_filetype(&self) -> crate::Result<()> {
         match &self.content {
             Content::RawData(Data::Utf8(s)) => {
-                for f in &VALID_FILE_TYPES {
+                for f in &VALID_FILETYPES {
                     if s.starts_with(f) {
                         return Ok(());
                     }
@@ -303,7 +310,7 @@ impl AtomT {
         }
     }
 
-    /// Attempts to parse an atom, matching the template, from the reader. This should only be used
+    /// Attempts to parse an atom, that matches the template, from the reader. This should only be used
     /// if the atom has to be in this exact position, if the parsed atom's identifier doesn't match
     /// the expected one this will return an error.
     pub fn parse_next(&self, reader: &mut (impl Read + Seek)) -> crate::Result<Atom> {
@@ -336,24 +343,43 @@ impl AtomT {
         }
     }
 
-    /// Attempts to parse an atom, matching the template, from the reader. This is a convenience
-    /// method that calls `parse_atoms` under the hood after determining the length from the reader.
+    /// Attempts to parse an atom, that matches the template, from the reader.
     pub fn parse(&self, reader: &mut (impl Read + Seek)) -> crate::Result<Atom> {
         let current_position = reader.seek(SeekFrom::Current(0))?;
         let complete_length = reader.seek(SeekFrom::End(0))?;
         let length = (complete_length - current_position) as usize;
-
         reader.seek(SeekFrom::Start(current_position))?;
 
-        let atoms = parse_atoms(&[metadata_atom()], reader, length)?;
-        if atoms.is_empty() {
-            Err(crate::Error::new(
-                ErrorKind::AtomNotFound(self.ident),
-                format!("No {} atom found", self.ident),
-            ))
-        } else {
-            Ok(atoms.into_iter().next().unwrap())
+        let mut parsed_bytes = 0;
+
+        while parsed_bytes < length {
+            let (atom_length, atom_ident) = parse_head(reader)?;
+
+            if atom_ident == self.ident {
+                return match self.parse_content(reader, atom_length) {
+                    Ok(c) => Ok(Atom::with(self.ident, self.offset, c)),
+                    Err(e) => {
+                        Err(crate::Error::new(
+                            e.kind,
+                            format!(
+                                "Error reading {}: {}",
+                                atom_ident,
+                                e.description
+                            ),
+                        ))
+                    }
+                };
+            } else {
+                reader.seek(SeekFrom::Current((atom_length - 8) as i64))?;
+            }
+
+            parsed_bytes += atom_length;
         }
+
+        Err(crate::Error::new(
+            ErrorKind::AtomNotFound(self.ident),
+            format!("No {} atom found", self.ident),
+        ))
     }
 
     /// Attempts to parse the atom template's content from the reader.
@@ -371,14 +397,14 @@ impl AtomT {
 
 /// Attempts to read MPEG-4 audio metadata from the reader.
 pub fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
-    let mut tag_atoms = Vec::new();
-    let mut tag_readonly_atoms = Vec::new();
+    let mut tag_atoms = Vec::with_capacity(5);
+    let mut tag_readonly_atoms = Vec::with_capacity(2);
 
-    let ftyp = filetype_atom().parse_next(reader)?;
+    let ftyp = FILETYPE_ATOM_T.parse_next(reader)?;
     ftyp.check_filetype()?;
     tag_readonly_atoms.push(ftyp);
 
-    let moov = metadata_atom().parse(reader)?;
+    let moov = METADATA_ATOM_T.parse(reader)?;
 
     if let Some(trak) = moov.child(TRACK) {
         if let Some(mdia) = trak.child(MEDIA) {
@@ -408,7 +434,7 @@ pub fn write_tag_to(file: &File, atoms: &[Atom]) -> crate::Result<()> {
 
     let mut atom_pos_and_len = Vec::new();
     let mut destination = &item_list_atom_t();
-    let ftyp = filetype_atom().parse_next(&mut reader)?;
+    let ftyp = FILETYPE_ATOM_T.parse_next(&mut reader)?;
     ftyp.check_filetype()?;
 
     while let Ok((length, ident)) = parse_head(&mut reader) {
@@ -498,10 +524,6 @@ pub fn parse_atoms(atoms: &[AtomT], reader: &mut (impl Read + Seek), length: usi
         parsed_bytes += atom_length;
     }
 
-    if parsed_bytes < length {
-        reader.seek(SeekFrom::Current((length - parsed_bytes) as i64))?;
-    }
-
     Ok(parsed_atoms)
 }
 
@@ -529,12 +551,12 @@ pub fn parse_head(reader: &mut (impl Read + Seek)) -> crate::Result<(usize, Iden
 }
 
 /// Returns a atom filetype hierarchy needed to parse the filetype.
-pub fn filetype_atom() -> AtomT {
-    AtomT::with_raw_data(FILE_TYPE, 0, DataT::with(data::UTF8))
+pub fn filetype_atom_t() -> AtomT {
+    AtomT::with_raw_data(FILETYPE, 0, DataT::with(data::UTF8))
 }
 
 /// Returns a atom metadata hierarchy template needed to parse metadata.
-pub fn metadata_atom() -> AtomT {
+pub fn metadata_atom_t() -> AtomT {
     AtomT::with(MOVIE, 0, ContentT::atoms_t()
         .add_atom_t_with(TRACK, 0, ContentT::atoms_t()
             .add_atom_t_with(MEDIA, 0, ContentT::atoms_t()
@@ -583,8 +605,7 @@ pub fn metadata_atom() -> AtomT {
                     .add_atom_t_with(TV_SHOW_NAME, 0, ContentT::data_atom_t())
                     .add_atom_t_with(WORK, 0, ContentT::data_atom_t())
                     .add_atom_t_with(YEAR, 0, ContentT::data_atom_t())
-                    .add_atom_t_with(ARTWORK, 0, ContentT::data_atom_t(),
-                    ),
+                    .add_atom_t_with(ARTWORK, 0, ContentT::data_atom_t()),
                 ),
             ),
         ),
