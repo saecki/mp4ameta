@@ -5,8 +5,7 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::ErrorKind;
 
-// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) code
-
+// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) codes
 /// Reserved for use where no type needs to be indicated.
 #[allow(dead_code)]
 pub const RESERVED: u32 = 0;
@@ -98,9 +97,9 @@ pub const AFFINE_TRANSFORM_F64: u32 = 79;
 pub enum Data {
     /// A value containing reserved type data inside a `Vec<u8>`.
     Reserved(Vec<u8>),
-    /// A value containing a `String` decoded from utf-8.
+    /// A value containing a `String` decoded from, or to be encoded to utf-8.
     Utf8(String),
-    /// A value containing a `String` decoded from utf-16.
+    /// A value containing a `String` decoded from, or to be encoded to utf-16.
     Utf16(String),
     /// A value containing jpeg byte data inside a `Vec<u8>`.
     Jpeg(Vec<u8>),

@@ -4,11 +4,11 @@ use std::fs::{File, OpenOptions};
 use std::io::{BufReader, Read, Seek, Write};
 use std::path::Path;
 
-use crate::{AdvisoryRating, atom, Atom, Content, Data, Ident, MediaType};
+use crate::{AdvisoryRating, Atom, atom, Content, Data, Ident, MediaType};
 
 /// A list of standard genre codes and values found in the `gnre` atom. This list is equal to the
-/// ID3 genre list but the code is incremented by 1.
-pub const GENRES: [(u16, &str); 80] = [
+/// ID3v1 genre list but all codes are incremented by 1.
+pub const STANDARD_GENRES: [(u16, &str); 80] = [
     (1, "Blues"),
     (2, "Classic rock"),
     (3, "Country"),
@@ -132,21 +132,7 @@ impl Tag {
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.
     pub fn dump_to(&self, writer: &mut impl Write) -> crate::Result<()> {
-        let ftyp = Atom::with(atom::FILETYPE, 0, Content::RawData(
-            Data::Utf8("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".into())
-        ));
-        let moov = Atom::with(atom::MOVIE, 0, Content::atoms()
-            .add_atom_with(atom::USER_DATA, 0, Content::atoms()
-                .add_atom_with(atom::METADATA, 4, Content::atoms()
-                    .add_atom_with(atom::ITEM_LIST, 0, Content::Atoms(self.atoms.clone())),
-                ),
-            ),
-        );
-
-        ftyp.write_to(writer)?;
-        moov.write_to(writer)?;
-
-        Ok(())
+        atom::dump_tag_to(writer, self.atoms.clone())
     }
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.
@@ -192,7 +178,7 @@ mp4ameta_proc::integer_value_accessor!("movement_index", "©mvi");
 
 /// ### Standard genre
 impl Tag {
-    /// Returns all standard genres (gnre).
+    /// Returns all standard genres (`gnre`).
     pub fn standard_genres(&self) -> impl Iterator<Item=u16> + '_ {
         self.reserved(atom::STANDARD_GENRE)
             .filter_map(|v| {
@@ -204,12 +190,12 @@ impl Tag {
             })
     }
 
-    /// Returns the first standard genre (gnre).
+    /// Returns the first standard genre (`gnre`).
     pub fn standard_genre(&self) -> Option<u16> {
         self.standard_genres().next()
     }
 
-    /// Sets the standard genre (gnre). This will remove all other standard genres.
+    /// Sets the standard genre (`gnre`). This will remove all other standard genres.
     pub fn set_standard_genre(&mut self, genre_code: u16) {
         if genre_code > 0 && genre_code <= 80 {
             let vec: Vec<u8> = genre_code.to_be_bytes().to_vec();
@@ -217,7 +203,7 @@ impl Tag {
         }
     }
 
-    /// Adds a standard genre (gnre).
+    /// Adds a standard genre (`gnre`).
     pub fn add_standard_genre(&mut self, genre_code: u16) {
         if genre_code > 0 && genre_code <= 80 {
             let vec: Vec<u8> = genre_code.to_be_bytes().to_vec();
@@ -225,7 +211,7 @@ impl Tag {
         }
     }
 
-    /// Removes all standard genres (gnre).
+    /// Removes all standard genres (`gnre`).
     pub fn remove_standard_genres(&mut self) {
         self.remove_data(atom::STANDARD_GENRE);
     }
@@ -234,7 +220,7 @@ impl Tag {
 // ## Tuple values
 /// ### Track number
 impl Tag {
-    /// Returns the track number and the total number of tracks (trkn).
+    /// Returns the track number and the total number of tracks (`trkn`).
     pub fn track_number(&self) -> (Option<u16>, Option<u16>) {
         let vec = match self.reserved(atom::TRACK_NUMBER).next() {
             Some(v) => v,
@@ -256,7 +242,7 @@ impl Tag {
         (track_number, total_tracks)
     }
 
-    /// Sets the track number and the total number of tracks (trkn).
+    /// Sets the track number and the total number of tracks (`trkn`).
     pub fn set_track_number(&mut self, track_number: u16, total_tracks: u16) {
         let vec = vec![0u16, track_number, total_tracks, 0u16].into_iter()
             .flat_map(|u| u.to_be_bytes().to_vec())
@@ -265,7 +251,7 @@ impl Tag {
         self.set_data(atom::TRACK_NUMBER, Data::Reserved(vec));
     }
 
-    /// Removes the track number and the total number of tracks (trkn).
+    /// Removes the track number and the total number of tracks (`trkn`).
     pub fn remove_track_number(&mut self) {
         self.remove_data(atom::TRACK_NUMBER);
     }
@@ -273,7 +259,7 @@ impl Tag {
 
 /// ### Disc number
 impl Tag {
-    /// Returns the disc number and total number of discs (disk).
+    /// Returns the disc number and total number of discs (`disk`).
     pub fn disc_number(&self) -> (Option<u16>, Option<u16>) {
         let vec = match self.reserved(atom::DISC_NUMBER).next() {
             Some(v) => v,
@@ -295,7 +281,7 @@ impl Tag {
         (disc_number, total_discs)
     }
 
-    /// Sets the disc number and the total number of discs (disk).
+    /// Sets the disc number and the total number of discs (`disk`).
     pub fn set_disc_number(&mut self, disc_number: u16, total_discs: u16) {
         let vec = vec![0u16, disc_number, total_discs].into_iter()
             .flat_map(|u| u.to_be_bytes().to_vec())
@@ -304,7 +290,7 @@ impl Tag {
         self.set_data(atom::DISC_NUMBER, Data::Reserved(vec));
     }
 
-    /// Removes the disc number and the total number of discs (disk).
+    /// Removes the disc number and the total number of discs (`disk`).
     pub fn remove_disc_number(&mut self) {
         self.remove_data(atom::DISC_NUMBER);
     }
@@ -313,17 +299,20 @@ impl Tag {
 // ## Custom values
 /// ### Artwork
 impl Tag {
-    /// Returns the artwork image data of type `Data::JPEG` or `Data::PNG` (covr).
+    /// Returns the artwork image data of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
+    /// [Data::Png](enum.Data.html#variant.Png) (`covr`).
     pub fn artworks(&self) -> impl Iterator<Item=&Data> {
         self.image(atom::ARTWORK)
     }
 
-    /// Returns the artwork image data of type `Data::JPEG` or `Data::PNG` (covr).
+    /// Returns the artwork image data of type [Data::Jpeg](enum.Data.html#variant.Jpeg) or
+    /// [Data::Png](enum.Data.html#variant.Png) (`covr`).
     pub fn artwork(&self) -> Option<&Data> {
         self.image(atom::ARTWORK).next()
     }
 
-    /// Sets the artwork image data of type `Data::JPEG` or `Data::PNG` (covr).
+    /// Sets the artwork image data of type [Data::Jpeg](enum.Data.html#variant.Jpeg) or
+    /// [Data::Png](enum.Data.html#variant.Png) (`covr`).
     pub fn set_artwork(&mut self, image: Data) {
         match &image {
             Data::Jpeg(_) => (),
@@ -334,8 +323,8 @@ impl Tag {
         self.set_data(atom::ARTWORK, image);
     }
 
-    /// Adds artwork image data of type `Data::JPEG` or `Data::PNG` (covr). This will remove all
-    /// other artworks.
+    /// Adds artwork image data of type [Data::Jpeg](enum.Data.html#variant.Jpeg) or
+    /// [Data::Png](enum.Data.html#variant.Png) (`covr`). This will remove all other artworks.
     pub fn add_artwork(&mut self, image: Data) {
         match &image {
             Data::Jpeg(_) => (),
@@ -346,7 +335,7 @@ impl Tag {
         self.add_data(atom::ARTWORK, image);
     }
 
-    /// Removes the artwork image data (covr).
+    /// Removes the artwork image data (`covr`).
     pub fn remove_artwork(&mut self) {
         self.remove_data(atom::ARTWORK);
     }
@@ -354,7 +343,7 @@ impl Tag {
 
 /// ### Media type
 impl Tag {
-    /// Returns the media type (stik).
+    /// Returns the media type (`stik`).
     pub fn media_type(&self) -> Option<MediaType> {
         let vec = match self.data(atom::MEDIA_TYPE).next()? {
             Data::Reserved(v) => v,
@@ -369,12 +358,12 @@ impl Tag {
         MediaType::try_from(vec[0]).ok()
     }
 
-    /// Sets the media type (stik).
+    /// Sets the media type (`stik`).
     pub fn set_media_type(&mut self, media_type: MediaType) {
         self.set_data(atom::MEDIA_TYPE, Data::Reserved(vec![media_type.value()]));
     }
 
-    /// Removes the media type (stik).
+    /// Removes the media type (`stik`).
     pub fn remove_media_type(&mut self) {
         self.remove_data(atom::MEDIA_TYPE);
     }
@@ -383,7 +372,7 @@ impl Tag {
 
 /// ### Advisory rating
 impl Tag {
-    /// Returns the advisory rating (rtng).
+    /// Returns the advisory rating (`rtng`).
     pub fn advisory_rating(&self) -> Option<AdvisoryRating> {
         let vec = match self.data(atom::ADVISORY_RATING).next()? {
             Data::Reserved(v) => v,
@@ -398,12 +387,12 @@ impl Tag {
         Some(AdvisoryRating::from(vec[0]))
     }
 
-    /// Sets the advisory rating (rtng).
+    /// Sets the advisory rating (`rtng`).
     pub fn set_advisory_rating(&mut self, rating: AdvisoryRating) {
         self.set_data(atom::ADVISORY_RATING, Data::Reserved(vec![rating.value()]));
     }
 
-    /// Removes the advisory rating (rtng).
+    /// Removes the advisory rating (`rtng`).
     pub fn remove_advisory_rating(&mut self) {
         self.remove_data(atom::ADVISORY_RATING);
     }
@@ -411,13 +400,13 @@ impl Tag {
 
 /// ### Genre
 ///
-/// These are convenience functions that combine the values from the standard genre (gnre) and
-/// custom genre (©gen).
+/// These are convenience functions that combine the values from the standard genre (`gnre`) and
+/// custom genre (`©gen`).
 impl Tag {
     /// Returns all genres (gnre or ©gen).
     pub fn genres(&self) -> impl Iterator<Item=&str> {
         self.standard_genres().filter_map(|genre_code| {
-            for g in GENRES.iter() {
+            for g in STANDARD_GENRES.iter() {
                 if g.0 == genre_code {
                     return Some(g.1);
                 }
@@ -431,7 +420,7 @@ impl Tag {
     /// Returns the first genre (gnre or ©gen).
     pub fn genre(&self) -> Option<&str> {
         if let Some(genre_code) = self.standard_genre() {
-            for g in GENRES.iter() {
+            for g in STANDARD_GENRES.iter() {
                 if g.0 == genre_code {
                     return Some(g.1);
                 }
@@ -441,13 +430,13 @@ impl Tag {
         self.custom_genre()
     }
 
-    /// Sets the standard genre (gnre) if it matches a predefined value otherwise a custom genre
-    /// (©gen). This will remove all other standard or custom genres.
+    /// Sets the standard genre (`gnre`) if it matches a predefined value otherwise a custom genre
+    /// (`©gen`). This will remove all other standard or custom genres.
     pub fn set_genre(&mut self, genre: impl Into<String>) {
         let gen = genre.into();
 
 
-        for g in GENRES.iter() {
+        for g in STANDARD_GENRES.iter() {
             if g.1 == gen {
                 self.remove_custom_genres();
                 self.set_standard_genre(g.0);
@@ -459,11 +448,11 @@ impl Tag {
         self.set_custom_genre(gen)
     }
 
-    /// Adds the standard genre (gnre) if it matches one otherwise a custom genre (©gen).
+    /// Adds the standard genre (`gnre`) if it matches one otherwise a custom genre (`©gen`).
     pub fn add_genre(&mut self, genre: impl Into<String>) {
         let gen = genre.into();
 
-        for g in GENRES.iter() {
+        for g in STANDARD_GENRES.iter() {
             if g.1 == gen {
                 self.add_standard_genre(g.0);
                 return;
@@ -519,7 +508,7 @@ impl Tag {
 
 /// ### Filetype
 impl Tag {
-    /// returns the filetype (ftyp).
+    /// returns the filetype (`ftyp`).
     pub fn filetype(&self) -> Option<&str> {
         for a in &self.readonly_atoms {
             if a.ident == atom::FILETYPE {
@@ -614,7 +603,7 @@ impl Tag {
         })
     }
 
-    /// Returns all image data of type `Data::JPEG` or `Data::PNG` corresponding to the identifier.
+    /// Returns all image data of type [Data::Jpeg](enum.Data.html#variant.Jpeg) or [Data::Jpeg](enum.Data.html#variant.Png) corresponding to the identifier.
     ///
     /// # Example
     /// ```

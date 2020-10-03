@@ -1,18 +1,29 @@
 use std::convert::TryFrom;
+
 use crate::ErrorKind;
 
-// iTunes Media types
+// iTunes media types
+/// A media type code stored in the `stik` atom.
 pub const MOVIE: u8 = 0;
+/// A media type code stored in the `stik` atom.
 pub const NORMAL: u8 = 1;
+/// A media type code stored in the `stik` atom.
 pub const AUDIOBOOK: u8 = 2;
+/// A media type code stored in the `stik` atom.
 pub const WHACKED_BOOKMARK: u8 = 5;
+/// A media type code stored in the `stik` atom.
 pub const MUSIC_VIDEO: u8 = 6;
+/// A media type code stored in the `stik` atom.
 pub const SHORT_FILM: u8 = 9;
+/// A media type code stored in the `stik` atom.
 pub const TV_SHOW: u8 = 10;
+/// A media type code stored in the `stik` atom.
 pub const BOOKLET: u8 = 11;
 
-// iTunes Ratings
+// iTunes advisory ratings
+/// An advisory rating code stored in the `rtng` atom.
 pub const CLEAN: u8 = 2;
+/// An advisory rating code stored in the `rtng` atom.
 pub const INOFFENSIVE: u8 = 0;
 
 /// An enum describing the media type of a file stored in the `stik` atom.
@@ -76,11 +87,12 @@ impl TryFrom<u8> for MediaType {
 /// An enum describing the rating of a file.
 #[derive(Debug, Clone, PartialEq)]
 pub enum AdvisoryRating {
-    /// A rating stored as 2 in the `stik` atom.
+    /// An advisory rating stored as 2 in the `rtng` atom.
     Clean,
-    /// A rating stored as 0 in the `stik` atom.
+    /// An advisory rating stored as 0 in the `rtng` atom.
     Inoffensive,
-    /// A rating indicated by any other value than 0 or 2 in the `stik` atom, containing the value.
+    /// An advisory rating indicated by any other value than 0 or 2 in the `rtng` atom, containing
+    /// the value.
     Explicit(u8),
 }
 

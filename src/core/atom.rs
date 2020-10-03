@@ -5,90 +5,130 @@ use std::ops::Deref;
 
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 
-use crate::{Content, data, Data, ErrorKind, Tag};
-use crate::content::ContentT;
-use crate::data::DataT;
-
+use crate::{Content, ContentT, data, Data, DataT, ErrorKind, Tag};
 
 /// A list of valid file types defined by the `ftyp` atom.
 pub const VALID_FILETYPES: [&str; 5] = ["M4A ", "M4B ", "M4P ", "M4V ", "isom"];
 
-/// Identifier of an atom information about the filetype.
+/// (`ftyp`) Identifier of an atom information about the filetype.
 pub const FILETYPE: Ident = Ident(*b"ftyp");
-/// Identifier of an atom containing a sturcture of children storing metadata.
+/// (`moov`) Identifier of an atom containing a structure of children storing metadata.
 pub const MOVIE: Ident = Ident(*b"moov");
-/// Identifier of an atom containing information about a single track.
+/// (`trak`) Identifier of an atom containing information about a single track.
 pub const TRACK: Ident = Ident(*b"trak");
-/// Identifier of an atom containing inforamtion about a tracks media type and data.
+/// (`mdia`) Identifier of an atom containing information about a tracks media type and data.
 pub const MEDIA: Ident = Ident(*b"mdia");
-/// Identifier of an atom specifying the characteristics of a media atom.
+/// (`mdhd`) Identifier of an atom specifying the characteristics of a media atom.
 pub const MEDIA_HEADER: Ident = Ident(*b"mdhd");
-/// Identifier of an atom containing user metadata.
+/// (`udta`) Identifier of an atom containing user metadata.
 pub const USER_DATA: Ident = Ident(*b"udta");
-/// Identifier of an atom containing a metadata item list.
+/// (`meta`) Identifier of an atom containing a metadata item list.
 pub const METADATA: Ident = Ident(*b"meta");
-/// Identifier of an atom containing a list of metadata atoms.
+/// (`ilst`) Identifier of an atom containing a list of metadata atoms.
 pub const ITEM_LIST: Ident = Ident(*b"ilst");
-/// Identifier of an atom containing typed data.
+/// (`data`) Identifier of an atom containing typed data.
 pub const DATA: Ident = Ident(*b"data");
 
 // iTunes 4.0 atoms
+/// (`©alb`)
 pub const ALBUM: Ident = Ident(*b"\xa9alb");
+/// (`aART`)
 pub const ALBUM_ARTIST: Ident = Ident(*b"aART");
+/// (`©ART`)
 pub const ARTIST: Ident = Ident(*b"\xa9ART");
+/// (`covr`)
 pub const ARTWORK: Ident = Ident(*b"covr");
+/// (`tmpo`)
 pub const BPM: Ident = Ident(*b"tmpo");
+/// (`©cmt`)
 pub const COMMENT: Ident = Ident(*b"\xa9cmt");
+/// (`cpil`)
 pub const COMPILATION: Ident = Ident(*b"cpil");
+/// (`©wrt`)
 pub const COMPOSER: Ident = Ident(*b"\xa9wrt");
+/// (`cprt`)
 pub const COPYRIGHT: Ident = Ident(*b"cprt");
+/// (`©gen`)
 pub const CUSTOM_GENRE: Ident = Ident(*b"\xa9gen");
+/// (`disk`)
 pub const DISC_NUMBER: Ident = Ident(*b"disk");
+/// (`©too`)
 pub const ENCODER: Ident = Ident(*b"\xa9too");
+/// (`rtng`)
 pub const ADVISORY_RATING: Ident = Ident(*b"rtng");
+/// (`gnre`)
 pub const STANDARD_GENRE: Ident = Ident(*b"gnre");
+/// (`©nam`)
 pub const TITLE: Ident = Ident(*b"\xa9nam");
+/// (`trkn`)
 pub const TRACK_NUMBER: Ident = Ident(*b"trkn");
+/// (`©day`)
 pub const YEAR: Ident = Ident(*b"\xa9day");
 
 // iTunes 4.2 atoms
+/// (`©grp`)
 pub const GROUPING: Ident = Ident(*b"\xa9grp");
+/// (`stik`)
 pub const MEDIA_TYPE: Ident = Ident(*b"stik");
 
 // iTunes 4.9 atoms
+/// (`catg`)
 pub const CATEGORY: Ident = Ident(*b"catg");
+/// (`keyw`)
 pub const KEYWORD: Ident = Ident(*b"keyw");
+/// (`pcst`)
 pub const PODCAST: Ident = Ident(*b"pcst");
+/// (`egid`)
 pub const PODCAST_EPISODE_GLOBAL_UNIQUE_ID: Ident = Ident(*b"egid");
+/// (`purl`)
 pub const PODCAST_URL: Ident = Ident(*b"purl");
 
 // iTunes 5.0
+/// (`desc`)
 pub const DESCRIPTION: Ident = Ident(*b"desc");
+/// (`©lyr`)
 pub const LYRICS: Ident = Ident(*b"\xa9lyr");
 
 // iTunes 6.0
+/// (`tves`)
 pub const TV_EPISODE: Ident = Ident(*b"tves");
+/// (`tven`)
 pub const TV_EPISODE_NUMBER: Ident = Ident(*b"tven");
+/// (`tvnn`)
 pub const TV_NETWORK_NAME: Ident = Ident(*b"tvnn");
+/// (`tvsn`)
 pub const TV_SEASON: Ident = Ident(*b"tvsn");
+/// (`tvsh`)
 pub const TV_SHOW_NAME: Ident = Ident(*b"tvsh");
 
 // iTunes 6.0.2
+/// (`purd`)
 pub const PURCHASE_DATE: Ident = Ident(*b"purd");
 
 // iTunes 7.0
+/// (`pgap`)
 pub const GAPLESS_PLAYBACK: Ident = Ident(*b"pgap");
 
 // Work, Movement
+/// (`©mvn`)
 pub const MOVEMENT: Ident = Ident(*b"\xa9mvn");
+/// (`©mvc`)
 pub const MOVEMENT_COUNT: Ident = Ident(*b"\xa9mvc");
+/// (`©mvi`)
 pub const MOVEMENT_INDEX: Ident = Ident(*b"\xa9mvi");
+/// (`©wrk`)
 pub const WORK: Ident = Ident(*b"\xa9wrk");
+/// (`shwm`)
 pub const SHOW_MOVEMENT: Ident = Ident(*b"shwm");
 
 lazy_static! {
+    /// lazy initialized static reference to a `ftyp` atom template.
     pub static ref FILETYPE_ATOM_T: AtomT = filetype_atom_t();
+    /// lazy initialized static reference to an atom metadata hierarchy template needed to parse
+    /// metadata.
     pub static ref ITEM_LIST_ATOM_T: AtomT = item_list_atom_t();
+    /// lazy initialized static reference to an atom hierarchy template leading to an empty `ilst`
+    /// atom.
     pub static ref METADATA_ATOM_T: AtomT = metadata_atom_t();
 }
 
@@ -133,32 +173,35 @@ impl Atom {
         Self { ident, offset, content }
     }
 
-    /// Creates an atom containing `Content::RawData` with the provided data.
+    /// Creates an atom with the `identifier`, containing
+    /// [`Content::RawData`](enum.Content.html#variant.RawData) with the provided `data`.
     pub fn with_raw_data(ident: Ident, offset: usize, data: Data) -> Self {
         Self::with(ident, offset, Content::RawData(data))
     }
 
-    /// Creates an atom containing `Content::TypedData` with the provided data.
+    /// Creates an atom with the `identifier`, containing
+    /// [`Content::TypedData`](enum.Content.html#variant.TypedData) with the provided `data`.
     pub fn with_typed_data(ident: Ident, offset: usize, data: Data) -> Self {
         Self::with(ident, offset, Content::TypedData(data))
     }
 
-    /// Creates a data atom containing `Content::TypedData` with the provided data.
+    /// Creates a data atom containing [`Content::TypedData`](enum.Content.html#variant.TypedData)
+    /// with the provided `data`.
     pub fn data_atom_with(data: Data) -> Self {
         Self::with(DATA, 0, Content::TypedData(data))
     }
 
-    /// Returns the length in bytes.
+    /// Returns the length of the atom in bytes.
     pub fn len(&self) -> usize {
         8 + self.offset + self.content.len()
     }
 
-    /// Returns true if the atom has no content and only consists of it's 8 byte head.
+    /// Returns true if the atom has no `offset` or `content` and only consists of it's 8 byte head.
     pub fn is_empty(&self) -> bool {
         self.offset + self.content.len() == 0
     }
 
-    /// Returns a reference to the first children atom matching the identifier, if present.
+    /// Returns a reference to the first children atom matching the `identifier`, if present.
     pub fn child(&self, ident: Ident) -> Option<&Self> {
         if let Content::Atoms(v) = &self.content {
             for a in v {
@@ -171,7 +214,8 @@ impl Atom {
         None
     }
 
-    /// Returns a mutable reference to the first children atom matching the identifier, if present.
+    /// Returns a mutable reference to the first children atom matching the `identifier`, if
+    /// present.
     pub fn mut_child(&mut self, ident: Ident) -> Option<&mut Self> {
         if let Content::Atoms(v) = &mut self.content {
             for a in v {
@@ -257,12 +301,13 @@ impl AtomT {
         Self { ident, offset, content }
     }
 
-    /// Creates an atom template containing `ContentT::RawData` with the provided data template.
+    /// Creates an atom template containing [`ContentT::RawData`](enum.ContentT.html#variant.RawData)
+    /// with the provided data template.
     pub fn with_raw_data(ident: Ident, offset: usize, data: DataT) -> Self {
         Self::with(ident, offset, ContentT::RawData(data))
     }
 
-    /// Creates a data atom template containing `ContentT::TypedData`.
+    /// Creates a data atom template containing [`ContentT::TypedData`](enum.ContentT.html#variant.TypedData).
     pub fn data_atom() -> Self {
         Self::with(DATA, 0, ContentT::TypedData)
     }
@@ -310,10 +355,10 @@ impl AtomT {
         }
     }
 
-    /// Attempts to parse an atom, that matches the template, from the reader. This should only be used
-    /// if the atom has to be in this exact position, if the parsed atom's identifier doesn't match
-    /// the expected one this will return an error.
-    pub fn parse_next(&self, reader: &mut (impl Read + Seek)) -> crate::Result<Atom> {
+    /// Attempts to parse an atom, that matches the template, from the `reader`. This should only be
+    /// used if the atom has to be in this exact position, if the parsed and expected `identifier`s
+    /// don't match this will return an error.
+    pub fn parse_next(&self, reader: &mut ( impl Read + Seek)) -> crate::Result<Atom> {
         let (length, ident) = match parse_head(reader) {
             Ok(h) => h,
             Err(e) => return Err(e),
@@ -344,7 +389,7 @@ impl AtomT {
     }
 
     /// Attempts to parse an atom, that matches the template, from the reader.
-    pub fn parse(&self, reader: &mut (impl Read + Seek)) -> crate::Result<Atom> {
+    pub fn parse(&self, reader: &mut ( impl Read + Seek)) -> crate::Result<Atom> {
         let current_position = reader.seek(SeekFrom::Current(0))?;
         let complete_length = reader.seek(SeekFrom::End(0))?;
         let length = (complete_length - current_position) as usize;
@@ -383,7 +428,7 @@ impl AtomT {
     }
 
     /// Attempts to parse the atom template's content from the reader.
-    pub fn parse_content(&self, reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Content> {
+    pub fn parse_content(&self, reader: &mut ( impl Read + Seek), length: usize) -> crate::Result<Content> {
         if length > 8 {
             if self.offset != 0 {
                 reader.seek(SeekFrom::Current(self.offset as i64))?;
@@ -396,7 +441,7 @@ impl AtomT {
 }
 
 /// Attempts to read MPEG-4 audio metadata from the reader.
-pub fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
+pub fn read_tag_from(reader: &mut ( impl Read + Seek)) -> crate::Result<Tag> {
     let mut tag_atoms = Vec::with_capacity(5);
     let mut tag_readonly_atoms = Vec::with_capacity(2);
 
@@ -459,35 +504,55 @@ pub fn write_tag_to(file: &File, atoms: &[Atom]) -> crate::Result<()> {
     let new_metadata_length = atoms.iter().map(|a| a.len()).sum::<usize>();
     let metadata_length_difference = new_metadata_length as i32 - old_metadata_length as i32;
 
-    // reading additional data after metadata
+// reading additional data after metadata
     let mut additional_data = Vec::with_capacity(old_file_length as usize - (metadata_position + old_metadata_length));
     reader.seek(SeekFrom::Start((metadata_position + old_metadata_length) as u64))?;
     reader.read_to_end(&mut additional_data)?;
 
-    // adjusting the file length
+// adjusting the file length
     file.set_len((old_file_length as i64 + metadata_length_difference as i64) as u64)?;
 
-    // adjusting the atom lengths
+// adjusting the atom lengths
     for (pos, len) in atom_pos_and_len {
         writer.seek(SeekFrom::Start(pos as u64))?;
         writer.write_u32::<BigEndian>((len as i32 + metadata_length_difference) as u32)?;
     }
 
-    // writing metadata
+// writing metadata
     writer.seek(SeekFrom::Current(4))?;
     for a in atoms {
         a.write_to(&mut writer)?;
     }
 
-    // writing additional data after metadata
+// writing additional data after metadata
     writer.write_all(&additional_data)?;
     writer.flush()?;
 
     Ok(())
 }
 
+/// Attempts to dump the metadata atoms to the writer. This doesn't include a complete MPEG-4
+/// container hierarchy and won't result in a usable file.
+pub fn dump_tag_to(writer: &mut impl Write, atoms: Vec<Atom>) -> crate::Result<()> {
+    let ftyp = Atom::with(FILETYPE, 0, Content::RawData(
+        Data::Utf8("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".into())
+    ));
+    let moov = Atom::with(MOVIE, 0, Content::atoms()
+        .add_atom_with(USER_DATA, 0, Content::atoms()
+            .add_atom_with(METADATA, 4, Content::atoms()
+                .add_atom_with(ITEM_LIST, 0, Content::Atoms(atoms)),
+            ),
+        ),
+    );
+
+    ftyp.write_to(writer)?;
+    moov.write_to(writer)?;
+
+    Ok(())
+}
+
 /// Attempts to parse the list of atoms, matching the templates, from the reader.
-pub fn parse_atoms(atoms: &[AtomT], reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Vec<Atom>> {
+pub fn parse_atoms(atoms: &[AtomT], reader: &mut ( impl Read + Seek), length: usize) -> crate::Result<Vec<Atom>> {
     let mut parsed_bytes = 0;
     let mut parsed_atoms = Vec::with_capacity(atoms.len());
 
@@ -529,7 +594,7 @@ pub fn parse_atoms(atoms: &[AtomT], reader: &mut (impl Read + Seek), length: usi
 
 /// Attempts to parse the atom's head containing a 32 bit unsigned integer determining the size
 /// of the atom in bytes and the following 4 byte identifier from the reader.
-pub fn parse_head(reader: &mut (impl Read + Seek)) -> crate::Result<(usize, Ident)> {
+pub fn parse_head(reader: &mut ( impl Read + Seek)) -> crate::Result<(usize, Ident)> {
     let length = match reader.read_u32::<BigEndian>() {
         Ok(l) => l as usize,
         Err(e) => {
@@ -550,13 +615,13 @@ pub fn parse_head(reader: &mut (impl Read + Seek)) -> crate::Result<(usize, Iden
     Ok((length, Ident(ident)))
 }
 
-/// Returns a atom filetype hierarchy needed to parse the filetype.
-pub fn filetype_atom_t() -> AtomT {
+/// Returns an `ftyp` atom template needed to parse the filetype.
+fn filetype_atom_t() -> AtomT {
     AtomT::with_raw_data(FILETYPE, 0, DataT::with(data::UTF8))
 }
 
-/// Returns a atom metadata hierarchy template needed to parse metadata.
-pub fn metadata_atom_t() -> AtomT {
+/// Returns an atom metadata hierarchy template needed to parse metadata.
+fn metadata_atom_t() -> AtomT {
     AtomT::with(MOVIE, 0, ContentT::atoms_t()
         .add_atom_t_with(TRACK, 0, ContentT::atoms_t()
             .add_atom_t_with(MEDIA, 0, ContentT::atoms_t()
@@ -612,8 +677,8 @@ pub fn metadata_atom_t() -> AtomT {
     )
 }
 
-/// Returns a atom metadata hierarchy.
-pub fn item_list_atom_t() -> AtomT {
+/// Returns an atom hierarchy leading to an empty `ilst` atom template.
+fn item_list_atom_t() -> AtomT {
     AtomT::with(MOVIE, 0, ContentT::atom_t_with(
         USER_DATA, 0, ContentT::atom_t_with(
             METADATA, 4, ContentT::atom_t_with(

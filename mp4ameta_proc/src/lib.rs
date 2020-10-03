@@ -33,17 +33,17 @@ pub fn individual_string_value_accessor(input: TokenStream) -> TokenStream {
     format!("
 /// ### {0}
 impl Tag {{
-    /// Returns the {1} ({2}).
+    /// Returns the {1} (`{2}`).
     pub fn {3}(&self) -> Option<&str> {{
         self.string({4}).next()
     }}
 
-    /// Sets the {1} ({2}).
+    /// Sets the {1} (`{2}`).
     pub fn set_{3}(&mut self, {3}: impl Into<String>) {{
         self.set_data({4}, Data::Utf8({3}.into()));
     }}
 
-    /// Removes the {1} ({2}).
+    /// Removes the {1} (`{2}`).
     pub fn remove_{3}(&mut self) {{
         self.remove_data({4});
     }}
@@ -79,27 +79,27 @@ pub fn multiple_string_values_accessor(input: TokenStream) -> TokenStream {
     format!("
 /// ### {0}
 impl Tag {{
-    /// Returns all {2} ({3}).
+    /// Returns all {2} (`{3}`).
     pub fn {5}(&self) -> impl Iterator<Item=&str> {{
         self.string({6})
     }}
 
-    /// Returns the first {1} ({3}).
+    /// Returns the first {1} (`{3}`).
     pub fn {4}(&self) -> Option<&str> {{
         self.string({6}).next()
     }}
 
-    /// Sets the {1} ({3}). This will remove all other {2}.
+    /// Sets the {1} (`{3}`). This will remove all other {2}.
     pub fn set_{4}(&mut self, {4}: impl Into<String>) {{
         self.set_data({6}, Data::Utf8({4}.into()));
     }}
 
-    /// Adds an {1} ({3}).
+    /// Adds an {1} (`{3}`).
     pub fn add_{4}(&mut self, {4}: impl Into<String>) {{
         self.add_data({6}, Data::Utf8({4}.into()));
     }}
 
-    /// Removes all {2} ({3}).
+    /// Removes all {2} (`{3}`).
     pub fn remove_{5}(&mut self) {{
         self.remove_data({6});
     }}
@@ -127,7 +127,7 @@ pub fn flag_value_accessor(input: TokenStream) -> TokenStream {
     format!("
 /// ### {0}
 impl Tag {{
-    /// Returns the {1} flag ({2}).
+    /// Returns the {1} flag (`{2}`).
     pub fn {3}(&self) -> bool {{
         let vec = match self.data({4}).next() {{
             Some(Data::Reserved(v)) => v,
@@ -142,12 +142,12 @@ impl Tag {{
         vec[0] != 0
     }}
 
-    /// Sets the {1} flag to true ({2}).
+    /// Sets the {1} flag to true (`{2}`).
     pub fn set_{3}(&mut self) {{
         self.set_data({4}, Data::BeSigned(vec![1u8]));
     }}
 
-    /// Removes the {1} flag ({2}).
+    /// Removes the {1} flag (`{2}`).
     pub fn remove_{3}(&mut self) {{
         self.remove_data({4})
     }}
@@ -173,7 +173,7 @@ pub fn integer_value_accessor(input: TokenStream) -> TokenStream {
     format!("
 /// ### {0}
 impl Tag {{
-    /// Returns the {1} ({2})
+    /// Returns the {1} (`{2}`)
     pub fn {3}(&self) -> Option<u16> {{
         let vec = match self.data({4}).next()? {{
             Data::Reserved(v) => v,
@@ -188,13 +188,13 @@ impl Tag {{
         Some(u16::from_be_bytes([vec[0], vec[1]]))
     }}
 
-    /// Sets the {1} ({2})
+    /// Sets the {1} (`{2}`)
     pub fn set_{3}(&mut self, {3}: u16) {{
         let vec: Vec<u8> = {3}.to_be_bytes().to_vec();
         self.set_data({4}, Data::BeSigned(vec));
     }}
 
-    /// Removes the {1} ({2}).
+    /// Removes the {1} (`{2}`).
     pub fn remove_{3}(&mut self) {{
         self.remove_data({4});
     }}
