@@ -122,12 +122,12 @@ pub const WORK: Ident = Ident(*b"\xa9wrk");
 pub const SHOW_MOVEMENT: Ident = Ident(*b"shwm");
 
 lazy_static! {
-    /// lazily initialized static reference to a `ftyp` atom template.
+    /// Lazily initialized static reference to a `ftyp` atom template.
     pub static ref FILETYPE_ATOM_T: AtomT = filetype_atom_t();
-    /// lazily initialized static reference to an atom metadata hierarchy template needed to parse
+    /// Lazily initialized static reference to an atom metadata hierarchy template needed to parse
     /// metadata.
     pub static ref ITEM_LIST_ATOM_T: AtomT = item_list_atom_t();
-    /// lazily initialized static reference to an atom hierarchy template leading to an empty `ilst`
+    /// Lazily initialized static reference to an atom hierarchy template leading to an empty `ilst`
     /// atom.
     pub static ref METADATA_ATOM_T: AtomT = metadata_atom_t();
 }
