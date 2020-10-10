@@ -84,7 +84,7 @@ impl TryFrom<u8> for MediaType {
     }
 }
 
-/// An enum describing the rating of a file.
+/// An enum describing the rating of a file stored in the `rtng` atom.
 #[derive(Debug, Clone, PartialEq)]
 pub enum AdvisoryRating {
     /// An advisory rating stored as 2 in the `rtng` atom.

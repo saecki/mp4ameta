@@ -150,7 +150,7 @@ impl Display for Ident {
     }
 }
 
-/// A structure that represents a MPEG-4 audio metadata atom.
+/// A struct that represents a MPEG-4 audio metadata atom.
 #[derive(Clone, PartialEq)]
 pub struct Atom {
     /// The 4 byte identifier of the atom.
@@ -504,27 +504,27 @@ pub fn write_tag_to(file: &File, atoms: &[Atom]) -> crate::Result<()> {
     let new_metadata_length = atoms.iter().map(|a| a.len()).sum::<usize>();
     let metadata_length_difference = new_metadata_length as i32 - old_metadata_length as i32;
 
-// reading additional data after metadata
+    // reading additional data after metadata
     let mut additional_data = Vec::with_capacity(old_file_length as usize - (metadata_position + old_metadata_length));
     reader.seek(SeekFrom::Start((metadata_position + old_metadata_length) as u64))?;
     reader.read_to_end(&mut additional_data)?;
 
-// adjusting the file length
+    // adjusting the file length
     file.set_len((old_file_length as i64 + metadata_length_difference as i64) as u64)?;
 
-// adjusting the atom lengths
+    // adjusting the atom lengths
     for (pos, len) in atom_pos_and_len {
         writer.seek(SeekFrom::Start(pos as u64))?;
         writer.write_u32::<BigEndian>((len as i32 + metadata_length_difference) as u32)?;
     }
 
-// writing metadata
+    // writing metadata
     writer.seek(SeekFrom::Current(4))?;
     for a in atoms {
         a.write_to(&mut writer)?;
     }
 
-// writing additional data after metadata
+    // writing additional data after metadata
     writer.write_all(&additional_data)?;
     writer.flush()?;
 

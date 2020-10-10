@@ -603,7 +603,8 @@ impl Tag {
         })
     }
 
-    /// Returns all image data of type [Data::Jpeg](enum.Data.html#variant.Jpeg) or [Data::Jpeg](enum.Data.html#variant.Png) corresponding to the identifier.
+    /// Returns all image data of type [Data::Jpeg](enum.Data.html#variant.Jpeg) or
+    /// [Data::Jpeg](enum.Data.html#variant.Png) corresponding to the identifier.
     ///
     /// # Example
     /// ```
