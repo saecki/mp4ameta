@@ -32,12 +32,12 @@ fn main() {
     - [Metadata](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html)
 
 ## Testing
-### Running all tests:
+__Running all tests:__
 ```
 cargo test -- --test-threads=1
 ```
 
-### To test this library against your collection symlink your music dir into the `files` dir and run:
+__To test this library against your collection symlink your music dir into the `files` dir and run:__
 ```
 cargo test sample_files -- --show-output
 ```
