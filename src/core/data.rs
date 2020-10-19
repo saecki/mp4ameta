@@ -213,7 +213,7 @@ impl DataT {
 
 /// Attempts to read 8 bit unsigned integers from the reader to a vector of size length.
 pub fn read_u8_vec(reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Vec<u8>> {
-    let mut buf = vec![0_u8; length];
+    let mut buf = vec![0u8; length];
 
     reader.read_exact(&mut buf)?;
 
@@ -222,7 +222,7 @@ pub fn read_u8_vec(reader: &mut (impl Read + Seek), length: usize) -> crate::Res
 
 /// Attempts to read 16 bit unsigned integers from the reader to a vector of size length.
 pub fn read_u16_vec(reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Vec<u16>> {
-    let mut buf = vec![0_u16; length];
+    let mut buf = vec![0u16; length];
 
     reader.read_u16_into::<BigEndian>(&mut buf)?;
 
