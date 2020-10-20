@@ -1,6 +1,6 @@
 use std::fs;
 
-use mp4ameta::{AdvisoryRating, MediaType, Tag, Data};
+use mp4ameta::{AdvisoryRating, MediaType, Tag, Data, STANDARD_GENRES};
 use walkdir::WalkDir;
 
 const EXTENSIONS: [&str; 4] = [".m4a", ".m4b", ".m4p", ".m4v"];
@@ -191,6 +191,26 @@ fn dump_read() {
     assert_eq!(tag.artwork(), Some(&Data::Png(b"TEST ARTWORK".to_vec())));
 
     std::fs::remove_file("./files/temp.m4a").unwrap();
+}
+
+#[test]
+fn genre_handling() {
+    let genre = STANDARD_GENRES[4];
+
+    let mut tag = Tag::default();
+    assert_eq!(tag.genre(), None);
+    assert_eq!(tag.standard_genre(), None);
+    assert_eq!(tag.custom_genre(), None);
+
+    tag.set_genre(genre.1);
+    assert_eq!(tag.genre(), Some(genre.1));
+    assert_eq!(tag.standard_genre(), Some(genre.0));
+    assert_eq!(tag.custom_genre(), None);
+
+    tag.set_genre("CUSTOM GENRE");
+    assert_eq!(tag.genre(), Some("CUSTOM GENRE"));
+    assert_eq!(tag.standard_genre(), None);
+    assert_eq!(tag.custom_genre(), Some("CUSTOM GENRE"));
 }
 
 #[test]
