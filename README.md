@@ -2,7 +2,7 @@
 [![CI](https://github.com/Saecki/rust-mp4ameta/workflows/CI/badge.svg)](https://github.com/Saecki/rust-mp4ameta/actions?query=workflow%3ACI)
 [![Crate](https://img.shields.io/crates/v/mp4ameta.svg)](https://crates.io/crates/mp4ameta)
 [![Documentation](https://docs.rs/mp4ameta/badge.svg)](https://docs.rs/mp4ameta)
-![License](https://img.shields.io/badge/license-MIT%20OR%20Apache%202.0-blue.svg)
+![License](https://img.shields.io/crates/l/mp4ameta?color=blue)
 ![LOC](https://tokei.rs/b1/github/saecki/rust-mp4ameta?category=code)
 
 A library for reading and writing iTunes style MPEG-4 audio metadata.
