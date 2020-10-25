@@ -27,14 +27,15 @@ fn main() {
 - M4V
 
 ## Useful Links
-- [AtomicParsley Doc](http://atomicparsley.sourceforge.net/mpeg-4files.html)
-- [Mutagen Doc](https://mutagen.readthedocs.io/en/latest/api/mp4.html)
-- QuickTime Spec
+- [AtomicParsley docs](http://atomicparsley.sourceforge.net/mpeg-4files.html)
+- [Mutagen docs](https://mutagen.readthedocs.io/en/latest/api/mp4.html)
+- QuickTime spec
     - [Movie Atoms](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap2/qtff2.html)
     - [Metadata](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html)
+- [Filetype list](https://ftyps.com/)
 
 ## Testing
-__Running all tests:__
+__Run all tests:__
 ```
 cargo test -- --test-threads=1
 ```

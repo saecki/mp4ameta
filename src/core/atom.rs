@@ -8,7 +8,16 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use crate::{Content, ContentT, data, Data, DataT, ErrorKind, Tag};
 
 /// A list of valid file types defined by the `ftyp` atom.
-pub const VALID_FILETYPES: [&str; 5] = ["M4A ", "M4B ", "M4P ", "M4V ", "isom"];
+pub const VALID_FILETYPES: [&str; 8] = [
+    "M4A ",
+    "M4B ",
+    "M4P ",
+    "M4V ",
+    "isom",
+    "iso2",
+    "mp41",
+    "mp42",
+];
 
 /// (`ftyp`) Identifier of an atom information about the filetype.
 pub const FILETYPE: Ident = Ident(*b"ftyp");
@@ -259,10 +268,8 @@ impl Atom {
     pub fn check_filetype(&self) -> crate::Result<()> {
         match &self.content {
             Content::RawData(Data::Utf8(s)) => {
-                for f in &VALID_FILETYPES {
-                    if s.starts_with(f) {
-                        return Ok(());
-                    }
+                if VALID_FILETYPES.iter().any(|e| s.starts_with(e)) {
+                    return Ok(());
                 }
 
                 Err(crate::Error::new(
@@ -687,4 +694,3 @@ fn item_list_atom_t() -> AtomT {
         ),
     ))
 }
-
