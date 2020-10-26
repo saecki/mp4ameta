@@ -308,6 +308,29 @@ impl Tag {
     pub fn remove_track(&mut self) {
         self.remove_data(atom::TRACK_NUMBER);
     }
+
+    /// Remove the track number (`trkn`), preserving the total number of tracks if present
+    pub fn remove_track_number(&mut self) {
+        if let Some(Data::Reserved(v)) = self.mut_data(atom::TRACK_NUMBER).next() {
+            if v.len() >= 6 && !(v[4] == 0 && v[5] == 0) {
+                v[2] = 0;
+                v[3] = 0;
+                return;
+            }
+        }
+        self.remove_track();
+    }
+
+    /// Remove the total number of tracks (`trkn`), preserving the track number if present
+    pub fn remove_total_tracks(&mut self) {
+        if let Some(Data::Reserved(v)) = self.mut_data(atom::TRACK_NUMBER).next() {
+            if v.len() >= 4 && !(v[2] == 0 && v[3] == 0) {
+                v.truncate(4);
+                return;
+            }
+        }
+        self.remove_track();
+    }
 }
 
 /// ### Disc
@@ -400,6 +423,29 @@ impl Tag {
     /// Removes the disc number and the total number of discs (`disk`).
     pub fn remove_disc(&mut self) {
         self.remove_data(atom::DISC_NUMBER);
+    }
+
+    /// Remove the disc number (`trkn`), preserving the total number of discs if present
+    pub fn remove_disc_number(&mut self) {
+        if let Some(Data::Reserved(v)) = self.mut_data(atom::DISC_NUMBER).next() {
+            if v.len() >= 6 && !(v[4] == 0 && v[5] == 0) {
+                v[2] = 0;
+                v[3] = 0;
+                return;
+            }
+        }
+        self.remove_track();
+    }
+
+    /// Remove the total number of discs (`trkn`), preserving the disc number if present
+    pub fn remove_total_discs(&mut self) {
+        if let Some(Data::Reserved(v)) = self.mut_data(atom::DISC_NUMBER).next() {
+            if v.len() >= 4 && !(v[2] == 0 && v[3] == 0) {
+                v.truncate(4);
+                return;
+            }
+        }
+        self.remove_track();
     }
 }
 
