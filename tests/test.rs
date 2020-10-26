@@ -110,9 +110,9 @@ fn write_read() {
     assert_eq!(tag.composer(), Some("NEW COMPOSER"));
     assert_eq!(tag.copyright(), Some("NEW COPYRIGHT"));
     assert_eq!(tag.description(), Some("NEW DESCRIPTION"));
-    assert_eq!(tag.disc(), (Some(2), Some(0)));
+    assert_eq!(tag.disc(), (Some(2), None));
     assert_eq!(tag.disc_number(), Some(2));
-    assert_eq!(tag.total_discs(), Some(0));
+    assert_eq!(tag.total_discs(), None);
     assert_eq!(tag.encoder(), Some("Lavf58.12.100"));
     assert_eq!(tag.gapless_playback(), true);
     assert_eq!(tag.genre(), Some("Hard Rock"));
@@ -216,9 +216,9 @@ fn genre_handling() {
 #[test]
 fn track_disc_handling() {
     let track_number = 4u16;
-    let total_tracks= 16u16;
+    let total_tracks = 16u16;
     let disc_number = 2u16;
-    let total_discs= 3u16;
+    let total_discs = 3u16;
 
     let mut tag = Tag::default();
     assert_eq!(tag.track(), (None, None));
@@ -239,6 +239,26 @@ fn track_disc_handling() {
     assert_eq!(tag.disc(), (Some(disc_number), Some(total_discs)));
     assert_eq!(tag.disc_number(), Some(disc_number));
     assert_eq!(tag.total_discs(), Some(total_discs));
+
+    tag.remove_track_number();
+    tag.remove_disc_number();
+
+    assert_eq!(tag.track(), (None, Some(total_tracks)));
+    assert_eq!(tag.track_number(), None);
+    assert_eq!(tag.total_tracks(), Some(total_tracks));
+    assert_eq!(tag.disc(), (None, Some(total_discs)));
+    assert_eq!(tag.disc_number(), None);
+    assert_eq!(tag.total_discs(), Some(total_discs));
+
+    tag.remove_total_tracks();
+    tag.remove_total_discs();
+
+    assert_eq!(tag.track(), (None, None));
+    assert_eq!(tag.track_number(), None);
+    assert_eq!(tag.total_tracks(), None);
+    assert_eq!(tag.disc(), (None, None));
+    assert_eq!(tag.disc_number(), None);
+    assert_eq!(tag.total_discs(), None);
 }
 
 #[test]

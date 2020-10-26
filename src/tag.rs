@@ -218,6 +218,9 @@ impl Tag {
 
 // ## Tuple values
 /// ### Track
+///
+/// The track number and total number of tracks are stored in a tuple. If only one is present the
+/// other is represented as 0 and will be treated as if nonexistent.
 impl Tag {
     /// Returns the track number and the total number of tracks (`trkn`).
     pub fn track(&self) -> (Option<u16>, Option<u16>) {
@@ -226,17 +229,8 @@ impl Tag {
             None => return (None, None),
         };
 
-        let track_number = if vec.len() < 4 {
-            None
-        } else {
-            Some(u16::from_be_bytes([vec[2], vec[3]]))
-        };
-
-        let total_tracks = if vec.len() < 6 {
-            None
-        } else {
-            Some(u16::from_be_bytes([vec[4], vec[5]]))
-        };
+        let track_number = Tag::_track_number(vec);
+        let total_tracks = Tag::_total_tracks(vec);
 
         (track_number, total_tracks)
     }
@@ -245,21 +239,35 @@ impl Tag {
     pub fn track_number(&self) -> Option<u16> {
         let vec = self.reserved(atom::TRACK_NUMBER).next()?;
 
-        if vec.len() < 4 {
-            None
-        } else {
-            Some(u16::from_be_bytes([vec[2], vec[3]]))
-        }
+        Tag::_track_number(vec)
     }
 
     /// Returns the total number of tracks (`trkn`).
     pub fn total_tracks(&self) -> Option<u16> {
         let vec = self.reserved(atom::TRACK_NUMBER).next()?;
 
+        Tag::_total_tracks(vec)
+    }
+
+    /// Extracts the track number from the `vec`.
+    fn _track_number(vec: &Vec<u8>) -> Option<u16> {
+        if vec.len() < 4 {
+            None
+        } else {
+            let tn = u16::from_be_bytes([vec[2], vec[3]]);
+
+            if tn == 0 { None } else { Some(tn) }
+        }
+    }
+
+    /// Extracts the total number of tracks from the `vec`.
+    fn _total_tracks(vec: &Vec<u8>) -> Option<u16> {
         if vec.len() < 6 {
             None
         } else {
-            Some(u16::from_be_bytes([vec[4], vec[5]]))
+            let tt = u16::from_be_bytes([vec[4], vec[5]]);
+
+            if tt == 0 { None } else { Some(tt) }
         }
     }
 
@@ -309,7 +317,7 @@ impl Tag {
         self.remove_data(atom::TRACK_NUMBER);
     }
 
-    /// Remove the track number (`trkn`), preserving the total number of tracks if present
+    /// Removes the track number, preserving the total number of tracks if present (`trkn`).
     pub fn remove_track_number(&mut self) {
         if let Some(Data::Reserved(v)) = self.mut_data(atom::TRACK_NUMBER).next() {
             if v.len() >= 6 && !(v[4] == 0 && v[5] == 0) {
@@ -321,11 +329,12 @@ impl Tag {
         self.remove_track();
     }
 
-    /// Remove the total number of tracks (`trkn`), preserving the track number if present
+    /// Removes the total number of tracks, preserving the track number if present (`trkn`).
     pub fn remove_total_tracks(&mut self) {
         if let Some(Data::Reserved(v)) = self.mut_data(atom::TRACK_NUMBER).next() {
             if v.len() >= 4 && !(v[2] == 0 && v[3] == 0) {
-                v.truncate(4);
+                v[4] = 0;
+                v[5] = 0;
                 return;
             }
         }
@@ -334,6 +343,9 @@ impl Tag {
 }
 
 /// ### Disc
+///
+/// The disc number and total number of discs are stored in a tuple. If only one is present the
+/// other is represented as 0 and will be treated as if nonexistent.
 impl Tag {
     /// Returns the disc number and total number of discs (`disk`).
     pub fn disc(&self) -> (Option<u16>, Option<u16>) {
@@ -342,17 +354,8 @@ impl Tag {
             None => return (None, None),
         };
 
-        let disc_number = if vec.len() < 4 {
-            None
-        } else {
-            Some(u16::from_be_bytes([vec[2], vec[3]]))
-        };
-
-        let total_discs = if vec.len() < 6 {
-            None
-        } else {
-            Some(u16::from_be_bytes([vec[4], vec[5]]))
-        };
+        let disc_number = Tag::_disc_number(vec);
+        let total_discs = Tag::_total_discs(vec);
 
         (disc_number, total_discs)
     }
@@ -361,21 +364,35 @@ impl Tag {
     pub fn disc_number(&self) -> Option<u16> {
         let vec = self.reserved(atom::DISC_NUMBER).next()?;
 
-        if vec.len() < 4 {
-            None
-        } else {
-            Some(u16::from_be_bytes([vec[2], vec[3]]))
-        }
+        Tag::_disc_number(vec)
     }
 
     /// Returns the total number of discs (`disk`).
     pub fn total_discs(&self) -> Option<u16> {
         let vec = self.reserved(atom::DISC_NUMBER).next()?;
 
+        Tag::_total_discs(vec)
+    }
+
+    /// Extracts the total disc number from the `vec`.
+    fn _disc_number(vec: &Vec<u8>) -> Option<u16> {
+        if vec.len() < 4 {
+            None
+        } else {
+            let dn = u16::from_be_bytes([vec[2], vec[3]]);
+
+            if dn == 0 { None } else { Some(dn) }
+        }
+    }
+
+    /// Extracts the total number of discs from the `vec`.
+    fn _total_discs(vec: &Vec<u8>) -> Option<u16> {
         if vec.len() < 6 {
             None
         } else {
-            Some(u16::from_be_bytes([vec[4], vec[5]]))
+            let dn = u16::from_be_bytes([vec[4], vec[5]]);
+
+            if dn == 0 { None } else { Some(dn) }
         }
     }
 
@@ -396,7 +413,6 @@ impl Tag {
 
                 v[2] = a;
                 v[3] = b;
-
                 return;
             }
         }
@@ -412,7 +428,6 @@ impl Tag {
 
                 v[4] = a;
                 v[5] = b;
-
                 return;
             }
         }
@@ -425,7 +440,7 @@ impl Tag {
         self.remove_data(atom::DISC_NUMBER);
     }
 
-    /// Remove the disc number (`trkn`), preserving the total number of discs if present
+    /// Removes the disc number, preserving the total number of discs if present (`disk`).
     pub fn remove_disc_number(&mut self) {
         if let Some(Data::Reserved(v)) = self.mut_data(atom::DISC_NUMBER).next() {
             if v.len() >= 6 && !(v[4] == 0 && v[5] == 0) {
@@ -434,38 +449,39 @@ impl Tag {
                 return;
             }
         }
-        self.remove_track();
+        self.remove_disc();
     }
 
-    /// Remove the total number of discs (`trkn`), preserving the disc number if present
+    /// Removes the total number of discs, preserving the disc number if present (`disk`).
     pub fn remove_total_discs(&mut self) {
         if let Some(Data::Reserved(v)) = self.mut_data(atom::DISC_NUMBER).next() {
             if v.len() >= 4 && !(v[2] == 0 && v[3] == 0) {
-                v.truncate(4);
+                v[4] = 0;
+                v[5] = 0;
                 return;
             }
         }
-        self.remove_track();
+        self.remove_disc();
     }
 }
 
 // ## Custom values
 /// ### Artwork
 impl Tag {
-    /// Returns the artwork image data of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
+    /// Returns all artwork images of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
     /// [Data::Png](enum.Data.html#variant.Png) (`covr`).
     pub fn artworks(&self) -> impl Iterator<Item=&Data> {
         self.image(atom::ARTWORK)
     }
 
-    /// Returns the artwork image data of type [Data::Jpeg](enum.Data.html#variant.Jpeg) or
+    /// Returns the first artwork image of type [Data::Jpeg](enum.Data.html#variant.Jpeg) or
     /// [Data::Png](enum.Data.html#variant.Png) (`covr`).
     pub fn artwork(&self) -> Option<&Data> {
         self.image(atom::ARTWORK).next()
     }
 
     /// Sets the artwork image data of type [Data::Jpeg](enum.Data.html#variant.Jpeg) or
-    /// [Data::Png](enum.Data.html#variant.Png) (`covr`).
+    /// [Data::Png](enum.Data.html#variant.Png) (`covr`). This will remove all other artworks.
     pub fn set_artwork(&mut self, image: Data) {
         match &image {
             Data::Jpeg(_) => (),
@@ -477,7 +493,7 @@ impl Tag {
     }
 
     /// Adds artwork image data of type [Data::Jpeg](enum.Data.html#variant.Jpeg) or
-    /// [Data::Png](enum.Data.html#variant.Png) (`covr`). This will remove all other artworks.
+    /// [Data::Png](enum.Data.html#variant.Png) (`covr`).
     pub fn add_artwork(&mut self, image: Data) {
         match &image {
             Data::Jpeg(_) => (),
@@ -488,7 +504,7 @@ impl Tag {
         self.add_data(atom::ARTWORK, image);
     }
 
-    /// Removes the artwork image data (`covr`).
+    /// Removes all artworks (`covr`).
     pub fn remove_artwork(&mut self) {
         self.remove_data(atom::ARTWORK);
     }
@@ -628,18 +644,12 @@ impl Tag {
     /// Returns the duration in seconds.
     pub fn duration(&self) -> Option<f64> {
         // [Spec](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap2/qtff2.html#//apple_ref/doc/uid/TP40000939-CH204-SW34)
-        let mut vec = None;
+        let a = self.readonly_atoms.iter().find(|&a| a.ident == atom::MEDIA_HEADER)?;
 
-        for a in &self.readonly_atoms {
-            if a.ident == atom::MEDIA_HEADER {
-                if let Content::RawData(Data::Reserved(v)) = &a.content {
-                    vec = Some(v);
-                    break;
-                }
-            }
-        }
-
-        let vec = vec?;
+        let vec = match &a.content {
+            Content::RawData(Data::Reserved(v)) => v,
+            _ => return None,
+        };
 
         if vec.len() < 24 {
             return None;
