@@ -250,7 +250,7 @@ impl Tag {
     }
 
     /// Extracts the track number from the `vec`.
-    fn _track_number(vec: &Vec<u8>) -> Option<u16> {
+    fn _track_number(vec: &[u8]) -> Option<u16> {
         if vec.len() < 4 {
             None
         } else {
@@ -261,7 +261,7 @@ impl Tag {
     }
 
     /// Extracts the total number of tracks from the `vec`.
-    fn _total_tracks(vec: &Vec<u8>) -> Option<u16> {
+    fn _total_tracks(vec: &[u8]) -> Option<u16> {
         if vec.len() < 6 {
             None
         } else {
@@ -375,7 +375,7 @@ impl Tag {
     }
 
     /// Extracts the total disc number from the `vec`.
-    fn _disc_number(vec: &Vec<u8>) -> Option<u16> {
+    fn _disc_number(vec: &[u8]) -> Option<u16> {
         if vec.len() < 4 {
             None
         } else {
@@ -386,7 +386,7 @@ impl Tag {
     }
 
     /// Extracts the total number of discs from the `vec`.
-    fn _total_discs(vec: &Vec<u8>) -> Option<u16> {
+    fn _total_discs(vec: &[u8]) -> Option<u16> {
         if vec.len() < 6 {
             None
         } else {
