@@ -194,6 +194,52 @@ fn dump_read() {
 }
 
 #[test]
+fn multiple_values() {
+    let mut tag = Tag::default();
+
+    tag.add_artist("1");
+    tag.add_artist("2");
+    tag.add_artist("3");
+    tag.add_artist("4");
+
+    assert_eq!(tag.artist(), Some("1"));
+    {
+        let mut artists = tag.artists();
+        assert_eq!(artists.next(), Some("1"));
+        assert_eq!(artists.next(), Some("2"));
+        assert_eq!(artists.next(), Some("3"));
+        assert_eq!(artists.next(), Some("4"));
+        assert_eq!(artists.next(), None);
+    }
+
+    tag.set_artist("5");
+
+    assert_eq!(tag.artist(), Some("5"));
+    {
+        let mut artists = tag.artists();
+        assert_eq!(artists.next(), Some("5"));
+        assert_eq!(artists.next(), None);
+    }
+
+    tag.add_artist("6");
+    tag.add_artist("7");
+
+    assert_eq!(tag.artist(), Some("5"));
+    {
+        let mut artists = tag.artists();
+        assert_eq!(artists.next(), Some("5"));
+        assert_eq!(artists.next(), Some("6"));
+        assert_eq!(artists.next(), Some("7"));
+        assert_eq!(artists.next(), None);
+    }
+
+    tag.remove_artists();
+
+    assert_eq!(tag.artists().next(), None);
+    assert_eq!(tag.artist(), None);
+}
+
+#[test]
 fn genre_handling() {
     let genre = STANDARD_GENRES[4];
 
