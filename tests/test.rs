@@ -241,22 +241,60 @@ fn multiple_values() {
 
 #[test]
 fn genre_handling() {
-    let genre = STANDARD_GENRES[4];
+    let (code, name) = STANDARD_GENRES[4];
 
     let mut tag = Tag::default();
     assert_eq!(tag.genre(), None);
     assert_eq!(tag.standard_genre(), None);
     assert_eq!(tag.custom_genre(), None);
 
-    tag.set_genre(genre.1);
-    assert_eq!(tag.genre(), Some(genre.1));
-    assert_eq!(tag.standard_genre(), Some(genre.0));
+    tag.set_genre(name);
+    assert_eq!(tag.genre(), Some(name));
+    assert_eq!(tag.standard_genre(), Some(code));
     assert_eq!(tag.custom_genre(), None);
 
     tag.set_genre("CUSTOM GENRE");
     assert_eq!(tag.genre(), Some("CUSTOM GENRE"));
     assert_eq!(tag.standard_genre(), None);
     assert_eq!(tag.custom_genre(), Some("CUSTOM GENRE"));
+
+    tag.remove_genres();
+    assert_eq!(tag.genre(), None);
+    assert_eq!(tag.genres().next(), None);
+
+    let (code1, name1) = STANDARD_GENRES[6];
+    let (code2, name2) = STANDARD_GENRES[23];
+    tag.add_custom_genre("GENRE 1");
+    tag.add_standard_genre(code1);
+    tag.add_custom_genre("GENRE 2");
+    tag.add_standard_genre(code2);
+
+    {
+        let mut genres = tag.genres();
+        assert_eq!(genres.next(), Some(name1));
+        assert_eq!(genres.next(), Some(name2));
+        assert_eq!(genres.next(), Some("GENRE 1"));
+        assert_eq!(genres.next(), Some("GENRE 2"));
+        assert_eq!(genres.next(), None);
+
+        let mut standard_genres = tag.standard_genres();
+        assert_eq!(standard_genres.next(), Some(code1));
+        assert_eq!(standard_genres.next(), Some(code2));
+        assert_eq!(genres.next(), None);
+
+        let mut custom_genres = tag.custom_genres();
+        assert_eq!(custom_genres.next(), Some("GENRE 1"));
+        assert_eq!(custom_genres.next(), Some("GENRE 2"));
+        assert_eq!(genres.next(), None);
+    }
+
+    tag.remove_standard_genres();
+    assert_eq!(tag.standard_genres().next(), None);
+    assert_eq!(tag.genres().next(), Some("GENRE 1"));
+
+    tag.remove_custom_genres();
+    assert_eq!(tag.custom_genres().next(), None);
+    assert_eq!(tag.genres().next(), None);
 }
 
 #[test]
