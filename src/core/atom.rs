@@ -9,12 +9,12 @@ use crate::{Content, ContentT, data, Data, DataT, ErrorKind, Tag};
 
 /// A list of valid file types defined by the `ftyp` atom.
 pub const VALID_FILETYPES: [&str; 8] = [
-    "M4A ",
-    "M4B ",
-    "M4P ",
-    "M4V ",
-    "isom",
     "iso2",
+    "isom",
+    "m4a ",
+    "m4b ",
+    "m4p ",
+    "m4v ",
     "mp41",
     "mp42",
 ];
@@ -213,11 +213,7 @@ impl Atom {
     /// Returns a reference to the first children atom matching the `identifier`, if present.
     pub fn child(&self, ident: Ident) -> Option<&Self> {
         if let Content::Atoms(v) = &self.content {
-            for a in v {
-                if a.ident == ident {
-                    return Some(a);
-                }
-            }
+            return v.iter().find(|a| a.ident == ident);
         }
 
         None
@@ -227,11 +223,7 @@ impl Atom {
     /// present.
     pub fn mut_child(&mut self, ident: Ident) -> Option<&mut Self> {
         if let Content::Atoms(v) = &mut self.content {
-            for a in v {
-                if a.ident == ident {
-                    return Some(a);
-                }
-            }
+            return v.iter_mut().find(|a| a.ident == ident);
         }
 
         None
@@ -268,7 +260,8 @@ impl Atom {
     pub fn check_filetype(&self) -> crate::Result<()> {
         match &self.content {
             Content::RawData(Data::Utf8(s)) => {
-                if VALID_FILETYPES.iter().any(|e| s.starts_with(e)) {
+                let major_brand = s.split('\u{0}').next().unwrap();
+                if VALID_FILETYPES.iter().any(|e| e.eq_ignore_ascii_case(major_brand)) {
                     return Ok(());
                 }
 
@@ -322,11 +315,7 @@ impl AtomT {
     /// Returns a reference to the first children atom template matching the identifier, if present.
     pub fn child(&self, ident: Ident) -> Option<&Self> {
         if let ContentT::Atoms(v) = &self.content {
-            for a in v {
-                if a.ident == ident {
-                    return Some(a);
-                }
-            }
+            return v.iter().find(|a| a.ident == ident);
         }
 
         None
@@ -336,11 +325,7 @@ impl AtomT {
     /// present.
     pub fn mut_child(&mut self, ident: Ident) -> Option<&mut Self> {
         if let ContentT::Atoms(v) = &mut self.content {
-            for a in v {
-                if a.ident == ident {
-                    return Some(a);
-                }
-            }
+            return v.iter_mut().find(|a| a.ident == ident);
         }
 
         None
