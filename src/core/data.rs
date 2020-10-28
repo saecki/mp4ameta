@@ -1,7 +1,5 @@
 use core::fmt;
-use std::io::{Read, Seek, SeekFrom, Write};
-
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use std::io::{Read, Write};
 
 use crate::ErrorKind;
 
@@ -93,7 +91,7 @@ pub const AFFINE_TRANSFORM_F64: u32 = 79;
 
 /// An enum that holds different types of data defined by
 /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub enum Data {
     /// A value containing reserved type data inside a `Vec<u8>`.
     Reserved(Vec<u8>),
@@ -151,9 +149,9 @@ impl Data {
             Data::BeSigned(_) => BE_SIGNED,
         };
 
-        writer.write_u32::<BigEndian>(datatype)?;
+        writer.write_all(&datatype.to_be_bytes())?;
         // Writing 4 byte locale indicator
-        writer.write_u32::<BigEndian>(0)?;
+        writer.write_all(&[0u8; 4])?;
 
         self.write_raw(writer)?;
 
@@ -167,7 +165,7 @@ impl Data {
             Data::Utf8(s) => { writer.write_all(s.as_bytes())?; }
             Data::Utf16(s) => {
                 for c in s.encode_utf16() {
-                    writer.write_u16::<BigEndian>(c)?;
+                    writer.write_all(&c.to_be_bytes())?;
                 }
             }
             Data::Jpeg(v) => { writer.write_all(v)?; }
@@ -181,7 +179,7 @@ impl Data {
 
 /// A template used for parsing data defined by
 /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct DataT {
     /// A datatype defined by
     /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
@@ -190,12 +188,12 @@ pub struct DataT {
 
 impl DataT {
     /// Creates a data template containing the datatype.
-    pub fn with(datatype: u32) -> Self {
+    pub const fn new(datatype: u32) -> Self {
         DataT { datatype }
     }
 
     /// Attempts to parse corresponding data from the reader.
-    pub fn parse(&self, reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Data> {
+    pub fn parse(&self, reader: &mut impl Read, length: usize) -> crate::Result<Data> {
         Ok(match self.datatype {
             RESERVED => Data::Reserved(read_u8_vec(reader, length)?),
             UTF8 => Data::Utf8(read_utf8(reader, length)?),
@@ -211,8 +209,17 @@ impl DataT {
     }
 }
 
+/// Attempts to read a 32 bit unsigned integer from the reader.
+pub fn read_u32(reader: &mut impl Read) -> crate::Result<u32> {
+    let mut buf = [0u8; 4];
+
+    reader.read_exact(&mut buf)?;
+
+    Ok(u32::from_be_bytes(buf))
+}
+
 /// Attempts to read 8 bit unsigned integers from the reader to a vector of size length.
-pub fn read_u8_vec(reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Vec<u8>> {
+pub fn read_u8_vec(reader: &mut impl Read, length: usize) -> crate::Result<Vec<u8>> {
     let mut buf = vec![0u8; length];
 
     reader.read_exact(&mut buf)?;
@@ -220,29 +227,22 @@ pub fn read_u8_vec(reader: &mut (impl Read + Seek), length: usize) -> crate::Res
     Ok(buf)
 }
 
-/// Attempts to read 16 bit unsigned integers from the reader to a vector of size length.
-pub fn read_u16_vec(reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Vec<u16>> {
-    let mut buf = vec![0u16; length];
-
-    reader.read_u16_into::<BigEndian>(&mut buf)?;
-
-    Ok(buf)
-}
-
 /// Attempts to read a utf-8 string from the reader.
-pub fn read_utf8(reader: &mut (impl Read + Seek), length: usize) -> crate::Result<String> {
+pub fn read_utf8(reader: &mut impl Read, length: usize) -> crate::Result<String> {
     let data = read_u8_vec(reader, length)?;
 
     Ok(String::from_utf8(data)?)
 }
 
 /// Attempts to read a utf-16 string from the reader.
-pub fn read_utf16(reader: &mut (impl Read + Seek), length: usize) -> crate::Result<String> {
-    let data = read_u16_vec(reader, length / 2)?;
+pub fn read_utf16(reader: &mut impl Read, length: usize) -> crate::Result<String> {
+    let mut buf = vec![0u8; length];
 
-    if length % 2 == 1 {
-        reader.seek(SeekFrom::Current(1))?;
-    }
+    reader.read_exact(&mut buf)?;
+
+    let data: Vec<u16> = buf.chunks_exact(2)
+        .map(|c| u16::from_be_bytes([c[0], c[1]]))
+        .collect();
 
     Ok(String::from_utf16(&data)?)
 }

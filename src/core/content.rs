@@ -1,12 +1,10 @@
-use std::fmt::{Debug, Formatter, Result};
+use std::fmt;
 use std::io::{Read, Seek, SeekFrom, Write};
 
-use byteorder::{BigEndian, ReadBytesExt};
-
-use crate::{Atom, AtomT, core::atom, Data, DataT, ErrorKind, Ident};
+use crate::{Atom, AtomT, core::atom, data, Data, DataT, ErrorKind, Ident};
 
 /// An enum representing the different types of content an atom might have.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub enum Content {
     /// A value containing a list of children atoms.
     Atoms(Vec<Atom>),
@@ -20,13 +18,31 @@ pub enum Content {
     Empty,
 }
 
-impl Debug for Content {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+impl Default for Content {
+    fn default() -> Self {
+        Self::Empty
+    }
+}
+
+impl fmt::Debug for Content {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Content::Atoms(a) => write!(f, "Content::Atoms{{ {:#?} }}", a),
             Content::RawData(d) => write!(f, "Content::RawData{{ {:?} }}", d),
             Content::TypedData(d) => write!(f, "Content::TypedData{{ {:?} }}", d),
             Content::Empty => write!(f, "Content::Empty"),
+        }
+    }
+}
+
+impl IntoIterator for Content {
+    type Item = Atom;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            Self::Atoms(v) => v.into_iter(),
+            _ => Vec::new().into_iter(),
         }
     }
 }
@@ -49,28 +65,6 @@ impl Content {
         Self::atom(Atom::data_atom_with(data))
     }
 
-    /// Creates new content of type [Self::Atoms](Content::Atoms) containing a new
-    /// [`Atom`](struct.Atom.html) with the identifier, offset and content.
-    pub fn atom_with(ident: Ident, offset: usize, content: Self) -> Self {
-        Self::atom(Atom::with(ident, offset, content))
-    }
-
-    /// Adds the atom to the list of children atoms if `self` is of type [Self::Atoms](enum.Content.html#variant.Atoms).
-    pub fn add_atom(self, atom: Atom) -> Self {
-        if let Self::Atoms(mut atoms) = self {
-            atoms.push(atom);
-            Self::Atoms(atoms)
-        } else {
-            self
-        }
-    }
-
-    /// Adds a new [`Atom`](struct.Atom.html) with the provided `identifier`, `offset` and `content`
-    /// to the list of children if `self` is of type [Self::Atoms](enum.Content.html#variant.Atoms).
-    pub fn add_atom_with(self, ident: Ident, offset: usize, content: Self) -> Self {
-        self.add_atom(Atom::with(ident, offset, content))
-    }
-
     /// Returns the length in bytes.
     pub fn len(&self) -> usize {
         match self {
@@ -84,6 +78,58 @@ impl Content {
     /// Returns true if the content is empty.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    /// Returns an iterator over the children atoms.
+    pub fn iter(&self) -> std::slice::Iter<Atom> {
+        match self {
+            Self::Atoms(v) => v.iter(),
+            _ => [].iter(),
+        }
+    }
+
+    /// Returns a mutable iterator over the children atoms.
+    pub fn iter_mut(&mut self) -> std::slice::IterMut<Atom> {
+        match self {
+            Self::Atoms(v) => v.iter_mut(),
+            _ => [].iter_mut(),
+        }
+    }
+
+    /// Returns a reference to the first children atom matching the `identifier`, if present.
+    pub fn child(&self, ident: Ident) -> Option<&Atom> {
+        self.iter().find(|a| a.ident == ident)
+    }
+
+    /// Return a reference to the first children atom, if present.
+    pub fn first_child(&self) -> Option<&Atom> {
+        if let Self::Atoms(v) = self {
+            return v.first();
+        }
+        None
+    }
+
+    /// Returns a mutable reference to the first children atom matching the `identfier`, if present.
+    pub fn child_mut(&mut self, ident: Ident) -> Option<&mut Atom> {
+        self.iter_mut().find(|a| a.ident == ident)
+    }
+
+    /// Returns a mutable reference to the first children atom, if present.
+    pub fn first_child_mut(&mut self) -> Option<&mut Atom> {
+        if let Self::Atoms(v) = self {
+            return v.first_mut();
+        }
+        None
+    }
+
+    /// Consumes self and returns the first children atom matching the `identfier`, if present.
+    pub fn take_child(self, ident: Ident) -> Option<Atom> {
+        self.into_iter().find(|a| a.ident == ident)
+    }
+
+    /// Consumes self and returns the first children atom, if present.
+    pub fn take_first_child(self) -> Option<Atom> {
+        self.into_iter().next()
     }
 
     /// Attempts to write the content to the `writer`.
@@ -104,7 +150,7 @@ impl Content {
 }
 
 /// A template representing the different types of content an atom template might have.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub enum ContentT {
     /// A
     Atoms(Vec<AtomT>),
@@ -118,8 +164,14 @@ pub enum ContentT {
     Empty,
 }
 
-impl Debug for ContentT {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+impl Default for ContentT {
+    fn default() -> Self {
+        Self::Empty
+    }
+}
+
+impl fmt::Debug for ContentT {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ContentT::Atoms(a) => write!(f, "ContentT::Atoms{{ {:#?} }}", a),
             ContentT::RawData(d) => write!(f, "ContentT::RawData{{ {:?} }}", d),
@@ -129,9 +181,21 @@ impl Debug for ContentT {
     }
 }
 
+impl IntoIterator for ContentT {
+    type Item = AtomT;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            Self::Atoms(v) => v.into_iter(),
+            _ => Vec::new().into_iter(),
+        }
+    }
+}
+
 impl ContentT {
     /// Creates a new empty content template of type [Self::Atoms](enum.Content.html#variant.Atoms).
-    pub fn atoms_t() -> Self {
+    pub const fn atoms_t() -> Self {
         Self::Atoms(Vec::new())
     }
 
@@ -147,33 +211,56 @@ impl ContentT {
         Self::atom_t(AtomT::data_atom())
     }
 
-    /// Creates a new content template of type [Self::Atoms](enum.Content.html#variant.Atoms)
-    /// containing a new atom template with the `identifier`, `offset` and `content`.
-    pub fn atom_t_with(ident: Ident, offset: usize, content: Self) -> Self {
-        Self::atom_t(AtomT::with(ident, offset, content))
-    }
-
-    /// Adds the atom template to the list of children atom templates if `self` is of type
-    /// [Self::Atoms](enum.Content.html#variant.Atoms).
-    pub fn add_atom_t(self, atom: AtomT) -> Self {
-        if let Self::Atoms(mut atoms) = self {
-            atoms.push(atom);
-            Self::Atoms(atoms)
-        } else {
-            self
+    /// Returns an iterator over the children atoms.
+    pub fn iter(&self) -> std::slice::Iter<AtomT> {
+        match self {
+            Self::Atoms(v) => v.iter(),
+            _ => [].iter(),
         }
     }
 
-    /// Adds a data atom template to the list of children if `self` is of type
-    /// [Self::Atoms](enum.Content.html#variant.Atoms).
-    pub fn add_data_atom_t(self) -> Self {
-        self.add_atom_t(AtomT::data_atom())
+    /// Returns a mutable iterator over the children atoms.
+    pub fn iter_mut(&mut self) -> std::slice::IterMut<AtomT> {
+        match self {
+            Self::Atoms(v) => v.iter_mut(),
+            _ => [].iter_mut(),
+        }
     }
 
-    /// Adds a new atom template with the provided `identifier`, `offset` and `content` template to
-    /// the list of children, if `self` is of type [Self::Atoms](enum.Content.html#variant.Atoms).
-    pub fn add_atom_t_with(self, ident: Ident, offset: usize, content: Self) -> Self {
-        self.add_atom_t(AtomT::with(ident, offset, content))
+    /// Returns a reference to the first children atom matching the `identifier`, if present.
+    pub fn child(&self, ident: Ident) -> Option<&AtomT> {
+        self.iter().find(|a| a.ident == ident)
+    }
+
+    /// Return a reference to the first children atom, if present.
+    pub fn first_child(&self) -> Option<&AtomT> {
+        if let Self::Atoms(v) = self {
+            return v.first();
+        }
+        None
+    }
+
+    /// Returns a mutable reference to the first children atom matching the `identfier`, if present.
+    pub fn child_mut(&mut self, ident: Ident) -> Option<&mut AtomT> {
+        self.iter_mut().find(|a| a.ident == ident)
+    }
+
+    /// Returns a mutable reference to the first children atom, if present.
+    pub fn first_child_mut(&mut self) -> Option<&mut AtomT> {
+        if let Self::Atoms(v) = self {
+            return v.first_mut();
+        }
+        None
+    }
+
+    /// Consumes self and returns the first children atom matching the `identfier`, if present.
+    pub fn take_child(self, ident: Ident) -> Option<AtomT> {
+        self.into_iter().find(|a| a.ident == ident)
+    }
+
+    /// Consumes self and returns the first children atom, if present.
+    pub fn take_first_child(self) -> Option<AtomT> {
+        self.into_iter().next()
     }
 
     /// Attempts to parse corresponding content from the `reader`.
@@ -183,10 +270,10 @@ impl ContentT {
             ContentT::RawData(d) => Content::RawData(d.parse(reader, length)?),
             ContentT::TypedData => {
                 if length >= 8 {
-                    let datatype = match reader.read_u32::<BigEndian>() {
+                    let datatype = match data::read_u32(reader) {
                         Ok(d) => d,
                         Err(e) => return Err(crate::Error::new(
-                            crate::ErrorKind::Io(e),
+                            e.kind,
                             "Error reading typed data head".into(),
                         )),
                     };
@@ -194,7 +281,7 @@ impl ContentT {
                     // Skipping 4 byte locale indicator
                     reader.seek(SeekFrom::Current(4))?;
 
-                    Content::TypedData(DataT::with(datatype).parse(reader, length - 8)?)
+                    Content::TypedData(DataT::new(datatype).parse(reader, length - 8)?)
                 } else {
                     return Err(crate::Error::new(
                         ErrorKind::Parsing,

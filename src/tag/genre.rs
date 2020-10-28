@@ -1,4 +1,4 @@
-use crate::{Tag, Data, atom};
+use crate::{atom, Data, Tag};
 
 /// A list of standard genre codes and values found in the `gnre` atom. This list is equal to the
 /// ID3v1 genre list but all codes are incremented by 1.

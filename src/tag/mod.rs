@@ -1,38 +1,51 @@
 use std::convert::TryFrom;
-use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
 use std::io::{BufReader, Read, Seek, Write};
 use std::path::Path;
 
-use crate::{AdvisoryRating, Atom, atom, Content, Data, Ident, MediaType};
+use crate::{AdvisoryRating, atom, AtomData, Data, Ident, MediaType, Atom, Content};
 
 pub mod genre;
 pub mod tuple;
 
 /// A MPEG-4 audio tag containing metadata atoms
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Tag {
+    /// The `ftyp` atom.
+    pub ftyp: Option<String>,
+    /// The `mdhd` atom.
+    pub mdhd: Option<Vec<u8>>,
     /// A vector containing metadata atoms
     pub atoms: Vec<Atom>,
-    /// A vector containing readonly metadata atoms
-    pub readonly_atoms: Vec<Atom>,
+}
+
+impl IntoIterator for Tag {
+    type Item = AtomData;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.atoms.into_iter()
+            .filter_map(AtomData::try_from_typed)
+            .collect::<Vec<AtomData>>()
+            .into_iter()
+    }
 }
 
 impl Tag {
     /// Creates a new MPEG-4 audio tag containing the atom.
-    pub fn with(atoms: Vec<Atom>, readonly_atoms: Vec<Atom>) -> Tag {
-        Tag { atoms, readonly_atoms }
+    pub const fn new(ftyp: Option<String>, mdhd: Option<Vec<u8>>, atoms: Vec<Atom>) -> Self {
+        Self { ftyp, mdhd, atoms }
     }
 
     /// Attempts to read a MPEG-4 audio tag from the reader.
-    pub fn read_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
+    pub fn read_from(reader: &mut (impl Read + Seek)) -> crate::Result<Self> {
         atom::read_tag_from(reader)
     }
 
     /// Attempts to read a MPEG-4 audio tag from the file at the indicated path.
-    pub fn read_from_path(path: impl AsRef<Path>) -> crate::Result<Tag> {
+    pub fn read_from_path(path: impl AsRef<Path>) -> crate::Result<Self> {
         let mut file = BufReader::new(File::open(path)?);
-        Tag::read_from(&mut file)
+        Self::read_from(&mut file)
     }
 
     /// Attempts to write the MPEG-4 audio tag to the writer. This will overwrite any metadata
@@ -201,12 +214,8 @@ impl Tag {
     /// Returns the duration in seconds.
     pub fn duration(&self) -> Option<f64> {
         // [Spec](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap2/qtff2.html#//apple_ref/doc/uid/TP40000939-CH204-SW34)
-        let a = self.readonly_atoms.iter().find(|&a| a.ident == atom::MEDIA_HEADER)?;
 
-        let vec = match &a.content {
-            Content::RawData(Data::Reserved(v)) => v,
-            _ => return None,
-        };
+        let vec = self.mdhd.as_ref()?;
 
         if vec.len() < 24 {
             return None;
@@ -230,15 +239,7 @@ impl Tag {
 impl Tag {
     /// returns the filetype (`ftyp`).
     pub fn filetype(&self) -> Option<&str> {
-        for a in &self.readonly_atoms {
-            if a.ident == atom::FILETYPE {
-                if let Content::RawData(Data::Utf8(s)) = &a.content {
-                    return Some(s);
-                }
-            }
-        }
-
-        None
+        self.ftyp.as_deref()
     }
 }
 
@@ -363,8 +364,10 @@ impl Tag {
     pub fn data(&self, ident: Ident) -> impl Iterator<Item=&Data> {
         self.atoms.iter().filter_map(|a| {
             if a.ident == ident {
-                if let Content::TypedData(d) = &a.first_child()?.content {
-                    return Some(d);
+                if let Some(d) = a.child(atom::DATA) {
+                    if let Content::TypedData(data) = &d.content {
+                        return Some(data);
+                    }
                 }
             }
             None
@@ -386,8 +389,10 @@ impl Tag {
     pub fn mut_data(&mut self, ident: Ident) -> impl Iterator<Item=&mut Data> {
         self.atoms.iter_mut().filter_map(|a| {
             if a.ident == ident {
-                if let Content::TypedData(d) = &mut a.mut_first_child()?.content {
-                    return Some(d);
+                if let Some(d) = a.child_mut(atom::DATA) {
+                    if let Content::TypedData(data) = &mut d.content {
+                        return Some(data);
+                    }
                 }
             }
             None
@@ -407,7 +412,7 @@ impl Tag {
     /// ```
     pub fn set_data(&mut self, ident: Ident, data: Data) {
         self.remove_data(ident);
-        self.atoms.push(Atom::with(ident, 0, Content::data_atom_with(data)));
+        self.atoms.push(Atom::new(ident, 0, Content::data_atom_with(data)));
     }
 
     /// Adds a new atom, corresponding to the identifier, containing the provided data.
@@ -424,7 +429,7 @@ impl Tag {
     /// assert_eq!(strings.next().unwrap(), "data2");
     /// ```
     pub fn add_data(&mut self, ident: Ident, data: Data) {
-        self.atoms.push(Atom::with(ident, 0, Content::data_atom_with(data)));
+        self.atoms.push(Atom::new(ident, 0, Content::data_atom_with(data)));
     }
 
     /// Removes the data corresponding to the identifier.

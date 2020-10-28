@@ -19,6 +19,7 @@ extern crate lazy_static;
 pub use crate::core::{
     atom,
     atom::Atom,
+    atom::AtomData,
     atom::AtomT,
     atom::Ident,
     content::Content,

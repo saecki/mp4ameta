@@ -1,4 +1,4 @@
-use crate::{Tag, Data, atom};
+use crate::{atom, Data, Tag};
 
 /// ### Track
 ///

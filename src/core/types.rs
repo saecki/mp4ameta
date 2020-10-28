@@ -27,7 +27,7 @@ pub const CLEAN: u8 = 2;
 pub const INOFFENSIVE: u8 = 0;
 
 /// An enum describing the media type of a file stored in the `stik` atom.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum MediaType {
     /// A media type stored as 0 in the `stik` atom.
     Movie,
@@ -85,7 +85,7 @@ impl TryFrom<u8> for MediaType {
 }
 
 /// An enum describing the rating of a file stored in the `rtng` atom.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AdvisoryRating {
     /// An advisory rating stored as 2 in the `rtng` atom.
     Clean,
