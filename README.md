@@ -32,6 +32,7 @@ fn main() {
 - QuickTime spec
     - [Movie Atoms](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap2/qtff2.html)
     - [Metadata](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html)
+- [MusicBrainz Picard tag mapping](https://picard-docs.musicbrainz.org/en/technical/tag_mapping.html?highlight=mapping)
 - [Filetype list](https://ftyps.com/)
 
 ## Testing
