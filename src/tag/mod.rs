@@ -3,7 +3,7 @@ use std::fs::{File, OpenOptions};
 use std::io::{BufReader, Read, Seek, Write};
 use std::path::Path;
 
-use crate::{AdvisoryRating, atom, AtomData, Data, Ident, MediaType, Atom, Content};
+use crate::{atom, AdvisoryRating, Atom, AtomData, Content, Data, Ident, MediaType};
 
 pub mod genre;
 pub mod tuple;
@@ -24,7 +24,8 @@ impl IntoIterator for Tag {
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.atoms.into_iter()
+        self.atoms
+            .into_iter()
             .filter_map(AtomData::try_from_typed)
             .collect::<Vec<AtomData>>()
             .into_iter()
@@ -112,7 +113,7 @@ mp4ameta_proc::integer_value_accessor!("movement_index", "©mvi");
 impl Tag {
     /// Returns all artwork images of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
     /// [Data::Png](enum.Data.html#variant.Png) (`covr`).
-    pub fn artworks(&self) -> impl Iterator<Item=&Data> {
+    pub fn artworks(&self) -> impl Iterator<Item = &Data> {
         self.image(atom::ARTWORK)
     }
 
@@ -221,10 +222,8 @@ impl Tag {
             return None;
         }
 
-        let buf: Vec<u32> = vec
-            .chunks_exact(4)
-            .map(|c| u32::from_be_bytes([c[0], c[1], c[2], c[3]]))
-            .collect();
+        let buf: Vec<u32> =
+            vec.chunks_exact(4).map(|c| u32::from_be_bytes([c[0], c[1], c[2], c[3]])).collect();
 
         let timescale_unit = buf[3];
         let duration_units = buf[4];
@@ -255,12 +254,10 @@ impl Tag {
     /// tag.set_data(Ident(*b"test"), Data::Reserved(vec![1,2,3,4,5,6]));
     /// assert_eq!(tag.reserved(Ident(*b"test")).next().unwrap().to_vec(), vec![1,2,3,4,5,6]);
     /// ```
-    pub fn reserved(&self, ident: Ident) -> impl Iterator<Item=&Vec<u8>> {
-        self.data(ident).filter_map(|d| {
-            match d {
-                Data::Reserved(v) => Some(v),
-                _ => None,
-            }
+    pub fn reserved(&self, ident: Ident) -> impl Iterator<Item = &Vec<u8>> {
+        self.data(ident).filter_map(|d| match d {
+            Data::Reserved(v) => Some(v),
+            _ => None,
         })
     }
 
@@ -274,12 +271,10 @@ impl Tag {
     /// tag.set_data(Ident(*b"test"), Data::BeSigned(vec![1,2,3,4,5,6]));
     /// assert_eq!(tag.be_signed(Ident(*b"test")).next().unwrap().to_vec(), vec![1,2,3,4,5,6]);
     /// ```
-    pub fn be_signed(&self, ident: Ident) -> impl Iterator<Item=&Vec<u8>> {
-        self.data(ident).filter_map(|d| {
-            match d {
-                Data::BeSigned(v) => Some(v),
-                _ => None,
-            }
+    pub fn be_signed(&self, ident: Ident) -> impl Iterator<Item = &Vec<u8>> {
+        self.data(ident).filter_map(|d| match d {
+            Data::BeSigned(v) => Some(v),
+            _ => None,
         })
     }
 
@@ -293,13 +288,11 @@ impl Tag {
     /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
     /// assert_eq!(tag.string(Ident(*b"test")).next().unwrap(), "data");
     /// ```
-    pub fn string(&self, ident: Ident) -> impl Iterator<Item=&str> {
-        self.data(ident).filter_map(|d| {
-            match d {
-                Data::Utf8(s) => Some(&**s),
-                Data::Utf16(s) => Some(&**s),
-                _ => None,
-            }
+    pub fn string(&self, ident: Ident) -> impl Iterator<Item = &str> {
+        self.data(ident).filter_map(|d| match d {
+            Data::Utf8(s) => Some(&**s),
+            Data::Utf16(s) => Some(&**s),
+            _ => None,
         })
     }
 
@@ -311,16 +304,14 @@ impl Tag {
     ///
     /// let mut tag = Tag::default();
     /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
-    /// tag.mut_string(Ident(*b"test")).next().unwrap().push('1');
+    /// tag.string_mut(Ident(*b"test")).next().unwrap().push('1');
     /// assert_eq!(tag.string(Ident(*b"test")).next().unwrap(), "data1");
     /// ```
-    pub fn mut_string(&mut self, ident: Ident) -> impl Iterator<Item=&mut String> {
-        self.mut_data(ident).filter_map(|d| {
-            match d {
-                Data::Utf8(s) => Some(s),
-                Data::Utf16(s) => Some(s),
-                _ => None,
-            }
+    pub fn string_mut(&mut self, ident: Ident) -> impl Iterator<Item = &mut String> {
+        self.data_mut(ident).filter_map(|d| match d {
+            Data::Utf8(s) => Some(s),
+            Data::Utf16(s) => Some(s),
+            _ => None,
         })
     }
 
@@ -338,13 +329,11 @@ impl Tag {
     ///     _ => panic!("data does not match"),
     /// };
     /// ```
-    pub fn image(&self, ident: Ident) -> impl Iterator<Item=&Data> {
-        self.data(ident).filter(|d| {
-            match d {
-                Data::Jpeg(_) => true,
-                Data::Png(_) => true,
-                _ => false,
-            }
+    pub fn image(&self, ident: Ident) -> impl Iterator<Item = &Data> {
+        self.data(ident).filter(|d| match d {
+            Data::Jpeg(_) => true,
+            Data::Png(_) => true,
+            _ => false,
         })
     }
 
@@ -361,8 +350,8 @@ impl Tag {
     ///     _ => panic!("data does not match"),
     /// };
     /// ```
-    pub fn data(&self, ident: Ident) -> impl Iterator<Item=&Data> {
-        self.atoms.iter().filter_map(|a| {
+    pub fn data(&self, ident: Ident) -> impl Iterator<Item = &Data> {
+        self.atoms.iter().filter_map(move |a| {
             if a.ident == ident {
                 if let Some(d) = a.child(atom::DATA) {
                     if let Content::TypedData(data) = &d.content {
@@ -371,7 +360,7 @@ impl Tag {
                 }
             }
             None
-        }).collect::<Vec<&Data>>().into_iter()
+        })
     }
 
     /// Returns all mutable data references corresponding to the identifier.
@@ -381,13 +370,13 @@ impl Tag {
     /// use mp4ameta::{Tag, Data, Ident};
     /// let mut tag = Tag::default();
     /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
-    /// if let Data::Utf8(s) = tag.mut_data(Ident(*b"test")).next().unwrap() {
+    /// if let Data::Utf8(s) = tag.data_mut(Ident(*b"test")).next().unwrap() {
     ///     s.push('1');
     /// }
     /// assert_eq!(tag.string(Ident(*b"test")).next().unwrap(), "data1");
     /// ```
-    pub fn mut_data(&mut self, ident: Ident) -> impl Iterator<Item=&mut Data> {
-        self.atoms.iter_mut().filter_map(|a| {
+    pub fn data_mut(&mut self, ident: Ident) -> impl Iterator<Item = &mut Data> {
+        self.atoms.iter_mut().filter_map(move |a| {
             if a.ident == ident {
                 if let Some(d) = a.child_mut(atom::DATA) {
                     if let Content::TypedData(data) = &mut d.content {
@@ -396,7 +385,7 @@ impl Tag {
                 }
             }
             None
-        }).collect::<Vec<&mut Data>>().into_iter()
+        })
     }
 
     /// Removes all other atoms, corresponding to the identifier, and adds a new atom containing the
@@ -425,8 +414,9 @@ impl Tag {
     /// tag.add_data(Ident(*b"test"), Data::Utf8("data1".into()));
     /// tag.add_data(Ident(*b"test"), Data::Utf8("data2".into()));
     /// let mut strings = tag.string(Ident(*b"test"));
-    /// assert_eq!(strings.next().unwrap(), "data1");
-    /// assert_eq!(strings.next().unwrap(), "data2");
+    /// assert_eq!(strings.next(), Some("data1"));
+    /// assert_eq!(strings.next(), Some("data2"));
+    /// assert_eq!(strings.next(), None)
     /// ```
     pub fn add_data(&mut self, ident: Ident, data: Data) {
         self.atoms.push(Atom::new(ident, 0, Content::data_atom_with(data)));

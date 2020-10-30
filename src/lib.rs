@@ -16,30 +16,12 @@
 #[macro_use]
 extern crate lazy_static;
 
-pub use crate::core::{
-    atom,
-    atom::Atom,
-    atom::AtomData,
-    atom::AtomT,
-    atom::Ident,
-    content::Content,
-    content::ContentT,
-    data,
-    data::Data,
-    data::DataT,
-    types,
-    types::AdvisoryRating,
-    types::MediaType,
-};
-pub use crate::error::{
-    Error,
-    ErrorKind,
-    Result,
-};
-pub use crate::tag::{
-    genre::STANDARD_GENRES,
-    Tag,
-};
+pub use crate::core::atom::{self, Atom, AtomData, AtomT, Ident};
+pub use crate::core::content::{Content, ContentT};
+pub use crate::core::data::{self, Data, DataT};
+pub use crate::core::types::{self, AdvisoryRating, MediaType};
+pub use crate::error::{Error, ErrorKind, Result};
+pub use crate::tag::{genre::STANDARD_GENRES, Tag};
 
 mod core;
 mod error;

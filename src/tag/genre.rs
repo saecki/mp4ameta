@@ -88,15 +88,14 @@ pub const STANDARD_GENRES: [(u16, &str); 80] = [
 /// ### Standard genre
 impl Tag {
     /// Returns all standard genres (`gnre`).
-    pub fn standard_genres(&self) -> impl Iterator<Item=u16> + '_ {
-        self.reserved(atom::STANDARD_GENRE)
-            .filter_map(|v| {
-                if v.len() < 2 {
-                    None
-                } else {
-                    Some(u16::from_be_bytes([v[0], v[1]]))
-                }
-            })
+    pub fn standard_genres(&self) -> impl Iterator<Item = u16> + '_ {
+        self.reserved(atom::STANDARD_GENRE).filter_map(|v| {
+            if v.len() < 2 {
+                None
+            } else {
+                Some(u16::from_be_bytes([v[0], v[1]]))
+            }
+        })
     }
 
     /// Returns the first standard genre (`gnre`).
@@ -132,17 +131,17 @@ impl Tag {
 /// custom genre (`©gen`).
 impl Tag {
     /// Returns all genres (gnre or ©gen).
-    pub fn genres(&self) -> impl Iterator<Item=&str> {
-        self.standard_genres().filter_map(|genre_code| {
-            for g in STANDARD_GENRES.iter() {
-                if g.0 == genre_code {
-                    return Some(g.1);
+    pub fn genres(&self) -> impl Iterator<Item = &str> {
+        self.standard_genres()
+            .filter_map(|genre_code| {
+                for g in STANDARD_GENRES.iter() {
+                    if g.0 == genre_code {
+                        return Some(g.1);
+                    }
                 }
-            }
-            None
-        }).chain(
-            self.custom_genres()
-        )
+                None
+            })
+            .chain(self.custom_genres())
     }
 
     /// Returns the first genre (gnre or ©gen).
@@ -162,7 +161,6 @@ impl Tag {
     /// (`©gen`). This will remove all other standard or custom genres.
     pub fn set_genre(&mut self, genre: impl Into<String>) {
         let gen = genre.into();
-
 
         for g in STANDARD_GENRES.iter() {
             if g.1 == gen {

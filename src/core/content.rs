@@ -1,7 +1,7 @@
 use std::fmt;
 use std::io::{Read, Seek, SeekFrom, Write};
 
-use crate::{Atom, AtomT, core::atom, data, Data, DataT, ErrorKind, Ident};
+use crate::{core::atom, data, Atom, AtomT, Data, DataT, ErrorKind, Ident};
 
 /// An enum representing the different types of content an atom might have.
 #[derive(Clone, Eq, PartialEq)]
@@ -59,8 +59,8 @@ impl Content {
         Self::Atoms(vec![atom])
     }
 
-    /// Creates new content of type [Self::Atoms](enum.Content.html#variant.Atoms) containing a
-    /// data [`Atom`](struct.Atom.html) with the data.
+    /// Creates new content of type [Self::Atoms](enum.Content.html#variant.Atoms) containing a data
+    /// [`Atom`](struct.Atom.html) with the data.
     pub fn data_atom_with(data: Data) -> Self {
         Self::atom(Atom::data_atom_with(data))
     }
@@ -152,7 +152,7 @@ impl Content {
 /// A template representing the different types of content an atom template might have.
 #[derive(Clone, Eq, PartialEq)]
 pub enum ContentT {
-    /// A
+    /// A value containing a list of children atom templates.
     Atoms(Vec<AtomT>),
     /// A value containing a data template specifying the datatype.
     RawData(DataT),
@@ -272,10 +272,12 @@ impl ContentT {
                 if length >= 8 {
                     let datatype = match data::read_u32(reader) {
                         Ok(d) => d,
-                        Err(e) => return Err(crate::Error::new(
-                            e.kind,
-                            "Error reading typed data head".into(),
-                        )),
+                        Err(e) => {
+                            return Err(crate::Error::new(
+                                e.kind,
+                                "Error reading typed data head".into(),
+                            ))
+                        }
                     };
 
                     // Skipping 4 byte locale indicator

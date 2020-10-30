@@ -3,9 +3,10 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use std::ops::Deref;
 
-use crate::{Content, ContentT, data, Data, DataT, ErrorKind, Tag};
+use crate::{data, Content, ContentT, Data, DataT, ErrorKind, Tag};
 
-/// A list of valid file types defined by the `ftyp` atom.
+/// A lowercase list of valid file types defined by the `ftyp` atom.
+#[rustfmt::skip]
 pub const VALID_FILETYPES: [&str; 8] = [
     "iso2",
     "isom",
@@ -131,11 +132,9 @@ pub const SHOW_MOVEMENT: Ident = Ident(*b"shwm");
 lazy_static! {
     /// Lazily initialized static reference to a `ftyp` atom template.
     pub static ref FILETYPE_ATOM_T: AtomT = filetype_atom_t();
-    /// Lazily initialized static reference to an atom hierarchy template leading to an empty `ilst`
-    /// atom.
+    /// Lazily initialized static reference to an atom hierarchy template leading to an empty `ilst` atom.
     pub static ref ITEM_LIST_ATOM_T: AtomT = item_list_atom_t();
-    /// Lazily initialized static reference to an atom metadata hierarchy template needed to parse
-    /// metadata.
+    /// Lazily initialized static reference to an atom metadata hierarchy template needed to parse metadata.
     pub static ref METADATA_ATOM_T: AtomT = metadata_atom_t();
 }
 
@@ -178,11 +177,12 @@ impl AtomData {
         Self { ident, data }
     }
 
-    /// Creates atom data with the `identifier` and raw `data` contained by the atom.
+    /// Creates atom data with the `identifier` and raw `data` contained by the
+    /// atom.
     pub fn try_from_raw(atom: Atom) -> Option<Self> {
         match atom.content {
             Content::RawData(d) => Some(Self::new(atom.ident, d)),
-            _ => None
+            _ => None,
         }
     }
 
@@ -190,10 +190,7 @@ impl AtomData {
     pub fn try_from_typed(atom: Atom) -> Option<Self> {
         if let Some(d) = atom.content.take_child(DATA) {
             if let Content::TypedData(data) = d.content {
-                return Some(Self {
-                    ident: atom.ident,
-                    data,
-                });
+                return Some(Self::new(atom.ident, data));
             }
         }
         None
@@ -201,38 +198,22 @@ impl AtomData {
 
     /// Creates an atom with the `ident`, `offset` 0, containing a data atom with the `data`.
     pub fn into_typed(self) -> Atom {
-        Atom::new(
-            self.ident,
-            0,
-            Content::data_atom_with(self.data),
-        )
+        Atom::new(self.ident, 0, Content::data_atom_with(self.data))
     }
 
     /// Creates an atom with the `ident`, `offset` 0, containing a data atom with the `data`.
     pub fn to_typed(&self) -> Atom {
-        Atom::new(
-            self.ident,
-            0,
-            Content::data_atom_with(self.data.clone()),
-        )
+        Atom::new(self.ident, 0, Content::data_atom_with(self.data.clone()))
     }
 
     /// Creates an atom with the `ident`, `offset` 0, containing the raw `data`.
     pub fn into_raw(self) -> Atom {
-        Atom::new(
-            self.ident,
-            0,
-            Content::RawData(self.data),
-        )
+        Atom::new(self.ident, 0, Content::RawData(self.data))
     }
 
     /// Creates an atom with the `ident`, `offset` 0, containing the raw `data`.
     pub fn to_raw(&self) -> Atom {
-        Atom::new(
-            self.ident,
-            0,
-            Content::RawData(self.data.clone()),
-        )
+        Atom::new(self.ident, 0, Content::RawData(self.data.clone()))
     }
 }
 
@@ -326,10 +307,7 @@ impl Atom {
                     "Invalid filetype.".into(),
                 ))
             }
-            _ => Err(crate::Error::new(
-                ErrorKind::NoTag,
-                "No filetype atom found.".into(),
-            )),
+            _ => Err(crate::Error::new(ErrorKind::NoTag, "No filetype atom found.".into())),
         }
     }
 }
@@ -357,7 +335,8 @@ impl AtomT {
         Self { ident, offset, content }
     }
 
-    /// Creates a data atom template containing [`ContentT::TypedData`](enum.ContentT.html#variant.TypedData).
+    /// Creates a data atom template containing
+    /// [`ContentT::TypedData`](enum.ContentT.html#variant.TypedData).
     pub const fn data_atom() -> Self {
         Self::new(DATA, 0, ContentT::TypedData)
     }
@@ -383,7 +362,8 @@ impl AtomT {
         self.content.first_child_mut()
     }
 
-    /// Consumes self and returns the first children atom template matching the `identifier`, if present.
+    /// Consumes self and returns the first children atom template matching the `identifier`, if
+    /// present.
     pub fn take_child(self, ident: Ident) -> Option<Self> {
         self.content.take_child(ident)
     }
@@ -393,11 +373,10 @@ impl AtomT {
         self.content.take_first_child()
     }
 
-
-    /// Attempts to parse an atom, that matches the template, from the `reader`. This should only be
-    /// used if the atom has to be in this exact position, if the parsed and expected `identifier`s
-    /// don't match this will return an error.
-    pub fn parse_next(&self, reader: &mut ( impl Read + Seek)) -> crate::Result<Atom> {
+    /// Attempts to parse an atom, that matches the template, from the `reader`.  This should only
+    /// be used if the atom has to be in this exact position, if the parsed and expected
+    /// `identifier`s don't match this will return an error.
+    pub fn parse_next(&self, reader: &mut (impl Read + Seek)) -> crate::Result<Atom> {
         let (length, ident) = match parse_head(reader) {
             Ok(h) => h,
             Err(e) => return Err(e),
@@ -408,27 +387,19 @@ impl AtomT {
                 Ok(c) => Ok(Atom::new(self.ident, self.offset, c)),
                 Err(e) => Err(crate::Error::new(
                     e.kind,
-                    format!(
-                        "Error reading {}: {}",
-                        ident,
-                        e.description
-                    ),
+                    format!("Error reading {}: {}", ident, e.description),
                 )),
             }
         } else {
             Err(crate::Error::new(
                 ErrorKind::AtomNotFound(self.ident),
-                format!(
-                    "Expected {} found {}",
-                    self.ident,
-                    ident
-                ),
+                format!("Expected {} found {}", self.ident, ident),
             ))
         }
     }
 
     /// Attempts to parse an atom, that matches the template, from the reader.
-    pub fn parse(&self, reader: &mut ( impl Read + Seek)) -> crate::Result<Atom> {
+    pub fn parse(&self, reader: &mut (impl Read + Seek)) -> crate::Result<Atom> {
         let current_position = reader.seek(SeekFrom::Current(0))?;
         let complete_length = reader.seek(SeekFrom::End(0))?;
         let length = (complete_length - current_position) as usize;
@@ -442,16 +413,10 @@ impl AtomT {
             if atom_ident == self.ident {
                 return match self.parse_content(reader, atom_length) {
                     Ok(c) => Ok(Atom::new(self.ident, self.offset, c)),
-                    Err(e) => {
-                        Err(crate::Error::new(
-                            e.kind,
-                            format!(
-                                "Error reading {}: {}",
-                                atom_ident,
-                                e.description
-                            ),
-                        ))
-                    }
+                    Err(e) => Err(crate::Error::new(
+                        e.kind,
+                        format!("Error reading {}: {}", atom_ident, e.description),
+                    )),
                 };
             } else {
                 reader.seek(SeekFrom::Current((atom_length - 8) as i64))?;
@@ -467,7 +432,11 @@ impl AtomT {
     }
 
     /// Attempts to parse the atom template's content from the reader.
-    pub fn parse_content(&self, reader: &mut ( impl Read + Seek), length: usize) -> crate::Result<Content> {
+    pub fn parse_content(
+        &self,
+        reader: &mut (impl Read + Seek),
+        length: usize,
+    ) -> crate::Result<Content> {
         if length > 8 {
             if self.offset != 0 {
                 reader.seek(SeekFrom::Current(self.offset as i64))?;
@@ -480,7 +449,7 @@ impl AtomT {
 }
 
 /// Attempts to read MPEG-4 audio metadata from the reader.
-pub fn read_tag_from(reader: &mut ( impl Read + Seek)) -> crate::Result<Tag> {
+pub fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
     let mut tag_atoms = None;
     let mut mdhd_data = None;
 
@@ -508,14 +477,17 @@ pub fn read_tag_from(reader: &mut ( impl Read + Seek)) -> crate::Result<Tag> {
                     if let Some(ilst) = meta.take_child(ITEM_LIST) {
                         if let Content::Atoms(atoms) = ilst.content {
                             tag_atoms = Some(
-                                atoms.into_iter().filter(|a| {
-                                    if let Some(d) = a.child(DATA) {
-                                        if let Content::TypedData(_) = d.content {
-                                            return true;
+                                atoms
+                                    .into_iter()
+                                    .filter(|a| {
+                                        if let Some(d) = a.child(DATA) {
+                                            if let Content::TypedData(_) = d.content {
+                                                return true;
+                                            }
                                         }
-                                    }
-                                    false
-                                }).collect()
+                                        false
+                                    })
+                                    .collect(),
                             );
                         }
                     }
@@ -566,7 +538,8 @@ pub fn write_tag_to(file: &File, atoms: &[Atom]) -> crate::Result<()> {
     let metadata_length_difference = new_metadata_length as i32 - old_metadata_length as i32;
 
     // reading additional data after metadata
-    let mut additional_data = Vec::with_capacity(old_file_length as usize - (metadata_position + old_metadata_length));
+    let mut additional_data =
+        Vec::with_capacity(old_file_length as usize - (metadata_position + old_metadata_length));
     reader.seek(SeekFrom::Start((metadata_position + old_metadata_length) as u64))?;
     reader.read_to_end(&mut additional_data)?;
 
@@ -595,13 +568,15 @@ pub fn write_tag_to(file: &File, atoms: &[Atom]) -> crate::Result<()> {
 /// Attempts to dump the metadata atoms to the writer. This doesn't include a complete MPEG-4
 /// container hierarchy and won't result in a usable file.
 pub fn dump_tag_to(writer: &mut impl Write, atoms: Vec<Atom>) -> crate::Result<()> {
-    let ftyp = Atom::new(FILETYPE, 0, Content::RawData(
-        Data::Utf8("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".into())
-    ));
+    #[rustfmt::skip]
+    let ftyp = Atom::new( FILETYPE, 0, Content::RawData(
+        Data::Utf8("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".into())),
+    );
+    #[rustfmt::skip]
     let moov = Atom::new(MOVIE, 0, Content::atom(
-        Atom::new(USER_DATA, 0, Content::atom(
-            Atom::new(METADATA, 4, Content::atom(
-                Atom::new(ITEM_LIST, 0, Content::Atoms(atoms)),
+        Atom::new( USER_DATA, 0, Content::atom(
+            Atom::new( METADATA, 4, Content::atom(
+                Atom::new(ITEM_LIST, 0, Content::Atoms(atoms))
             )),
         )),
     ));
@@ -613,7 +588,11 @@ pub fn dump_tag_to(writer: &mut impl Write, atoms: Vec<Atom>) -> crate::Result<(
 }
 
 /// Attempts to parse the list of atoms, matching the templates, from the reader.
-pub fn parse_atoms(atoms: &[AtomT], reader: &mut ( impl Read + Seek), length: usize) -> crate::Result<Vec<Atom>> {
+pub fn parse_atoms(
+    atoms: &[AtomT],
+    reader: &mut (impl Read + Seek),
+    length: usize,
+) -> crate::Result<Vec<Atom>> {
     let mut parsed_bytes = 0;
     let mut parsed_atoms = Vec::with_capacity(atoms.len());
 
@@ -631,11 +610,7 @@ pub fn parse_atoms(atoms: &[AtomT], reader: &mut ( impl Read + Seek), length: us
                     Err(e) => {
                         return Err(crate::Error::new(
                             e.kind,
-                            format!(
-                                "Error reading {}: {}",
-                                atom_ident,
-                                e.description
-                            ),
+                            format!("Error reading {}: {}", atom_ident, e.description),
                         ));
                     }
                 }
@@ -653,24 +628,18 @@ pub fn parse_atoms(atoms: &[AtomT], reader: &mut ( impl Read + Seek), length: us
     Ok(parsed_atoms)
 }
 
-/// Attempts to parse the atom's head containing a 32 bit unsigned integer determining the size
-/// of the atom in bytes and the following 4 byte identifier from the reader.
-pub fn parse_head(reader: &mut ( impl Read + Seek)) -> crate::Result<(usize, Ident)> {
+/// Attempts to parse the atom's head containing a 32 bit unsigned integer determining the size of
+/// the atom in bytes and the following 4 byte identifier from the reader.
+pub fn parse_head(reader: &mut (impl Read + Seek)) -> crate::Result<(usize, Ident)> {
     let length = match data::read_u32(reader) {
         Ok(l) => l as usize,
         Err(e) => {
-            return Err(crate::Error::new(
-                e.kind,
-                "Error reading atom length".into(),
-            ));
+            return Err(crate::Error::new(e.kind, "Error reading atom length".into()));
         }
     };
     let mut ident = [0u8; 4];
     if let Err(e) = reader.read_exact(&mut ident) {
-        return Err(crate::Error::new(
-            ErrorKind::Io(e),
-            "Error reading atom identifier".into(),
-        ));
+        return Err(crate::Error::new(ErrorKind::Io(e), "Error reading atom identifier".into()));
     }
 
     Ok((length, Ident(ident)))
@@ -682,11 +651,12 @@ fn filetype_atom_t() -> AtomT {
 }
 
 /// Returns an atom metadata hierarchy template needed to parse metadata.
+#[rustfmt::skip]
 fn metadata_atom_t() -> AtomT {
-    AtomT::new(MOVIE, 0, ContentT::Atoms(vec![
-        AtomT::new(TRACK, 0, ContentT::atom_t(
-            AtomT::new(MEDIA, 0, ContentT::atom_t(
-                AtomT::new(MEDIA_HEADER, 0, ContentT::RawData(
+    AtomT::new( MOVIE, 0, ContentT::Atoms(vec![
+        AtomT::new( TRACK, 0, ContentT::atom_t(
+            AtomT::new( MEDIA, 0, ContentT::atom_t(
+                AtomT::new( MEDIA_HEADER, 0, ContentT::RawData(
                     DataT::new(data::RESERVED)
                 )),
             )),
@@ -739,12 +709,13 @@ fn metadata_atom_t() -> AtomT {
 }
 
 /// Returns an atom hierarchy leading to an empty `ilst` atom template.
+#[rustfmt::skip]
 fn item_list_atom_t() -> AtomT {
     AtomT::new(MOVIE, 0, ContentT::atom_t(
         AtomT::new(USER_DATA, 0, ContentT::atom_t(
             AtomT::new(METADATA, 4, ContentT::atom_t(
-                AtomT::new(ITEM_LIST, 0, ContentT::atoms_t()),
-            )),
-        )),
+                AtomT::new(ITEM_LIST, 0, ContentT::atoms_t())
+            ))
+        ))
     ))
 }

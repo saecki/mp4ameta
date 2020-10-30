@@ -2,7 +2,7 @@ use std::fs;
 
 use walkdir::WalkDir;
 
-use mp4ameta::{AdvisoryRating, Data, MediaType, STANDARD_GENRES, Tag};
+use mp4ameta::{AdvisoryRating, Data, MediaType, Tag, STANDARD_GENRES};
 
 const EXTENSIONS: [&str; 4] = [".m4a", ".m4b", ".m4p", ".m4v"];
 
