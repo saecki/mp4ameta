@@ -3,6 +3,7 @@ pub mod atom;
 pub mod content;
 /// Contains constants, structs and functions for working with data held inside MPEG-4 metadata
 /// atoms.
+#[macro_use]
 pub mod data;
 /// Contains structs and constants for working with types held inside data atoms.
 pub mod types;

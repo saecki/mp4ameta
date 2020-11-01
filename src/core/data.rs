@@ -229,3 +229,65 @@ pub fn read_utf16(reader: &mut impl Read, length: usize) -> crate::Result<String
 
     Ok(String::from_utf16(&data)?)
 }
+
+/// Attempts to read a big endian integer at the specified index from a byte array or vec.
+///
+/// # Example
+/// ```
+/// # #[macro_use] extern crate mp4ameta; fn main() {
+/// let bytes = vec![0u8, 0, 0, 0, 0, 0, 1, 3];
+/// let int = be_int!(bytes, 4, u32);
+/// assert_eq!(int, Some(259u32));
+/// # }
+/// ```
+#[macro_export]
+macro_rules! be_int {
+    ($bytes:expr, $index:expr, $type:ty) => {{
+        use std::convert::TryFrom;
+
+        const SIZE: usize = std::mem::size_of::<$type>();
+        let bytes_start = ($index);
+        let bytes_end = ($index) + SIZE;
+
+        if $bytes.len() < bytes_end {
+            None
+        } else {
+            let be_bytes = <[u8; SIZE]>::try_from(&$bytes[bytes_start..bytes_end]);
+
+            match be_bytes {
+                Ok(b) => Some(<$type>::from_be_bytes(b)),
+                Err(_) => None,
+            }
+        }
+    }};
+}
+
+/// Attempts to write a big endian integer at the specified index to a byte array or vec.
+///
+/// # Example
+/// ```
+/// # #[macro_use] extern crate mp4ameta; fn main() {
+/// let mut bytes = vec![0u8, 0, 0, 0, 0, 0, 0, 0];
+/// set_be_int!(bytes, 4, 524, u16);
+/// assert_eq!(bytes[4], 2u8);
+/// assert_eq!(bytes[5], 12u8);
+/// # }
+/// ```
+#[macro_export]
+macro_rules! set_be_int {
+    ($bytes:expr, $index:expr, $value:expr, $type:ty) => {{
+        const SIZE: usize = std::mem::size_of::<$type>();
+        let bytes_start = ($index);
+        let bytes_end = ($index) + SIZE;
+
+        let be_bytes = <$type>::to_be_bytes($value);
+
+        if $bytes.len() < bytes_end {
+            $bytes.resize(bytes_end, 0);
+        }
+
+        for i in 0..SIZE {
+            $bytes[bytes_start + i] = be_bytes[i];
+        }
+    }};
+}

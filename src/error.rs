@@ -17,7 +17,7 @@ pub enum ErrorKind {
     InvalidFiletype(String),
     /// An error kind indicating that the reader does not contain mp4 metadata.
     NoTag,
-    /// An error kind indicating that an error occurred during parsing.
+    /// An error kind indicating that something wasn't found,
     Parsing,
     /// An error kind indicating that the datatype integer describing the typed data is unknown.
     /// Contains the unknown datatype.

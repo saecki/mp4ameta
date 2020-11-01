@@ -197,45 +197,17 @@ impl Tag {
 }
 
 fn number(vec: &[u8]) -> Option<u16> {
-    if vec.len() >= 4 {
-        let dn = u16::from_be_bytes([vec[2], vec[3]]);
-
-        if dn != 0 {
-            return Some(dn);
-        }
-    }
-
-    None
+    be_int!(vec, 2, u16).and_then(|dn| if dn == 0 { None } else { Some(dn) })
 }
 
 fn total(vec: &[u8]) -> Option<u16> {
-    if vec.len() >= 6 {
-        let dn = u16::from_be_bytes([vec[4], vec[5]]);
-
-        if dn != 0 {
-            return Some(dn);
-        }
-    }
-
-    None
+    be_int!(vec, 4, u16).and_then(|dn| if dn == 0 { None } else { Some(dn) })
 }
 
 fn set_number(vec: &mut Vec<u8>, number: u16) {
-    if vec.len() < 4 {
-        vec.resize(4, 0);
-    }
-
-    let [a, b] = number.to_be_bytes();
-    vec[2] = a;
-    vec[3] = b;
+    set_be_int!(vec, 2, number, u16);
 }
 
 fn set_total(vec: &mut Vec<u8>, total: u16) {
-    if vec.len() < 6 {
-        vec.resize(6, 0);
-    }
-
-    let [a, b] = total.to_be_bytes();
-    vec[4] = a;
-    vec[5] = b;
+    set_be_int!(vec, 4, total, u16);
 }

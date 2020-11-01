@@ -23,6 +23,7 @@ pub use crate::core::types::{self, AdvisoryRating, MediaType};
 pub use crate::error::{Error, ErrorKind, Result};
 pub use crate::tag::{genre::STANDARD_GENRES, Tag};
 
+#[macro_use]
 mod core;
 mod error;
 mod tag;

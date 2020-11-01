@@ -2,35 +2,48 @@ use proc_macro::TokenStream;
 
 fn base_values(input: TokenStream) -> (String, String, String, String, String) {
     let input_string = input.to_string();
-    let mut token_strings = input_string.split(',');
+    let mut strings = input_string.split(',');
 
-    let value_ident = token_strings.next().expect("Expected function ident").trim_start().replace("\"", "");
+    let value_ident = strings
+        .next()
+        .expect("Missing first positional argument: value identifier")
+        .trim()
+        .replace("\"", "");
+    if value_ident.is_empty() {
+        panic!("Found empty value identifier.");
+    }
+
     let name = value_ident.replace('_', " ");
 
     let mut name_chars = name.chars();
-    let headline = format!("{}{}", name_chars.next().unwrap().to_uppercase(), name_chars.collect::<String>());
+    let headline = name_chars.next().unwrap().to_uppercase().chain(name_chars).collect::<String>();
 
     let atom_ident = format!("atom::{}", value_ident.to_uppercase());
 
-    let atom_ident_string = token_strings.next().expect("Expected atom ident string").trim_start().replace("\"", "");
+    let atom_ident_string = strings
+        .next()
+        .expect("Missing second positional argument: atom ident string")
+        .trim()
+        .replace("\"", "");
+    if atom_ident_string.is_empty() {
+        panic!("Found empty atom identifier string.");
+    }
 
-    (value_ident,
-     name,
-     headline,
-     atom_ident,
-     atom_ident_string)
+    if let Some(arg) = strings.next().map(|s| s.trim()) {
+        if !arg.is_empty() {
+            panic!("Found unexpected third positional argument: {}.", arg);
+        }
+    }
+
+    (value_ident, name, headline, atom_ident, atom_ident_string)
 }
 
 #[proc_macro]
 pub fn individual_string_value_accessor(input: TokenStream) -> TokenStream {
-    let (value_ident,
-        name,
-        headline,
-        atom_ident,
-        atom_ident_string)
-        = base_values(input);
+    let (value_ident, name, headline, atom_ident, atom_ident_string) = base_values(input);
 
-    format!("
+    format!(
+        "
 /// ### {0}
 impl Tag {{
     /// Returns the {1} (`{2}`).
@@ -49,22 +62,15 @@ impl Tag {{
     }}
 }}
     ",
-            headline,
-            name,
-            atom_ident_string,
-            value_ident,
-            atom_ident,
-    ).parse().expect("Error parsing accessor impl block:")
+        headline, name, atom_ident_string, value_ident, atom_ident,
+    )
+    .parse()
+    .expect("Error parsing accessor impl block:")
 }
 
 #[proc_macro]
 pub fn multiple_string_values_accessor(input: TokenStream) -> TokenStream {
-    let (value_ident,
-        name,
-        headline,
-        atom_ident,
-        atom_ident_string)
-        = base_values(input);
+    let (value_ident, name, headline, atom_ident, atom_ident_string) = base_values(input);
 
     let mut value_ident_plural = value_ident.clone();
     if value_ident_plural.ends_with('y') {
@@ -76,7 +82,8 @@ pub fn multiple_string_values_accessor(input: TokenStream) -> TokenStream {
 
     let name_plural = value_ident_plural.replace('_', " ");
 
-    format!("
+    format!(
+        "
 /// ### {0}
 impl Tag {{
     /// Returns all {2} (`{3}`).
@@ -105,26 +112,18 @@ impl Tag {{
     }}
 }}
     ",
-            headline,
-            name,
-            name_plural,
-            atom_ident_string,
-            value_ident,
-            value_ident_plural,
-            atom_ident,
-    ).parse().expect("Error parsing accessor impl block:")
+        headline, name, name_plural, atom_ident_string, value_ident, value_ident_plural, atom_ident,
+    )
+    .parse()
+    .expect("Error parsing accessor impl block:")
 }
 
 #[proc_macro]
 pub fn flag_value_accessor(input: TokenStream) -> TokenStream {
-    let (value_ident,
-        name,
-        headline,
-        atom_ident,
-        atom_ident_string)
-        = base_values(input);
+    let (value_ident, name, headline, atom_ident, atom_ident_string) = base_values(input);
 
-    format!("
+    format!(
+        "
 /// ### {0}
 impl Tag {{
     /// Returns the {1} flag (`{2}`).
@@ -135,11 +134,7 @@ impl Tag {{
             _ => return false,
         }};
 
-        if vec.is_empty() {{
-            return false;
-        }}
-
-        vec[0] != 0
+        vec.get(0).map(|&v| v == 1).unwrap_or(false)
     }}
 
     /// Sets the {1} flag to true (`{2}`).
@@ -153,24 +148,18 @@ impl Tag {{
     }}
 }}
     ",
-            headline,
-            name,
-            atom_ident_string,
-            value_ident,
-            atom_ident,
-    ).parse().expect("Error parsing accessor impl block:")
+        headline, name, atom_ident_string, value_ident, atom_ident,
+    )
+    .parse()
+    .expect("Error parsing accessor impl block:")
 }
 
 #[proc_macro]
 pub fn integer_value_accessor(input: TokenStream) -> TokenStream {
-    let (value_ident,
-        name,
-        headline,
-        atom_ident,
-        atom_ident_string)
-        = base_values(input);
+    let (value_ident, name, headline, atom_ident, atom_ident_string) = base_values(input);
 
-    format!("
+    format!(
+        "
 /// ### {0}
 impl Tag {{
     /// Returns the {1} (`{2}`)
@@ -181,11 +170,7 @@ impl Tag {{
             _ => return None,
         }};
 
-        if vec.len() < 2 {{
-            return None;
-        }}
-
-        Some(u16::from_be_bytes([vec[0], vec[1]]))
+        be_int!(vec, 0, u16)
     }}
 
     /// Sets the {1} (`{2}`)
@@ -200,10 +185,8 @@ impl Tag {{
     }}
 }}
     ",
-            headline,
-            name,
-            atom_ident_string,
-            value_ident,
-            atom_ident,
-    ).parse().expect("Error parsing accessor impl block:")
+        headline, name, atom_ident_string, value_ident, atom_ident,
+    )
+    .parse()
+    .expect("Error parsing accessor impl block:")
 }
