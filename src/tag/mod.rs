@@ -112,39 +112,43 @@ mp4ameta_proc::integer_value_accessor!("movement_index", "©mvi");
 /// ### Artwork
 impl Tag {
     /// Returns all artwork images of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
-    /// [Data::Png](enum.Data.html#variant.Png) (`covr`).
+    /// [`Data::Png`](enum.Data.html#variant.Png) (`covr`).
     pub fn artworks(&self) -> impl Iterator<Item = &Data> {
         self.image(atom::ARTWORK)
     }
 
-    /// Returns the first artwork image of type [Data::Jpeg](enum.Data.html#variant.Jpeg) or
-    /// [Data::Png](enum.Data.html#variant.Png) (`covr`).
+    /// Returns the first artwork image of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
+    /// [`Data::Png`](enum.Data.html#variant.Png) (`covr`).
     pub fn artwork(&self) -> Option<&Data> {
         self.image(atom::ARTWORK).next()
     }
 
-    /// Sets the artwork image data of type [Data::Jpeg](enum.Data.html#variant.Jpeg) or
-    /// [Data::Png](enum.Data.html#variant.Png) (`covr`). This will remove all other artworks.
-    pub fn set_artwork(&mut self, image: Data) {
-        match &image {
-            Data::Jpeg(_) => (),
-            Data::Png(_) => (),
-            _ => return,
-        }
-
-        self.set_data(atom::ARTWORK, image);
+    /// Consumes and returns all artwork images of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
+    /// [`Data::Png`](enum.Data.html#variant.Png) (`covr`).
+    pub fn take_artworks(&mut self) -> impl Iterator<Item = Data> + '_ {
+        self.take_image(atom::ARTWORK)
     }
 
-    /// Adds artwork image data of type [Data::Jpeg](enum.Data.html#variant.Jpeg) or
-    /// [Data::Png](enum.Data.html#variant.Png) (`covr`).
-    pub fn add_artwork(&mut self, image: Data) {
-        match &image {
-            Data::Jpeg(_) => (),
-            Data::Png(_) => (),
-            _ => return,
-        }
+    /// Consumes all and returns the first artwork image of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
+    /// [`Data::Png`](enum.Data.html#variant.Png) (`covr`).
+    pub fn take_artwork(&mut self) -> Option<Data> {
+        self.take_image(atom::ARTWORK).next()
+    }
 
-        self.add_data(atom::ARTWORK, image);
+    /// Sets the artwork image data of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
+    /// [`Data::Png`](enum.Data.html#variant.Png) (`covr`). This will remove all other artworks.
+    pub fn set_artwork(&mut self, image: Data) {
+        if image.is_image() {
+            self.set_data(atom::ARTWORK, image);
+        }
+    }
+
+    /// Adds artwork image data of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
+    /// [`Data::Png`](enum.Data.html#variant.Png) (`covr`).
+    pub fn add_artwork(&mut self, image: Data) {
+        if image.is_image() {
+            self.add_data(atom::ARTWORK, image);
+        }
     }
 
     /// Removes all artworks (`covr`).
@@ -157,11 +161,7 @@ impl Tag {
 impl Tag {
     /// Returns the media type (`stik`).
     pub fn media_type(&self) -> Option<MediaType> {
-        let vec = match self.data(atom::MEDIA_TYPE).next()? {
-            Data::Reserved(v) => v,
-            Data::BeSigned(v) => v,
-            _ => return None,
-        };
+        let vec = self.bytes(atom::MEDIA_TYPE).next()?;
 
         if vec.is_empty() {
             return None;
@@ -185,11 +185,7 @@ impl Tag {
 impl Tag {
     /// Returns the advisory rating (`rtng`).
     pub fn advisory_rating(&self) -> Option<AdvisoryRating> {
-        let vec = match self.data(atom::ADVISORY_RATING).next()? {
-            Data::Reserved(v) => v,
-            Data::BeSigned(v) => v,
-            _ => return None,
-        };
+        let vec = self.bytes(atom::ADVISORY_RATING).next()?;
 
         if vec.is_empty() {
             return None;
@@ -272,38 +268,48 @@ impl Tag {
 
 /// ## Data accessors
 impl Tag {
-    /// Returns all byte data corresponding to the identifier.
+    /// Returns all byte data references corresponding to the identifier.
     ///
     /// # Example
     /// ```
     /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(Ident(*b"test"), Data::Reserved(vec![1,2,3,4,5,6]));
-    /// assert_eq!(tag.reserved(Ident(*b"test")).next().unwrap().to_vec(), vec![1,2,3,4,5,6]);
+    /// tag.set_data(Ident(*b"test"), Data::BeSigned(b"data".to_vec()));
+    /// assert_eq!(tag.bytes(Ident(*b"test")).next().unwrap(), b"data");
     /// ```
-    pub fn reserved(&self, ident: Ident) -> impl Iterator<Item = &Vec<u8>> {
-        self.data(ident).filter_map(|d| match d {
-            Data::Reserved(v) => Some(v),
-            _ => None,
-        })
+    pub fn bytes(&self, ident: Ident) -> impl Iterator<Item = &Vec<u8>> {
+        self.data(ident).filter_map(Data::bytes)
     }
 
-    /// Returns all byte data representing a big endian integer corresponding to the identifier.
+    /// Returns all mutable string references corresponding to the identifier.
     ///
     /// # Example
     /// ```
     /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(Ident(*b"test"), Data::BeSigned(vec![1,2,3,4,5,6]));
-    /// assert_eq!(tag.be_signed(Ident(*b"test")).next().unwrap().to_vec(), vec![1,2,3,4,5,6]);
+    /// tag.set_data(Ident(*b"test"), Data::Reserved(b"data".to_vec()));
+    /// tag.bytes_mut(Ident(*b"test")).next().unwrap().push(49);
+    /// assert_eq!(tag.bytes(Ident(*b"test")).next().unwrap(), b"data1");
     /// ```
-    pub fn be_signed(&self, ident: Ident) -> impl Iterator<Item = &Vec<u8>> {
-        self.data(ident).filter_map(|d| match d {
-            Data::BeSigned(v) => Some(v),
-            _ => None,
-        })
+    pub fn bytes_mut(&mut self, ident: Ident) -> impl Iterator<Item = &mut Vec<u8>> {
+        self.data_mut(ident).filter_map(Data::bytes_mut)
+    }
+
+    /// Consumes all byte data corresponding to the identifier and returns it.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, Ident};
+    ///
+    /// let mut tag = Tag::default();
+    /// tag.set_data(Ident(*b"test"), Data::Reserved(b"data".to_vec()));
+    /// assert_eq!(tag.take_bytes(Ident(*b"test")).next(), Some(b"data".to_vec()));
+    /// assert_eq!(tag.bytes(Ident(*b"test")).next(), None);
+    /// ```
+    pub fn take_bytes(&mut self, ident: Ident) -> impl Iterator<Item = Vec<u8>> + '_ {
+        self.take_data(ident).filter_map(Data::take_bytes)
     }
 
     /// Returns all string references corresponding to the identifier.
@@ -317,11 +323,7 @@ impl Tag {
     /// assert_eq!(tag.string(Ident(*b"test")).next().unwrap(), "data");
     /// ```
     pub fn string(&self, ident: Ident) -> impl Iterator<Item = &str> {
-        self.data(ident).filter_map(|d| match d {
-            Data::Utf8(s) => Some(&**s),
-            Data::Utf16(s) => Some(&**s),
-            _ => None,
-        })
+        self.data(ident).filter_map(Data::string)
     }
 
     /// Returns all mutable string references corresponding to the identifier.
@@ -336,33 +338,80 @@ impl Tag {
     /// assert_eq!(tag.string(Ident(*b"test")).next().unwrap(), "data1");
     /// ```
     pub fn string_mut(&mut self, ident: Ident) -> impl Iterator<Item = &mut String> {
-        self.data_mut(ident).filter_map(|d| match d {
-            Data::Utf8(s) => Some(s),
-            Data::Utf16(s) => Some(s),
-            _ => None,
-        })
+        self.data_mut(ident).filter_map(Data::string_mut)
     }
 
-    /// Returns all image data of type [Data::Jpeg](enum.Data.html#variant.Jpeg) or
-    /// [Data::Jpeg](enum.Data.html#variant.Png) corresponding to the identifier.
+    /// Consumes all strings corresponding to the identifier and returns them.
     ///
     /// # Example
     /// ```
     /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(Ident(*b"test"), Data::Jpeg("<the image data>".as_bytes().to_vec()));
+    /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
+    /// assert_eq!(tag.take_string(Ident(*b"test")).next(), Some("data".into()));
+    /// assert_eq!(tag.string(Ident(*b"test")).next(), None);
+    /// ```
+    pub fn take_string(&mut self, ident: Ident) -> impl Iterator<Item = String> + '_ {
+        self.take_data(ident).filter_map(Data::take_string)
+    }
+
+    /// Returns all image data references of type [Data::Jpeg](enum.Data.html#variant.Jpeg)
+    /// or [Data::Jpeg](enum.Data.html#variant.Png) corresponding to the identifier.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, Ident};
+    ///
+    /// let mut tag = Tag::default();
+    /// tag.set_data(Ident(*b"test"), Data::Jpeg(b"<the image data>".to_vec()));
     /// match tag.image(Ident(*b"test")).next().unwrap() {
-    ///     Data::Jpeg(v) => assert_eq!(*v, "<the image data>".as_bytes()),
+    ///     Data::Jpeg(v) => assert_eq!(*v, b"<the image data>"),
     ///     _ => panic!("data does not match"),
     /// };
     /// ```
     pub fn image(&self, ident: Ident) -> impl Iterator<Item = &Data> {
-        self.data(ident).filter(|d| match d {
-            Data::Jpeg(_) => true,
-            Data::Png(_) => true,
-            _ => false,
-        })
+        self.data(ident).filter_map(Data::image)
+    }
+
+    /// Returns all mutable image data references of type [Data::Jpeg](enum.Data.html#variant.Jpeg)
+    /// or [Data::Jpeg](enum.Data.html#variant.Png) corresponding to the identifier.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, Ident};
+    ///
+    /// let mut tag = Tag::default();
+    /// tag.set_data(Ident(*b"test"), Data::Jpeg(b"<the image data>".to_vec()));
+    /// match tag.image_mut(Ident(*b"test")).next().unwrap() {
+    ///     Data::Jpeg(v) => v.push(49u8),
+    ///     _ => panic!("data type does match"),
+    /// }
+    /// match tag.image(Ident(*b"test")).next().unwrap() {
+    ///     Data::Jpeg(v) => assert_eq!(*v, b"<the image data>1"),
+    ///     _ => panic!("data does not match"),
+    /// };
+    /// ```
+    pub fn image_mut(&mut self, ident: Ident) -> impl Iterator<Item = &mut Data> {
+        self.data_mut(ident).filter_map(Data::image_mut)
+    }
+
+    /// Consumes all data corresponding to the identifier and returns it.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, Ident};
+    ///
+    /// let mut tag = Tag::default();
+    /// tag.set_data(Ident(*b"test"), Data::Png(b"<the image data>".to_vec()));
+    /// match tag.take_data(Ident(*b"test")).next().unwrap() {
+    ///     Data::Png(s) =>  assert_eq!(s, b"<the image data>".to_vec()),
+    ///     _ => panic!("data does not match"),
+    /// };
+    /// assert_eq!(tag.string(Ident(*b"test")).next(), None);
+    /// ```
+    pub fn take_image(&mut self, ident: Ident) -> impl Iterator<Item = Data> + '_ {
+        self.take_data(ident).filter_map(Data::take_image)
     }
 
     /// Returns all data references corresponding to the identifier.
@@ -396,6 +445,7 @@ impl Tag {
     /// # Example
     /// ```
     /// use mp4ameta::{Tag, Data, Ident};
+    ///
     /// let mut tag = Tag::default();
     /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
     /// if let Data::Utf8(s) = tag.data_mut(Ident(*b"test")).next().unwrap() {
@@ -410,6 +460,31 @@ impl Tag {
                     if let Content::TypedData(data) = &mut d.content {
                         return Some(data);
                     }
+                }
+            }
+            None
+        })
+    }
+
+    /// Consumes all data corresponding to the identifier and returns it.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, Ident};
+    ///
+    /// let mut tag = Tag::default();
+    /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
+    /// match tag.take_data(Ident(*b"test")).next().unwrap() {
+    ///     Data::Utf8(s) =>  assert_eq!(s, "data".to_string()),
+    ///     _ => panic!("data does not match"),
+    /// };
+    /// assert_eq!(tag.string(Ident(*b"test")).next(), None);
+    /// ```
+    pub fn take_data(&mut self, ident: Ident) -> impl Iterator<Item = Data> + '_ {
+        self.atoms.iter_mut().filter_map(move |a| {
+            if a.ident == ident {
+                if let Some(d) = a.child_mut(atom::DATA) {
+                    return d.content.take_data();
                 }
             }
             None

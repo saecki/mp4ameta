@@ -51,6 +51,11 @@ impl Tag {{
         self.string({4}).next()
     }}
 
+    /// Consumes and returns the {1} (`{2}`).
+    pub fn take_{3}(&mut self) -> Option<String> {{
+        self.take_string({4}).next()
+    }}
+
     /// Sets the {1} (`{2}`).
     pub fn set_{3}(&mut self, {3}: impl Into<String>) {{
         self.set_data({4}, Data::Utf8({3}.into()));
@@ -94,6 +99,16 @@ impl Tag {{
     /// Returns the first {1} (`{3}`).
     pub fn {4}(&self) -> Option<&str> {{
         self.string({6}).next()
+    }}
+    
+    /// Consumes and returns all {2} (`{3}`).
+    pub fn take_{5}(&mut self) -> impl Iterator<Item=String> + '_ {{
+        self.take_string({6})
+    }}
+    
+    /// Consumes all and returns the first {1} (`{3}`).
+    pub fn take_{4}(&mut self) -> Option<String> {{
+        self.take_string({6}).next()
     }}
 
     /// Sets the {1} (`{3}`). This will remove all other {2}.

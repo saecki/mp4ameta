@@ -304,10 +304,10 @@ impl Atom {
 
                 Err(crate::Error::new(
                     ErrorKind::InvalidFiletype(s.to_string()),
-                    "Invalid filetype.".into(),
+                    "Invalid filetype.".to_owned(),
                 ))
             }
-            _ => Err(crate::Error::new(ErrorKind::NoTag, "No filetype atom found.".into())),
+            _ => Err(crate::Error::new(ErrorKind::NoTag, "No filetype atom found.".to_owned())),
         }
     }
 }
@@ -570,7 +570,7 @@ pub fn write_tag_to(file: &File, atoms: &[Atom]) -> crate::Result<()> {
 pub fn dump_tag_to(writer: &mut impl Write, atoms: Vec<Atom>) -> crate::Result<()> {
     #[rustfmt::skip]
     let ftyp = Atom::new( FILETYPE, 0, Content::RawData(
-        Data::Utf8("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".into())),
+        Data::Utf8("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".to_owned())),
     );
     #[rustfmt::skip]
     let moov = Atom::new(MOVIE, 0, Content::atom(
@@ -634,12 +634,15 @@ pub fn parse_head(reader: &mut (impl Read + Seek)) -> crate::Result<(usize, Iden
     let length = match data::read_u32(reader) {
         Ok(l) => l as usize,
         Err(e) => {
-            return Err(crate::Error::new(e.kind, "Error reading atom length".into()));
+            return Err(crate::Error::new(e.kind, "Error reading atom length".to_owned()));
         }
     };
     let mut ident = [0u8; 4];
     if let Err(e) = reader.read_exact(&mut ident) {
-        return Err(crate::Error::new(ErrorKind::Io(e), "Error reading atom identifier".into()));
+        return Err(crate::Error::new(
+            ErrorKind::Io(e),
+            "Error reading atom identifier".to_owned(),
+        ));
     }
 
     Ok((length, Ident(ident)))

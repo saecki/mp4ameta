@@ -89,7 +89,7 @@ pub const STANDARD_GENRES: [(u16, &str); 80] = [
 impl Tag {
     /// Returns all standard genres (`gnre`).
     pub fn standard_genres(&self) -> impl Iterator<Item = u16> + '_ {
-        self.reserved(atom::STANDARD_GENRE).filter_map(|v| {
+        self.bytes(atom::STANDARD_GENRE).filter_map(|v| {
             if v.len() < 2 {
                 None
             } else {
@@ -130,7 +130,7 @@ impl Tag {
 /// These are convenience functions that combine the values from the standard genre (`gnre`) and
 /// custom genre (`©gen`).
 impl Tag {
-    /// Returns all genres (gnre or ©gen).
+    /// Returns all genres (`gnre` or `©gen`).
     pub fn genres(&self) -> impl Iterator<Item = &str> {
         self.standard_genres()
             .filter_map(|genre_code| {
@@ -144,7 +144,7 @@ impl Tag {
             .chain(self.custom_genres())
     }
 
-    /// Returns the first genre (gnre or ©gen).
+    /// Returns the first genre (`gnre` or `©gen`).
     pub fn genre(&self) -> Option<&str> {
         if let Some(genre_code) = self.standard_genre() {
             for g in STANDARD_GENRES.iter() {
@@ -155,6 +155,35 @@ impl Tag {
         }
 
         self.custom_genre()
+    }
+
+    /// Consumes all custom genres (`©gen`) and returns all genres (`gnre` or `©gen`).
+    pub fn take_genres(&mut self) -> impl Iterator<Item = String> + '_ {
+        self.standard_genres()
+            .filter_map(|genre_code| {
+                for g in STANDARD_GENRES.iter() {
+                    if g.0 == genre_code {
+                        return Some(g.1.to_owned());
+                    }
+                }
+                None
+            })
+            .collect::<Vec<String>>()
+            .into_iter()
+            .chain(self.take_custom_genres())
+    }
+
+    /// Consumes all custom genres (`©gen`) and returns the first genre (`gnre` or `©gen`).
+    pub fn take_genre(&mut self) -> Option<String> {
+        if let Some(genre_code) = self.standard_genre() {
+            for g in STANDARD_GENRES.iter() {
+                if g.0 == genre_code {
+                    return Some(g.1.to_owned());
+                }
+            }
+        }
+
+        self.take_custom_genre()
     }
 
     /// Sets the standard genre (`gnre`) if it matches a predefined value otherwise a custom genre
@@ -188,7 +217,7 @@ impl Tag {
         self.add_custom_genre(gen)
     }
 
-    /// Removes the genre (gnre or ©gen).
+    /// Removes the genre (`gnre` or `©gen`).
     pub fn remove_genres(&mut self) {
         self.remove_standard_genres();
         self.remove_custom_genres();

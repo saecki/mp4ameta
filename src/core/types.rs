@@ -78,7 +78,7 @@ impl TryFrom<u8> for MediaType {
             BOOKLET => Ok(Self::Booklet),
             _ => Err(crate::Error::new(
                 ErrorKind::UnknownMediaType(value),
-                "Unknown media type".into(),
+                "Unknown media type".to_owned(),
             )),
         }
     }

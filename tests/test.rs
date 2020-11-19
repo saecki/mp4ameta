@@ -372,3 +372,59 @@ fn work_movement_handling() {
     assert_eq!(tag.show_movement(), true);
     assert_eq!(tag.work(), Some(work));
 }
+
+#[test]
+fn tag_destructuring() {
+    let mut tag = Tag::default();
+
+    tag.set_album("TEST ALBUM");
+    tag.set_album_artist("TEST ALBUM ARTIST");
+    tag.set_artist("TEST ARTIST");
+    tag.set_category("TEST CATEGORY");
+    tag.set_comment("TEST COMMENT");
+    tag.set_composer("TEST COMPOSER");
+    tag.set_copyright("TEST COPYRIGHT");
+    tag.set_description("TEST DESCRIPTION");
+    tag.set_encoder("Lavf58.29.100");
+    tag.set_genre("TEST GENRE");
+    tag.set_grouping("TEST GROUPING");
+    tag.set_keyword("TEST KEYWORD");
+    tag.set_lyrics("TEST LYRICS");
+    tag.set_title("TEST TITLE");
+    tag.set_year("2013");
+    tag.set_artwork(Data::Png(b"TEST ARTWORK".to_vec()));
+
+    assert_eq!(tag.take_album(), Some("TEST ALBUM".to_string()));
+    assert_eq!(tag.take_album_artist(), Some("TEST ALBUM ARTIST".to_string()));
+    assert_eq!(tag.take_artist(), Some("TEST ARTIST".to_string()));
+    assert_eq!(tag.take_category(), Some("TEST CATEGORY".to_string()));
+    assert_eq!(tag.take_comment(), Some("TEST COMMENT".to_string()));
+    assert_eq!(tag.take_composer(), Some("TEST COMPOSER".to_string()));
+    assert_eq!(tag.take_copyright(), Some("TEST COPYRIGHT".to_string()));
+    assert_eq!(tag.take_description(), Some("TEST DESCRIPTION".to_string()));
+    assert_eq!(tag.take_encoder(), Some("Lavf58.29.100".to_string()));
+    assert_eq!(tag.take_genre(), Some("TEST GENRE".to_string()));
+    assert_eq!(tag.take_grouping(), Some("TEST GROUPING".to_string()));
+    assert_eq!(tag.take_keyword(), Some("TEST KEYWORD".to_string()));
+    assert_eq!(tag.take_lyrics(), Some("TEST LYRICS".to_string()));
+    assert_eq!(tag.take_title(), Some("TEST TITLE".to_string()));
+    assert_eq!(tag.take_year(), Some("2013".to_string()));
+    assert_eq!(tag.take_artwork(), Some(Data::Png(b"TEST ARTWORK".to_vec())));
+
+    assert_eq!(tag.album(), None);
+    assert_eq!(tag.album_artist(), None);
+    assert_eq!(tag.artist(), None);
+    assert_eq!(tag.category(), None);
+    assert_eq!(tag.comment(), None);
+    assert_eq!(tag.composer(), None);
+    assert_eq!(tag.copyright(), None);
+    assert_eq!(tag.description(), None);
+    assert_eq!(tag.encoder(), None);
+    assert_eq!(tag.genre(), None);
+    assert_eq!(tag.grouping(), None);
+    assert_eq!(tag.keyword(), None);
+    assert_eq!(tag.lyrics(), None);
+    assert_eq!(tag.title(), None);
+    assert_eq!(tag.year(), None);
+    assert_eq!(tag.artwork(), None);
+}

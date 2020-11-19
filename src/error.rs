@@ -58,7 +58,7 @@ impl error::Error for Error {
 
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Error {
-        Error { kind: ErrorKind::Io(err), description: "".into() }
+        Error { kind: ErrorKind::Io(err), description: "".to_owned() }
     }
 }
 
@@ -66,7 +66,7 @@ impl From<string::FromUtf8Error> for Error {
     fn from(err: string::FromUtf8Error) -> Error {
         Error {
             kind: ErrorKind::Utf8StringDecoding(err),
-            description: "Data is not valid utf-8.".into(),
+            description: "Data is not valid utf-8.".to_owned(),
         }
     }
 }
@@ -75,7 +75,7 @@ impl From<string::FromUtf16Error> for Error {
     fn from(err: string::FromUtf16Error) -> Error {
         Error {
             kind: ErrorKind::Utf16StringDecoding(err),
-            description: "Data is not valid utf-16.".into(),
+            description: "Data is not valid utf-16.".to_owned(),
         }
     }
 }

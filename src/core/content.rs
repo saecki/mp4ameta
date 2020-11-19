@@ -132,6 +132,17 @@ impl Content {
         self.into_iter().next()
     }
 
+    /// Replaces `self` with it's default value and returns the data, if present.
+    pub fn take_data(&mut self) -> Option<Data> {
+        let content = std::mem::take(self);
+
+        match content {
+            Self::TypedData(d) => Some(d),
+            Self::RawData(d) => Some(d),
+            _ => None,
+        }
+    }
+
     /// Attempts to write the content to the `writer`.
     pub fn write_to(&self, writer: &mut impl Write) -> crate::Result<()> {
         match self {
@@ -275,7 +286,7 @@ impl ContentT {
                         Err(e) => {
                             return Err(crate::Error::new(
                                 e.kind,
-                                "Error reading typed data head".into(),
+                                "Error reading typed data head".to_owned(),
                             ))
                         }
                     };
@@ -287,7 +298,7 @@ impl ContentT {
                 } else {
                     return Err(crate::Error::new(
                         ErrorKind::Parsing,
-                        "Typed data head to short".into(),
+                        "Typed data head to short".to_owned(),
                     ));
                 }
             }

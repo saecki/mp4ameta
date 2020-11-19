@@ -83,12 +83,12 @@ pub enum Data {
 impl fmt::Debug for Data {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Data::Reserved(d) => write!(f, "Reserved{{ {:?} }}", d),
-            Data::Utf8(d) => write!(f, "UTF8{{ {:?} }}", d),
-            Data::Utf16(d) => write!(f, "UTF16{{ {:?} }}", d),
-            Data::Jpeg(_) => write!(f, "JPEG"),
-            Data::Png(_) => write!(f, "PNG"),
-            Data::BeSigned(d) => write!(f, "Reserved{{ {:?} }}", d),
+            Self::Reserved(d) => write!(f, "Reserved{{ {:?} }}", d),
+            Self::Utf8(d) => write!(f, "UTF8{{ {:?} }}", d),
+            Self::Utf16(d) => write!(f, "UTF16{{ {:?} }}", d),
+            Self::Jpeg(_) => write!(f, "JPEG"),
+            Self::Png(_) => write!(f, "PNG"),
+            Self::BeSigned(d) => write!(f, "Reserved{{ {:?} }}", d),
         }
     }
 }
@@ -97,29 +97,251 @@ impl Data {
     /// Returns the length in bytes.
     pub fn len(&self) -> usize {
         match self {
-            Data::Reserved(v) => v.len(),
-            Data::Utf8(s) => s.len(),
-            Data::Utf16(s) => s.encode_utf16().count(),
-            Data::Jpeg(v) => v.len(),
-            Data::Png(v) => v.len(),
-            Data::BeSigned(v) => v.len(),
+            Self::Reserved(v) => v.len(),
+            Self::Utf8(s) => s.len(),
+            Self::Utf16(s) => s.encode_utf16().count(),
+            Self::Jpeg(v) => v.len(),
+            Self::Png(v) => v.len(),
+            Self::BeSigned(v) => v.len(),
         }
     }
 
-    /// Returns true if the data is empty.
+    /// Returns true if the data is empty, false otherwise.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    /// Returns true if `self` is of type [`Data::Reserved`](enum.Data.html#variant.Reserved) or
+    /// [`Data::BeSigned`](enum.Data.html#variant.BeSigned), false otherwise.
+    pub const fn is_bytes(&self) -> bool {
+        match self {
+            Self::Reserved(_) => true,
+            Self::BeSigned(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if `self` is of type [`Data::Utf8`](enum.Data.html#variant.Utf8) or
+    /// [`Data::Utf16`](enum.Data.html#variant.Utf16), false otherwise.
+    pub const fn is_string(&self) -> bool {
+        match self {
+            Self::Utf8(_) => true,
+            Self::Utf16(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if `self` is of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
+    /// [`Data::Png`](enum.Data.html#variant.Png), false otherwise.
+    pub const fn is_image(&self) -> bool {
+        match self {
+            Self::Jpeg(_) => true,
+            Self::Png(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if `self` is of type [`Data::Reserved`](enum.Data.html#variant.Reserved), false
+    /// otherwise.
+    pub const fn is_reserved(&self) -> bool {
+        match self {
+            Self::Reserved(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if `self` is of type [`Data::Utf8`](enum.Data.html#variant.Utf8), false
+    /// otherwise.
+    pub const fn is_utf8(&self) -> bool {
+        match self {
+            Self::Utf8(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if `self` is of type [`Data::Utf16`](enum.Data.html#variant.Utf16), false
+    /// otherwise.
+    pub const fn is_utf16(&self) -> bool {
+        match self {
+            Self::Utf16(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if `self` is of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg), false
+    /// otherwise.
+    pub const fn is_jpeg(&self) -> bool {
+        match self {
+            Self::Jpeg(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if `self` is of type [`Data::Png`](enum.Data.html#variant.Png), false
+    /// otherwise.
+    pub const fn is_png(&self) -> bool {
+        match self {
+            Self::Png(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if `self` is of type [`Data::BeSigned`](enum.Data.html#variant.BeSigned),
+    /// false otherwise.
+    pub const fn is_be_signed(&self) -> bool {
+        match self {
+            Self::BeSigned(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns a byte vec reference if `self` is of type [`Data::Reserved`](enum.Data.html#variant.Reserved)
+    /// or [`Data::BeSigned`](enum.Data.html#variant.BeSigned).
+    pub const fn bytes(&self) -> Option<&Vec<u8>> {
+        match self {
+            Self::Reserved(v) => Some(v),
+            Self::BeSigned(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    /// Returns a mutable byte vec reference if `self` is of type [`Data::Reserved`](enum.Data.html#variant.Reserved)
+    /// or [`Data::BeSigned`](enum.Data.html#variant.BeSigned).
+    pub fn bytes_mut(&mut self) -> Option<&mut Vec<u8>> {
+        match self {
+            Self::Reserved(v) => Some(v),
+            Self::BeSigned(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    /// Consumes `self` and returns a byte vec if `self` is of type [`Data::Reserved`](enum.Data.html#variant.Reserved)
+    /// or [`Data::BeSigned`](enum.Data.html#variant.BeSigned).
+    pub fn take_bytes(self) -> Option<Vec<u8>> {
+        match self {
+            Self::Reserved(v) => Some(v),
+            Self::BeSigned(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    /// Returns a string reference if `self` is either of type [`Data::Utf8`](enum.Data.html#variant.Utf8)
+    /// or [`Data::Utf16`](enum.Data.html#variant.Utf16).
+    pub fn string(&self) -> Option<&str> {
+        match self {
+            Self::Utf8(s) => Some(s.as_str()),
+            Self::Utf16(s) => Some(s.as_str()),
+            _ => None,
+        }
+    }
+
+    /// Returns a mutable string reference if `self` is either of type [`Data::Utf8`](enum.Data.html#variant.Utf8)
+    /// or [`Data::Utf16`](enum.Data.html#variant.Utf16).
+    pub fn string_mut(&mut self) -> Option<&mut String> {
+        match self {
+            Self::Utf8(s) => Some(s),
+            Self::Utf16(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    /// Consumes `self` and returns a string if `self` is either of type [`Data::Utf8`](enum.Data.html#variant.Utf8)
+    /// or [`Data::Utf16`](enum.Data.html#variant.Utf16).
+    pub fn take_string(self) -> Option<String> {
+        match self {
+            Self::Utf8(s) => Some(s),
+            Self::Utf16(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    /// Returns a data reference if `self` is of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
+    /// [`Data::Png`](enum.Data.html#variant.Png).
+    pub const fn image(&self) -> Option<&Data> {
+        match self {
+            d if d.is_jpeg() => Some(d),
+            d if d.is_png() => Some(d),
+            _ => None,
+        }
+    }
+
+    /// Returns a data reference if `self` is of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
+    /// [`Data::Png`](enum.Data.html#variant.Png).
+    pub fn image_mut(&mut self) -> Option<&mut Data> {
+        match self {
+            d if d.is_jpeg() => Some(d),
+            d if d.is_png() => Some(d),
+            _ => None,
+        }
+    }
+
+    /// Consumes `self` and returns data if `self` is of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
+    /// [`Data::Png`](enum.Data.html#variant.Png).
+    pub fn take_image(self) -> Option<Data> {
+        match self {
+            d if d.is_jpeg() => Some(d),
+            d if d.is_png() => Some(d),
+            _ => None,
+        }
+    }
+
+    /// Returns a byte vec reference if `self` is of type [`Data::Reserved`](enum.Data.html#variant.Reserved).
+    pub const fn reserved(&self) -> Option<&Vec<u8>> {
+        match self {
+            Self::Reserved(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    /// Returns a string reference if `self` is of type [`Data::Utf8`](enum.Data.html#variant.Utf8).
+    pub const fn utf8(&self) -> Option<&String> {
+        match self {
+            Self::Utf8(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    /// Returns a string reference if `self` is of type [`Data::Utf16`](enum.Data.html#variant.Utf16).
+    pub const fn utf16(&self) -> Option<&String> {
+        match self {
+            Self::Utf16(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    /// Returns a byte vec reference if `self` is of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg).
+    pub const fn jpeg(&self) -> Option<&Vec<u8>> {
+        match self {
+            Self::Jpeg(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    /// Returns a byte vec reference if `self` is of type [`Data::Png`](enum.Data.html#variant.Png).
+    pub const fn png(&self) -> Option<&Vec<u8>> {
+        match self {
+            Self::Png(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    /// Returns a byte vec reference if `self` is of type [`Data::BeSigned`](enum.Data.html#variant.BeSigned).
+    pub const fn be_signed(&self) -> Option<&Vec<u8>> {
+        match self {
+            Self::BeSigned(v) => Some(v),
+            _ => None,
+        }
     }
 
     /// Attempts to write the typed data to the writer.
     pub fn write_typed(&self, writer: &mut impl Write) -> crate::Result<()> {
         let datatype = match self {
-            Data::Reserved(_) => RESERVED,
-            Data::Utf8(_) => UTF8,
-            Data::Utf16(_) => UTF16,
-            Data::Jpeg(_) => JPEG,
-            Data::Png(_) => PNG,
-            Data::BeSigned(_) => BE_SIGNED,
+            Self::Reserved(_) => RESERVED,
+            Self::Utf8(_) => UTF8,
+            Self::Utf16(_) => UTF16,
+            Self::Jpeg(_) => JPEG,
+            Self::Png(_) => PNG,
+            Self::BeSigned(_) => BE_SIGNED,
         };
 
         writer.write_all(&datatype.to_be_bytes())?;
@@ -134,24 +356,24 @@ impl Data {
     /// Attempts to write the raw data to the writer.
     pub fn write_raw(&self, writer: &mut impl Write) -> crate::Result<()> {
         match self {
-            Data::Reserved(v) => {
+            Self::Reserved(v) => {
                 writer.write_all(v)?;
             }
-            Data::Utf8(s) => {
+            Self::Utf8(s) => {
                 writer.write_all(s.as_bytes())?;
             }
-            Data::Utf16(s) => {
+            Self::Utf16(s) => {
                 for c in s.encode_utf16() {
                     writer.write_all(&c.to_be_bytes())?;
                 }
             }
-            Data::Jpeg(v) => {
+            Self::Jpeg(v) => {
                 writer.write_all(v)?;
             }
-            Data::Png(v) => {
+            Self::Png(v) => {
                 writer.write_all(v)?;
             }
-            Data::BeSigned(v) => {
+            Self::BeSigned(v) => {
                 writer.write_all(v)?;
             }
         }
@@ -187,7 +409,7 @@ impl DataT {
             _ => {
                 return Err(crate::Error::new(
                     ErrorKind::UnknownDataType(self.datatype),
-                    "Unknown datatype code".into(),
+                    "Unknown datatype code".to_owned(),
                 ))
             }
         })
