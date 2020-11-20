@@ -48,18 +48,18 @@ impl IntoIterator for Content {
 }
 
 impl Content {
-    /// Creates new empty content of type [Self::Atoms](enum.Content.html#variant.Atoms).
+    /// Creates new empty content of type [Self::Atoms](Self::Atoms).
     pub fn atoms() -> Self {
         Self::Atoms(Vec::new())
     }
 
-    /// Creates new content of type [Self::Atoms](enum.Content.html#variant.Atoms) containing the
+    /// Creates new content of type [Self::Atoms](Self::Atoms) containing the
     /// atom.
     pub fn atom(atom: Atom) -> Self {
         Self::Atoms(vec![atom])
     }
 
-    /// Creates new content of type [Self::Atoms](enum.Content.html#variant.Atoms) containing a data
+    /// Creates new content of type [Self::Atoms](Self::Atoms) containing a data
     /// [`Atom`](struct.Atom.html) with the data.
     pub fn data_atom_with(data: Data) -> Self {
         Self::atom(Atom::data_atom_with(data))
@@ -205,18 +205,18 @@ impl IntoIterator for ContentT {
 }
 
 impl ContentT {
-    /// Creates a new empty content template of type [Self::Atoms](enum.Content.html#variant.Atoms).
+    /// Creates a new empty content template of type [Self::Atoms](Self::Atoms).
     pub const fn atoms_t() -> Self {
         Self::Atoms(Vec::new())
     }
 
-    /// Creates a new content template of type [Self::Atoms](enum.Content.html#variant.Atoms)
+    /// Creates a new content template of type [Self::Atoms](Self::Atoms)
     /// containing the `atom` template.
     pub fn atom_t(atom: AtomT) -> Self {
         Self::Atoms(vec![atom])
     }
 
-    /// Creates a new content template of type [Self::Atoms](enum.Content.html#variant.Atoms)
+    /// Creates a new content template of type [Self::Atoms](Self::Atoms)
     /// containing a data atom template.
     pub fn data_atom_t() -> Self {
         Self::atom_t(AtomT::data_atom())

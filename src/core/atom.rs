@@ -240,7 +240,7 @@ impl Atom {
         Self { ident, offset, content }
     }
 
-    /// Creates a data atom containing [`Content::TypedData`](enum.Content.html#variant.TypedData)
+    /// Creates a data atom containing [`Content::TypedData`](crate::Content::TypedData)
     /// with the provided `data`.
     pub const fn data_atom_with(data: Data) -> Self {
         Self::new(DATA, 0, Content::TypedData(data))
@@ -336,7 +336,7 @@ impl AtomT {
     }
 
     /// Creates a data atom template containing
-    /// [`ContentT::TypedData`](enum.ContentT.html#variant.TypedData).
+    /// [`ContentT::TypedData`](crate::ContentT::TypedData).
     pub const fn data_atom() -> Self {
         Self::new(DATA, 0, ContentT::TypedData)
     }

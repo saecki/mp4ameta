@@ -111,8 +111,8 @@ impl Data {
         self.len() == 0
     }
 
-    /// Returns true if `self` is of type [`Data::Reserved`](enum.Data.html#variant.Reserved) or
-    /// [`Data::BeSigned`](enum.Data.html#variant.BeSigned), false otherwise.
+    /// Returns true if `self` is of type [`Data::Reserved`](crate::Data::Reserved) or
+    /// [`Data::BeSigned`](crate::Data::BeSigned), false otherwise.
     pub const fn is_bytes(&self) -> bool {
         match self {
             Self::Reserved(_) => true,
@@ -121,8 +121,8 @@ impl Data {
         }
     }
 
-    /// Returns true if `self` is of type [`Data::Utf8`](enum.Data.html#variant.Utf8) or
-    /// [`Data::Utf16`](enum.Data.html#variant.Utf16), false otherwise.
+    /// Returns true if `self` is of type [`Data::Utf8`](crate::Data::Utf8) or
+    /// [`Data::Utf16`](crate::Data::Utf16), false otherwise.
     pub const fn is_string(&self) -> bool {
         match self {
             Self::Utf8(_) => true,
@@ -131,8 +131,8 @@ impl Data {
         }
     }
 
-    /// Returns true if `self` is of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
-    /// [`Data::Png`](enum.Data.html#variant.Png), false otherwise.
+    /// Returns true if `self` is of type [`Data::Jpeg`](crate::Data::Jpeg) or
+    /// [`Data::Png`](crate::Data::Png), false otherwise.
     pub const fn is_image(&self) -> bool {
         match self {
             Self::Jpeg(_) => true,
@@ -141,7 +141,7 @@ impl Data {
         }
     }
 
-    /// Returns true if `self` is of type [`Data::Reserved`](enum.Data.html#variant.Reserved), false
+    /// Returns true if `self` is of type [`Data::Reserved`](crate::Data::Reserved), false
     /// otherwise.
     pub const fn is_reserved(&self) -> bool {
         match self {
@@ -150,7 +150,7 @@ impl Data {
         }
     }
 
-    /// Returns true if `self` is of type [`Data::Utf8`](enum.Data.html#variant.Utf8), false
+    /// Returns true if `self` is of type [`Data::Utf8`](crate::Data::Utf8), false
     /// otherwise.
     pub const fn is_utf8(&self) -> bool {
         match self {
@@ -159,7 +159,7 @@ impl Data {
         }
     }
 
-    /// Returns true if `self` is of type [`Data::Utf16`](enum.Data.html#variant.Utf16), false
+    /// Returns true if `self` is of type [`Data::Utf16`](crate::Data::Utf16), false
     /// otherwise.
     pub const fn is_utf16(&self) -> bool {
         match self {
@@ -168,7 +168,7 @@ impl Data {
         }
     }
 
-    /// Returns true if `self` is of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg), false
+    /// Returns true if `self` is of type [`Data::Jpeg`](crate::Data::Jpeg), false
     /// otherwise.
     pub const fn is_jpeg(&self) -> bool {
         match self {
@@ -177,7 +177,7 @@ impl Data {
         }
     }
 
-    /// Returns true if `self` is of type [`Data::Png`](enum.Data.html#variant.Png), false
+    /// Returns true if `self` is of type [`Data::Png`](crate::Data::Png), false
     /// otherwise.
     pub const fn is_png(&self) -> bool {
         match self {
@@ -186,7 +186,7 @@ impl Data {
         }
     }
 
-    /// Returns true if `self` is of type [`Data::BeSigned`](enum.Data.html#variant.BeSigned),
+    /// Returns true if `self` is of type [`Data::BeSigned`](crate::Data::BeSigned),
     /// false otherwise.
     pub const fn is_be_signed(&self) -> bool {
         match self {
@@ -195,8 +195,8 @@ impl Data {
         }
     }
 
-    /// Returns a byte vec reference if `self` is of type [`Data::Reserved`](enum.Data.html#variant.Reserved)
-    /// or [`Data::BeSigned`](enum.Data.html#variant.BeSigned).
+    /// Returns a byte vec reference if `self` is of type [`Data::Reserved`](crate::Data::Reserved)
+    /// or [`Data::BeSigned`](crate::Data::BeSigned).
     pub const fn bytes(&self) -> Option<&Vec<u8>> {
         match self {
             Self::Reserved(v) => Some(v),
@@ -205,8 +205,8 @@ impl Data {
         }
     }
 
-    /// Returns a mutable byte vec reference if `self` is of type [`Data::Reserved`](enum.Data.html#variant.Reserved)
-    /// or [`Data::BeSigned`](enum.Data.html#variant.BeSigned).
+    /// Returns a mutable byte vec reference if `self` is of type [`Data::Reserved`](crate::Data::Reserved)
+    /// or [`Data::BeSigned`](crate::Data::BeSigned).
     pub fn bytes_mut(&mut self) -> Option<&mut Vec<u8>> {
         match self {
             Self::Reserved(v) => Some(v),
@@ -215,8 +215,8 @@ impl Data {
         }
     }
 
-    /// Consumes `self` and returns a byte vec if `self` is of type [`Data::Reserved`](enum.Data.html#variant.Reserved)
-    /// or [`Data::BeSigned`](enum.Data.html#variant.BeSigned).
+    /// Consumes `self` and returns a byte vec if `self` is of type [`Data::Reserved`](crate::Data::Reserved)
+    /// or [`Data::BeSigned`](crate::Data::BeSigned).
     pub fn take_bytes(self) -> Option<Vec<u8>> {
         match self {
             Self::Reserved(v) => Some(v),
@@ -225,8 +225,8 @@ impl Data {
         }
     }
 
-    /// Returns a string reference if `self` is either of type [`Data::Utf8`](enum.Data.html#variant.Utf8)
-    /// or [`Data::Utf16`](enum.Data.html#variant.Utf16).
+    /// Returns a string reference if `self` is either of type [`Data::Utf8`](crate::Data::Utf8)
+    /// or [`Data::Utf16`](crate::Data::Utf16).
     pub fn string(&self) -> Option<&str> {
         match self {
             Self::Utf8(s) => Some(s.as_str()),
@@ -235,8 +235,8 @@ impl Data {
         }
     }
 
-    /// Returns a mutable string reference if `self` is either of type [`Data::Utf8`](enum.Data.html#variant.Utf8)
-    /// or [`Data::Utf16`](enum.Data.html#variant.Utf16).
+    /// Returns a mutable string reference if `self` is either of type [`Data::Utf8`](crate::Data::Utf8)
+    /// or [`Data::Utf16`](crate::Data::Utf16).
     pub fn string_mut(&mut self) -> Option<&mut String> {
         match self {
             Self::Utf8(s) => Some(s),
@@ -245,8 +245,8 @@ impl Data {
         }
     }
 
-    /// Consumes `self` and returns a string if `self` is either of type [`Data::Utf8`](enum.Data.html#variant.Utf8)
-    /// or [`Data::Utf16`](enum.Data.html#variant.Utf16).
+    /// Consumes `self` and returns a string if `self` is either of type [`Data::Utf8`](crate::Data::Utf8)
+    /// or [`Data::Utf16`](crate::Data::Utf16).
     pub fn take_string(self) -> Option<String> {
         match self {
             Self::Utf8(s) => Some(s),
@@ -255,8 +255,8 @@ impl Data {
         }
     }
 
-    /// Returns a data reference if `self` is of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
-    /// [`Data::Png`](enum.Data.html#variant.Png).
+    /// Returns a data reference if `self` is of type [`Data::Jpeg`](crate::Data::Jpeg) or
+    /// [`Data::Png`](crate::Data::Png).
     pub const fn image(&self) -> Option<&Data> {
         match self {
             d if d.is_jpeg() => Some(d),
@@ -265,8 +265,8 @@ impl Data {
         }
     }
 
-    /// Returns a data reference if `self` is of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
-    /// [`Data::Png`](enum.Data.html#variant.Png).
+    /// Returns a data reference if `self` is of type [`Data::Jpeg`](crate::Data::Jpeg) or
+    /// [`Data::Png`](crate::Data::Png).
     pub fn image_mut(&mut self) -> Option<&mut Data> {
         match self {
             d if d.is_jpeg() => Some(d),
@@ -275,8 +275,8 @@ impl Data {
         }
     }
 
-    /// Consumes `self` and returns data if `self` is of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
-    /// [`Data::Png`](enum.Data.html#variant.Png).
+    /// Consumes `self` and returns data if `self` is of type [`Data::Jpeg`](crate::Data::Jpeg) or
+    /// [`Data::Png`](crate::Data::Png).
     pub fn take_image(self) -> Option<Data> {
         match self {
             d if d.is_jpeg() => Some(d),
@@ -285,7 +285,7 @@ impl Data {
         }
     }
 
-    /// Returns a byte vec reference if `self` is of type [`Data::Reserved`](enum.Data.html#variant.Reserved).
+    /// Returns a byte vec reference if `self` is of type [`Data::Reserved`](crate::Data::Reserved).
     pub const fn reserved(&self) -> Option<&Vec<u8>> {
         match self {
             Self::Reserved(v) => Some(v),
@@ -293,7 +293,7 @@ impl Data {
         }
     }
 
-    /// Returns a string reference if `self` is of type [`Data::Utf8`](enum.Data.html#variant.Utf8).
+    /// Returns a string reference if `self` is of type [`Data::Utf8`](crate::Data::Utf8).
     pub const fn utf8(&self) -> Option<&String> {
         match self {
             Self::Utf8(s) => Some(s),
@@ -301,7 +301,7 @@ impl Data {
         }
     }
 
-    /// Returns a string reference if `self` is of type [`Data::Utf16`](enum.Data.html#variant.Utf16).
+    /// Returns a string reference if `self` is of type [`Data::Utf16`](crate::Data::Utf16).
     pub const fn utf16(&self) -> Option<&String> {
         match self {
             Self::Utf16(s) => Some(s),
@@ -309,7 +309,7 @@ impl Data {
         }
     }
 
-    /// Returns a byte vec reference if `self` is of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg).
+    /// Returns a byte vec reference if `self` is of type [`Data::Jpeg`](crate::Data::Jpeg).
     pub const fn jpeg(&self) -> Option<&Vec<u8>> {
         match self {
             Self::Jpeg(v) => Some(v),
@@ -317,7 +317,7 @@ impl Data {
         }
     }
 
-    /// Returns a byte vec reference if `self` is of type [`Data::Png`](enum.Data.html#variant.Png).
+    /// Returns a byte vec reference if `self` is of type [`Data::Png`](crate::Data::Png).
     pub const fn png(&self) -> Option<&Vec<u8>> {
         match self {
             Self::Png(v) => Some(v),
@@ -325,7 +325,7 @@ impl Data {
         }
     }
 
-    /// Returns a byte vec reference if `self` is of type [`Data::BeSigned`](enum.Data.html#variant.BeSigned).
+    /// Returns a byte vec reference if `self` is of type [`Data::BeSigned`](crate::Data::BeSigned).
     pub const fn be_signed(&self) -> Option<&Vec<u8>> {
         match self {
             Self::BeSigned(v) => Some(v),

@@ -111,40 +111,40 @@ mp4ameta_proc::integer_value_accessor!("movement_index", "©mvi");
 // ## Custom values
 /// ### Artwork
 impl Tag {
-    /// Returns all artwork images of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
-    /// [`Data::Png`](enum.Data.html#variant.Png) (`covr`).
+    /// Returns all artwork images of type [`Data::Jpeg`](crate::Data::Jpeg) or
+    /// [`Data::Png`](crate::Data::Png) (`covr`).
     pub fn artworks(&self) -> impl Iterator<Item = &Data> {
         self.image(atom::ARTWORK)
     }
 
-    /// Returns the first artwork image of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
-    /// [`Data::Png`](enum.Data.html#variant.Png) (`covr`).
+    /// Returns the first artwork image of type [`Data::Jpeg`](crate::Data::Jpeg) or
+    /// [`Data::Png`](crate::Data::Png) (`covr`).
     pub fn artwork(&self) -> Option<&Data> {
         self.image(atom::ARTWORK).next()
     }
 
-    /// Consumes and returns all artwork images of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
-    /// [`Data::Png`](enum.Data.html#variant.Png) (`covr`).
+    /// Consumes and returns all artwork images of type [`Data::Jpeg`](crate::Data::Jpeg) or
+    /// [`Data::Png`](crate::Data::Png) (`covr`).
     pub fn take_artworks(&mut self) -> impl Iterator<Item = Data> + '_ {
         self.take_image(atom::ARTWORK)
     }
 
-    /// Consumes all and returns the first artwork image of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
-    /// [`Data::Png`](enum.Data.html#variant.Png) (`covr`).
+    /// Consumes all and returns the first artwork image of type [`Data::Jpeg`](crate::Data::Jpeg) or
+    /// [`Data::Png`](crate::Data::Png) (`covr`).
     pub fn take_artwork(&mut self) -> Option<Data> {
         self.take_image(atom::ARTWORK).next()
     }
 
-    /// Sets the artwork image data of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
-    /// [`Data::Png`](enum.Data.html#variant.Png) (`covr`). This will remove all other artworks.
+    /// Sets the artwork image data of type [`Data::Jpeg`](crate::Data::Jpeg) or
+    /// [`Data::Png`](crate::Data::Png) (`covr`). This will remove all other artworks.
     pub fn set_artwork(&mut self, image: Data) {
         if image.is_image() {
             self.set_data(atom::ARTWORK, image);
         }
     }
 
-    /// Adds artwork image data of type [`Data::Jpeg`](enum.Data.html#variant.Jpeg) or
-    /// [`Data::Png`](enum.Data.html#variant.Png) (`covr`).
+    /// Adds artwork image data of type [`Data::Jpeg`](crate::Data::Jpeg) or
+    /// [`Data::Png`](crate::Data::Png) (`covr`).
     pub fn add_artwork(&mut self, image: Data) {
         if image.is_image() {
             self.add_data(atom::ARTWORK, image);
@@ -356,8 +356,8 @@ impl Tag {
         self.take_data(ident).filter_map(Data::take_string)
     }
 
-    /// Returns all image data references of type [Data::Jpeg](enum.Data.html#variant.Jpeg)
-    /// or [Data::Jpeg](enum.Data.html#variant.Png) corresponding to the identifier.
+    /// Returns all image data references of type [Data::Jpeg](crate::Data::Jpeg)
+    /// or [Data::Jpeg](crate::Data::Png) corresponding to the identifier.
     ///
     /// # Example
     /// ```
@@ -374,8 +374,8 @@ impl Tag {
         self.data(ident).filter_map(Data::image)
     }
 
-    /// Returns all mutable image data references of type [Data::Jpeg](enum.Data.html#variant.Jpeg)
-    /// or [Data::Jpeg](enum.Data.html#variant.Png) corresponding to the identifier.
+    /// Returns all mutable image data references of type [Data::Jpeg](crate::Data::Jpeg)
+    /// or [Data::Jpeg](crate::Data::Png) corresponding to the identifier.
     ///
     /// # Example
     /// ```
