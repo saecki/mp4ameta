@@ -2,9 +2,13 @@ name: CI
 
 on:
   push:
-    branches: [ master, dev ]
+    branches:
+      - "**"
   pull_request:
-    branches: [ master, dev ]
+    branches:
+      - "**"
+  schedule:
+  - cron:  '0 0 * * 1' # weekly
 
 jobs:
   build:
@@ -20,3 +24,15 @@ jobs:
     - run: rustup update
     - run: cargo build
     - run: cargo test -- --test-threads=1
+
+  style:
+    strategy:
+      matrix:
+        toolchain: [stable, nightly]
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - run: cargo fmt -- --check
+    - run: cargo clippy
