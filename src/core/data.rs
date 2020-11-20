@@ -144,55 +144,37 @@ impl Data {
     /// Returns true if `self` is of type [`Data::Reserved`](crate::Data::Reserved), false
     /// otherwise.
     pub const fn is_reserved(&self) -> bool {
-        match self {
-            Self::Reserved(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Reserved(_))
     }
 
     /// Returns true if `self` is of type [`Data::Utf8`](crate::Data::Utf8), false
     /// otherwise.
     pub const fn is_utf8(&self) -> bool {
-        match self {
-            Self::Utf8(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Utf8(_))
     }
 
     /// Returns true if `self` is of type [`Data::Utf16`](crate::Data::Utf16), false
     /// otherwise.
     pub const fn is_utf16(&self) -> bool {
-        match self {
-            Self::Utf16(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Utf16(_))
     }
 
     /// Returns true if `self` is of type [`Data::Jpeg`](crate::Data::Jpeg), false
     /// otherwise.
     pub const fn is_jpeg(&self) -> bool {
-        match self {
-            Self::Jpeg(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Jpeg(_))
     }
 
     /// Returns true if `self` is of type [`Data::Png`](crate::Data::Png), false
     /// otherwise.
     pub const fn is_png(&self) -> bool {
-        match self {
-            Self::Png(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Png(_))
     }
 
     /// Returns true if `self` is of type [`Data::BeSigned`](crate::Data::BeSigned),
     /// false otherwise.
     pub const fn is_be_signed(&self) -> bool {
-        match self {
-            Self::BeSigned(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::BeSigned(_))
     }
 
     /// Returns a byte vec reference if `self` is of type [`Data::Reserved`](crate::Data::Reserved)
