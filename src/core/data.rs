@@ -267,6 +267,36 @@ impl Data {
         }
     }
 
+    /// Returns a byte vec reference if `self` is of type [`Data::Jpeg`](crate::Data::Jpeg)
+    /// or [`Data::Png`](crate::Data::Png).
+    pub const fn image_data(&self) -> Option<&Vec<u8>> {
+        match self {
+            Self::Jpeg(v) => Some(v),
+            Self::Png(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    /// Returns a mutable byte vec reference if `self` is of type [`Data::Jpeg`](crate::Data::Jpeg)
+    /// or [`Data::Png`](crate::Data::Png).
+    pub fn image_data_mut(&mut self) -> Option<&mut Vec<u8>> {
+        match self {
+            Self::Jpeg(v) => Some(v),
+            Self::Png(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    /// Consumes `self` and returns a byte vec if `self` is of type [`Data::Jpeg`](crate::Data::Jpeg)
+    /// or [`Data::Png`](crate::Data::Png).
+    pub fn take_image_data(self) -> Option<Vec<u8>> {
+        match self {
+            Self::Jpeg(v) => Some(v),
+            Self::Png(v) => Some(v),
+            _ => None,
+        }
+    }
+
     /// Returns a byte vec reference if `self` is of type [`Data::Reserved`](crate::Data::Reserved).
     pub const fn reserved(&self) -> Option<&Vec<u8>> {
         match self {
