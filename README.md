@@ -33,7 +33,7 @@ fn main() {
     - [Movie Atoms](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap2/qtff2.html)
     - [Metadata](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html)
 - [QuickTime container](https://wiki.multimedia.cx/index.php/QuickTime_container)
-- [MusicBrainz Picard tag mapping](https://picard-docs.musicbrainz.org/en/technical/tag_mapping.html)
+- [MusicBrainz Picard tag mapping](https://picard-docs.musicbrainz.org/en/appendices/tag_mapping.html)
 - [Filetype list](https://ftyps.com/)
 
 ## Testing
