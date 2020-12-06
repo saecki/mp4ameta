@@ -38,12 +38,8 @@ fn main() {
 
 ## Testing
 __Run all tests:__
-```
-cargo test -- --test-threads=1
-```
+`cargo test`
 
-__To test this library against your collection symlink your music dir into the `files` dir and run:__
-```
-cargo test sample_files -- --show-output
-```
+__Test this library on your collection:__
+`cargo test -- --show-output collection <path>`
 

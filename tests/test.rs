@@ -1,14 +1,26 @@
-use std::fs;
-
-use walkdir::WalkDir;
-
 use mp4ameta::{AdvisoryRating, Data, MediaType, Tag, STANDARD_GENRES};
+use std::fs;
+use walkdir::WalkDir;
 
 const EXTENSIONS: [&str; 4] = [".m4a", ".m4b", ".m4p", ".m4v"];
 
 #[test]
+fn collection() {
+    if let Some(path) = std::env::args().skip_while(|a| a != "collection").skip(1).next() {
+        println!("Testing colleciton at {}", &path);
+        read_dir(&path);
+    } else {
+        println!("Skipping collection test since no path was provided.");
+    }
+}
+
+#[test]
 fn sample_files() {
-    for d in WalkDir::new("./files")
+    read_dir("./files");
+}
+
+fn read_dir(path: &str) {
+    for d in WalkDir::new(path)
         .follow_links(true)
         .into_iter()
         .filter_map(|e| e.ok())
@@ -96,10 +108,10 @@ fn write_read() {
     tag.set_year("1998");
     tag.set_artwork(Data::Jpeg(b"NEW ARTWORK".to_vec()));
 
-    std::fs::copy("./files/sample.m4a", "./files/temp.m4a").unwrap();
-    tag.write_to_path("./files/temp.m4a").unwrap();
+    std::fs::copy("./files/sample.m4a", "./target/write.m4a").unwrap();
+    tag.write_to_path("./target/write.m4a").unwrap();
 
-    let tag = Tag::read_from_path("./files/temp.m4a").unwrap();
+    let tag = Tag::read_from_path("./target/write.m4a").unwrap();
     assert_eq!(tag.advisory_rating(), Some(AdvisoryRating::Inoffensive));
     assert_eq!(tag.album(), Some("NEW ALBUM"));
     assert_eq!(tag.album_artist(), Some("NEW ALBUM ARTIST"));
@@ -130,7 +142,7 @@ fn write_read() {
     assert_eq!(tag.duration(), Some(0.48523809523809525));
     assert_eq!(tag.filetype(), Some("M4A \u{0}\u{0}\u{2}\u{0}isomiso2"));
 
-    std::fs::remove_file("./files/temp.m4a").unwrap();
+    std::fs::remove_file("./target/write.m4a").unwrap();
 }
 
 #[test]
@@ -160,9 +172,9 @@ fn dump_read() {
     tag.set_year("2013");
     tag.set_artwork(Data::Png(b"TEST ARTWORK".to_vec()));
 
-    tag.dump_to_path("./files/temp.m4a").unwrap();
+    tag.dump_to_path("./target/dump.m4a").unwrap();
 
-    let tag = Tag::read_from_path("./files/temp.m4a").unwrap();
+    let tag = Tag::read_from_path("./target/dump.m4a").unwrap();
     assert_eq!(tag.advisory_rating(), Some(AdvisoryRating::Explicit(4)));
     assert_eq!(tag.album(), Some("TEST ALBUM"));
     assert_eq!(tag.album_artist(), Some("TEST ALBUM ARTIST"));
@@ -191,7 +203,7 @@ fn dump_read() {
     assert_eq!(tag.year(), Some("2013"));
     assert_eq!(tag.artwork(), Some(&Data::Png(b"TEST ARTWORK".to_vec())));
 
-    std::fs::remove_file("./files/temp.m4a").unwrap();
+    std::fs::remove_file("./target/dump.m4a").unwrap();
 }
 
 #[test]
