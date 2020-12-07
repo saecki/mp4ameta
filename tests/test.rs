@@ -82,7 +82,7 @@ fn verify_sample_data() {
 }
 
 #[test]
-fn write_read() {
+fn write() {
     let mut tag = Tag::default();
     tag.set_advisory_rating(AdvisoryRating::Inoffensive);
     tag.set_album("NEW ALBUM");
@@ -146,7 +146,7 @@ fn write_read() {
 }
 
 #[test]
-fn dump_read() {
+fn dump() {
     let mut tag = Tag::default();
     tag.set_advisory_rating(AdvisoryRating::Explicit(4));
     tag.set_album("TEST ALBUM");

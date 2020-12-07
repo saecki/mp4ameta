@@ -42,6 +42,8 @@ pub const DATA: Ident = Ident(*b"data");
 pub const MEAN: Ident = Ident(*b"mean");
 /// (`name`)
 pub const NAME: Ident = Ident(*b"name");
+/// (`free`)
+pub const FREE: Ident = Ident(*b"free");
 
 // iTunes 4.0 atoms
 /// (`©alb`)
@@ -553,30 +555,52 @@ pub fn write_tag_to(file: &File, atoms: &[Atom]) -> crate::Result<()> {
     let new_metadata_len = atoms.iter().map(|a| a.len()).sum::<usize>();
     let metadata_len_diff = new_metadata_len as i32 - old_metadata_len as i32;
 
-    // reading additional data after metadata
-    let additional_data_len = old_file_len as usize - (metadata_pos + old_metadata_len);
-    let mut additional_data = Vec::with_capacity(additional_data_len);
-    reader.seek(SeekFrom::Start((metadata_pos + old_metadata_len) as u64))?;
-    reader.read_to_end(&mut additional_data)?;
+    match metadata_len_diff {
+        0 => {
+            // writing metadata
+            writer.seek(SeekFrom::Start(metadata_pos as u64))?;
+            for a in atoms {
+                a.write_to(&mut writer)?;
+            }
+        }
+        len_diff if len_diff <= -8 => {
+            // writing metadata
+            writer.seek(SeekFrom::Start(metadata_pos as u64))?;
+            for a in atoms {
+                a.write_to(&mut writer)?;
+            }
 
-    // adjusting the file length
-    file.set_len((old_file_len as i64 + metadata_len_diff as i64) as u64)?;
+            // Fill remaining space with a free atom
+            let free = Atom::new(FREE, (len_diff * -1 - 8) as usize, Content::Empty);
+            free.write_to(&mut writer)?;
+        }
+        _ => {
+            // reading additional data after metadata
+            let additional_data_len = old_file_len as usize - (metadata_pos + old_metadata_len);
+            let mut additional_data = Vec::with_capacity(additional_data_len);
+            reader.seek(SeekFrom::Start((metadata_pos + old_metadata_len) as u64))?;
+            reader.read_to_end(&mut additional_data)?;
 
-    // adjusting the atom lengths
-    for (pos, len) in atom_pos_and_len {
-        writer.seek(SeekFrom::Start(pos as u64))?;
-        writer.write_all(&((len as i32 + metadata_len_diff) as u32).to_be_bytes())?;
+            // adjusting the file length
+            file.set_len((old_file_len as i64 + metadata_len_diff as i64) as u64)?;
+
+            // adjusting the atom lengths
+            for (pos, len) in atom_pos_and_len {
+                writer.seek(SeekFrom::Start(pos as u64))?;
+                writer.write_all(&((len as i32 + metadata_len_diff) as u32).to_be_bytes())?;
+            }
+
+            // writing metadata
+            writer.seek(SeekFrom::Current(4))?;
+            for a in atoms {
+                a.write_to(&mut writer)?;
+            }
+
+            // writing additional data after metadata
+            writer.write_all(&additional_data)?;
+            writer.flush()?;
+        }
     }
-
-    // writing metadata
-    writer.seek(SeekFrom::Current(4))?;
-    for a in atoms {
-        a.write_to(&mut writer)?;
-    }
-
-    // writing additional data after metadata
-    writer.write_all(&additional_data)?;
-    writer.flush()?;
 
     Ok(())
 }
