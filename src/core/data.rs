@@ -114,31 +114,19 @@ impl Data {
     /// Returns true if `self` is of type [`Data::Reserved`](crate::Data::Reserved) or
     /// [`Data::BeSigned`](crate::Data::BeSigned), false otherwise.
     pub const fn is_bytes(&self) -> bool {
-        match self {
-            Self::Reserved(_) => true,
-            Self::BeSigned(_) => true,
-            _ => false,
-        }
+        matches! (self, Self::Reserved(_) | Self::BeSigned(_))
     }
 
     /// Returns true if `self` is of type [`Data::Utf8`](crate::Data::Utf8) or
     /// [`Data::Utf16`](crate::Data::Utf16), false otherwise.
     pub const fn is_string(&self) -> bool {
-        match self {
-            Self::Utf8(_) => true,
-            Self::Utf16(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Utf8(_) | Self::Utf16(_))
     }
 
     /// Returns true if `self` is of type [`Data::Jpeg`](crate::Data::Jpeg) or
     /// [`Data::Png`](crate::Data::Png), false otherwise.
     pub const fn is_image(&self) -> bool {
-        match self {
-            Self::Jpeg(_) => true,
-            Self::Png(_) => true,
-            _ => false,
-        }
+        matches!(self, Self::Jpeg(_) | Self::Png(_))
     }
 
     /// Returns true if `self` is of type [`Data::Reserved`](crate::Data::Reserved), false

@@ -22,11 +22,13 @@ pub const VALID_FILETYPES: [&str; 8] = [
 pub const FILETYPE: Ident = Ident(*b"ftyp");
 /// (`moov`) Identifier of an atom containing a structure of children storing metadata.
 pub const MOVIE: Ident = Ident(*b"moov");
+/// (`mvhd`) Identifier of an atom containing information about the whole movie (or audio file).
+pub const MOVIE_HEADER: Ident = Ident(*b"mvhd");
 /// (`trak`) Identifier of an atom containing information about a single track.
 pub const TRACK: Ident = Ident(*b"trak");
 /// (`mdia`) Identifier of an atom containing information about a tracks media type and data.
 pub const MEDIA: Ident = Ident(*b"mdia");
-/// (`mdhd`) Identifier of an atom specifying the characteristics of a media atom.
+/// (`mdhd`) Identifier of an atom containing information about a track
 pub const MEDIA_HEADER: Ident = Ident(*b"mdhd");
 /// (`udta`) Identifier of an atom containing user metadata.
 pub const USER_DATA: Ident = Ident(*b"udta");
@@ -36,6 +38,10 @@ pub const METADATA: Ident = Ident(*b"meta");
 pub const ITEM_LIST: Ident = Ident(*b"ilst");
 /// (`data`) Identifier of an atom containing typed data.
 pub const DATA: Ident = Ident(*b"data");
+/// (`mean`)
+pub const MEAN: Ident = Ident(*b"mean");
+/// (`name`)
+pub const NAME: Ident = Ident(*b"name");
 
 // iTunes 4.0 atoms
 /// (`©alb`)
@@ -128,6 +134,9 @@ pub const MOVEMENT_INDEX: Ident = Ident(*b"\xa9mvi");
 pub const WORK: Ident = Ident(*b"\xa9wrk");
 /// (`shwm`)
 pub const SHOW_MOVEMENT: Ident = Ident(*b"shwm");
+
+/// (`----`)
+pub const WILDCARD: Ident = Ident(*b"----");
 
 lazy_static! {
     /// Lazily initialized static reference to a `ftyp` atom template.
@@ -335,10 +344,19 @@ impl AtomT {
         Self { ident, offset, content }
     }
 
-    /// Creates a data atom template containing
-    /// [`ContentT::TypedData`](crate::ContentT::TypedData).
+    /// Creates a data atom template containing [`ContentT::TypedData`](crate::ContentT::TypedData).
     pub const fn data_atom() -> Self {
         Self::new(DATA, 0, ContentT::TypedData)
+    }
+
+    /// Creates a mean atom template containing [`ContentT::RawData`](crate::ContentT::RawData).
+    pub const fn mean_atom() -> Self {
+        Self::new(MEAN, 0, ContentT::RawData(DataT::new(data::UTF8)))
+    }
+
+    /// Creates a name atom template containing [`ContentT::TypedData`](crate::ContentT::TypedData).
+    pub const fn name_atom() -> Self {
+        Self::new(NAME, 0, ContentT::RawData(DataT::new(data::UTF8)))
     }
 
     /// Returns a reference to the first children atom template matching the identifier, if present.
@@ -451,7 +469,7 @@ impl AtomT {
 /// Attempts to read MPEG-4 audio metadata from the reader.
 pub fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
     let mut tag_atoms = None;
-    let mut mdhd_data = None;
+    let mut mvhd_data = None;
 
     let ftyp = FILETYPE_ATOM_T.parse_next(reader)?;
     ftyp.check_filetype()?;
@@ -463,13 +481,9 @@ pub fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
     let moov = METADATA_ATOM_T.parse(reader)?;
     for a in moov.content.into_iter() {
         match a.ident {
-            TRACK => {
-                if let Some(mdia) = a.take_child(MEDIA) {
-                    if let Some(mdhd) = mdia.take_child(MEDIA_HEADER) {
-                        if let Content::RawData(Data::Reserved(v)) = mdhd.content {
-                            mdhd_data = Some(v);
-                        }
-                    }
+            MOVIE_HEADER => {
+                if let Content::RawData(Data::Reserved(v)) = a.content {
+                    mvhd_data = Some(v);
                 }
             }
             USER_DATA => {
@@ -502,7 +516,7 @@ pub fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
         None => Vec::new(),
     };
 
-    Ok(Tag::new(ftyp_data, mdhd_data, tag_atoms))
+    Ok(Tag::new(ftyp_data, mvhd_data, tag_atoms))
 }
 
 /// Attempts to write the metadata atoms to the file inside the item list atom.
@@ -531,25 +545,27 @@ pub fn write_tag_to(file: &File, atoms: &[Atom]) -> crate::Result<()> {
         }
     }
 
-    let old_file_length = reader.seek(SeekFrom::End(0))?;
-    let metadata_position = atom_pos_and_len[atom_pos_and_len.len() - 1].0 + 8;
-    let old_metadata_length = atom_pos_and_len[atom_pos_and_len.len() - 1].1 - 8;
-    let new_metadata_length = atoms.iter().map(|a| a.len()).sum::<usize>();
-    let metadata_length_difference = new_metadata_length as i32 - old_metadata_length as i32;
+    assert_eq!(atom_pos_and_len.len(), 4);
+
+    let old_file_len = reader.seek(SeekFrom::End(0))?;
+    let metadata_pos = atom_pos_and_len[atom_pos_and_len.len() - 1].0 + 8;
+    let old_metadata_len = atom_pos_and_len[atom_pos_and_len.len() - 1].1 - 8;
+    let new_metadata_len = atoms.iter().map(|a| a.len()).sum::<usize>();
+    let metadata_len_diff = new_metadata_len as i32 - old_metadata_len as i32;
 
     // reading additional data after metadata
-    let mut additional_data =
-        Vec::with_capacity(old_file_length as usize - (metadata_position + old_metadata_length));
-    reader.seek(SeekFrom::Start((metadata_position + old_metadata_length) as u64))?;
+    let additional_data_len = old_file_len as usize - (metadata_pos + old_metadata_len);
+    let mut additional_data = Vec::with_capacity(additional_data_len);
+    reader.seek(SeekFrom::Start((metadata_pos + old_metadata_len) as u64))?;
     reader.read_to_end(&mut additional_data)?;
 
     // adjusting the file length
-    file.set_len((old_file_length as i64 + metadata_length_difference as i64) as u64)?;
+    file.set_len((old_file_len as i64 + metadata_len_diff as i64) as u64)?;
 
     // adjusting the atom lengths
     for (pos, len) in atom_pos_and_len {
         writer.seek(SeekFrom::Start(pos as u64))?;
-        writer.write_all(&((len as i32 + metadata_length_difference) as u32).to_be_bytes())?;
+        writer.write_all(&((len as i32 + metadata_len_diff) as u32).to_be_bytes())?;
     }
 
     // writing metadata
@@ -657,16 +673,17 @@ fn filetype_atom_t() -> AtomT {
 #[rustfmt::skip]
 fn metadata_atom_t() -> AtomT {
     AtomT::new( MOVIE, 0, ContentT::Atoms(vec![
-        AtomT::new( TRACK, 0, ContentT::atom_t(
-            AtomT::new( MEDIA, 0, ContentT::atom_t(
-                AtomT::new( MEDIA_HEADER, 0, ContentT::RawData(
-                    DataT::new(data::RESERVED)
-                )),
-            )),
+        AtomT::new(MOVIE_HEADER, 0, ContentT::RawData(
+            DataT::new(data::RESERVED)
         )),
         AtomT::new(USER_DATA, 0, ContentT::atom_t(
             AtomT::new(METADATA, 4, ContentT::atom_t(
                 AtomT::new(ITEM_LIST, 0, ContentT::Atoms(vec![
+                    AtomT::new(WILDCARD, 0, ContentT::Atoms(vec![
+                        AtomT::data_atom(),
+                        AtomT::mean_atom(),
+                        AtomT::name_atom(),
+                    ])),
                     AtomT::new(ADVISORY_RATING, 0, ContentT::data_atom_t()),
                     AtomT::new(ALBUM, 0, ContentT::data_atom_t()),
                     AtomT::new(ALBUM_ARTIST, 0, ContentT::data_atom_t()),

@@ -77,7 +77,7 @@ fn verify_sample_data() {
     assert_eq!(tag.total_tracks(), Some(13));
     assert_eq!(tag.year(), Some("2013"));
     assert_eq!(tag.artwork(), Some(&Data::Png(fs::read("./files/artwork.png").unwrap())));
-    assert_eq!(tag.duration(), Some(0.48523809523809525));
+    assert_eq!(tag.duration(), Some(0.486));
     assert_eq!(tag.filetype(), Some("M4A \u{0}\u{0}\u{2}\u{0}isomiso2"));
 }
 
@@ -139,7 +139,7 @@ fn write_read() {
     assert_eq!(tag.total_tracks(), Some(7));
     assert_eq!(tag.year(), Some("1998"));
     assert_eq!(tag.artwork(), Some(&Data::Jpeg(b"NEW ARTWORK".to_vec())));
-    assert_eq!(tag.duration(), Some(0.48523809523809525));
+    assert_eq!(tag.duration(), Some(0.486));
     assert_eq!(tag.filetype(), Some("M4A \u{0}\u{0}\u{2}\u{0}isomiso2"));
 
     std::fs::remove_file("./target/write.m4a").unwrap();

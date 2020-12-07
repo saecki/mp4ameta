@@ -13,8 +13,8 @@ pub mod tuple;
 pub struct Tag {
     /// The `ftyp` atom.
     pub ftyp: Option<String>,
-    /// The `mdhd` atom.
-    pub mdhd: Option<Vec<u8>>,
+    /// The `mvhd` atom.
+    pub mvhd: Option<Vec<u8>>,
     /// A vector containing metadata atoms
     pub atoms: Vec<Atom>,
 }
@@ -34,8 +34,8 @@ impl IntoIterator for Tag {
 
 impl Tag {
     /// Creates a new MPEG-4 audio tag containing the atom.
-    pub const fn new(ftyp: Option<String>, mdhd: Option<Vec<u8>>, atoms: Vec<Atom>) -> Self {
-        Self { ftyp, mdhd, atoms }
+    pub const fn new(ftyp: Option<String>, mvhd: Option<Vec<u8>>, atoms: Vec<Atom>) -> Self {
+        Self { ftyp, mvhd, atoms }
     }
 
     /// Attempts to read a MPEG-4 audio tag from the reader.
@@ -210,44 +210,13 @@ impl Tag {
 impl Tag {
     /// Returns the duration in seconds.
     pub fn duration(&self) -> Option<f64> {
-        // https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap2/qtff2.html#//apple_ref/doc/uid/TP40000939-CH204-SW34
-        // https://wiki.multimedia.cx/index.php/QuickTime_container#mdhd
-
-        let vec = self.mdhd.as_ref()?;
+        let vec = self.mvhd.as_ref()?;
         let version = vec.get(0)?;
 
         match version {
             0 => {
-                // Version 0
-                // 1 byte    version
-                // 3 bytes   flags
-                // 4 bytes   creation time
-                // 4 bytes   modification time
-                // 4 bytes   time scale
-                // 4 bytes   duration
-                // 2 bytes   language
-                // 2 bytes   quality
-
                 let timescale_unit = be_int!(vec, 12, u32)?;
                 let duration_units = be_int!(vec, 16, u32)?;
-
-                let duration = duration_units as f64 / timescale_unit as f64;
-
-                Some(duration)
-            }
-            1 => {
-                // Version 1
-                // 1 byte    version
-                // 3 bytes   flags
-                // 8 bytes   creation time
-                // 8 bytes   modification time
-                // 4 bytes   time scale
-                // 8 bytes   duration
-                // 2 bytes   language
-                // 2 bytes   quality
-
-                let timescale_unit = be_int!(vec, 20, u32)?;
-                let duration_units = be_int!(vec, 24, u64)?;
 
                 let duration = duration_units as f64 / timescale_unit as f64;
 
