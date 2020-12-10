@@ -83,12 +83,12 @@ pub enum Data {
 impl fmt::Debug for Data {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Reserved(d) => write!(f, "Reserved{{ {:?} }}", d),
-            Self::Utf8(d) => write!(f, "UTF8{{ {:?} }}", d),
-            Self::Utf16(d) => write!(f, "UTF16{{ {:?} }}", d),
-            Self::Jpeg(_) => write!(f, "JPEG"),
-            Self::Png(_) => write!(f, "PNG"),
-            Self::BeSigned(d) => write!(f, "Reserved{{ {:?} }}", d),
+            Self::Reserved(d) => write!(f, "Data::Reserved{{ {:?} }}", d),
+            Self::Utf8(d) => write!(f, "Data::UTF8{{ {:?} }}", d),
+            Self::Utf16(d) => write!(f, "Data::UTF16{{ {:?} }}", d),
+            Self::Jpeg(_) => write!(f, "Data::JPEG"),
+            Self::Png(_) => write!(f, "Data::PNG"),
+            Self::BeSigned(d) => write!(f, "Data::BeSigned{{ {:?} }}", d),
         }
     }
 }

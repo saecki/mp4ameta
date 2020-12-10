@@ -20,6 +20,8 @@ pub const VALID_FILETYPES: [&str; 8] = [
 
 /// (`ftyp`) Identifier of an atom information about the filetype.
 pub const FILETYPE: Ident = Ident(*b"ftyp");
+/// (`mdat`)
+pub const MEDIA_DATA: Ident = Ident(*b"mdat");
 /// (`moov`) Identifier of an atom containing a structure of children storing metadata.
 pub const MOVIE: Ident = Ident(*b"moov");
 /// (`mvhd`) Identifier of an atom containing information about the whole movie (or audio file).
@@ -30,6 +32,12 @@ pub const TRACK: Ident = Ident(*b"trak");
 pub const MEDIA: Ident = Ident(*b"mdia");
 /// (`mdhd`) Identifier of an atom containing information about a track
 pub const MEDIA_HEADER: Ident = Ident(*b"mdhd");
+/// (`minf`)
+pub const METADATA_INFORMATION: Ident = Ident(*b"minf");
+/// (`stbl`)
+pub const SAMPLE_TABLE: Ident = Ident(*b"stbl");
+/// (`stco`)
+pub const SAMPLE_TABLE_CHUNK_OFFSET: Ident = Ident(*b"stco");
 /// (`udta`) Identifier of an atom containing user metadata.
 pub const USER_DATA: Ident = Ident(*b"udta");
 /// (`meta`) Identifier of an atom containing a metadata item list.
@@ -143,10 +151,12 @@ pub const WILDCARD: Ident = Ident(*b"----");
 lazy_static! {
     /// Lazily initialized static reference to a `ftyp` atom template.
     pub static ref FILETYPE_ATOM_T: AtomT = filetype_atom_t();
-    /// Lazily initialized static reference to an atom hierarchy template leading to an empty `ilst` atom.
-    pub static ref ITEM_LIST_ATOM_T: AtomT = item_list_atom_t();
     /// Lazily initialized static reference to an atom metadata hierarchy template needed to parse metadata.
     pub static ref METADATA_ATOM_T: AtomT = metadata_atom_t();
+    /// Lazily initialized static reference to an atom hierarchy template leading to an empty `ilst` atom.
+    pub static ref ITEM_LIST_ATOM_T: AtomT = item_list_atom_t();
+    /// Lazily initialized static reference to an atom hierarchy template leading to a `stco` atom.
+    pub static ref SAMPLE_TABLE_CHUNK_OFFSET_ATOM_T: AtomT = sample_table_chunk_offset_atom_t();
 }
 
 /// A 4 byte atom identifier.
@@ -336,7 +346,7 @@ pub struct AtomT {
 
 impl fmt::Debug for AtomT {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Atom{{ {}, {}, {:#?} }}", self.ident, self.offset, self.content)
+        write!(f, "AtomT{{ {}, {}, {:#?} }}", self.ident, self.offset, self.content)
     }
 }
 
@@ -524,31 +534,111 @@ pub fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
 /// Attempts to write the metadata atoms to the file inside the item list atom.
 pub fn write_tag_to(file: &File, atoms: &[Atom]) -> crate::Result<()> {
     let mut reader = BufReader::new(file);
-    let mut writer = BufWriter::new(file);
 
-    let mut atom_pos_and_len = Vec::new();
-    let mut destination = ITEM_LIST_ATOM_T.deref();
     let ftyp = FILETYPE_ATOM_T.parse_next(&mut reader)?;
     ftyp.check_filetype()?;
 
+    let mut mdat_pos = None;
     while let Ok((length, ident)) = parse_head(&mut reader) {
-        if ident == destination.ident {
-            let pos = reader.seek(SeekFrom::Current(0))? as usize - 8;
-            atom_pos_and_len.push((pos, length));
-
-            reader.seek(SeekFrom::Current(destination.offset as i64))?;
-
-            match destination.first_child() {
-                Some(a) => destination = a,
-                None => break,
+        match ident {
+            MEDIA_DATA => {
+                mdat_pos = Some(reader.seek(SeekFrom::Current(0))?);
             }
-        } else {
-            reader.seek(SeekFrom::Current(length as i64 - 8))?;
+            _ => {
+                reader.seek(SeekFrom::Current(length as i64 - 8))?;
+            }
+        }
+    }
+    let mdat_pos = match mdat_pos {
+        Some(p) => p,
+        None => {
+            return Err(crate::Error::new(
+                crate::ErrorKind::AtomNotFound(MEDIA_DATA),
+                "No media data atom found".to_owned(),
+            ))
+        }
+    };
+
+    reader.seek(SeekFrom::Start(0))?;
+
+    // TODO: support contained `co64` atoms (64 bit chunks) [Chunk offset atoms](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap2/qtff2.html#//apple_ref/doc/uid/TP40000939-CH204-25715)
+    // TODO: support multiple tracks
+    let mut stco_destination = SAMPLE_TABLE_CHUNK_OFFSET_ATOM_T.deref();
+    let mut chunk_offsets = Vec::new();
+    let mut chunk_offset_pos = None;
+    while let Ok((length, ident)) = parse_head(&mut reader) {
+        match ident {
+            SAMPLE_TABLE_CHUNK_OFFSET => {
+                let _version = data::read_u32(&mut reader)?;
+                let entries = data::read_u32(&mut reader)?;
+
+                chunk_offset_pos = Some(reader.seek(SeekFrom::Current(0))?);
+
+                for _ in 0..entries {
+                    let offset = data::read_u32(&mut reader)?;
+                    chunk_offsets.push(offset);
+                }
+                break;
+            }
+            _ if ident == stco_destination.ident => match stco_destination.first_child() {
+                Some(a) => stco_destination = a,
+                None => {
+                    return Err(crate::Error::new(
+                        crate::ErrorKind::AtomNotFound(SAMPLE_TABLE_CHUNK_OFFSET),
+                        "No sample table content offset atom found".to_owned(),
+                    ))
+                }
+            },
+            _ => {
+                reader.seek(SeekFrom::Current(length as i64 - 8))?;
+            }
+        }
+    }
+    let chunk_offset_pos = match chunk_offset_pos {
+        Some(p) => p,
+        None => {
+            return Err(crate::Error::new(
+                crate::ErrorKind::AtomNotFound(SAMPLE_TABLE_CHUNK_OFFSET),
+                "No sample table content offset atom found".to_owned(),
+            ))
+        }
+    };
+
+    reader.seek(SeekFrom::Start(0))?;
+
+    let mut atom_pos_and_len = Vec::new();
+    let mut ilst_destination = ITEM_LIST_ATOM_T.deref();
+
+    while let Ok((length, ident)) = parse_head(&mut reader) {
+        match ident {
+            ITEM_LIST => {
+                let pos = reader.seek(SeekFrom::Current(0))? as usize - 8;
+                atom_pos_and_len.push((pos, length));
+                break;
+            }
+            _ if ident == ilst_destination.ident => {
+                let pos = reader.seek(SeekFrom::Current(0))? as usize - 8;
+                atom_pos_and_len.push((pos, length));
+
+                reader.seek(SeekFrom::Current(ilst_destination.offset as i64))?;
+
+                match ilst_destination.first_child() {
+                    Some(a) => ilst_destination = a,
+                    None => {
+                        return Err(crate::Error::new(
+                            crate::ErrorKind::AtomNotFound(ITEM_LIST),
+                            "No item list atom found".to_owned(),
+                        ))
+                    }
+                }
+            }
+            _ => {
+                reader.seek(SeekFrom::Current(length as i64 - 8))?;
+            }
         }
     }
 
-    assert_eq!(atom_pos_and_len.len(), 4);
-
+    let mut writer = BufWriter::new(file);
     let old_file_len = reader.seek(SeekFrom::End(0))?;
     let metadata_pos = atom_pos_and_len[atom_pos_and_len.len() - 1].0 + 8;
     let old_metadata_len = atom_pos_and_len[atom_pos_and_len.len() - 1].1 - 8;
@@ -585,9 +675,9 @@ pub fn write_tag_to(file: &File, atoms: &[Atom]) -> crate::Result<()> {
             file.set_len((old_file_len as i64 + metadata_len_diff as i64) as u64)?;
 
             // adjusting the atom lengths
-            for (pos, len) in atom_pos_and_len {
-                writer.seek(SeekFrom::Start(pos as u64))?;
-                writer.write_all(&((len as i32 + metadata_len_diff) as u32).to_be_bytes())?;
+            for (pos, len) in atom_pos_and_len.iter() {
+                writer.seek(SeekFrom::Start(*pos as u64))?;
+                writer.write_all(&((*len as i32 + metadata_len_diff) as u32).to_be_bytes())?;
             }
 
             // writing metadata
@@ -598,9 +688,19 @@ pub fn write_tag_to(file: &File, atoms: &[Atom]) -> crate::Result<()> {
 
             // writing additional data after metadata
             writer.write_all(&additional_data)?;
-            writer.flush()?;
+
+            let moov_pos = atom_pos_and_len[0].0;
+            if mdat_pos > moov_pos as u64 {
+                writer.seek(SeekFrom::Start(chunk_offset_pos as u64))?;
+
+                for co in chunk_offsets.iter() {
+                    let new_offset = (*co as i32 + metadata_len_diff) as u32;
+                    writer.write_all(&new_offset.to_be_bytes())?;
+                }
+            }
         }
     }
+    writer.flush()?;
 
     Ok(())
 }
@@ -761,5 +861,21 @@ fn item_list_atom_t() -> AtomT {
                 AtomT::new(ITEM_LIST, 0, ContentT::atoms_t())
             ))
         ))
+    ))
+}
+
+/// Returns an atom hierarchy leading to a `stco` atom template.
+#[rustfmt::skip]
+fn sample_table_chunk_offset_atom_t() -> AtomT {
+    AtomT::new(MOVIE, 0, ContentT::atom_t(
+        AtomT::new(TRACK, 0, ContentT::atom_t(
+            AtomT::new(MEDIA, 0, ContentT::atom_t(
+                AtomT::new(METADATA_INFORMATION, 0, ContentT::atom_t(
+                    AtomT::new(SAMPLE_TABLE, 0, ContentT::atom_t(
+                        AtomT::new(SAMPLE_TABLE_CHUNK_OFFSET, 0, ContentT::RawData(DataT::new(data::RESERVED)))
+                    ))
+                )),
+            )),
+        )),
     ))
 }
