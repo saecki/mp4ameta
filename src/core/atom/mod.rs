@@ -5,7 +5,12 @@ use std::ops::Deref;
 
 use crate::{data, Content, ContentT, Data, DataT, ErrorKind, Tag};
 
-/// A lowercase list of valid file types defined by the `ftyp` atom.
+use crate::core::data::remaining_stream_len;
+pub use template::*;
+
+mod template;
+
+/// A list of valid file types in lowercase defined by the filetype (`ftyp`) atom.
 #[rustfmt::skip]
 pub const VALID_FILETYPES: [&str; 8] = [
     "iso2",
@@ -53,7 +58,12 @@ pub const NAME: Ident = Ident(*b"name");
 /// (`free`)
 pub const FREE: Ident = Ident(*b"free");
 
+/// (`----`)
+pub const WILDCARD: Ident = Ident(*b"----");
+
 // iTunes 4.0 atoms
+/// (`rtng`)
+pub const ADVISORY_RATING: Ident = Ident(*b"rtng");
 /// (`©alb`)
 pub const ALBUM: Ident = Ident(*b"\xa9alb");
 /// (`aART`)
@@ -78,8 +88,6 @@ pub const CUSTOM_GENRE: Ident = Ident(*b"\xa9gen");
 pub const DISC_NUMBER: Ident = Ident(*b"disk");
 /// (`©too`)
 pub const ENCODER: Ident = Ident(*b"\xa9too");
-/// (`rtng`)
-pub const ADVISORY_RATING: Ident = Ident(*b"rtng");
 /// (`gnre`)
 pub const STANDARD_GENRE: Ident = Ident(*b"gnre");
 /// (`©nam`)
@@ -144,20 +152,6 @@ pub const MOVEMENT_INDEX: Ident = Ident(*b"\xa9mvi");
 pub const WORK: Ident = Ident(*b"\xa9wrk");
 /// (`shwm`)
 pub const SHOW_MOVEMENT: Ident = Ident(*b"shwm");
-
-/// (`----`)
-pub const WILDCARD: Ident = Ident(*b"----");
-
-lazy_static! {
-    /// Lazily initialized static reference to a `ftyp` atom template.
-    pub static ref FILETYPE_ATOM_T: AtomT = filetype_atom_t();
-    /// Lazily initialized static reference to an atom metadata hierarchy template needed to parse metadata.
-    pub static ref METADATA_ATOM_T: AtomT = metadata_atom_t();
-    /// Lazily initialized static reference to an atom hierarchy template leading to an empty `ilst` atom.
-    pub static ref ITEM_LIST_ATOM_T: AtomT = item_list_atom_t();
-    /// Lazily initialized static reference to an atom hierarchy template leading to a `stco` atom.
-    pub static ref SAMPLE_TABLE_CHUNK_OFFSET_ATOM_T: AtomT = sample_table_chunk_offset_atom_t();
-}
 
 /// A 4 byte atom identifier.
 #[derive(Clone, Copy, Default, Eq, PartialEq)]
@@ -403,17 +397,17 @@ impl AtomT {
         self.content.take_first_child()
     }
 
-    /// Attempts to parse an atom, that matches the template, from the `reader`.  This should only
-    /// be used if the atom has to be in this exact position, if the parsed and expected
-    /// `identifier`s don't match this will return an error.
+    /// Attempts to parse one atom, that matches the template, from the `reader`.  This should only
+    /// be used if the atom has to be in this exact position, if the parsed and expected `ident`s
+    /// don't match this will return an error.
     pub fn parse_next(&self, reader: &mut (impl Read + Seek)) -> crate::Result<Atom> {
-        let (length, ident) = match parse_head(reader) {
+        let (len, ident) = match parse_head(reader) {
             Ok(h) => h,
             Err(e) => return Err(e),
         };
 
         if ident == self.ident {
-            match self.parse_content(reader, length) {
+            match parse_content(reader, &self.content, self.offset, len - 8) {
                 Ok(c) => Ok(Atom::new(self.ident, self.offset, c)),
                 Err(e) => Err(crate::Error::new(
                     e.kind,
@@ -428,20 +422,16 @@ impl AtomT {
         }
     }
 
-    /// Attempts to parse an atom, that matches the template, from the reader.
+    /// Attempts to parse one atom hierarchy, that matches this template, from the reader.
     pub fn parse(&self, reader: &mut (impl Read + Seek)) -> crate::Result<Atom> {
-        let current_position = reader.seek(SeekFrom::Current(0))?;
-        let complete_length = reader.seek(SeekFrom::End(0))?;
-        let length = (complete_length - current_position) as usize;
-        reader.seek(SeekFrom::Start(current_position))?;
-
+        let len = data::remaining_stream_len(reader)? as usize;
         let mut parsed_bytes = 0;
 
-        while parsed_bytes < length {
-            let (atom_length, atom_ident) = parse_head(reader)?;
+        while parsed_bytes < len {
+            let (atom_len, atom_ident) = parse_head(reader)?;
 
             if atom_ident == self.ident {
-                return match self.parse_content(reader, atom_length) {
+                return match parse_content(reader, &self.content, self.offset, atom_len - 8) {
                     Ok(c) => Ok(Atom::new(self.ident, self.offset, c)),
                     Err(e) => Err(crate::Error::new(
                         e.kind,
@@ -449,32 +439,16 @@ impl AtomT {
                     )),
                 };
             } else {
-                reader.seek(SeekFrom::Current((atom_length - 8) as i64))?;
+                reader.seek(SeekFrom::Current((atom_len - 8) as i64))?;
             }
 
-            parsed_bytes += atom_length;
+            parsed_bytes += atom_len;
         }
 
         Err(crate::Error::new(
             ErrorKind::AtomNotFound(self.ident),
             format!("No {} atom found", self.ident),
         ))
-    }
-
-    /// Attempts to parse the atom template's content from the reader.
-    pub fn parse_content(
-        &self,
-        reader: &mut (impl Read + Seek),
-        length: usize,
-    ) -> crate::Result<Content> {
-        if length > 8 {
-            if self.offset != 0 {
-                reader.seek(SeekFrom::Current(self.offset as i64))?;
-            }
-            self.content.parse(reader, length - 8 - self.offset)
-        } else {
-            Ok(Content::Empty)
-        }
     }
 }
 
@@ -490,7 +464,7 @@ pub fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
         _ => None,
     };
 
-    let moov = METADATA_ATOM_T.parse(reader)?;
+    let moov = METADATA_READ_ATOM_T.parse(reader)?;
     for a in moov.content.into_iter() {
         match a.ident {
             MOVIE_HEADER => {
@@ -538,112 +512,46 @@ pub fn write_tag_to(file: &File, atoms: &[Atom]) -> crate::Result<()> {
     let ftyp = FILETYPE_ATOM_T.parse_next(&mut reader)?;
     ftyp.check_filetype()?;
 
-    let mut mdat_pos = None;
-    while let Ok((length, ident)) = parse_head(&mut reader) {
-        match ident {
-            MEDIA_DATA => {
-                mdat_pos = Some(reader.seek(SeekFrom::Current(0))?);
-            }
-            _ => {
-                reader.seek(SeekFrom::Current(length as i64 - 8))?;
-            }
-        }
-    }
-    let mdat_pos = match mdat_pos {
-        Some(p) => p,
-        None => {
-            return Err(crate::Error::new(
-                crate::ErrorKind::AtomNotFound(MEDIA_DATA),
-                "No media data atom found".to_owned(),
-            ))
-        }
-    };
+    let len = remaining_stream_len(&mut reader)? as usize;
+    let atom_info = find_atoms(&mut reader, METADATA_WRITE_ATOM_T.deref(), len)?;
 
-    reader.seek(SeekFrom::Start(0))?;
-
-    // TODO: support contained `co64` atoms (64 bit chunks) [Chunk offset atoms](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap2/qtff2.html#//apple_ref/doc/uid/TP40000939-CH204-25715)
-    // TODO: support multiple tracks
-    let mut stco_destination = SAMPLE_TABLE_CHUNK_OFFSET_ATOM_T.deref();
-    let mut chunk_offsets = Vec::new();
-    let mut chunk_offset_pos = None;
-    while let Ok((length, ident)) = parse_head(&mut reader) {
-        match ident {
-            SAMPLE_TABLE_CHUNK_OFFSET => {
-                let _version = data::read_u32(&mut reader)?;
-                let entries = data::read_u32(&mut reader)?;
-
-                chunk_offset_pos = Some(reader.seek(SeekFrom::Current(0))?);
-
-                for _ in 0..entries {
-                    let offset = data::read_u32(&mut reader)?;
-                    chunk_offsets.push(offset);
-                }
-                break;
-            }
-            _ if ident == stco_destination.ident => match stco_destination.first_child() {
-                Some(a) => stco_destination = a,
-                None => {
-                    return Err(crate::Error::new(
-                        crate::ErrorKind::AtomNotFound(SAMPLE_TABLE_CHUNK_OFFSET),
-                        "No sample table content offset atom found".to_owned(),
-                    ))
-                }
-            },
-            _ => {
-                reader.seek(SeekFrom::Current(length as i64 - 8))?;
-            }
-        }
-    }
-    let chunk_offset_pos = match chunk_offset_pos {
-        Some(p) => p,
-        None => {
-            return Err(crate::Error::new(
-                crate::ErrorKind::AtomNotFound(SAMPLE_TABLE_CHUNK_OFFSET),
-                "No sample table content offset atom found".to_owned(),
-            ))
-        }
-    };
-
-    reader.seek(SeekFrom::Start(0))?;
-
-    let mut atom_pos_and_len = Vec::new();
-    let mut ilst_destination = ITEM_LIST_ATOM_T.deref();
-
-    while let Ok((length, ident)) = parse_head(&mut reader) {
-        match ident {
-            ITEM_LIST => {
-                let pos = reader.seek(SeekFrom::Current(0))? as usize - 8;
-                atom_pos_and_len.push((pos, length));
-                break;
-            }
-            _ if ident == ilst_destination.ident => {
-                let pos = reader.seek(SeekFrom::Current(0))? as usize - 8;
-                atom_pos_and_len.push((pos, length));
-
-                reader.seek(SeekFrom::Current(ilst_destination.offset as i64))?;
-
-                match ilst_destination.first_child() {
-                    Some(a) => ilst_destination = a,
-                    None => {
-                        return Err(crate::Error::new(
-                            crate::ErrorKind::AtomNotFound(ITEM_LIST),
-                            "No item list atom found".to_owned(),
-                        ))
-                    }
-                }
-            }
-            _ => {
-                reader.seek(SeekFrom::Current(length as i64 - 8))?;
-            }
-        }
-    }
+    let mdat_info = atom_info.iter().find(|a| a.ident == MEDIA_DATA).ok_or_else(|| {
+        crate::Error::new(
+            crate::ErrorKind::AtomNotFound(MEDIA_DATA),
+            "Missing necessary data, no media data atom found".to_owned(),
+        )
+    })?;
+    let moov_info = atom_info.iter().find(|a| a.ident == MOVIE).ok_or_else(|| {
+        crate::Error::new(
+            crate::ErrorKind::AtomNotFound(MOVIE),
+            "Missing necessary data, no movie atom found".to_owned(),
+        )
+    })?;
+    let udta_info = atom_info.iter().find(|a| a.ident == USER_DATA).ok_or_else(|| {
+        crate::Error::new(
+            crate::ErrorKind::AtomNotFound(USER_DATA),
+            "Missing necessary data, no user data atom found".to_owned(),
+        )
+    })?;
+    let meta_info = atom_info.iter().find(|a| a.ident == METADATA).ok_or_else(|| {
+        crate::Error::new(
+            crate::ErrorKind::AtomNotFound(METADATA),
+            "Missing necessary data, no metadata atom found".to_owned(),
+        )
+    })?;
+    let ilst_info = atom_info.iter().find(|a| a.ident == ITEM_LIST).ok_or_else(|| {
+        crate::Error::new(
+            crate::ErrorKind::AtomNotFound(ITEM_LIST),
+            "Missing necessary data, no item list atom found".to_owned(),
+        )
+    })?;
 
     let mut writer = BufWriter::new(file);
     let old_file_len = reader.seek(SeekFrom::End(0))?;
-    let metadata_pos = atom_pos_and_len[atom_pos_and_len.len() - 1].0 + 8;
-    let old_metadata_len = atom_pos_and_len[atom_pos_and_len.len() - 1].1 - 8;
+    let metadata_pos = ilst_info.pos + 8;
+    let old_metadata_len = ilst_info.len - 8;
     let new_metadata_len = atoms.iter().map(|a| a.len()).sum::<usize>();
-    let metadata_len_diff = new_metadata_len as i32 - old_metadata_len as i32;
+    let metadata_len_diff = new_metadata_len as i64 - old_metadata_len as i64;
 
     match metadata_len_diff {
         0 => {
@@ -660,25 +568,63 @@ pub fn write_tag_to(file: &File, atoms: &[Atom]) -> crate::Result<()> {
                 a.write_to(&mut writer)?;
             }
 
+            println!("len_diff: {}", len_diff);
+            println!("free_len: {}", (len_diff.abs() - 8) as usize);
+
             // Fill remaining space with a free atom
-            let free = Atom::new(FREE, (len_diff * -1 - 8) as usize, Content::Empty);
+            let free = Atom::new(FREE, (len_diff.abs() - 8) as usize, Content::Empty);
             free.write_to(&mut writer)?;
         }
         _ => {
             // reading additional data after metadata
-            let additional_data_len = old_file_len as usize - (metadata_pos + old_metadata_len);
-            let mut additional_data = Vec::with_capacity(additional_data_len);
-            reader.seek(SeekFrom::Start((metadata_pos + old_metadata_len) as u64))?;
+            let additional_data_len = old_file_len - (metadata_pos + old_metadata_len as u64);
+            let mut additional_data = Vec::with_capacity(additional_data_len as usize);
+            reader.seek(SeekFrom::Start(metadata_pos + old_metadata_len as u64))?;
             reader.read_to_end(&mut additional_data)?;
+
+            // adjusting sample table chunk offsets
+            if mdat_info.pos > moov_info.pos {
+                reader.seek(SeekFrom::Start(0))?;
+
+                // TODO: support inner `co64` atoms (64 bit chunks)
+                // [Chunk offset atoms](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap2/qtff2.html#//apple_ref/doc/uid/TP40000939-CH204-25715)
+                let stco_info = atom_info.iter().filter(|a| a.ident == SAMPLE_TABLE_CHUNK_OFFSET);
+
+                let mut stco_present = false;
+                for a in stco_info {
+                    reader.seek(SeekFrom::Start(a.pos as u64 + 8))?;
+                    let chunk_offset = parse_chunk_offset(&mut reader)?;
+
+                    writer.seek(SeekFrom::Start(chunk_offset.pos + 8))?;
+                    for co in chunk_offset.offsets.iter() {
+                        let new_offset = (*co as i64 + metadata_len_diff) as u32;
+                        writer.write_all(&new_offset.to_be_bytes())?;
+                    }
+                    stco_present = true;
+                }
+
+                if !stco_present {
+                    return Err(crate::Error::new(
+                        crate::ErrorKind::AtomNotFound(SAMPLE_TABLE_CHUNK_OFFSET),
+                        "No sample table chunk offset atom found".to_owned(),
+                    ));
+                }
+            }
 
             // adjusting the file length
             file.set_len((old_file_len as i64 + metadata_len_diff as i64) as u64)?;
 
             // adjusting the atom lengths
-            for (pos, len) in atom_pos_and_len.iter() {
-                writer.seek(SeekFrom::Start(*pos as u64))?;
-                writer.write_all(&((*len as i32 + metadata_len_diff) as u32).to_be_bytes())?;
-            }
+            let mut write_pos = |a: &AtomInfo| -> crate::Result<()> {
+                let new_len = (a.len as i64 + metadata_len_diff) as u32;
+                writer.seek(SeekFrom::Start(a.pos as u64))?;
+                writer.write_all(&new_len.to_be_bytes())?;
+                Ok(())
+            };
+            write_pos(moov_info)?;
+            write_pos(udta_info)?;
+            write_pos(meta_info)?;
+            write_pos(ilst_info)?;
 
             // writing metadata
             writer.seek(SeekFrom::Current(4))?;
@@ -688,16 +634,6 @@ pub fn write_tag_to(file: &File, atoms: &[Atom]) -> crate::Result<()> {
 
             // writing additional data after metadata
             writer.write_all(&additional_data)?;
-
-            let moov_pos = atom_pos_and_len[0].0;
-            if mdat_pos > moov_pos as u64 {
-                writer.seek(SeekFrom::Start(chunk_offset_pos as u64))?;
-
-                for co in chunk_offsets.iter() {
-                    let new_offset = (*co as i32 + metadata_len_diff) as u32;
-                    writer.write_all(&new_offset.to_be_bytes())?;
-                }
-            }
         }
     }
     writer.flush()?;
@@ -709,13 +645,13 @@ pub fn write_tag_to(file: &File, atoms: &[Atom]) -> crate::Result<()> {
 /// container hierarchy and won't result in a usable file.
 pub fn dump_tag_to(writer: &mut impl Write, atoms: Vec<Atom>) -> crate::Result<()> {
     #[rustfmt::skip]
-    let ftyp = Atom::new( FILETYPE, 0, Content::RawData(
+        let ftyp = Atom::new(FILETYPE, 0, Content::RawData(
         Data::Utf8("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".to_owned())),
     );
     #[rustfmt::skip]
-    let moov = Atom::new(MOVIE, 0, Content::atom(
-        Atom::new( USER_DATA, 0, Content::atom(
-            Atom::new( METADATA, 4, Content::atom(
+        let moov = Atom::new(MOVIE, 0, Content::atom(
+        Atom::new(USER_DATA, 0, Content::atom(
+            Atom::new(METADATA, 4, Content::atom(
                 Atom::new(ITEM_LIST, 0, Content::Atoms(atoms))
             )),
         )),
@@ -727,22 +663,22 @@ pub fn dump_tag_to(writer: &mut impl Write, atoms: Vec<Atom>) -> crate::Result<(
     Ok(())
 }
 
-/// Attempts to parse the list of atoms, matching the templates, from the reader.
+/// Attempts to parse any amount of atoms, matching the atom hierarchy templates, from the reader.
 pub fn parse_atoms(
-    atoms: &[AtomT],
     reader: &mut (impl Read + Seek),
-    length: usize,
+    atoms: &[AtomT],
+    len: usize,
 ) -> crate::Result<Vec<Atom>> {
-    let mut parsed_bytes = 0;
     let mut parsed_atoms = Vec::with_capacity(atoms.len());
+    let mut pos = 0;
 
-    while parsed_bytes < length {
-        let (atom_length, atom_ident) = parse_head(reader)?;
-
+    while pos < len {
+        let (atom_len, atom_ident) = parse_head(reader)?;
         let mut parsed = false;
+
         for a in atoms {
             if atom_ident == a.ident {
-                match a.parse_content(reader, atom_length) {
+                match parse_content(reader, &a.content, a.offset, atom_len - 8) {
                     Ok(c) => {
                         parsed_atoms.push(Atom::new(a.ident, a.offset, c));
                         parsed = true;
@@ -758,20 +694,38 @@ pub fn parse_atoms(
             }
         }
 
-        if atom_length > 8 && !parsed {
-            reader.seek(SeekFrom::Current((atom_length - 8) as i64))?;
+        if !parsed {
+            reader.seek(SeekFrom::Current((atom_len - 8) as i64))?;
         }
 
-        parsed_bytes += atom_length;
+        pos += atom_len;
     }
 
     Ok(parsed_atoms)
 }
 
+/// Attempts to parse the atom template's content from the reader.
+pub fn parse_content(
+    reader: &mut (impl Read + Seek),
+    content: &ContentT,
+    offset: usize,
+    length: usize,
+) -> crate::Result<Content> {
+    match length {
+        0 => Ok(Content::Empty),
+        _ => {
+            if offset != 0 {
+                reader.seek(SeekFrom::Current(offset as i64))?;
+            }
+            content.parse(reader, length - offset)
+        }
+    }
+}
+
 /// Attempts to parse the atom's head containing a 32 bit unsigned integer determining the size of
 /// the atom in bytes and the following 4 byte identifier from the reader.
-pub fn parse_head(reader: &mut (impl Read + Seek)) -> crate::Result<(usize, Ident)> {
-    let length = match data::read_u32(reader) {
+pub fn parse_head(reader: &mut impl Read) -> crate::Result<(usize, Ident)> {
+    let len = match data::read_u32(reader) {
         Ok(l) => l as usize,
         Err(e) => {
             return Err(crate::Error::new(e.kind, "Error reading atom length".to_owned()));
@@ -785,97 +739,95 @@ pub fn parse_head(reader: &mut (impl Read + Seek)) -> crate::Result<(usize, Iden
         ));
     }
 
-    Ok((length, Ident(ident)))
+    debug_assert!(len >= 8, "Atom length is less than 8 bytes");
+
+    Ok((len, Ident(ident)))
 }
 
-/// Returns an `ftyp` atom template needed to parse the filetype.
-fn filetype_atom_t() -> AtomT {
-    AtomT::new(FILETYPE, 0, ContentT::RawData(DataT::new(data::UTF8)))
+/// A struct representing of a sample table chunk offset atom (`stco`).
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+struct ChunkOffset {
+    pub pos: u64,
+    pub version: u8,
+    pub flags: [u8; 3],
+    pub offsets: Vec<u32>,
 }
 
-/// Returns an atom metadata hierarchy template needed to parse metadata.
-#[rustfmt::skip]
-fn metadata_atom_t() -> AtomT {
-    AtomT::new( MOVIE, 0, ContentT::Atoms(vec![
-        AtomT::new(MOVIE_HEADER, 0, ContentT::RawData(
-            DataT::new(data::RESERVED)
-        )),
-        AtomT::new(USER_DATA, 0, ContentT::atom_t(
-            AtomT::new(METADATA, 4, ContentT::atom_t(
-                AtomT::new(ITEM_LIST, 0, ContentT::Atoms(vec![
-                    AtomT::new(WILDCARD, 0, ContentT::Atoms(vec![
-                        AtomT::data_atom(),
-                        AtomT::mean_atom(),
-                        AtomT::name_atom(),
-                    ])),
-                    AtomT::new(ADVISORY_RATING, 0, ContentT::data_atom_t()),
-                    AtomT::new(ALBUM, 0, ContentT::data_atom_t()),
-                    AtomT::new(ALBUM_ARTIST, 0, ContentT::data_atom_t()),
-                    AtomT::new(ARTIST, 0, ContentT::data_atom_t()),
-                    AtomT::new(BPM, 0, ContentT::data_atom_t()),
-                    AtomT::new(CATEGORY, 0, ContentT::data_atom_t()),
-                    AtomT::new(COMMENT, 0, ContentT::data_atom_t()),
-                    AtomT::new(COMPILATION, 0, ContentT::data_atom_t()),
-                    AtomT::new(COMPOSER, 0, ContentT::data_atom_t()),
-                    AtomT::new(COPYRIGHT, 0, ContentT::data_atom_t()),
-                    AtomT::new(CUSTOM_GENRE, 0, ContentT::data_atom_t()),
-                    AtomT::new(DESCRIPTION, 0, ContentT::data_atom_t()),
-                    AtomT::new(DISC_NUMBER, 0, ContentT::data_atom_t()),
-                    AtomT::new(ENCODER, 0, ContentT::data_atom_t()),
-                    AtomT::new(GAPLESS_PLAYBACK, 0, ContentT::data_atom_t()),
-                    AtomT::new(GROUPING, 0, ContentT::data_atom_t()),
-                    AtomT::new(KEYWORD, 0, ContentT::data_atom_t()),
-                    AtomT::new(LYRICS, 0, ContentT::data_atom_t()),
-                    AtomT::new(MEDIA_TYPE, 0, ContentT::data_atom_t()),
-                    AtomT::new(MOVEMENT_COUNT, 0, ContentT::data_atom_t()),
-                    AtomT::new(MOVEMENT_INDEX, 0, ContentT::data_atom_t()),
-                    AtomT::new(MOVEMENT, 0, ContentT::data_atom_t()),
-                    AtomT::new(PODCAST, 0, ContentT::data_atom_t()),
-                    AtomT::new(PODCAST_EPISODE_GLOBAL_UNIQUE_ID, 0, ContentT::data_atom_t()),
-                    AtomT::new(PODCAST_URL, 0, ContentT::data_atom_t()),
-                    AtomT::new(PURCHASE_DATE, 0, ContentT::data_atom_t()),
-                    AtomT::new(SHOW_MOVEMENT, 0, ContentT::data_atom_t()),
-                    AtomT::new(STANDARD_GENRE, 0, ContentT::data_atom_t()),
-                    AtomT::new(TITLE, 0, ContentT::data_atom_t()),
-                    AtomT::new(TRACK_NUMBER, 0, ContentT::data_atom_t()),
-                    AtomT::new(TV_EPISODE, 0, ContentT::data_atom_t()),
-                    AtomT::new(TV_EPISODE_NUMBER, 0, ContentT::data_atom_t()),
-                    AtomT::new(TV_NETWORK_NAME, 0, ContentT::data_atom_t()),
-                    AtomT::new(TV_SEASON, 0, ContentT::data_atom_t()),
-                    AtomT::new(TV_SHOW_NAME, 0, ContentT::data_atom_t()),
-                    AtomT::new(WORK, 0, ContentT::data_atom_t()),
-                    AtomT::new(YEAR, 0, ContentT::data_atom_t()),
-                    AtomT::new(ARTWORK, 0, ContentT::data_atom_t()),
-                ])),
-            )),
-        )),
-    ]))
+/// Parses the content of a sample table chunk offset atom (`stco`).
+fn parse_chunk_offset(reader: &mut (impl Read + Seek)) -> crate::Result<ChunkOffset> {
+    let pos = reader.seek(SeekFrom::Current(0))?;
+
+    let mut version = [0u8; 1];
+    let mut flags = [0u8; 3];
+    reader.read_exact(&mut version)?;
+    reader.read_exact(&mut flags)?;
+
+    let entries = data::read_u32(reader)?;
+    let mut offsets = Vec::new();
+
+    for _ in 0..entries {
+        let offset = data::read_u32(reader)?;
+        offsets.push(offset);
+    }
+
+    Ok(ChunkOffset { pos, version: version[0], flags, offsets })
 }
 
-/// Returns an atom hierarchy leading to an empty `ilst` atom template.
-#[rustfmt::skip]
-fn item_list_atom_t() -> AtomT {
-    AtomT::new(MOVIE, 0, ContentT::atom_t(
-        AtomT::new(USER_DATA, 0, ContentT::atom_t(
-            AtomT::new(METADATA, 4, ContentT::atom_t(
-                AtomT::new(ITEM_LIST, 0, ContentT::atoms_t())
-            ))
-        ))
-    ))
+/// A struct storing the position and size of an atom.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+struct AtomInfo {
+    pub ident: Ident,
+    pub pos: u64,
+    pub len: usize,
 }
 
-/// Returns an atom hierarchy leading to a `stco` atom template.
-#[rustfmt::skip]
-fn sample_table_chunk_offset_atom_t() -> AtomT {
-    AtomT::new(MOVIE, 0, ContentT::atom_t(
-        AtomT::new(TRACK, 0, ContentT::atom_t(
-            AtomT::new(MEDIA, 0, ContentT::atom_t(
-                AtomT::new(METADATA_INFORMATION, 0, ContentT::atom_t(
-                    AtomT::new(SAMPLE_TABLE, 0, ContentT::atom_t(
-                        AtomT::new(SAMPLE_TABLE_CHUNK_OFFSET, 0, ContentT::RawData(DataT::new(data::RESERVED)))
-                    ))
-                )),
-            )),
-        )),
-    ))
+impl AtomInfo {
+    fn new(ident: Ident, pos: u64, len: usize) -> Self {
+        Self { ident, pos, len }
+    }
+}
+
+/// Finds out the position and size of any atoms matching the template hierarchy.
+fn find_atoms(
+    reader: &mut (impl Read + Seek),
+    atoms: &[AtomT],
+    len: usize,
+) -> crate::Result<Vec<AtomInfo>> {
+    let mut atom_info = Vec::new();
+    let mut pos = 0;
+
+    while pos < len {
+        let (atom_len, atom_ident) = parse_head(reader)?;
+
+        match atoms.iter().find(|a| a.ident == atom_ident) {
+            Some(a) => {
+                let atom_pos = reader.seek(SeekFrom::Current(0))? - 8;
+                atom_info.push(AtomInfo::new(atom_ident, atom_pos, atom_len));
+
+                if let ContentT::Atoms(c) = &a.content {
+                    if a.offset != 0 {
+                        reader.seek(SeekFrom::Current(a.offset as i64))?;
+                    }
+                    match find_atoms(reader, c, atom_len - 8 - a.offset) {
+                        Ok(mut a) => atom_info.append(&mut a),
+                        Err(e) => {
+                            return Err(crate::Error::new(
+                                e.kind,
+                                format!("Error finding {}: {}", atom_ident, e.description),
+                            ));
+                        }
+                    }
+                } else {
+                    reader.seek(SeekFrom::Current((atom_len - 8) as i64))?;
+                }
+            }
+            None => {
+                reader.seek(SeekFrom::Current((atom_len - 8) as i64))?;
+            }
+        }
+
+        pos += atom_len;
+    }
+
+    Ok(atom_info)
 }

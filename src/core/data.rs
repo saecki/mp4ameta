@@ -1,5 +1,5 @@
 use core::fmt;
-use std::io::{Read, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 
 use crate::ErrorKind;
 
@@ -45,8 +45,10 @@ pub const BE_POINT_F32: u32 = 70;
 pub const BE_DIMS_F32: u32 = 71;
 /// A block of data representing a 2D rectangle with 32-bit big-endian floating point x and y
 /// coordinates and a 32-bit big-endian floating point width and height size. It has the
-/// structure:<br/> `{ x: BE_F32, y: BE_F32, width: BE_F32, height: BE_F32 }`<br/> or the equivalent
-/// structure:<br/> `{ origin: BE_Point_F32, size: BE_DIMS_F32 }`
+/// structure:<br/>
+/// `{ x: BE_F32, y: BE_F32, width: BE_F32, height: BE_F32 }`<br/>
+/// or the equivalent structure:<br/>
+/// `{ origin: BE_Point_F32, size: BE_DIMS_F32 }`
 pub const BE_RECT_F32: u32 = 72;
 /// A big-endian 64-bit signed integer.
 pub const BE_I64: u32 = 74;
@@ -114,7 +116,7 @@ impl Data {
     /// Returns true if `self` is of type [`Data::Reserved`](crate::Data::Reserved) or
     /// [`Data::BeSigned`](crate::Data::BeSigned), false otherwise.
     pub const fn is_bytes(&self) -> bool {
-        matches! (self, Self::Reserved(_) | Self::BeSigned(_))
+        matches!(self, Self::Reserved(_) | Self::BeSigned(_))
     }
 
     /// Returns true if `self` is of type [`Data::Utf8`](crate::Data::Utf8) or
@@ -410,7 +412,7 @@ impl DataT {
                 return Err(crate::Error::new(
                     ErrorKind::UnknownDataType(self.datatype),
                     "Unknown datatype code".to_owned(),
-                ))
+                ));
             }
         })
     }
@@ -450,6 +452,17 @@ pub fn read_utf16(reader: &mut impl Read, length: usize) -> crate::Result<String
     let data: Vec<u16> = buf.chunks_exact(2).map(|c| u16::from_be_bytes([c[0], c[1]])).collect();
 
     Ok(String::from_utf16(&data)?)
+}
+
+/// Attempts to read the remaining stream length and returns to the starting position.
+pub fn remaining_stream_len(reader: &mut impl Seek) -> crate::Result<u64> {
+    let current_pos = reader.seek(SeekFrom::Current(0))?;
+    let complete_len = reader.seek(SeekFrom::End(0))?;
+    let len = complete_len - current_pos;
+
+    reader.seek(SeekFrom::Start(current_pos))?;
+
+    Ok(len)
 }
 
 /// Attempts to read a big endian integer at the specified index from a byte array or vec.

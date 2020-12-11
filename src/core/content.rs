@@ -277,7 +277,7 @@ impl ContentT {
     /// Attempts to parse corresponding content from the `reader`.
     pub fn parse(&self, reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Content> {
         Ok(match self {
-            ContentT::Atoms(v) => Content::Atoms(atom::parse_atoms(v, reader, length)?),
+            ContentT::Atoms(v) => Content::Atoms(atom::parse_atoms(reader, v, length)?),
             ContentT::RawData(d) => Content::RawData(d.parse(reader, length)?),
             ContentT::TypedData => {
                 if length >= 8 {
@@ -287,7 +287,7 @@ impl ContentT {
                             return Err(crate::Error::new(
                                 e.kind,
                                 "Error reading typed data head".to_owned(),
-                            ))
+                            ));
                         }
                     };
 
