@@ -1,7 +1,7 @@
 use std::fmt;
 use std::io::{Read, Seek, SeekFrom, Write};
 
-use crate::{core::atom, data, Atom, AtomT, Data, DataT, ErrorKind, Ident};
+use crate::{core::atom, data, Atom, AtomT, Data, ErrorKind, Ident};
 
 /// An enum representing the different types of content an atom might have.
 #[derive(Clone, Eq, PartialEq)]
@@ -27,9 +27,9 @@ impl Default for Content {
 impl fmt::Debug for Content {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Content::Atoms(a) => write!(f, "Content::Atoms{{ {:#?} }}", a),
-            Content::RawData(d) => write!(f, "Content::RawData{{ {:?} }}", d),
-            Content::TypedData(d) => write!(f, "Content::TypedData{{ {:?} }}", d),
+            Content::Atoms(a) => write!(f, "Content::Atoms({:#?})", a),
+            Content::RawData(d) => write!(f, "Content::RawData({:?})", d),
+            Content::TypedData(d) => write!(f, "Content::TypedData({:?})", d),
             Content::Empty => write!(f, "Content::Empty"),
         }
     }
@@ -165,8 +165,9 @@ impl Content {
 pub enum ContentT {
     /// A value containing a list of children atom templates.
     Atoms(Vec<AtomT>),
-    /// A value containing a data template specifying the datatype.
-    RawData(DataT),
+    /// A template for raw data containing a datatype definded by
+    /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34)
+    RawData(u32),
     /// A template representing typed data that is defined by a
     /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34)
     /// code prior to the data parsed.
@@ -278,7 +279,7 @@ impl ContentT {
     pub fn parse(&self, reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Content> {
         Ok(match self {
             ContentT::Atoms(v) => Content::Atoms(atom::parse_atoms(reader, v, length)?),
-            ContentT::RawData(d) => Content::RawData(d.parse(reader, length)?),
+            ContentT::RawData(d) => Content::RawData(data::parse_data(reader, *d, length)?),
             ContentT::TypedData => {
                 if length >= 8 {
                     let datatype = match data::read_u32(reader) {
@@ -294,7 +295,7 @@ impl ContentT {
                     // Skipping 4 byte locale indicator
                     reader.seek(SeekFrom::Current(4))?;
 
-                    Content::TypedData(DataT::new(datatype).parse(reader, length - 8)?)
+                    Content::TypedData(data::parse_data(reader, datatype, length - 8)?)
                 } else {
                     return Err(crate::Error::new(
                         ErrorKind::Parsing,

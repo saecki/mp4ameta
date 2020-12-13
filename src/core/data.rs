@@ -85,12 +85,12 @@ pub enum Data {
 impl fmt::Debug for Data {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Reserved(d) => write!(f, "Data::Reserved{{ {:?} }}", d),
-            Self::Utf8(d) => write!(f, "Data::UTF8{{ {:?} }}", d),
-            Self::Utf16(d) => write!(f, "Data::UTF16{{ {:?} }}", d),
-            Self::Jpeg(_) => write!(f, "Data::JPEG"),
-            Self::Png(_) => write!(f, "Data::PNG"),
-            Self::BeSigned(d) => write!(f, "Data::BeSigned{{ {:?} }}", d),
+            Self::Reserved(d) => write!(f, "Data::Reserved({:?})", d),
+            Self::Utf8(d) => write!(f, "Data::Utf8({:?})", d),
+            Self::Utf16(d) => write!(f, "Data::Utf16({:?})", d),
+            Self::Jpeg(_) => write!(f, "Data::Jpeg"),
+            Self::Png(_) => write!(f, "Data::Png"),
+            Self::BeSigned(d) => write!(f, "Data::BeSigned({:?})", d),
         }
     }
 }
@@ -384,38 +384,22 @@ impl Data {
     }
 }
 
-/// A template used for parsing data defined by
-/// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct DataT {
-    /// A datatype defined by
-    /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
-    datatype: u32,
-}
-
-impl DataT {
-    /// Creates a data template containing the datatype.
-    pub const fn new(datatype: u32) -> Self {
-        DataT { datatype }
-    }
-
-    /// Attempts to parse corresponding data from the reader.
-    pub fn parse(&self, reader: &mut impl Read, length: usize) -> crate::Result<Data> {
-        Ok(match self.datatype {
-            RESERVED => Data::Reserved(read_u8_vec(reader, length)?),
-            UTF8 => Data::Utf8(read_utf8(reader, length)?),
-            UTF16 => Data::Utf16(read_utf16(reader, length)?),
-            JPEG => Data::Jpeg(read_u8_vec(reader, length)?),
-            PNG => Data::Png(read_u8_vec(reader, length)?),
-            BE_SIGNED => Data::BeSigned(read_u8_vec(reader, length)?),
-            _ => {
-                return Err(crate::Error::new(
-                    ErrorKind::UnknownDataType(self.datatype),
-                    "Unknown datatype code".to_owned(),
-                ));
-            }
-        })
-    }
+/// Parses data based on [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
+pub fn parse_data(reader: &mut impl Read, datatype: u32, length: usize) -> crate::Result<Data> {
+    Ok(match datatype {
+        RESERVED => Data::Reserved(read_u8_vec(reader, length)?),
+        UTF8 => Data::Utf8(read_utf8(reader, length)?),
+        UTF16 => Data::Utf16(read_utf16(reader, length)?),
+        JPEG => Data::Jpeg(read_u8_vec(reader, length)?),
+        PNG => Data::Png(read_u8_vec(reader, length)?),
+        BE_SIGNED => Data::BeSigned(read_u8_vec(reader, length)?),
+        _ => {
+            return Err(crate::Error::new(
+                ErrorKind::UnknownDataType(datatype),
+                "Unknown datatype code".to_owned(),
+            ));
+        }
+    })
 }
 
 /// Attempts to read a 32 bit unsigned integer from the reader.

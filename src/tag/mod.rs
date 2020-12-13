@@ -1,3 +1,4 @@
+use core::fmt;
 use std::convert::TryFrom;
 use std::fs::{File, OpenOptions};
 use std::io::{BufReader, Read, Seek, Write};
@@ -9,7 +10,7 @@ pub mod genre;
 pub mod tuple;
 
 /// A MPEG-4 audio tag containing metadata atoms
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Default, Eq, PartialEq)]
 pub struct Tag {
     /// The `ftyp` atom.
     pub ftyp: Option<String>,
@@ -29,6 +30,16 @@ impl IntoIterator for Tag {
             .filter_map(AtomData::try_from_typed)
             .collect::<Vec<AtomData>>()
             .into_iter()
+    }
+}
+
+impl fmt::Debug for Tag {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Tag")
+            .field("ftyp", &format!("{:?}", &self.ftyp))
+            .field("mvhd", &format!("{:?}", &self.mvhd))
+            .field("atoms", &self.atoms)
+            .finish()
     }
 }
 

@@ -11,20 +11,20 @@ lazy_static! {
 
 /// Returns an file type (`ftyp`) atom template.
 fn filetype_atom_t() -> AtomT {
-    AtomT::new(FILETYPE, 0, ContentT::RawData(DataT::new(data::UTF8)))
+    AtomT::new(FILETYPE, 0, ContentT::RawData(data::UTF8))
 }
 
 /// Returns an atom template hierarchy needed to write metadata.
 #[rustfmt::skip]
 fn metadata_write_atom_t() -> [AtomT; 2] {
     [
-        AtomT::new(MEDIA_DATA, 0, ContentT::RawData(DataT::new(data::RESERVED))),
+        AtomT::new(MEDIA_DATA, 0, ContentT::RawData(data::RESERVED)),
         AtomT::new(MOVIE, 0, ContentT::Atoms(vec![
             AtomT::new(TRACK, 0, ContentT::atom_t(
                 AtomT::new(MEDIA, 0, ContentT::atom_t(
                     AtomT::new(METADATA_INFORMATION, 0, ContentT::atom_t(
                         AtomT::new(SAMPLE_TABLE, 0, ContentT::atom_t(
-                            AtomT::new(SAMPLE_TABLE_CHUNK_OFFSET, 0, ContentT::RawData(DataT::new(data::RESERVED)))
+                            AtomT::new(SAMPLE_TABLE_CHUNK_OFFSET, 0, ContentT::RawData(data::RESERVED))
                         ))
                     )),
                 )),
@@ -42,9 +42,7 @@ fn metadata_write_atom_t() -> [AtomT; 2] {
 #[rustfmt::skip]
 fn metadata_read_atom_t() -> AtomT {
     AtomT::new(MOVIE, 0, ContentT::Atoms(vec![
-        AtomT::new(MOVIE_HEADER, 0, ContentT::RawData(
-            DataT::new(data::RESERVED)
-        )),
+        AtomT::new(MOVIE_HEADER, 0, ContentT::RawData(data::RESERVED)),
         AtomT::new(USER_DATA, 0, ContentT::atom_t(
             AtomT::new(METADATA, 4, ContentT::atom_t(
                 AtomT::new(ITEM_LIST, 0, ContentT::Atoms(vec![

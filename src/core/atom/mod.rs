@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use std::ops::Deref;
 
-use crate::{data, Content, ContentT, Data, DataT, ErrorKind, Tag};
+use crate::{data, Content, ContentT, Data, ErrorKind, Tag};
 
 use crate::core::data::remaining_stream_len;
 pub use template::*;
@@ -245,7 +245,7 @@ pub struct Atom {
 
 impl fmt::Debug for Atom {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Atom{{ {}, {}, {:#?} }}", self.ident, self.offset, self.content)
+        write!(f, "Atom {{ {}, {}, {:#?} }}", self.ident, self.offset, self.content)
     }
 }
 
@@ -340,7 +340,7 @@ pub struct AtomT {
 
 impl fmt::Debug for AtomT {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "AtomT{{ {}, {}, {:#?} }}", self.ident, self.offset, self.content)
+        write!(f, "AtomT {{ {}, {}, {:#?} }}", self.ident, self.offset, self.content)
     }
 }
 
@@ -357,12 +357,12 @@ impl AtomT {
 
     /// Creates a mean atom template containing [`ContentT::RawData`](crate::ContentT::RawData).
     pub const fn mean_atom() -> Self {
-        Self::new(MEAN, 0, ContentT::RawData(DataT::new(data::UTF8)))
+        Self::new(MEAN, 0, ContentT::RawData(data::UTF8))
     }
 
     /// Creates a name atom template containing [`ContentT::TypedData`](crate::ContentT::TypedData).
     pub const fn name_atom() -> Self {
-        Self::new(NAME, 0, ContentT::RawData(DataT::new(data::UTF8)))
+        Self::new(NAME, 0, ContentT::RawData(data::UTF8))
     }
 
     /// Returns a reference to the first children atom template matching the identifier, if present.
