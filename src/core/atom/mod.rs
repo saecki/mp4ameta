@@ -568,9 +568,6 @@ pub fn write_tag_to(file: &File, atoms: &[Atom]) -> crate::Result<()> {
                 a.write_to(&mut writer)?;
             }
 
-            println!("len_diff: {}", len_diff);
-            println!("free_len: {}", (len_diff.abs() - 8) as usize);
-
             // Fill remaining space with a free atom
             let free = Atom::new(FREE, (len_diff.abs() - 8) as usize, Content::Empty);
             free.write_to(&mut writer)?;
