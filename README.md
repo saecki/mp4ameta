@@ -37,9 +37,9 @@ fn main() {
 - [Filetype list](https://ftyps.com/)
 
 ## Testing
-__Run all tests:__
+__Run all tests:__<br/>
 `cargo test`
 
-__Test this library on your collection:__
+__Test this library on your collection:__<br/>
 `cargo test -- --show-output collection <path>`
 
