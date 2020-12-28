@@ -8,7 +8,7 @@ on:
     branches:
       - "**"
   schedule:
-  - cron:  '0 0 * * 1' # weekly
+    - cron:  '0 0 * * 1' # weekly
 
 jobs:
   build:
@@ -19,11 +19,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - run: rustup default ${{ matrix.toolchain }}
-    - run: rustup update
-    - run: cargo build
-    - run: cargo test -- --test-threads=1
+      - uses: actions/checkout@v2
+      - run: rustup default ${{ matrix.toolchain }}
+      - run: rustup update
+      - run: cargo build
+      - run: cargo test -- --test-threads=1
 
   style:
     strategy:
@@ -33,6 +33,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v1
-    - run: cargo fmt -- --check
-    - run: cargo clippy
+      - uses: actions/checkout@v1
+      - run: cargo fmt -- --check
+      - run: cargo clippy
