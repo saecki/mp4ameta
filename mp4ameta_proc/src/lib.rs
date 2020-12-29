@@ -65,6 +65,14 @@ impl Tag {{
     pub fn remove_{3}(&mut self) {{
         self.remove_data({4});
     }}
+
+    /// Returns the {1} formatted in an easily readable way.
+    fn format_{3}(&self) -> Option<String> {{
+        match self.{3}() {{
+            Some(s) => Some(format!(\"{3}: {{}}\\n\", s)),
+            None => None,
+        }}
+    }}
 }}
     ",
         headline, name, atom_ident_string, value_ident, atom_ident,
@@ -100,12 +108,12 @@ impl Tag {{
     pub fn {4}(&self) -> Option<&str> {{
         self.string({6}).next()
     }}
-    
+
     /// Consumes and returns all {2} (`{3}`).
     pub fn take_{5}(&mut self) -> impl Iterator<Item=String> + '_ {{
         self.take_string({6})
     }}
-    
+
     /// Consumes all and returns the first {1} (`{3}`).
     pub fn take_{4}(&mut self) -> Option<String> {{
         self.take_string({6}).next()
@@ -124,6 +132,24 @@ impl Tag {{
     /// Removes all {2} (`{3}`).
     pub fn remove_{5}(&mut self) {{
         self.remove_data({6});
+    }}
+
+    /// Returns all {2} formatted in an easily readable way.
+    fn format_{5}(&self) -> Option<String> {{
+        if self.{5}().count() > 1 {{
+            let mut string = String::from(\"{5}:\\n\");
+            for v in self.{5}() {{
+                string.push_str(\"    \");
+                string.push_str(v);
+                string.push('\\n');
+            }}
+            return Some(string);
+        }}
+
+        match self.{4}() {{
+            Some(s) => Some(format!(\"{4}: {{}}\\n\", s)),
+            None => None,
+        }}
     }}
 }}
     ",

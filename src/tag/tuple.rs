@@ -100,6 +100,16 @@ impl Tag {
         }
         self.remove_track();
     }
+
+    /// Returns the track numer and total number of tracks formatted in an easily readable way.
+    pub(crate) fn format_track(&self) -> Option<String> {
+        match self.track() {
+            (Some(d), Some(t)) => Some(format!("track: {} of {}\n", d, t)),
+            (Some(d), None) => Some(format!("track: {}\n", d)),
+            (None, Some(t)) => Some(format!("track: ? of {}\n", t)),
+            (None, None) => None,
+        }
+    }
 }
 
 /// ### Disc
@@ -201,6 +211,16 @@ impl Tag {
             }
         }
         self.remove_disc();
+    }
+
+    /// Returns the disc numer and total number of discs formatted in an easily readable way.
+    pub(crate) fn format_disc(&self) -> Option<String> {
+        match self.disc() {
+            (Some(d), Some(t)) => Some(format!("disc: {} of {}\n", d, t)),
+            (Some(d), None) => Some(format!("disc: {}\n", d)),
+            (None, Some(t)) => Some(format!("disc: ? of {}\n", t)),
+            (None, None) => None,
+        }
     }
 }
 

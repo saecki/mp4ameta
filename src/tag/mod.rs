@@ -43,6 +43,102 @@ impl fmt::Debug for Tag {
     }
 }
 
+impl fmt::Display for Tag {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut string = String::new();
+
+        if let Some(s) = self.format_album_artists() {
+            string.push_str(&s);
+        }
+        if let Some(s) = self.format_artists() {
+            string.push_str(&s);
+        }
+        if let Some(s) = self.format_composers() {
+            string.push_str(&s);
+        }
+        if let Some(s) = self.format_album() {
+            string.push_str(&s);
+        }
+        if let Some(s) = self.format_title() {
+            string.push_str(&s);
+        }
+        if let Some(s) = self.format_genres() {
+            string.push_str(&s);
+        }
+        if let Some(s) = self.format_year() {
+            string.push_str(&s);
+        }
+        if let Some(s) = self.format_track() {
+            string.push_str(&s);
+        }
+        if let Some(s) = self.format_disc() {
+            string.push_str(&s);
+        }
+        if let Some(s) = self.format_duration() {
+            string.push_str(&s);
+        }
+        if let Some(s) = self.format_artworks() {
+            string.push_str(&s);
+        }
+        if let Some(r) = self.advisory_rating() {
+            string.push_str(&format!("advisory rating: {}\n", r));
+        }
+        if let Some(m) = self.media_type() {
+            string.push_str(&format!("media type: {}\n", m));
+        }
+        if let Some(s) = self.format_groupings() {
+            string.push_str(&s);
+        }
+        if let Some(s) = self.format_descriptions() {
+            string.push_str(&s);
+        }
+        if let Some(s) = self.format_comments() {
+            string.push_str(&s);
+        }
+        if let Some(s) = self.format_categories() {
+            string.push_str(&s);
+        }
+        if let Some(s) = self.format_keywords() {
+            string.push_str(&s);
+        }
+        if let Some(s) = self.format_copyright() {
+            string.push_str(&s);
+        }
+        if let Some(s) = self.format_encoder() {
+            string.push_str(&s);
+        }
+        if let Some(i) = self.bpm() {
+            string.push_str(&format!("bpm: {}\n", i));
+        }
+        if let Some(s) = self.format_movement() {
+            string.push_str(&s);
+        }
+        if let Some(s) = self.format_work() {
+            string.push_str(&s);
+        }
+        if let Some(i) = self.movement_count() {
+            string.push_str(&format!("movement count: {}\n", i));
+        }
+        if let Some(i) = self.movement_index() {
+            string.push_str(&format!("movement index: {}\n", i));
+        }
+        if self.show_movement() {
+            string.push_str("show movement\n");
+        }
+        if self.gapless_playback() {
+            string.push_str("gapless playback\n");
+        }
+        if self.compilation() {
+            string.push_str("compilation\n");
+        }
+        if let Some(s) = self.format_lyrics() {
+            string.push_str(&s);
+        }
+
+        write!(f, "{}", string)
+    }
+}
+
 impl Tag {
     /// Creates a new MPEG-4 audio tag containing the atom.
     pub const fn new(ftyp: Option<String>, mvhd: Option<Vec<u8>>, atoms: Vec<Atom>) -> Self {
@@ -166,6 +262,47 @@ impl Tag {
     pub fn remove_artwork(&mut self) {
         self.remove_data(atom::ARTWORK);
     }
+
+    /// Returns information about all artworks formatted in an easily readable way.
+    fn format_artworks(&self) -> Option<String> {
+        let format_artwork = |a: &Data| {
+            let mut string = String::new();
+            match a {
+                Data::Png(_) => string.push_str("png"),
+                Data::Jpeg(_) => string.push_str("jpeg"),
+                _ => unreachable!(),
+            }
+
+            let len = a.image_data().unwrap().len();
+
+            if len < 1024 {
+                string.push_str(&format!(" {}", len));
+            } else if len < 1024usize.pow(2) {
+                let size = len / 1024;
+                string.push_str(&format!(" {}k", size));
+            } else {
+                let size = len / 1024usize.pow(2);
+                string.push_str(&format!(" {}M", size));
+            }
+
+            string.push('\n');
+
+            string
+        };
+
+        if self.artworks().count() > 1 {
+            let mut string = String::from("artworks:\n");
+            for a in self.artworks() {
+                string.push_str("    ");
+                string.push_str(&format_artwork(a));
+            }
+
+            return Some(string);
+        }
+
+        let a = self.artwork()?;
+        Some(format!("artwork: {}", format_artwork(a)))
+    }
 }
 
 /// ### Media type
@@ -259,6 +396,15 @@ impl Tag {
             }
             _ => None,
         }
+    }
+
+    /// Returns the duration formatted in an easily readable way.
+    fn format_duration(&self) -> Option<String> {
+        let total_seconds = self.duration()?.round() as usize;
+        let seconds = total_seconds % 60;
+        let minutes = total_seconds / 60;
+
+        Some(format!("duration: {}:{:02}\n", minutes, seconds))
     }
 }
 

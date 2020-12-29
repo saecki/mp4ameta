@@ -222,4 +222,22 @@ impl Tag {
         self.remove_standard_genres();
         self.remove_custom_genres();
     }
+
+    /// Returns all genres formatted in an easily readable way.
+    pub(crate) fn format_genres(&self) -> Option<String> {
+        if self.genres().count() > 1 {
+            let mut string = String::from("genres:\n");
+            for v in self.genres() {
+                string.push_str("    ");
+                string.push_str(v);
+                string.push('n');
+            }
+            return Some(string);
+        }
+
+        match self.genre() {
+            Some(s) => Some(format!("genre: {}\n", s)),
+            None => None,
+        }
+    }
 }

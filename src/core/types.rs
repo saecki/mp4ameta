@@ -1,4 +1,4 @@
-use std::convert::TryFrom;
+use std::{convert::TryFrom, fmt};
 
 use crate::ErrorKind;
 
@@ -84,6 +84,21 @@ impl TryFrom<u8> for MediaType {
     }
 }
 
+impl fmt::Display for MediaType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Movie => write!(f, "Movie"),
+            Self::Normal => write!(f, "Normal"),
+            Self::AudioBook => write!(f, "Audiobook"),
+            Self::WhackedBookmark => write!(f, "Whacked Bookmark"),
+            Self::MusicVideo => write!(f, "Music Video"),
+            Self::ShortFilm => write!(f, "Short Film"),
+            Self::TvShow => write!(f, "TV-Show"),
+            Self::Booklet => write!(f, "Booklet"),
+        }
+    }
+}
+
 /// An enum describing the rating of a file stored in the `rtng` atom.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AdvisoryRating {
@@ -113,6 +128,16 @@ impl From<u8> for AdvisoryRating {
             CLEAN => Self::Clean,
             INOFFENSIVE => Self::Inoffensive,
             _ => Self::Explicit(rating),
+        }
+    }
+}
+
+impl fmt::Display for AdvisoryRating {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Clean => write!(f, "Clean"),
+            Self::Inoffensive => write!(f, "Inoffensive"),
+            Self::Explicit(r) => write!(f, "Explicit {}", r),
         }
     }
 }

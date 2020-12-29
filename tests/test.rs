@@ -42,7 +42,7 @@ fn read_dir(path: &str) {
 
         println!("{}:", filepath.display());
         let tag_sample = Tag::read_from_path(&filepath).unwrap();
-        println!("{:#?}", tag_sample);
+        println!("{}", tag_sample);
     }
 }
 
