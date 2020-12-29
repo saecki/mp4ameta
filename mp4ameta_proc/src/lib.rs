@@ -79,7 +79,7 @@ pub fn multiple_string_values_accessor(input: TokenStream) -> TokenStream {
 
     let mut value_ident_plural = value_ident.clone();
     if value_ident_plural.ends_with('y') {
-        let _ = value_ident_plural.split_off(value_ident_plural.len());
+        value_ident_plural.pop();
         value_ident_plural.push_str("ies");
     } else {
         value_ident_plural.push('s');
