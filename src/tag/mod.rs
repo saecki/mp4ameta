@@ -226,8 +226,32 @@ impl Tag {
 
         match version {
             0 => {
+                // # Version 0
+                // 1 byte version
+                // 3 bytes flags
+                // 4 bytes creation time
+                // 4 bytes motification time
+                // 4 bytes time scale
+                // 4 bytes duration
+                // ...
                 let timescale_unit = be_int!(vec, 12, u32)?;
                 let duration_units = be_int!(vec, 16, u32)?;
+
+                let duration = duration_units as f64 / timescale_unit as f64;
+
+                Some(duration)
+            }
+            1 => {
+                // # Version 1
+                // 1 byte version
+                // 3 bytes flags
+                // 8 bytes creation time
+                // 8 bytes motification time
+                // 4 bytes time scale
+                // 8 bytes duration
+                // ...
+                let timescale_unit = be_int!(vec, 20, u32)?;
+                let duration_units = be_int!(vec, 24, u64)?;
 
                 let duration = duration_units as f64 / timescale_unit as f64;
 
