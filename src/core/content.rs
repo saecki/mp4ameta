@@ -1,7 +1,7 @@
 use std::fmt;
 use std::io::{Read, Seek, SeekFrom, Write};
 
-use crate::{core::atom, data, Atom, AtomT, Data, ErrorKind, Ident};
+use crate::{core::atom, data, Atom, AtomIdent, AtomT, Data, ErrorKind};
 
 /// An enum representing the different types of content an atom might have.
 #[derive(Clone, Eq, PartialEq)]
@@ -75,9 +75,14 @@ impl Content {
         }
     }
 
-    /// Returns true if the content is empty.
+    /// Returns whether the content is empty.
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        match self {
+            Self::Atoms(v) => v.is_empty(),
+            Self::RawData(d) => d.is_empty(),
+            Self::TypedData(d) => d.is_empty(),
+            Self::Empty => true,
+        }
     }
 
     /// Returns an iterator over the children atoms.
@@ -97,7 +102,7 @@ impl Content {
     }
 
     /// Returns a reference to the first children atom matching the `identifier`, if present.
-    pub fn child(&self, ident: Ident) -> Option<&Atom> {
+    pub fn child(&self, ident: AtomIdent) -> Option<&Atom> {
         self.iter().find(|a| a.ident == ident)
     }
 
@@ -110,7 +115,7 @@ impl Content {
     }
 
     /// Returns a mutable reference to the first children atom matching the `identfier`, if present.
-    pub fn child_mut(&mut self, ident: Ident) -> Option<&mut Atom> {
+    pub fn child_mut(&mut self, ident: AtomIdent) -> Option<&mut Atom> {
         self.iter_mut().find(|a| a.ident == ident)
     }
 
@@ -123,7 +128,7 @@ impl Content {
     }
 
     /// Consumes self and returns the first children atom matching the `identfier`, if present.
-    pub fn take_child(self, ident: Ident) -> Option<Atom> {
+    pub fn take_child(self, ident: AtomIdent) -> Option<Atom> {
         self.into_iter().find(|a| a.ident == ident)
     }
 
@@ -132,11 +137,29 @@ impl Content {
         self.into_iter().next()
     }
 
-    /// Replaces `self` with it's default value and returns the data, if present.
-    pub fn take_data(&mut self) -> Option<Data> {
-        let content = std::mem::take(self);
+    /// Return a data reference if `self` is of type [`Content::RawData`](crate::Content::RawData)
+    /// or [`Content::TypedData`](crate::Content::TypedData).
+    pub fn data(&self) -> Option<&Data> {
+        match self {
+            Self::TypedData(d) => Some(d),
+            Self::RawData(d) => Some(d),
+            _ => None,
+        }
+    }
 
-        match content {
+    /// Return a data reference if `self` is of type [`Content::RawData`](crate::Content::RawData)
+    /// or [`Content::TypedData`](crate::Content::TypedData).
+    pub fn data_mut(&mut self) -> Option<&mut Data> {
+        match self {
+            Self::TypedData(d) => Some(d),
+            Self::RawData(d) => Some(d),
+            _ => None,
+        }
+    }
+
+    /// Replaces `self` with it's default value and returns the data, if present.
+    pub fn take_data(self) -> Option<Data> {
+        match self {
             Self::TypedData(d) => Some(d),
             Self::RawData(d) => Some(d),
             _ => None,
@@ -240,7 +263,7 @@ impl ContentT {
     }
 
     /// Returns a reference to the first children atom matching the `identifier`, if present.
-    pub fn child(&self, ident: Ident) -> Option<&AtomT> {
+    pub fn child(&self, ident: AtomIdent) -> Option<&AtomT> {
         self.iter().find(|a| a.ident == ident)
     }
 
@@ -253,7 +276,7 @@ impl ContentT {
     }
 
     /// Returns a mutable reference to the first children atom matching the `identfier`, if present.
-    pub fn child_mut(&mut self, ident: Ident) -> Option<&mut AtomT> {
+    pub fn child_mut(&mut self, ident: AtomIdent) -> Option<&mut AtomT> {
         self.iter_mut().find(|a| a.ident == ident)
     }
 
@@ -266,7 +289,7 @@ impl ContentT {
     }
 
     /// Consumes self and returns the first children atom matching the `identfier`, if present.
-    pub fn take_child(self, ident: Ident) -> Option<AtomT> {
+    pub fn take_child(self, ident: AtomIdent) -> Option<AtomT> {
         self.into_iter().find(|a| a.ident == ident)
     }
 

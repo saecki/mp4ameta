@@ -46,7 +46,7 @@ fn metadata_read_atom_t() -> AtomT {
         AtomT::new(USER_DATA, 0, ContentT::atom_t(
             AtomT::new(METADATA, 4, ContentT::atom_t(
                 AtomT::new(ITEM_LIST, 0, ContentT::Atoms(vec![
-                    AtomT::new(WILDCARD, 0, ContentT::Atoms(vec![
+                    AtomT::new(FREEFORM, 0, ContentT::Atoms(vec![
                         AtomT::data_atom(),
                         AtomT::mean_atom(),
                         AtomT::name_atom(),

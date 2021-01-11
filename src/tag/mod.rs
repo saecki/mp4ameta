@@ -4,7 +4,10 @@ use std::fs::{File, OpenOptions};
 use std::io::{BufReader, Read, Seek, Write};
 use std::path::Path;
 
-use crate::{atom, AdvisoryRating, Atom, AtomData, Content, Data, Ident, MediaType};
+use crate::{
+    atom::{self, Ident},
+    AdvisoryRating, Atom, AtomData, Data, MediaType,
+};
 
 pub mod genre;
 pub mod tuple;
@@ -17,20 +20,7 @@ pub struct Tag {
     /// The `mvhd` atom.
     pub mvhd: Option<Vec<u8>>,
     /// A vector containing metadata atoms
-    pub atoms: Vec<Atom>,
-}
-
-impl IntoIterator for Tag {
-    type Item = AtomData;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.atoms
-            .into_iter()
-            .filter_map(AtomData::try_from_typed)
-            .collect::<Vec<AtomData>>()
-            .into_iter()
-    }
+    pub atoms: Vec<AtomData>,
 }
 
 impl fmt::Debug for Tag {
@@ -141,7 +131,7 @@ impl fmt::Display for Tag {
 
 impl Tag {
     /// Creates a new MPEG-4 audio tag containing the atom.
-    pub const fn new(ftyp: Option<String>, mvhd: Option<Vec<u8>>, atoms: Vec<Atom>) -> Self {
+    pub const fn new(ftyp: Option<String>, mvhd: Option<Vec<u8>>, atoms: Vec<AtomData>) -> Self {
         Self { ftyp, mvhd, atoms }
     }
 
@@ -171,7 +161,8 @@ impl Tag {
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.
     pub fn dump_to(&self, writer: &mut impl Write) -> crate::Result<()> {
-        atom::dump_tag_to(writer, self.atoms.clone())
+        let atoms: Vec<Atom> = self.atoms.iter().map(Atom::from).collect();
+        atom::dump_tag_to(writer, atoms)
     }
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.
@@ -221,32 +212,32 @@ impl Tag {
     /// Returns all artwork images of type [`Data::Jpeg`](crate::Data::Jpeg) or
     /// [`Data::Png`](crate::Data::Png) (`covr`).
     pub fn artworks(&self) -> impl Iterator<Item = &Data> {
-        self.image(atom::ARTWORK)
+        self.image(&Ident::Std(atom::ARTWORK))
     }
 
     /// Returns the first artwork image of type [`Data::Jpeg`](crate::Data::Jpeg) or
     /// [`Data::Png`](crate::Data::Png) (`covr`).
     pub fn artwork(&self) -> Option<&Data> {
-        self.image(atom::ARTWORK).next()
+        self.image(&Ident::Std(atom::ARTWORK)).next()
     }
 
     /// Consumes and returns all artwork images of type [`Data::Jpeg`](crate::Data::Jpeg) or
     /// [`Data::Png`](crate::Data::Png) (`covr`).
     pub fn take_artworks(&mut self) -> impl Iterator<Item = Data> + '_ {
-        self.take_image(atom::ARTWORK)
+        self.take_image(&Ident::Std(atom::ARTWORK))
     }
 
     /// Consumes all and returns the first artwork image of type [`Data::Jpeg`](crate::Data::Jpeg) or
     /// [`Data::Png`](crate::Data::Png) (`covr`).
     pub fn take_artwork(&mut self) -> Option<Data> {
-        self.take_image(atom::ARTWORK).next()
+        self.take_image(&Ident::Std(atom::ARTWORK)).next()
     }
 
     /// Sets the artwork image data of type [`Data::Jpeg`](crate::Data::Jpeg) or
     /// [`Data::Png`](crate::Data::Png) (`covr`). This will remove all other artworks.
     pub fn set_artwork(&mut self, image: Data) {
         if image.is_image() {
-            self.set_data(atom::ARTWORK, image);
+            self.set_data(Ident::Std(atom::ARTWORK), image);
         }
     }
 
@@ -254,13 +245,13 @@ impl Tag {
     /// [`Data::Png`](crate::Data::Png) (`covr`).
     pub fn add_artwork(&mut self, image: Data) {
         if image.is_image() {
-            self.add_data(atom::ARTWORK, image);
+            self.add_data(Ident::Std(atom::ARTWORK), image);
         }
     }
 
     /// Removes all artworks (`covr`).
     pub fn remove_artwork(&mut self) {
-        self.remove_data(atom::ARTWORK);
+        self.remove_data(&Ident::Std(atom::ARTWORK));
     }
 
     /// Returns information about all artworks formatted in an easily readable way.
@@ -309,7 +300,7 @@ impl Tag {
 impl Tag {
     /// Returns the media type (`stik`).
     pub fn media_type(&self) -> Option<MediaType> {
-        let vec = self.bytes(atom::MEDIA_TYPE).next()?;
+        let vec = self.bytes(&Ident::Std(atom::MEDIA_TYPE)).next()?;
 
         if vec.is_empty() {
             return None;
@@ -320,12 +311,12 @@ impl Tag {
 
     /// Sets the media type (`stik`).
     pub fn set_media_type(&mut self, media_type: MediaType) {
-        self.set_data(atom::MEDIA_TYPE, Data::Reserved(vec![media_type.value()]));
+        self.set_data(Ident::Std(atom::MEDIA_TYPE), Data::Reserved(vec![media_type.value()]));
     }
 
     /// Removes the media type (`stik`).
     pub fn remove_media_type(&mut self) {
-        self.remove_data(atom::MEDIA_TYPE);
+        self.remove_data(&Ident::Std(atom::MEDIA_TYPE));
     }
 }
 
@@ -333,7 +324,7 @@ impl Tag {
 impl Tag {
     /// Returns the advisory rating (`rtng`).
     pub fn advisory_rating(&self) -> Option<AdvisoryRating> {
-        let vec = self.bytes(atom::ADVISORY_RATING).next()?;
+        let vec = self.bytes(&Ident::Std(atom::ADVISORY_RATING)).next()?;
 
         if vec.is_empty() {
             return None;
@@ -344,12 +335,12 @@ impl Tag {
 
     /// Sets the advisory rating (`rtng`).
     pub fn set_advisory_rating(&mut self, rating: AdvisoryRating) {
-        self.set_data(atom::ADVISORY_RATING, Data::Reserved(vec![rating.value()]));
+        self.set_data(Ident::Std(atom::ADVISORY_RATING), Data::Reserved(vec![rating.value()]));
     }
 
     /// Removes the advisory rating (`rtng`).
     pub fn remove_advisory_rating(&mut self) {
-        self.remove_data(atom::ADVISORY_RATING);
+        self.remove_data(&Ident::Std(atom::ADVISORY_RATING));
     }
 }
 
@@ -425,10 +416,12 @@ impl Tag {
     /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(Ident(*b"test"), Data::BeSigned(b"data".to_vec()));
-    /// assert_eq!(tag.bytes(Ident(*b"test")).next().unwrap(), b"data");
+    /// let test = &Ident::bytes(*b"test");
+    ///
+    /// tag.set_data(test.clone(), Data::BeSigned(b"data".to_vec()));
+    /// assert_eq!(tag.bytes(test).next().unwrap(), b"data");
     /// ```
-    pub fn bytes(&self, ident: Ident) -> impl Iterator<Item = &Vec<u8>> {
+    pub fn bytes<'a>(&'a self, ident: &'a Ident) -> impl Iterator<Item = &Vec<u8>> {
         self.data(ident).filter_map(Data::bytes)
     }
 
@@ -439,11 +432,13 @@ impl Tag {
     /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(Ident(*b"test"), Data::Reserved(b"data".to_vec()));
-    /// tag.bytes_mut(Ident(*b"test")).next().unwrap().push(49);
-    /// assert_eq!(tag.bytes(Ident(*b"test")).next().unwrap(), b"data1");
+    /// let test = &Ident::bytes(*b"test");
+    ///
+    /// tag.set_data(test.clone(), Data::Reserved(b"data".to_vec()));
+    /// tag.bytes_mut(test).next().unwrap().push(49);
+    /// assert_eq!(tag.bytes(test).next().unwrap(), b"data1");
     /// ```
-    pub fn bytes_mut(&mut self, ident: Ident) -> impl Iterator<Item = &mut Vec<u8>> {
+    pub fn bytes_mut<'a>(&'a mut self, ident: &'a Ident) -> impl Iterator<Item = &mut Vec<u8>> {
         self.data_mut(ident).filter_map(Data::bytes_mut)
     }
 
@@ -454,11 +449,13 @@ impl Tag {
     /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(Ident(*b"test"), Data::Reserved(b"data".to_vec()));
-    /// assert_eq!(tag.take_bytes(Ident(*b"test")).next(), Some(b"data".to_vec()));
-    /// assert_eq!(tag.bytes(Ident(*b"test")).next(), None);
+    /// let test = &Ident::bytes(*b"test");
+    ///
+    /// tag.set_data(test.clone(), Data::Reserved(b"data".to_vec()));
+    /// assert_eq!(tag.take_bytes(test).next(), Some(b"data".to_vec()));
+    /// assert_eq!(tag.bytes(test).next(), None);
     /// ```
-    pub fn take_bytes(&mut self, ident: Ident) -> impl Iterator<Item = Vec<u8>> + '_ {
+    pub fn take_bytes(&mut self, ident: &Ident) -> impl Iterator<Item = Vec<u8>> + '_ {
         self.take_data(ident).filter_map(Data::take_bytes)
     }
 
@@ -469,10 +466,12 @@ impl Tag {
     /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
-    /// assert_eq!(tag.string(Ident(*b"test")).next().unwrap(), "data");
+    /// let test = &Ident::bytes(*b"test");
+    ///
+    /// tag.set_data(test.clone(), Data::Utf8("data".into()));
+    /// assert_eq!(tag.string(test).next().unwrap(), "data");
     /// ```
-    pub fn string(&self, ident: Ident) -> impl Iterator<Item = &str> {
+    pub fn string<'a>(&'a self, ident: &'a Ident) -> impl Iterator<Item = &str> {
         self.data(ident).filter_map(Data::string)
     }
 
@@ -483,11 +482,13 @@ impl Tag {
     /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
-    /// tag.string_mut(Ident(*b"test")).next().unwrap().push('1');
-    /// assert_eq!(tag.string(Ident(*b"test")).next().unwrap(), "data1");
+    /// let test = &Ident::bytes(*b"test");
+    ///
+    /// tag.set_data(test.clone(), Data::Utf8("data".into()));
+    /// tag.string_mut(test).next().unwrap().push('1');
+    /// assert_eq!(tag.string(test).next().unwrap(), "data1");
     /// ```
-    pub fn string_mut(&mut self, ident: Ident) -> impl Iterator<Item = &mut String> {
+    pub fn string_mut<'a>(&'a mut self, ident: &'a Ident) -> impl Iterator<Item = &mut String> {
         self.data_mut(ident).filter_map(Data::string_mut)
     }
 
@@ -498,11 +499,13 @@ impl Tag {
     /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
-    /// assert_eq!(tag.take_string(Ident(*b"test")).next(), Some("data".into()));
-    /// assert_eq!(tag.string(Ident(*b"test")).next(), None);
+    /// let test = &Ident::bytes(*b"test");
+    ///
+    /// tag.set_data(test.clone(), Data::Utf8("data".into()));
+    /// assert_eq!(tag.take_string(test).next(), Some("data".into()));
+    /// assert_eq!(tag.string(test).next(), None);
     /// ```
-    pub fn take_string(&mut self, ident: Ident) -> impl Iterator<Item = String> + '_ {
+    pub fn take_string(&mut self, ident: &Ident) -> impl Iterator<Item = String> + '_ {
         self.take_data(ident).filter_map(Data::take_string)
     }
 
@@ -514,13 +517,15 @@ impl Tag {
     /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(Ident(*b"test"), Data::Jpeg(b"<the image data>".to_vec()));
-    /// match tag.image(Ident(*b"test")).next().unwrap() {
+    /// let test = &Ident::bytes(*b"test");
+    ///
+    /// tag.set_data(test.clone(), Data::Jpeg(b"<the image data>".to_vec()));
+    /// match tag.image(test).next().unwrap() {
     ///     Data::Jpeg(v) => assert_eq!(*v, b"<the image data>"),
     ///     _ => panic!("data does not match"),
     /// };
     /// ```
-    pub fn image(&self, ident: Ident) -> impl Iterator<Item = &Data> {
+    pub fn image<'a>(&'a self, ident: &'a Ident) -> impl Iterator<Item = &Data> {
         self.data(ident).filter_map(Data::image)
     }
 
@@ -532,17 +537,19 @@ impl Tag {
     /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(Ident(*b"test"), Data::Jpeg(b"<the image data>".to_vec()));
-    /// match tag.image_mut(Ident(*b"test")).next().unwrap() {
+    /// let test = &Ident::bytes(*b"test");
+    ///
+    /// tag.set_data(test.clone(), Data::Jpeg(b"<the image data>".to_vec()));
+    /// match tag.image_mut(test).next().unwrap() {
     ///     Data::Jpeg(v) => v.push(49u8),
     ///     _ => panic!("data type does match"),
     /// }
-    /// match tag.image(Ident(*b"test")).next().unwrap() {
+    /// match tag.image(test).next().unwrap() {
     ///     Data::Jpeg(v) => assert_eq!(*v, b"<the image data>1"),
     ///     _ => panic!("data does not match"),
     /// };
     /// ```
-    pub fn image_mut(&mut self, ident: Ident) -> impl Iterator<Item = &mut Data> {
+    pub fn image_mut<'a>(&'a mut self, ident: &'a Ident) -> impl Iterator<Item = &mut Data> {
         self.data_mut(ident).filter_map(Data::image_mut)
     }
 
@@ -553,15 +560,17 @@ impl Tag {
     /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(Ident(*b"test"), Data::Png(b"<the image data>".to_vec()));
-    /// match tag.take_data(Ident(*b"test")).next().unwrap() {
+    /// let test = &Ident::bytes(*b"test");
+    ///
+    /// tag.set_data(test.clone(), Data::Png(b"<the image data>".to_vec()));
+    /// match tag.take_data(test).next().unwrap() {
     ///     Data::Png(s) =>  assert_eq!(s, b"<the image data>".to_vec()),
     ///     _ => panic!("data does not match"),
     /// };
-    /// assert_eq!(tag.string(Ident(*b"test")).next(), None);
+    /// assert_eq!(tag.string(test).next(), None);
     /// ```
-    pub fn take_image(&mut self, ident: Ident) -> impl Iterator<Item = Data> + '_ {
-        self.take_data(ident).filter_map(Data::take_image)
+    pub fn take_image(&mut self, ident: &Ident) -> impl Iterator<Item = Data> {
+        self.take_data(&ident).filter_map(Data::take_image)
     }
 
     /// Returns all data references corresponding to the identifier.
@@ -571,23 +580,16 @@ impl Tag {
     /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
-    /// match tag.data(Ident(*b"test")).next().unwrap() {
+    /// let test = &Ident::bytes(*b"test");
+    ///
+    /// tag.set_data(test.clone(), Data::Utf8("data".into()));
+    /// match tag.data(test).next().unwrap() {
     ///     Data::Utf8(s) =>  assert_eq!(s, "data"),
     ///     _ => panic!("data does not match"),
     /// };
     /// ```
-    pub fn data(&self, ident: Ident) -> impl Iterator<Item = &Data> {
-        self.atoms.iter().filter_map(move |a| {
-            if a.ident == ident {
-                if let Some(d) = a.child(atom::DATA) {
-                    if let Content::TypedData(data) = &d.content {
-                        return Some(data);
-                    }
-                }
-            }
-            None
-        })
+    pub fn data<'a>(&'a self, ident: &'a Ident) -> impl Iterator<Item = &Data> {
+        self.atoms.iter().filter(move |a| &a.ident == ident).map(|a| &a.data)
     }
 
     /// Returns all mutable data references corresponding to the identifier.
@@ -597,23 +599,16 @@ impl Tag {
     /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
-    /// if let Data::Utf8(s) = tag.data_mut(Ident(*b"test")).next().unwrap() {
+    /// let test = &Ident::bytes(*b"test");
+    ///
+    /// tag.set_data(test.clone(), Data::Utf8("data".into()));
+    /// if let Data::Utf8(s) = tag.data_mut(test).next().unwrap() {
     ///     s.push('1');
     /// }
-    /// assert_eq!(tag.string(Ident(*b"test")).next().unwrap(), "data1");
+    /// assert_eq!(tag.string(test).next().unwrap(), "data1");
     /// ```
-    pub fn data_mut(&mut self, ident: Ident) -> impl Iterator<Item = &mut Data> {
-        self.atoms.iter_mut().filter_map(move |a| {
-            if a.ident == ident {
-                if let Some(d) = a.child_mut(atom::DATA) {
-                    if let Content::TypedData(data) = &mut d.content {
-                        return Some(data);
-                    }
-                }
-            }
-            None
-        })
+    pub fn data_mut<'a>(&'a mut self, ident: &'a Ident) -> impl Iterator<Item = &mut Data> {
+        self.atoms.iter_mut().filter(move |a| &a.ident == ident).map(|a| &mut a.data)
     }
 
     /// Consumes all data corresponding to the identifier and returns it.
@@ -623,22 +618,29 @@ impl Tag {
     /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
-    /// match tag.take_data(Ident(*b"test")).next().unwrap() {
+    /// let test = &Ident::bytes(*b"test");
+    ///
+    /// tag.set_data(test.clone(), Data::Utf8("data".into()));
+    /// match tag.take_data(test).next().unwrap() {
     ///     Data::Utf8(s) =>  assert_eq!(s, "data".to_string()),
     ///     _ => panic!("data does not match"),
     /// };
-    /// assert_eq!(tag.string(Ident(*b"test")).next(), None);
+    /// assert_eq!(tag.string(test).next(), None);
     /// ```
-    pub fn take_data(&mut self, ident: Ident) -> impl Iterator<Item = Data> + '_ {
-        self.atoms.iter_mut().filter_map(move |a| {
-            if a.ident == ident {
-                if let Some(d) = a.child_mut(atom::DATA) {
-                    return d.content.take_data();
-                }
+    pub fn take_data(&mut self, ident: &Ident) -> impl Iterator<Item = Data> {
+        let mut data = Vec::new();
+
+        let mut i = 0;
+        while i < self.atoms.len() {
+            if &self.atoms[i].ident == ident {
+                let removed = self.atoms.swap_remove(i);
+                data.push(removed.data);
+            } else {
+                i += 1;
             }
-            None
-        })
+        }
+
+        data.into_iter()
     }
 
     /// Removes all other atoms, corresponding to the identifier, and adds a new atom containing the
@@ -649,12 +651,14 @@ impl Tag {
     /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
-    /// assert_eq!(tag.string(Ident(*b"test")).next().unwrap(), "data");
+    /// let test = &Ident::bytes(*b"test");
+    ///
+    /// tag.set_data(test.clone(), Data::Utf8("data".into()));
+    /// assert_eq!(tag.string(test).next().unwrap(), "data");
     /// ```
     pub fn set_data(&mut self, ident: Ident, data: Data) {
-        self.remove_data(ident);
-        self.atoms.push(Atom::new(ident, 0, Content::data_atom_with(data)));
+        self.remove_data(&ident);
+        self.atoms.push(AtomData::new(ident, data));
     }
 
     /// Adds a new atom, corresponding to the identifier, containing the provided data.
@@ -664,15 +668,17 @@ impl Tag {
     /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.add_data(Ident(*b"test"), Data::Utf8("data1".into()));
-    /// tag.add_data(Ident(*b"test"), Data::Utf8("data2".into()));
-    /// let mut strings = tag.string(Ident(*b"test"));
+    /// let test = &Ident::bytes(*b"test");
+    ///
+    /// tag.add_data(test.clone(), Data::Utf8("data1".into()));
+    /// tag.add_data(test.clone(), Data::Utf8("data2".into()));
+    /// let mut strings = tag.string(test);
     /// assert_eq!(strings.next(), Some("data1"));
     /// assert_eq!(strings.next(), Some("data2"));
     /// assert_eq!(strings.next(), None)
     /// ```
     pub fn add_data(&mut self, ident: Ident, data: Data) {
-        self.atoms.push(Atom::new(ident, 0, Content::data_atom_with(data)));
+        self.atoms.push(AtomData::new(ident, data));
     }
 
     /// Removes the data corresponding to the identifier.
@@ -682,19 +688,14 @@ impl Tag {
     /// use mp4ameta::{Tag, Data, Ident};
     ///
     /// let mut tag = Tag::default();
-    /// tag.set_data(Ident(*b"test"), Data::Utf8("data".into()));
-    /// assert!(tag.data(Ident(*b"test")).next().is_some());
-    /// tag.remove_data(Ident(*b"test"));
-    /// assert!(tag.data(Ident(*b"test")).next().is_none());
+    /// let test = &Ident::bytes(*b"test");
+    ///
+    /// tag.set_data(test.clone(), Data::Utf8("data".into()));
+    /// assert!(tag.data(test).next().is_some());
+    /// tag.remove_data(test);
+    /// assert!(tag.data(test).next().is_none());
     /// ```
-    pub fn remove_data(&mut self, ident: Ident) {
-        let mut i = 0;
-        while i < self.atoms.len() {
-            if self.atoms[i].ident == ident {
-                self.atoms.remove(i);
-            } else {
-                i += 1;
-            }
-        }
+    pub fn remove_data(&mut self, ident: &Ident) {
+        self.atoms.retain(|a| &a.ident != ident);
     }
 }
