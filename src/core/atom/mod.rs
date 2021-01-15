@@ -512,16 +512,25 @@ fn parse_chunk_offset(reader: &mut (impl Read + Seek)) -> crate::Result<ChunkOff
     let mut flags = [0u8; 3];
     reader.read_exact(&mut version)?;
     reader.read_exact(&mut flags)?;
+    let [version] = version;
 
-    let entries = data::read_u32(reader)?;
-    let mut offsets = Vec::new();
+    match version {
+        0 => {
+            let entries = data::read_u32(reader)?;
+            let mut offsets = Vec::new();
 
-    for _ in 0..entries {
-        let offset = data::read_u32(reader)?;
-        offsets.push(offset);
+            for _ in 0..entries {
+                let offset = data::read_u32(reader)?;
+                offsets.push(offset);
+            }
+
+            Ok(ChunkOffset { pos, version, flags, offsets })
+        }
+        _ => Err(crate::Error::new(
+            crate::ErrorKind::UnknownVersion(version),
+            "Unknown sample table chunk offset (stco) version".to_owned(),
+        )),
     }
-
-    Ok(ChunkOffset { pos, version: version[0], flags, offsets })
 }
 
 /// A struct storing the position and size of an atom.
