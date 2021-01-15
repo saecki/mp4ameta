@@ -8,16 +8,45 @@
 A library for reading and writing iTunes style MPEG-4 audio metadata.
 
 ## Usage
+
+### The easy way
 ```rust
-fn main() {
-  	let mut tag = mp4ameta::Tag::read_from_path("music.m4a").unwrap();
+let mut tag = mp4ameta::Tag::read_from_path("music.m4a").unwrap();
 
-  	println!("{}", tag.artist().unwrap());
+println!("{}", tag.artist().unwrap());
 
-  	tag.set_artist("artist");
+tag.set_artist("artist");
 
-  	tag.write_to_path("music.m4a").unwrap();
-}
+tag.write_to_path("music.m4a").unwrap();
+```
+
+### The hard way
+```rust
+use mp4ameta::{atom, Data, Ident, Tag};
+
+let mut tag = Tag::read_from_path("music.m4a").unwrap();
+
+let artist = tag.string(&Ident::bytes(*b"\xa9ART")).next().unwrap();
+println!("{}", artist);
+
+tag.set_data(Ident::Std(atom::ARTIST), Data::Utf8("artist".to_owned()));
+
+tag.write_to_path("music.m4a").unwrap();
+```
+
+### Using freeform idents
+```rust
+use mp4ameta::{Data, Ident, Tag};
+
+let mut tag = Tag::read_from_path("music.m4a").unwrap();
+let isrc_ident = Ident::freeform("com.apple.iTunes", "ISRC");
+
+let isrc = tag.string(&isrc_ident).next().unwrap();
+println!("{}", isrc);
+
+tag.set_data(isrc_ident, Data::Utf8("isrc".to_owned()));
+
+tag.write_to_path("music.m4a").unwrap();
 ```
 
 ## Supported Filetypes
