@@ -348,9 +348,20 @@ impl Tag {
 /// ### Duration
 impl Tag {
     /// Returns the duration in seconds.
-    pub fn duration(&self) -> Option<f64> {
-        let vec = self.mvhd.as_ref()?;
-        let version = vec.get(0)?;
+    pub fn duration(&self) -> crate::Result<f64> {
+        let vec = self.mvhd.as_ref().ok_or_else(|| {
+            crate::Error::new(
+                crate::ErrorKind::AtomNotFound(atom::MOVIE_HEADER),
+                "Error ".to_owned(),
+            )
+        })?;
+        let parsing_err = || {
+            crate::Error::new(
+                crate::ErrorKind::Parsing,
+                "Error parsing contents of mvhd".to_owned(),
+            )
+        };
+        let version = vec.get(0).ok_or_else(parsing_err)?;
 
         match version {
             0 => {
@@ -362,12 +373,12 @@ impl Tag {
                 // 4 bytes time scale
                 // 4 bytes duration
                 // ...
-                let timescale_unit = be_int!(vec, 12, u32)?;
-                let duration_units = be_int!(vec, 16, u32)?;
+                let timescale_unit = be_int!(vec, 12, u32).ok_or_else(parsing_err)?;
+                let duration_units = be_int!(vec, 16, u32).ok_or_else(parsing_err)?;
 
                 let duration = duration_units as f64 / timescale_unit as f64;
 
-                Some(duration)
+                Ok(duration)
             }
             1 => {
                 // # Version 1
@@ -378,20 +389,23 @@ impl Tag {
                 // 4 bytes time scale
                 // 8 bytes duration
                 // ...
-                let timescale_unit = be_int!(vec, 20, u32)?;
-                let duration_units = be_int!(vec, 24, u64)?;
+                let timescale_unit = be_int!(vec, 20, u32).ok_or_else(parsing_err)?;
+                let duration_units = be_int!(vec, 24, u64).ok_or_else(parsing_err)?;
 
                 let duration = duration_units as f64 / timescale_unit as f64;
 
-                Some(duration)
+                Ok(duration)
             }
-            _ => None,
+            v => Err(crate::Error::new(
+                crate::ErrorKind::UnknownVersion(*v),
+                "Duration could not be parsed, unknown mdhd version".to_owned(),
+            )),
         }
     }
 
     /// Returns the duration formatted in an easily readable way.
     fn format_duration(&self) -> Option<String> {
-        let total_seconds = self.duration()?.round() as usize;
+        let total_seconds = self.duration().ok()?.round() as usize;
         let seconds = total_seconds % 60;
         let minutes = total_seconds / 60;
 
