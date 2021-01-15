@@ -195,6 +195,8 @@ pub enum ContentT {
     /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34)
     /// code prior to the data parsed.
     TypedData,
+    /// A template for ignoring all data inside.
+    Ignore,
     /// Empty content.
     Empty,
 }
@@ -208,10 +210,11 @@ impl Default for ContentT {
 impl fmt::Debug for ContentT {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ContentT::Atoms(a) => write!(f, "ContentT::Atoms{{ {:#?} }}", a),
-            ContentT::RawData(d) => write!(f, "ContentT::RawData{{ {:?} }}", d),
-            ContentT::TypedData => write!(f, "ContentT::TypedData"),
-            ContentT::Empty => write!(f, "ContentT::Empty"),
+            Self::Atoms(a) => write!(f, "ContentT::Atoms{{ {:#?} }}", a),
+            Self::RawData(d) => write!(f, "ContentT::RawData{{ {:?} }}", d),
+            Self::TypedData => write!(f, "ContentT::TypedData"),
+            Self::Ignore => write!(f, "ContentT::TypedData"),
+            Self::Empty => write!(f, "ContentT::Empty"),
         }
     }
 }
@@ -326,7 +329,19 @@ impl ContentT {
                     ));
                 }
             }
-            ContentT::Empty => Content::Empty,
+            ContentT::Ignore => {
+                reader.seek(SeekFrom::Current(length as i64))?;
+                Content::Empty
+            }
+            ContentT::Empty => {
+                if length != 0 {
+                    return Err(crate::Error::new(
+                        crate::ErrorKind::Parsing,
+                        format!("Expected empty content found content of length: {}", length),
+                    ));
+                }
+                Content::Empty
+            }
         })
     }
 }

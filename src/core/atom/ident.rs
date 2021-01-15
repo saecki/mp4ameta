@@ -37,6 +37,8 @@ pub const FREE: AtomIdent = AtomIdent(*b"free");
 
 /// (`----`)
 pub const FREEFORM: AtomIdent = AtomIdent(*b"----");
+/// A identifier used internally as a wildcard.
+pub const WILDCARD: AtomIdent = AtomIdent([255, 255, 255, 255]);
 
 // iTunes 4.0 atoms
 /// (`rtng`)
@@ -172,7 +174,7 @@ impl fmt::Display for Ident {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Std(ident) => write!(f, "{}", ident),
-            Self::Freeform { mean, name } => write!(f, "{}:{}", mean, name),
+            Self::Freeform { mean, name } => write!(f, "----:{}:{}", mean, name),
         }
     }
 }

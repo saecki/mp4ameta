@@ -124,6 +124,11 @@ impl fmt::Display for Tag {
         if let Some(s) = self.format_lyrics() {
             string.push_str(&s);
         }
+        for a in self.atoms.iter() {
+            if let (Ident::Freeform { .. }, Some(s)) = (&a.ident, &a.data.string()) {
+                string.push_str(&format!("{}: {}\n", a.ident, s));
+            }
+        }
 
         write!(f, "{}", string)
     }

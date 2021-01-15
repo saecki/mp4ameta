@@ -363,9 +363,9 @@ impl AtomT {
             Err(e) => return Err(e),
         };
 
-        if ident == self.ident {
+        if ident == self.ident || self.ident == WILDCARD {
             match parse_content(reader, &self.content, self.offset, len - 8) {
-                Ok(c) => Ok(Atom::new(self.ident, self.offset, c)),
+                Ok(c) => Ok(Atom::new(ident, self.offset, c)),
                 Err(e) => Err(crate::Error::new(
                     e.kind,
                     format!("Error reading {}: {}", ident, e.description),
@@ -387,9 +387,9 @@ impl AtomT {
         while parsed_bytes < len {
             let (atom_len, atom_ident) = parse_head(reader)?;
 
-            if atom_ident == self.ident {
+            if atom_ident == self.ident || self.ident == WILDCARD {
                 return match parse_content(reader, &self.content, self.offset, atom_len - 8) {
-                    Ok(c) => Ok(Atom::new(self.ident, self.offset, c)),
+                    Ok(c) => Ok(Atom::new(atom_ident, self.offset, c)),
                     Err(e) => Err(crate::Error::new(
                         e.kind,
                         format!("Error reading {}: {}", atom_ident, e.description),
@@ -423,10 +423,10 @@ pub fn parse_atoms(
         let mut parsed = false;
 
         for a in atoms {
-            if atom_ident == a.ident {
+            if atom_ident == a.ident || a.ident == WILDCARD {
                 match parse_content(reader, &a.content, a.offset, atom_len - 8) {
                     Ok(c) => {
-                        parsed_atoms.push(Atom::new(a.ident, a.offset, c));
+                        parsed_atoms.push(Atom::new(atom_ident, a.offset, c));
                         parsed = true;
                     }
                     Err(e) => {
@@ -485,7 +485,12 @@ pub fn parse_head(reader: &mut impl Read) -> crate::Result<(usize, AtomIdent)> {
         ));
     }
 
-    debug_assert!(len >= 8, "Atom length is less than 8 bytes");
+    if len < 8 {
+        return Err(crate::Error::new(
+            crate::ErrorKind::Parsing,
+            format!("Invalid atom length of less than 8 bytes: {}", len),
+        ));
+    }
 
     Ok((len, AtomIdent(ident)))
 }
@@ -605,6 +610,7 @@ pub fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
                             tag_atoms = Some(
                                 atoms
                                     .into_iter()
+                                    .filter(|a| a.ident != FREE)
                                     .filter_map(|a| AtomData::try_from(a).ok())
                                     .collect(),
                             );
@@ -761,11 +767,11 @@ pub fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()> {
 /// container hierarchy and won't result in a usable file.
 pub fn dump_tag_to(writer: &mut impl Write, atoms: Vec<Atom>) -> crate::Result<()> {
     #[rustfmt::skip]
-        let ftyp = Atom::new(FILETYPE, 0, Content::RawData(
+    let ftyp = Atom::new(FILETYPE, 0, Content::RawData(
         Data::Utf8("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".to_owned())),
     );
     #[rustfmt::skip]
-        let moov = Atom::new(MOVIE, 0, Content::atom(
+    let moov = Atom::new(MOVIE, 0, Content::atom(
         Atom::new(USER_DATA, 0, Content::atom(
             Atom::new(METADATA, 4, Content::atom(
                 Atom::new(ITEM_LIST, 0, Content::Atoms(atoms))
