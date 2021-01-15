@@ -1,4 +1,4 @@
-use mp4ameta::{AdvisoryRating, Data, MediaType, Tag, STANDARD_GENRES};
+use mp4ameta::{AdvisoryRating, Data, Ident, MediaType, Tag, STANDARD_GENRES};
 use std::fs;
 use walkdir::WalkDir;
 
@@ -7,7 +7,7 @@ const EXTENSIONS: [&str; 4] = [".m4a", ".m4b", ".m4p", ".m4v"];
 #[test]
 fn collection() {
     if let Some(path) = std::env::args().skip_while(|a| a != "collection").skip(1).next() {
-        println!("Testing colleciton at {}", &path);
+        println!("Testing collection at {}", &path);
         read_dir(&path);
     } else {
         println!("Skipping collection test since no path was provided.");
@@ -77,8 +77,9 @@ fn verify_sample_data() {
     assert_eq!(tag.total_tracks(), Some(13));
     assert_eq!(tag.year(), Some("2013"));
     assert_eq!(tag.artwork(), Some(&Data::Png(fs::read("files/artwork.png").unwrap())));
-    assert_eq!(tag.duration(), Some(0.486));
+    assert_eq!(tag.duration().ok(), Some(0.486));
     assert_eq!(tag.filetype(), Some("M4A \u{0}\u{0}\u{2}\u{0}isomiso2"));
+    assert_eq!(tag.string(&Ident::freeform("com.apple.iTunes", "ISRC")).next(), Some("TEST ISRC"));
 }
 
 #[test]
@@ -107,6 +108,7 @@ fn write() {
     tag.set_track(3, 7);
     tag.set_year("1998");
     tag.set_artwork(Data::Jpeg(b"NEW ARTWORK".to_vec()));
+    tag.set_data(Ident::freeform("com.apple.iTunes", "ISRC"), Data::Utf8("NEW ISRC".into()));
 
     println!("copying files/sample.m4a to target/write.m4a...");
     std::fs::copy("files/sample.m4a", "target/write.m4a").unwrap();
@@ -143,11 +145,12 @@ fn write() {
     assert_eq!(tag.total_tracks(), Some(7));
     assert_eq!(tag.year(), Some("1998"));
     assert_eq!(tag.artwork(), Some(&Data::Jpeg(b"NEW ARTWORK".to_vec())));
-    assert_eq!(tag.duration(), Some(0.486));
+    assert_eq!(tag.duration().ok(), Some(0.486));
     assert_eq!(tag.filetype(), Some("M4A \u{0}\u{0}\u{2}\u{0}isomiso2"));
+    assert_eq!(tag.string(&Ident::freeform("com.apple.iTunes", "ISRC")).next(), Some("NEW ISRC"));
 
     println!("deleting target/write.m4a...");
-    //std::fs::remove_file("target/write.m4a").unwrap();
+    std::fs::remove_file("target/write.m4a").unwrap();
 }
 
 #[test]
@@ -190,11 +193,11 @@ fn write_same() {
     assert_eq!(tag.total_tracks(), Some(13));
     assert_eq!(tag.year(), Some("2013"));
     assert_eq!(tag.artwork(), Some(&Data::Png(fs::read("files/artwork.png").unwrap())));
-    assert_eq!(tag.duration(), Some(0.486));
+    assert_eq!(tag.duration().ok(), Some(0.486));
     assert_eq!(tag.filetype(), Some("M4A \u{0}\u{0}\u{2}\u{0}isomiso2"));
 
     println!("deleting target/write_same.m4a...");
-    //std::fs::remove_file("target/write_same.m4a").unwrap();
+    std::fs::remove_file("target/write_same.m4a").unwrap();
 }
 
 #[test]
@@ -239,11 +242,11 @@ fn write_bigger() {
     assert_eq!(tag.track_number(), Some(7));
     assert_eq!(tag.total_tracks(), Some(13));
     assert_eq!(tag.year(), Some("2013"));
-    assert_eq!(tag.duration(), Some(0.486));
+    assert_eq!(tag.duration().ok(), Some(0.486));
     assert_eq!(tag.filetype(), Some("M4A \u{0}\u{0}\u{2}\u{0}isomiso2"));
 
     println!("deleting target/write_bigger.m4a...");
-    //std::fs::remove_file("target/write_bigger.m4a").unwrap();
+    std::fs::remove_file("target/write_bigger.m4a").unwrap();
 }
 
 #[test]
@@ -272,6 +275,7 @@ fn dump() {
     tag.set_track(7, 13);
     tag.set_year("2013");
     tag.set_artwork(Data::Png(b"TEST ARTWORK".to_vec()));
+    tag.set_data(Ident::freeform("com.apple.iTunes", "ISRC"), Data::Utf8("NEW ISRC".into()));
 
     println!("dumping...");
     tag.dump_to_path("target/dump.m4a").unwrap();
@@ -305,6 +309,7 @@ fn dump() {
     assert_eq!(tag.total_tracks(), Some(13));
     assert_eq!(tag.year(), Some("2013"));
     assert_eq!(tag.artwork(), Some(&Data::Png(b"TEST ARTWORK".to_vec())));
+    assert_eq!(tag.string(&Ident::freeform("com.apple.iTunes", "ISRC")).next(), Some("NEW ISRC"));
 
     println!("deleting target/dump.m4a...");
     std::fs::remove_file("target/dump.m4a").unwrap();

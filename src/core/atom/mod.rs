@@ -131,7 +131,7 @@ impl AtomData {
                 writer.write_all(&name_len.to_be_bytes())?;
                 writer.write_all(NAME.deref())?;
                 writer.write_all(&[0u8; 4])?;
-                writer.write_all(&mean.as_bytes())?;
+                writer.write_all(&name.as_bytes())?;
             }
             Ident::Std(ident) => writer.write_all(ident.deref())?,
         }
@@ -203,13 +203,13 @@ impl Atom {
     /// Creates a mean atom containing [`Content::RawData`](crate::Content::RawData)
     /// with the provided `mean` string.
     pub const fn mean_atom_with(mean: String) -> Self {
-        Self::new(MEAN, 0, Content::RawData(Data::Utf8(mean)))
+        Self::new(MEAN, 4, Content::RawData(Data::Utf8(mean)))
     }
 
     /// Creates a name atom containing [`Content::RawData`](crate::Content::RawData)
     /// with the provided `name` string.
     pub const fn name_atom_with(name: String) -> Self {
-        Self::new(NAME, 0, Content::RawData(Data::Utf8(name)))
+        Self::new(NAME, 4, Content::RawData(Data::Utf8(name)))
     }
 
     /// Creates a data atom containing [`Content::TypedData`](crate::Content::TypedData)

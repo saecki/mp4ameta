@@ -178,7 +178,14 @@ impl fmt::Display for Ident {
 }
 
 impl Ident {
-    /// Creates a new identifier containing the atom identifier, mean, and name.
+    /// Creates a new identifier of type [`Ident::Freeform`](Self::Freeform) containing the atom
+    /// identifier, mean, and name.
+    pub fn freeform(mean: impl Into<String>, name: impl Into<String>) -> Self {
+        Self::Freeform { mean: mean.into(), name: name.into() }
+    }
+
+    /// Creates a new identifier of type [`Ident::Std`](Self::Std) containing an atom identifier
+    /// with the 4-byte identifier.
     pub const fn bytes(bytes: [u8; 4]) -> Self {
         Self::Std(AtomIdent(bytes))
     }
