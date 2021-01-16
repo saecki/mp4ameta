@@ -179,6 +179,12 @@ impl fmt::Display for Ident {
     }
 }
 
+impl From<&Self> for Ident {
+    fn from(value: &Self) -> Self {
+        value.clone()
+    }
+}
+
 impl Ident {
     /// Creates a new identifier of type [`Ident::Freeform`](Self::Freeform) containing the atom
     /// identifier, mean, and name.

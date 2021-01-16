@@ -437,7 +437,7 @@ impl Tag {
     /// let mut tag = Tag::default();
     /// let test = &Ident::bytes(*b"test");
     ///
-    /// tag.set_data(test.clone(), Data::BeSigned(b"data".to_vec()));
+    /// tag.set_data(test, Data::BeSigned(b"data".to_vec()));
     /// assert_eq!(tag.bytes(test).next().unwrap(), b"data");
     /// ```
     pub fn bytes<'a>(&'a self, ident: &'a Ident) -> impl Iterator<Item = &Vec<u8>> {
@@ -453,7 +453,7 @@ impl Tag {
     /// let mut tag = Tag::default();
     /// let test = &Ident::bytes(*b"test");
     ///
-    /// tag.set_data(test.clone(), Data::Reserved(b"data".to_vec()));
+    /// tag.set_data(test, Data::Reserved(b"data".to_vec()));
     /// tag.bytes_mut(test).next().unwrap().push(49);
     /// assert_eq!(tag.bytes(test).next().unwrap(), b"data1");
     /// ```
@@ -470,7 +470,7 @@ impl Tag {
     /// let mut tag = Tag::default();
     /// let test = &Ident::bytes(*b"test");
     ///
-    /// tag.set_data(test.clone(), Data::Reserved(b"data".to_vec()));
+    /// tag.set_data(test, Data::Reserved(b"data".to_vec()));
     /// assert_eq!(tag.take_bytes(test).next(), Some(b"data".to_vec()));
     /// assert_eq!(tag.bytes(test).next(), None);
     /// ```
@@ -487,7 +487,7 @@ impl Tag {
     /// let mut tag = Tag::default();
     /// let test = &Ident::bytes(*b"test");
     ///
-    /// tag.set_data(test.clone(), Data::Utf8("data".into()));
+    /// tag.set_data(test, Data::Utf8("data".into()));
     /// assert_eq!(tag.string(test).next().unwrap(), "data");
     /// ```
     pub fn string<'a>(&'a self, ident: &'a Ident) -> impl Iterator<Item = &str> {
@@ -503,7 +503,7 @@ impl Tag {
     /// let mut tag = Tag::default();
     /// let test = &Ident::bytes(*b"test");
     ///
-    /// tag.set_data(test.clone(), Data::Utf8("data".into()));
+    /// tag.set_data(test, Data::Utf8("data".into()));
     /// tag.string_mut(test).next().unwrap().push('1');
     /// assert_eq!(tag.string(test).next().unwrap(), "data1");
     /// ```
@@ -520,7 +520,7 @@ impl Tag {
     /// let mut tag = Tag::default();
     /// let test = &Ident::bytes(*b"test");
     ///
-    /// tag.set_data(test.clone(), Data::Utf8("data".into()));
+    /// tag.set_data(test, Data::Utf8("data".into()));
     /// assert_eq!(tag.take_string(test).next(), Some("data".into()));
     /// assert_eq!(tag.string(test).next(), None);
     /// ```
@@ -538,7 +538,7 @@ impl Tag {
     /// let mut tag = Tag::default();
     /// let test = &Ident::bytes(*b"test");
     ///
-    /// tag.set_data(test.clone(), Data::Jpeg(b"<the image data>".to_vec()));
+    /// tag.set_data(test, Data::Jpeg(b"<the image data>".to_vec()));
     /// match tag.image(test).next().unwrap() {
     ///     Data::Jpeg(v) => assert_eq!(*v, b"<the image data>"),
     ///     _ => panic!("data does not match"),
@@ -558,7 +558,7 @@ impl Tag {
     /// let mut tag = Tag::default();
     /// let test = &Ident::bytes(*b"test");
     ///
-    /// tag.set_data(test.clone(), Data::Jpeg(b"<the image data>".to_vec()));
+    /// tag.set_data(test, Data::Jpeg(b"<the image data>".to_vec()));
     /// match tag.image_mut(test).next().unwrap() {
     ///     Data::Jpeg(v) => v.push(49u8),
     ///     _ => panic!("data type does match"),
@@ -581,7 +581,7 @@ impl Tag {
     /// let mut tag = Tag::default();
     /// let test = &Ident::bytes(*b"test");
     ///
-    /// tag.set_data(test.clone(), Data::Png(b"<the image data>".to_vec()));
+    /// tag.set_data(test, Data::Png(b"<the image data>".to_vec()));
     /// match tag.take_data(test).next().unwrap() {
     ///     Data::Png(s) =>  assert_eq!(s, b"<the image data>".to_vec()),
     ///     _ => panic!("data does not match"),
@@ -601,7 +601,7 @@ impl Tag {
     /// let mut tag = Tag::default();
     /// let test = &Ident::bytes(*b"test");
     ///
-    /// tag.set_data(test.clone(), Data::Utf8("data".into()));
+    /// tag.set_data(test, Data::Utf8("data".into()));
     /// match tag.data(test).next().unwrap() {
     ///     Data::Utf8(s) =>  assert_eq!(s, "data"),
     ///     _ => panic!("data does not match"),
@@ -620,7 +620,7 @@ impl Tag {
     /// let mut tag = Tag::default();
     /// let test = &Ident::bytes(*b"test");
     ///
-    /// tag.set_data(test.clone(), Data::Utf8("data".into()));
+    /// tag.set_data(test, Data::Utf8("data".into()));
     /// if let Data::Utf8(s) = tag.data_mut(test).next().unwrap() {
     ///     s.push('1');
     /// }
@@ -639,7 +639,7 @@ impl Tag {
     /// let mut tag = Tag::default();
     /// let test = &Ident::bytes(*b"test");
     ///
-    /// tag.set_data(test.clone(), Data::Utf8("data".into()));
+    /// tag.set_data(test, Data::Utf8("data".into()));
     /// match tag.take_data(test).next().unwrap() {
     ///     Data::Utf8(s) =>  assert_eq!(s, "data".to_string()),
     ///     _ => panic!("data does not match"),
@@ -672,10 +672,11 @@ impl Tag {
     /// let mut tag = Tag::default();
     /// let test = &Ident::bytes(*b"test");
     ///
-    /// tag.set_data(test.clone(), Data::Utf8("data".into()));
+    /// tag.set_data(test, Data::Utf8("data".into()));
     /// assert_eq!(tag.string(test).next().unwrap(), "data");
     /// ```
-    pub fn set_data(&mut self, ident: Ident, data: Data) {
+    pub fn set_data(&mut self, ident: impl Into<Ident>, data: Data) {
+        let ident = ident.into();
         self.remove_data(&ident);
         self.atoms.push(AtomData::new(ident, data));
     }
@@ -689,15 +690,15 @@ impl Tag {
     /// let mut tag = Tag::default();
     /// let test = &Ident::bytes(*b"test");
     ///
-    /// tag.add_data(test.clone(), Data::Utf8("data1".into()));
-    /// tag.add_data(test.clone(), Data::Utf8("data2".into()));
+    /// tag.add_data(test, Data::Utf8("data1".into()));
+    /// tag.add_data(test, Data::Utf8("data2".into()));
     /// let mut strings = tag.string(test);
     /// assert_eq!(strings.next(), Some("data1"));
     /// assert_eq!(strings.next(), Some("data2"));
     /// assert_eq!(strings.next(), None)
     /// ```
-    pub fn add_data(&mut self, ident: Ident, data: Data) {
-        self.atoms.push(AtomData::new(ident, data));
+    pub fn add_data(&mut self, ident: impl Into<Ident>, data: Data) {
+        self.atoms.push(AtomData::new(ident.into(), data));
     }
 
     /// Removes the data corresponding to the identifier.
@@ -709,7 +710,7 @@ impl Tag {
     /// let mut tag = Tag::default();
     /// let test = &Ident::bytes(*b"test");
     ///
-    /// tag.set_data(test.clone(), Data::Utf8("data".into()));
+    /// tag.set_data(test, Data::Utf8("data".into()));
     /// assert!(tag.data(test).next().is_some());
     /// tag.remove_data(test);
     /// assert!(tag.data(test).next().is_none());
