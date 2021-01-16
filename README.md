@@ -22,14 +22,13 @@ tag.write_to_path("music.m4a").unwrap();
 
 ### The hard way
 ```rust
-use mp4ameta::{atom, Data, Ident, Tag};
-
 let mut tag = Tag::read_from_path("music.m4a").unwrap();
+let artist_ident = Ident::bytes(*b"\xa9ART");
 
-let artist = tag.string(&Ident::bytes(*b"\xa9ART")).next().unwrap();
+let artist = tag.string(&artist_ident).next().unwrap();
 println!("{}", artist);
 
-tag.set_data(Ident::Std(atom::ARTIST), Data::Utf8("artist".to_owned()));
+tag.set_data(artist_ident, Data::Utf8("artist".to_owned()));
 
 tag.write_to_path("music.m4a").unwrap();
 ```
