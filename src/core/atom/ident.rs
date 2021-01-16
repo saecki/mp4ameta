@@ -157,8 +157,8 @@ impl fmt::Display for AtomIdent {
 }
 
 /// A identifier for atoms
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum Ident {
+#[derive(Clone, Debug, Eq)]
+pub enum Ident<'a> {
     /// A standard identifier containing just an atom identifier.
     Std(AtomIdent),
     /// A identifier of a freeform (`----`) atom containing it's mean and name strings.
@@ -168,28 +168,64 @@ pub enum Ident {
         /// The name string actually used to identify the freeform atom.
         name: String,
     },
+    /// A identifier of a freeform (`----`) atom containing it's mean and name strings.
+    FreeformBorrowed {
+        /// The mean string, typically in reverse domain notation.
+        mean: &'a str,
+        /// The name string actually used to identify the freeform atom.
+        name: &'a str,
+    },
 }
 
-impl fmt::Display for Ident {
+impl PartialEq for Ident<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        if let (Self::Std(a), Self::Std(b)) = (self, other) {
+            return a == b;
+        }
+
+        let (ma, na) = match self {
+            Self::Freeform { mean, name } => (mean.as_str(), name.as_str()),
+            Self::FreeformBorrowed { mean, name } => (*mean, *name),
+            _ => return false,
+        };
+
+        let (mb, nb) = match other {
+            Self::Freeform { mean, name } => (mean.as_str(), name.as_str()),
+            Self::FreeformBorrowed { mean, name } => (*mean, *name),
+            _ => return false,
+        };
+
+        ma == mb && na == nb
+    }
+}
+
+impl fmt::Display for Ident<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Std(ident) => write!(f, "{}", ident),
             Self::Freeform { mean, name } => write!(f, "----:{}:{}", mean, name),
+            Self::FreeformBorrowed { mean, name } => write!(f, "----:{}:{}", mean, name),
         }
     }
 }
 
-impl From<&Self> for Ident {
+impl From<&Self> for Ident<'_> {
     fn from(value: &Self) -> Self {
         value.clone()
     }
 }
 
-impl Ident {
-    /// Creates a new identifier of type [`Ident::Freeform`](Self::Freeform) containing the atom
+impl Ident<'_> {
+    /// Creates a new identifier of type [`Ident::Freeform`](Self::Freeform) containing the owned
     /// identifier, mean, and name.
-    pub fn freeform(mean: impl Into<String>, name: impl Into<String>) -> Self {
-        Self::Freeform { mean: mean.into(), name: name.into() }
+    pub fn freeform(mean: String, name: String) -> Self {
+        Self::Freeform { mean, name }
+    }
+
+    /// Creates a new identifier of type [`Ident::Freeform`](Self::Freeform) containing the owned
+    /// identifier, mean, and name.
+    pub fn freeform_static(mean: &'static str, name: &'static str) -> Self {
+        Self::FreeformBorrowed { mean, name }
     }
 
     /// Creates a new identifier of type [`Ident::Std`](Self::Std) containing an atom identifier

@@ -89,9 +89,9 @@ pub const STANDARD_GENRES: [(u16, &str); 80] = [
 ];
 
 /// ### Standard genre
-impl Tag {
+impl<'a> Tag<'a> {
     /// Returns all standard genres (`gnre`).
-    pub fn standard_genres(&self) -> impl Iterator<Item = u16> + '_ {
+    pub fn standard_genres<'b>(&'b self) -> impl Iterator<Item = u16> + 'b {
         self.bytes(&Ident::Std(atom::STANDARD_GENRE)).filter_map(|v| {
             if v.len() < 2 {
                 None
@@ -132,7 +132,7 @@ impl Tag {
 ///
 /// These are convenience functions that combine the values from the standard genre (`gnre`) and
 /// custom genre (`©gen`).
-impl Tag {
+impl Tag<'_> {
     /// Returns all genres (`gnre` or `©gen`).
     pub fn genres(&self) -> impl Iterator<Item = &str> {
         self.standard_genres()

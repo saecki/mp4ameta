@@ -27,14 +27,14 @@ pub const VALID_FILETYPES: [&str; 8] = [
 
 /// A struct representing data that is associated with an Atom identifier.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct AtomData {
+pub struct AtomData<'a> {
     /// The identifier of the atom.
-    pub ident: Ident,
+    pub ident: Ident<'a>,
     /// The data contained in the atom.
     pub data: Data,
 }
 
-impl TryFrom<Atom> for AtomData {
+impl TryFrom<Atom> for AtomData<'_> {
     type Error = crate::Error;
 
     fn try_from(value: Atom) -> Result<Self, Self::Error> {
@@ -58,12 +58,15 @@ impl TryFrom<Atom> for AtomData {
 
         match data {
             Some(data) => Ok(Self::new(ident, data)),
-            None => Err(crate::Error::new(crate::ErrorKind::AtomNotFound(DATA), "".to_owned())),
+            None => Err(crate::Error::new(
+                crate::ErrorKind::AtomNotFound(DATA),
+                "Error constructing atom data, missing data atom".to_owned(),
+            )),
         }
     }
 }
 
-impl TryFrom<&Atom> for AtomData {
+impl TryFrom<&Atom> for AtomData<'_> {
     type Error = crate::Error;
 
     fn try_from(value: &Atom) -> Result<Self, Self::Error> {
@@ -82,13 +85,16 @@ impl TryFrom<&Atom> for AtomData {
             return Ok(Self::new(ident, data.clone()));
         }
 
-        Err(crate::Error::new(crate::ErrorKind::AtomNotFound(DATA), "".to_owned()))
+        Err(crate::Error::new(
+            crate::ErrorKind::AtomNotFound(DATA),
+            "Error constructing atom data, missing data atom".to_owned(),
+        ))
     }
 }
 
-impl AtomData {
+impl<'a> AtomData<'a> {
     /// Creates atom data with the `identifier` and `data`.
-    pub const fn new(ident: Ident, data: Data) -> Self {
+    pub const fn new(ident: Ident<'a>, data: Data) -> Self {
         Self { ident, data }
     }
 
@@ -98,13 +104,19 @@ impl AtomData {
         let data_len = 16 + self.data.len();
 
         match &self.ident {
+            Ident::Std(_) => parent_len + data_len,
             Ident::Freeform { mean, name } => {
                 let mean_len = 12 + mean.len();
                 let name_len = 12 + name.len();
 
                 parent_len + mean_len + name_len + data_len
             }
-            Ident::Std(_) => parent_len + data_len,
+            Ident::FreeformBorrowed { mean, name } => {
+                let mean_len = 12 + mean.len();
+                let name_len = 12 + name.len();
+
+                parent_len + mean_len + name_len + data_len
+            }
         }
     }
 
@@ -118,7 +130,13 @@ impl AtomData {
         writer.write_all(&(self.len() as u32).to_be_bytes())?;
 
         match &self.ident {
-            Ident::Freeform { mean, name } => {
+            Ident::Std(ident) => writer.write_all(ident.deref())?,
+            _ => {
+                let (mean, name) = match &self.ident {
+                    Ident::Freeform { mean, name } => (mean.as_str(), name.as_str()),
+                    Ident::FreeformBorrowed { mean, name } => (*mean, *name),
+                    Ident::Std(_) => unreachable!(),
+                };
                 writer.write_all(FREEFORM.deref())?;
 
                 let mean_len: u32 = 12 + mean.len() as u32;
@@ -133,7 +151,6 @@ impl AtomData {
                 writer.write_all(&[0u8; 4])?;
                 writer.write_all(&name.as_bytes())?;
             }
-            Ident::Std(ident) => writer.write_all(ident.deref())?,
         }
 
         let data_len: u32 = 16 + self.data.len() as u32;
@@ -156,7 +173,7 @@ pub struct Atom {
     pub content: Content,
 }
 
-impl From<AtomData> for Atom {
+impl From<AtomData<'_>> for Atom {
     #[rustfmt::skip]
     fn from(value: AtomData) -> Self {
         match value.ident {
@@ -167,12 +184,19 @@ impl From<AtomData> for Atom {
                     Self::data_atom_with(value.data),
                 ]))
             }
+            Ident::FreeformBorrowed { mean, name } => {
+                Self::new(FREEFORM, 0, Content::Atoms(vec![
+                    Self::mean_atom_with(mean.to_owned()),
+                    Self::name_atom_with(name.to_owned()),
+                    Self::data_atom_with(value.data),
+                ]))
+            }
             Ident::Std(ident) => Self::new(ident, 0, Content::data_atom_with(value.data)),
         }
     }
 }
 
-impl From<&AtomData> for Atom {
+impl From<&AtomData<'_>> for Atom {
     #[rustfmt::skip]
     fn from(value: &AtomData) -> Self {
         match &value.ident {
@@ -180,6 +204,13 @@ impl From<&AtomData> for Atom {
                 Self::new(FREEFORM, 0, Content::Atoms(vec![
                     Self::mean_atom_with(mean.clone()),
                     Self::name_atom_with(name.clone()),
+                    Self::data_atom_with(value.data.clone()),
+                ]))
+            }
+            Ident::FreeformBorrowed { mean, name } => {
+                Self::new(FREEFORM, 0, Content::Atoms(vec![
+                    Self::mean_atom_with(mean.deref().to_owned()),
+                    Self::name_atom_with(name.deref().to_owned()),
                     Self::data_atom_with(value.data.clone()),
                 ]))
             }
@@ -593,7 +624,7 @@ fn find_atoms(
 }
 
 /// Attempts to read MPEG-4 audio metadata from the reader.
-pub fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
+pub fn read_tag_from<'a, 'b>(reader: &'a mut (impl Read + Seek)) -> crate::Result<Tag<'b>> {
     let mut tag_atoms = None;
     let mut mvhd_data = None;
 

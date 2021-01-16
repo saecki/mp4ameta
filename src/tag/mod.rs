@@ -14,16 +14,16 @@ pub mod tuple;
 
 /// A MPEG-4 audio tag containing metadata atoms
 #[derive(Clone, Default, Eq, PartialEq)]
-pub struct Tag {
+pub struct Tag<'a> {
     /// The `ftyp` atom.
     pub ftyp: Option<String>,
     /// The `mvhd` atom.
     pub mvhd: Option<Vec<u8>>,
     /// A vector containing metadata atoms
-    pub atoms: Vec<AtomData>,
+    pub atoms: Vec<AtomData<'a>>,
 }
 
-impl fmt::Debug for Tag {
+impl fmt::Debug for Tag<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Tag")
             .field("ftyp", &format!("{:?}", &self.ftyp))
@@ -33,7 +33,7 @@ impl fmt::Debug for Tag {
     }
 }
 
-impl fmt::Display for Tag {
+impl fmt::Display for Tag<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut string = String::new();
 
@@ -134,9 +134,13 @@ impl fmt::Display for Tag {
     }
 }
 
-impl Tag {
+impl<'a> Tag<'a> {
     /// Creates a new MPEG-4 audio tag containing the atom.
-    pub const fn new(ftyp: Option<String>, mvhd: Option<Vec<u8>>, atoms: Vec<AtomData>) -> Self {
+    pub const fn new(
+        ftyp: Option<String>,
+        mvhd: Option<Vec<u8>>,
+        atoms: Vec<AtomData<'a>>,
+    ) -> Self {
         Self { ftyp, mvhd, atoms }
     }
 
@@ -213,7 +217,7 @@ mp4ameta_proc::integer_value_accessor!("movement_index", "©mvi");
 
 // ## Custom values
 /// ### Artwork
-impl Tag {
+impl<'a> Tag<'a> {
     /// Returns all artwork images of type [`Data::Jpeg`](crate::Data::Jpeg) or
     /// [`Data::Png`](crate::Data::Png) (`covr`).
     pub fn artworks(&self) -> impl Iterator<Item = &Data> {
@@ -302,7 +306,7 @@ impl Tag {
 }
 
 /// ### Media type
-impl Tag {
+impl Tag<'_> {
     /// Returns the media type (`stik`).
     pub fn media_type(&self) -> Option<MediaType> {
         let vec = self.bytes(&Ident::Std(atom::MEDIA_TYPE)).next()?;
@@ -326,7 +330,7 @@ impl Tag {
 }
 
 /// ### Advisory rating
-impl Tag {
+impl Tag<'_> {
     /// Returns the advisory rating (`rtng`).
     pub fn advisory_rating(&self) -> Option<AdvisoryRating> {
         let vec = self.bytes(&Ident::Std(atom::ADVISORY_RATING)).next()?;
@@ -351,7 +355,7 @@ impl Tag {
 
 // ## Readonly values
 /// ### Duration
-impl Tag {
+impl Tag<'_> {
     /// Returns the duration in seconds.
     pub fn duration(&self) -> crate::Result<f64> {
         let vec = self.mvhd.as_ref().ok_or_else(|| {
@@ -419,7 +423,7 @@ impl Tag {
 }
 
 /// ### Filetype
-impl Tag {
+impl Tag<'_> {
     /// returns the filetype (`ftyp`).
     pub fn filetype(&self) -> Option<&str> {
         self.ftyp.as_deref()
@@ -427,7 +431,7 @@ impl Tag {
 }
 
 /// ## Data accessors
-impl Tag {
+impl<'a> Tag<'a> {
     /// Returns all byte data references corresponding to the identifier.
     ///
     /// # Example
@@ -440,7 +444,7 @@ impl Tag {
     /// tag.set_data(test, Data::BeSigned(b"data".to_vec()));
     /// assert_eq!(tag.bytes(test).next().unwrap(), b"data");
     /// ```
-    pub fn bytes<'a>(&'a self, ident: &'a Ident) -> impl Iterator<Item = &Vec<u8>> {
+    pub fn bytes(&'a self, ident: &'a Ident) -> impl Iterator<Item = &Vec<u8>> {
         self.data(ident).filter_map(Data::bytes)
     }
 
@@ -457,7 +461,7 @@ impl Tag {
     /// tag.bytes_mut(test).next().unwrap().push(49);
     /// assert_eq!(tag.bytes(test).next().unwrap(), b"data1");
     /// ```
-    pub fn bytes_mut<'a>(&'a mut self, ident: &'a Ident) -> impl Iterator<Item = &mut Vec<u8>> {
+    pub fn bytes_mut(&'a mut self, ident: &'a Ident) -> impl Iterator<Item = &mut Vec<u8>> {
         self.data_mut(ident).filter_map(Data::bytes_mut)
     }
 
@@ -490,7 +494,7 @@ impl Tag {
     /// tag.set_data(test, Data::Utf8("data".into()));
     /// assert_eq!(tag.string(test).next().unwrap(), "data");
     /// ```
-    pub fn string<'a>(&'a self, ident: &'a Ident) -> impl Iterator<Item = &str> {
+    pub fn string(&'a self, ident: &'a Ident) -> impl Iterator<Item = &str> {
         self.data(ident).filter_map(Data::string)
     }
 
@@ -507,7 +511,7 @@ impl Tag {
     /// tag.string_mut(test).next().unwrap().push('1');
     /// assert_eq!(tag.string(test).next().unwrap(), "data1");
     /// ```
-    pub fn string_mut<'a>(&'a mut self, ident: &'a Ident) -> impl Iterator<Item = &mut String> {
+    pub fn string_mut(&'a mut self, ident: &'a Ident) -> impl Iterator<Item = &mut String> {
         self.data_mut(ident).filter_map(Data::string_mut)
     }
 
@@ -544,7 +548,7 @@ impl Tag {
     ///     _ => panic!("data does not match"),
     /// };
     /// ```
-    pub fn image<'a>(&'a self, ident: &'a Ident) -> impl Iterator<Item = &Data> {
+    pub fn image(&'a self, ident: &'a Ident) -> impl Iterator<Item = &Data> {
         self.data(ident).filter_map(Data::image)
     }
 
@@ -568,7 +572,7 @@ impl Tag {
     ///     _ => panic!("data does not match"),
     /// };
     /// ```
-    pub fn image_mut<'a>(&'a mut self, ident: &'a Ident) -> impl Iterator<Item = &mut Data> {
+    pub fn image_mut(&'a mut self, ident: &'a Ident) -> impl Iterator<Item = &mut Data> {
         self.data_mut(ident).filter_map(Data::image_mut)
     }
 
@@ -607,7 +611,7 @@ impl Tag {
     ///     _ => panic!("data does not match"),
     /// };
     /// ```
-    pub fn data<'a>(&'a self, ident: &'a Ident) -> impl Iterator<Item = &Data> {
+    pub fn data(&'a self, ident: &'a Ident<'_>) -> impl Iterator<Item = &Data> {
         self.atoms.iter().filter(move |a| &a.ident == ident).map(|a| &a.data)
     }
 
@@ -626,7 +630,7 @@ impl Tag {
     /// }
     /// assert_eq!(tag.string(test).next().unwrap(), "data1");
     /// ```
-    pub fn data_mut<'a>(&'a mut self, ident: &'a Ident) -> impl Iterator<Item = &mut Data> {
+    pub fn data_mut(&'a mut self, ident: &'a Ident<'_>) -> impl Iterator<Item = &mut Data> {
         self.atoms.iter_mut().filter(move |a| &a.ident == ident).map(|a| &mut a.data)
     }
 
@@ -675,7 +679,7 @@ impl Tag {
     /// tag.set_data(test, Data::Utf8("data".into()));
     /// assert_eq!(tag.string(test).next().unwrap(), "data");
     /// ```
-    pub fn set_data(&mut self, ident: impl Into<Ident>, data: Data) {
+    pub fn set_data(&mut self, ident: impl Into<Ident<'a>>, data: Data) {
         let ident = ident.into();
         self.remove_data(&ident);
         self.atoms.push(AtomData::new(ident, data));
@@ -697,7 +701,7 @@ impl Tag {
     /// assert_eq!(strings.next(), Some("data2"));
     /// assert_eq!(strings.next(), None)
     /// ```
-    pub fn add_data(&mut self, ident: impl Into<Ident>, data: Data) {
+    pub fn add_data(&mut self, ident: impl Into<Ident<'a>>, data: Data) {
         self.atoms.push(AtomData::new(ident.into(), data));
     }
 

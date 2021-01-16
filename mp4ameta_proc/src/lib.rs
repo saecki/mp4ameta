@@ -45,7 +45,7 @@ pub fn individual_string_value_accessor(input: TokenStream) -> TokenStream {
     format!(
         "
 /// ### {0}
-impl Tag {{
+impl Tag<'_> {{
     /// Returns the {1} (`{2}`).
     pub fn {3}(&self) -> Option<&str> {{
         self.string(&Ident::Std({4})).next()
@@ -98,7 +98,7 @@ pub fn multiple_string_values_accessor(input: TokenStream) -> TokenStream {
     format!(
         "
 /// ### {0}
-impl Tag {{
+impl Tag<'_> {{
     /// Returns all {2} (`{3}`).
     pub fn {5}(&self) -> impl Iterator<Item=&str> {{
         self.string(&Ident::Std({6}))
@@ -166,7 +166,7 @@ pub fn flag_value_accessor(input: TokenStream) -> TokenStream {
     format!(
         "
 /// ### {0}
-impl Tag {{
+impl Tag<'_> {{
     /// Returns the {1} flag (`{2}`).
     pub fn {3}(&self) -> bool {{
         let vec = match self.data(&Ident::Std({4})).next() {{
@@ -202,7 +202,7 @@ pub fn integer_value_accessor(input: TokenStream) -> TokenStream {
     format!(
         "
 /// ### {0}
-impl Tag {{
+impl Tag<'_> {{
     /// Returns the {1} (`{2}`)
     pub fn {3}(&self) -> Option<u16> {{
         let vec = match self.data(&Ident::Std({4})).next()? {{
