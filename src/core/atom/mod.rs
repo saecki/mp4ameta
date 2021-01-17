@@ -29,7 +29,7 @@ pub const VALID_FILETYPES: [&str; 8] = [
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AtomData {
     /// The identifier of the atom.
-    pub ident: Ident,
+    pub ident: DataIdent,
     /// The data contained in the atom.
     pub data: Data,
 }
@@ -52,13 +52,16 @@ impl TryFrom<Atom> for AtomData {
         }
 
         let ident = match (value.ident, mean, name) {
-            (FREEFORM, Some(mean), Some(name)) => Ident::Freeform { mean, name },
-            (ident, _, _) => Ident::Std(ident),
+            (FREEFORM, Some(mean), Some(name)) => DataIdent::Freeform { mean, name },
+            (ident, _, _) => DataIdent::FourCC(ident),
         };
 
         match data {
             Some(data) => Ok(Self::new(ident, data)),
-            None => Err(crate::Error::new(crate::ErrorKind::AtomNotFound(DATA), "".to_owned())),
+            None => Err(crate::Error::new(
+                crate::ErrorKind::AtomNotFound(DATA),
+                "Error constructing atom data, missing data atom".to_owned(),
+            )),
         }
     }
 }
@@ -75,20 +78,23 @@ impl TryFrom<&Atom> for AtomData {
             let name = name_atom.and_then(Data::string).map(str::to_owned);
 
             let ident = match (value.ident, mean, name) {
-                (FREEFORM, Some(mean), Some(name)) => Ident::Freeform { mean, name },
-                (ident, _, _) => Ident::Std(ident),
+                (FREEFORM, Some(mean), Some(name)) => DataIdent::Freeform { mean, name },
+                (ident, _, _) => DataIdent::FourCC(ident),
             };
 
             return Ok(Self::new(ident, data.clone()));
         }
 
-        Err(crate::Error::new(crate::ErrorKind::AtomNotFound(DATA), "".to_owned()))
+        Err(crate::Error::new(
+            crate::ErrorKind::AtomNotFound(DATA),
+            "Error constructing atom data, missing data atom".to_owned(),
+        ))
     }
 }
 
 impl AtomData {
     /// Creates atom data with the `identifier` and `data`.
-    pub const fn new(ident: Ident, data: Data) -> Self {
+    pub const fn new(ident: DataIdent, data: Data) -> Self {
         Self { ident, data }
     }
 
@@ -98,13 +104,13 @@ impl AtomData {
         let data_len = 16 + self.data.len();
 
         match &self.ident {
-            Ident::Freeform { mean, name } => {
+            DataIdent::FourCC(_) => parent_len + data_len,
+            DataIdent::Freeform { mean, name } => {
                 let mean_len = 12 + mean.len();
                 let name_len = 12 + name.len();
 
                 parent_len + mean_len + name_len + data_len
             }
-            Ident::Std(_) => parent_len + data_len,
         }
     }
 
@@ -118,7 +124,12 @@ impl AtomData {
         writer.write_all(&(self.len() as u32).to_be_bytes())?;
 
         match &self.ident {
-            Ident::Freeform { mean, name } => {
+            DataIdent::FourCC(ident) => writer.write_all(ident.deref())?,
+            _ => {
+                let (mean, name) = match &self.ident {
+                    DataIdent::Freeform { mean, name } => (mean.as_str(), name.as_str()),
+                    DataIdent::FourCC(_) => unreachable!(),
+                };
                 writer.write_all(FREEFORM.deref())?;
 
                 let mean_len: u32 = 12 + mean.len() as u32;
@@ -133,7 +144,6 @@ impl AtomData {
                 writer.write_all(&[0u8; 4])?;
                 writer.write_all(&name.as_bytes())?;
             }
-            Ident::Std(ident) => writer.write_all(ident.deref())?,
         }
 
         let data_len: u32 = 16 + self.data.len() as u32;
@@ -149,7 +159,7 @@ impl AtomData {
 #[derive(Clone, Default, Eq, PartialEq)]
 pub struct Atom {
     /// The 4 byte identifier of the atom.
-    pub ident: AtomIdent,
+    pub ident: FourCC,
     /// The offset in bytes separating the head from the content.
     pub offset: usize,
     /// The content of an atom.
@@ -160,14 +170,14 @@ impl From<AtomData> for Atom {
     #[rustfmt::skip]
     fn from(value: AtomData) -> Self {
         match value.ident {
-            Ident::Freeform { mean, name } => {
+            DataIdent::Freeform { mean, name } => {
                 Self::new(FREEFORM, 0, Content::Atoms(vec![
                     Self::mean_atom_with(mean),
                     Self::name_atom_with(name),
                     Self::data_atom_with(value.data),
                 ]))
             }
-            Ident::Std(ident) => Self::new(ident, 0, Content::data_atom_with(value.data)),
+            DataIdent::FourCC(ident) => Self::new(ident, 0, Content::data_atom_with(value.data)),
         }
     }
 }
@@ -176,14 +186,14 @@ impl From<&AtomData> for Atom {
     #[rustfmt::skip]
     fn from(value: &AtomData) -> Self {
         match &value.ident {
-            Ident::Freeform { mean, name } => {
+            DataIdent::Freeform { mean, name } => {
                 Self::new(FREEFORM, 0, Content::Atoms(vec![
                     Self::mean_atom_with(mean.clone()),
                     Self::name_atom_with(name.clone()),
                     Self::data_atom_with(value.data.clone()),
                 ]))
             }
-            Ident::Std(ident) => Self::new(*ident, 0, Content::data_atom_with(value.data.clone())),
+            DataIdent::FourCC(ident) => Self::new(*ident, 0, Content::data_atom_with(value.data.clone())),
         }
     }
 }
@@ -196,7 +206,7 @@ impl fmt::Debug for Atom {
 
 impl Atom {
     /// Creates an atom containing the provided content at a n byte offset.
-    pub const fn new(ident: AtomIdent, offset: usize, content: Content) -> Self {
+    pub const fn new(ident: FourCC, offset: usize, content: Content) -> Self {
         Self { ident, offset, content }
     }
 
@@ -229,13 +239,13 @@ impl Atom {
     }
 
     /// Returns a reference to the first children atom matching the `identifier`, if present.
-    pub fn child(&self, ident: AtomIdent) -> Option<&Self> {
+    pub fn child(&self, ident: FourCC) -> Option<&Self> {
         self.content.child(ident)
     }
 
     /// Returns a mutable reference to the first children atom matching the `identifier`, if
     /// present.
-    pub fn child_mut(&mut self, ident: AtomIdent) -> Option<&mut Self> {
+    pub fn child_mut(&mut self, ident: FourCC) -> Option<&mut Self> {
         self.content.child_mut(ident)
     }
 
@@ -245,7 +255,7 @@ impl Atom {
     }
 
     /// Consumes self and returns the first children atom matching the `identifier`, if present.
-    pub fn take_child(self, ident: AtomIdent) -> Option<Self> {
+    pub fn take_child(self, ident: FourCC) -> Option<Self> {
         self.content.take_child(ident)
     }
 
@@ -288,7 +298,7 @@ impl Atom {
 #[derive(Clone, Default, Eq, PartialEq)]
 pub struct AtomT {
     /// The 4 byte identifier of the atom.
-    pub ident: AtomIdent,
+    pub ident: FourCC,
     /// The offset in bytes separating the head from the content.
     pub offset: usize,
     /// The content template of an atom template.
@@ -303,7 +313,7 @@ impl fmt::Debug for AtomT {
 
 impl AtomT {
     /// Creates an atom template containing the provided content at a n byte offset.
-    pub const fn new(ident: AtomIdent, offset: usize, content: ContentT) -> Self {
+    pub const fn new(ident: FourCC, offset: usize, content: ContentT) -> Self {
         Self { ident, offset, content }
     }
 
@@ -323,7 +333,7 @@ impl AtomT {
     }
 
     /// Returns a reference to the first children atom template matching the identifier, if present.
-    pub fn child(&self, ident: AtomIdent) -> Option<&Self> {
+    pub fn child(&self, ident: FourCC) -> Option<&Self> {
         self.content.child(ident)
     }
 
@@ -334,7 +344,7 @@ impl AtomT {
 
     /// Returns a mutable reference to the first children atom template matching the identifier, if
     /// present.
-    pub fn child_mut(&mut self, ident: AtomIdent) -> Option<&mut Self> {
+    pub fn child_mut(&mut self, ident: FourCC) -> Option<&mut Self> {
         self.content.child_mut(ident)
     }
 
@@ -345,7 +355,7 @@ impl AtomT {
 
     /// Consumes self and returns the first children atom template matching the `identifier`, if
     /// present.
-    pub fn take_child(self, ident: AtomIdent) -> Option<Self> {
+    pub fn take_child(self, ident: FourCC) -> Option<Self> {
         self.content.take_child(ident)
     }
 
@@ -470,7 +480,7 @@ pub fn parse_content(
 
 /// Attempts to parse the atom's head containing a 32 bit unsigned integer determining the size of
 /// the atom in bytes and the following 4 byte identifier from the reader.
-pub fn parse_head(reader: &mut impl Read) -> crate::Result<(usize, AtomIdent)> {
+pub fn parse_head(reader: &mut impl Read) -> crate::Result<(usize, FourCC)> {
     let len = match data::read_u32(reader) {
         Ok(l) => l as usize,
         Err(e) => {
@@ -492,7 +502,7 @@ pub fn parse_head(reader: &mut impl Read) -> crate::Result<(usize, AtomIdent)> {
         ));
     }
 
-    Ok((len, AtomIdent(ident)))
+    Ok((len, FourCC(ident)))
 }
 
 /// A struct representing of a sample table chunk offset atom (`stco`).
@@ -536,13 +546,13 @@ fn parse_chunk_offset(reader: &mut (impl Read + Seek)) -> crate::Result<ChunkOff
 /// A struct storing the position and size of an atom.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 struct AtomInfo {
-    pub ident: AtomIdent,
+    pub ident: FourCC,
     pub pos: u64,
     pub len: usize,
 }
 
 impl AtomInfo {
-    fn new(ident: AtomIdent, pos: u64, len: usize) -> Self {
+    fn new(ident: FourCC, pos: u64, len: usize) -> Self {
         Self { ident, pos, len }
     }
 }

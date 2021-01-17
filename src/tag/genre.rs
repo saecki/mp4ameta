@@ -1,7 +1,4 @@
-use crate::{
-    atom::{self, Ident},
-    Data, Tag,
-};
+use crate::{atom, Data, Tag};
 
 /// A list of standard genre codes and values found in the `gnre` atom. This list is equal to the
 /// ID3v1 genre list but all codes are incremented by 1.
@@ -92,7 +89,7 @@ pub const STANDARD_GENRES: [(u16, &str); 80] = [
 impl Tag {
     /// Returns all standard genres (`gnre`).
     pub fn standard_genres(&self) -> impl Iterator<Item = u16> + '_ {
-        self.bytes(&Ident::Std(atom::STANDARD_GENRE)).filter_map(|v| {
+        self.bytes(&atom::STANDARD_GENRE).filter_map(|v| {
             if v.len() < 2 {
                 None
             } else {
@@ -110,7 +107,7 @@ impl Tag {
     pub fn set_standard_genre(&mut self, genre_code: u16) {
         if genre_code > 0 && genre_code <= 80 {
             let vec: Vec<u8> = genre_code.to_be_bytes().to_vec();
-            self.set_data(Ident::Std(atom::STANDARD_GENRE), Data::Reserved(vec));
+            self.set_data(atom::STANDARD_GENRE, Data::Reserved(vec));
         }
     }
 
@@ -118,13 +115,13 @@ impl Tag {
     pub fn add_standard_genre(&mut self, genre_code: u16) {
         if genre_code > 0 && genre_code <= 80 {
             let vec: Vec<u8> = genre_code.to_be_bytes().to_vec();
-            self.add_data(Ident::Std(atom::STANDARD_GENRE), Data::Reserved(vec))
+            self.add_data(atom::STANDARD_GENRE, Data::Reserved(vec))
         }
     }
 
     /// Removes all standard genres (`gnre`).
     pub fn remove_standard_genres(&mut self) {
-        self.remove_data(&Ident::Std(atom::STANDARD_GENRE));
+        self.remove_data(&atom::STANDARD_GENRE);
     }
 }
 

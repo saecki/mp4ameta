@@ -1,7 +1,7 @@
 use std::fmt;
 use std::io::{Read, Seek, SeekFrom, Write};
 
-use crate::{core::atom, data, Atom, AtomIdent, AtomT, Data, ErrorKind};
+use crate::{core::atom, data, Atom, AtomT, Data, ErrorKind, FourCC};
 
 /// An enum representing the different types of content an atom might have.
 #[derive(Clone, Eq, PartialEq)]
@@ -102,7 +102,7 @@ impl Content {
     }
 
     /// Returns a reference to the first children atom matching the `identifier`, if present.
-    pub fn child(&self, ident: AtomIdent) -> Option<&Atom> {
+    pub fn child(&self, ident: FourCC) -> Option<&Atom> {
         self.iter().find(|a| a.ident == ident)
     }
 
@@ -115,7 +115,7 @@ impl Content {
     }
 
     /// Returns a mutable reference to the first children atom matching the `identfier`, if present.
-    pub fn child_mut(&mut self, ident: AtomIdent) -> Option<&mut Atom> {
+    pub fn child_mut(&mut self, ident: FourCC) -> Option<&mut Atom> {
         self.iter_mut().find(|a| a.ident == ident)
     }
 
@@ -128,7 +128,7 @@ impl Content {
     }
 
     /// Consumes self and returns the first children atom matching the `identfier`, if present.
-    pub fn take_child(self, ident: AtomIdent) -> Option<Atom> {
+    pub fn take_child(self, ident: FourCC) -> Option<Atom> {
         self.into_iter().find(|a| a.ident == ident)
     }
 
@@ -266,7 +266,7 @@ impl ContentT {
     }
 
     /// Returns a reference to the first children atom matching the `identifier`, if present.
-    pub fn child(&self, ident: AtomIdent) -> Option<&AtomT> {
+    pub fn child(&self, ident: FourCC) -> Option<&AtomT> {
         self.iter().find(|a| a.ident == ident)
     }
 
@@ -279,7 +279,7 @@ impl ContentT {
     }
 
     /// Returns a mutable reference to the first children atom matching the `identfier`, if present.
-    pub fn child_mut(&mut self, ident: AtomIdent) -> Option<&mut AtomT> {
+    pub fn child_mut(&mut self, ident: FourCC) -> Option<&mut AtomT> {
         self.iter_mut().find(|a| a.ident == ident)
     }
 
@@ -292,7 +292,7 @@ impl ContentT {
     }
 
     /// Consumes self and returns the first children atom matching the `identfier`, if present.
-    pub fn take_child(self, ident: AtomIdent) -> Option<AtomT> {
+    pub fn take_child(self, ident: FourCC) -> Option<AtomT> {
         self.into_iter().find(|a| a.ident == ident)
     }
 

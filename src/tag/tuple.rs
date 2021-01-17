@@ -1,7 +1,4 @@
-use crate::{
-    atom::{self, Ident},
-    Data, Tag,
-};
+use crate::{atom, Data, Tag};
 
 /// ### Track
 ///
@@ -10,7 +7,7 @@ use crate::{
 impl Tag {
     /// Returns the track number and the total number of tracks (`trkn`).
     pub fn track(&self) -> (Option<u16>, Option<u16>) {
-        let vec = match self.bytes(&Ident::Std(atom::TRACK_NUMBER)).next() {
+        let vec = match self.bytes(&atom::TRACK_NUMBER).next() {
             Some(v) => v,
             None => return (None, None),
         };
@@ -23,14 +20,14 @@ impl Tag {
 
     /// Returns the track number (`trkn`).
     pub fn track_number(&self) -> Option<u16> {
-        let vec = self.bytes(&Ident::Std(atom::TRACK_NUMBER)).next()?;
+        let vec = self.bytes(&atom::TRACK_NUMBER).next()?;
 
         number(vec)
     }
 
     /// Returns the total number of tracks (`trkn`).
     pub fn total_tracks(&self) -> Option<u16> {
-        let vec = self.bytes(&Ident::Std(atom::TRACK_NUMBER)).next()?;
+        let vec = self.bytes(&atom::TRACK_NUMBER).next()?;
 
         total(vec)
     }
@@ -41,12 +38,12 @@ impl Tag {
             .flat_map(|u| u.to_be_bytes().to_vec())
             .collect();
 
-        self.set_data(Ident::Std(atom::TRACK_NUMBER), Data::Reserved(vec));
+        self.set_data(atom::TRACK_NUMBER, Data::Reserved(vec));
     }
 
     /// Sets the track number and the total number of tracks (`trkn`).
     pub fn set_track(&mut self, track_number: u16, total_tracks: u16) {
-        if let Some(v) = self.bytes_mut(&Ident::Std(atom::TRACK_NUMBER)).next() {
+        if let Some(v) = self.bytes_mut(&atom::TRACK_NUMBER).next() {
             set_total(v, total_tracks);
             set_number(v, track_number);
             return;
@@ -57,7 +54,7 @@ impl Tag {
 
     /// Sets the track number (`trkn`).
     pub fn set_track_number(&mut self, track_number: u16) {
-        if let Some(v) = self.bytes_mut(&Ident::Std(atom::TRACK_NUMBER)).next() {
+        if let Some(v) = self.bytes_mut(&atom::TRACK_NUMBER).next() {
             set_number(v, track_number);
             return;
         }
@@ -67,7 +64,7 @@ impl Tag {
 
     /// Sets the total number of tracks (`trkn`).
     pub fn set_total_tracks(&mut self, total_tracks: u16) {
-        if let Some(v) = self.bytes_mut(&Ident::Std(atom::TRACK_NUMBER)).next() {
+        if let Some(v) = self.bytes_mut(&atom::TRACK_NUMBER).next() {
             set_total(v, total_tracks);
             return;
         }
@@ -77,12 +74,12 @@ impl Tag {
 
     /// Removes the track number and the total number of tracks (`trkn`).
     pub fn remove_track(&mut self) {
-        self.remove_data(&Ident::Std(atom::TRACK_NUMBER));
+        self.remove_data(&atom::TRACK_NUMBER);
     }
 
     /// Removes the track number, preserving the total number of tracks if present (`trkn`).
     pub fn remove_track_number(&mut self) {
-        if let Some(v) = self.bytes_mut(&Ident::Std(atom::TRACK_NUMBER)).next() {
+        if let Some(v) = self.bytes_mut(&atom::TRACK_NUMBER).next() {
             if v.len() >= 6 && !(v[4] == 0 && v[5] == 0) {
                 v[2] = 0;
                 v[3] = 0;
@@ -94,7 +91,7 @@ impl Tag {
 
     /// Removes the total number of tracks, preserving the track number if present (`trkn`).
     pub fn remove_total_tracks(&mut self) {
-        if let Some(v) = self.bytes_mut(&Ident::Std(atom::TRACK_NUMBER)).next() {
+        if let Some(v) = self.bytes_mut(&atom::TRACK_NUMBER).next() {
             if v.len() >= 4 && !(v[2] == 0 && v[3] == 0) {
                 v[4] = 0;
                 v[5] = 0;
@@ -122,7 +119,7 @@ impl Tag {
 impl Tag {
     /// Returns the disc number and total number of discs (`disk`).
     pub fn disc(&self) -> (Option<u16>, Option<u16>) {
-        let vec = match self.bytes(&Ident::Std(atom::DISC_NUMBER)).next() {
+        let vec = match self.bytes(&atom::DISC_NUMBER).next() {
             Some(v) => v,
             None => return (None, None),
         };
@@ -135,14 +132,14 @@ impl Tag {
 
     /// Returns the disc number (`disk`).
     pub fn disc_number(&self) -> Option<u16> {
-        let vec = self.bytes(&Ident::Std(atom::DISC_NUMBER)).next()?;
+        let vec = self.bytes(&atom::DISC_NUMBER).next()?;
 
         number(vec)
     }
 
     /// Returns the total number of discs (`disk`).
     pub fn total_discs(&self) -> Option<u16> {
-        let vec = self.bytes(&Ident::Std(atom::DISC_NUMBER)).next()?;
+        let vec = self.bytes(&atom::DISC_NUMBER).next()?;
 
         total(vec)
     }
@@ -153,12 +150,12 @@ impl Tag {
             .flat_map(|u| u.to_be_bytes().to_vec())
             .collect();
 
-        self.set_data(Ident::Std(atom::DISC_NUMBER), Data::Reserved(vec));
+        self.set_data(atom::DISC_NUMBER, Data::Reserved(vec));
     }
 
     /// Sets the disc number and the total number of discs (`disk`).
     pub fn set_disc(&mut self, disc_number: u16, total_discs: u16) {
-        if let Some(v) = self.bytes_mut(&Ident::Std(atom::DISC_NUMBER)).next() {
+        if let Some(v) = self.bytes_mut(&atom::DISC_NUMBER).next() {
             set_total(v, total_discs);
             set_number(v, disc_number);
             return;
@@ -169,7 +166,7 @@ impl Tag {
 
     /// Sets the disc number (`disk`).
     pub fn set_disc_number(&mut self, disc_number: u16) {
-        if let Some(v) = self.bytes_mut(&Ident::Std(atom::DISC_NUMBER)).next() {
+        if let Some(v) = self.bytes_mut(&atom::DISC_NUMBER).next() {
             set_number(v, disc_number);
             return;
         }
@@ -179,7 +176,7 @@ impl Tag {
 
     /// Sets the total number of discs (`disk`).
     pub fn set_total_discs(&mut self, total_discs: u16) {
-        if let Some(v) = self.bytes_mut(&Ident::Std(atom::DISC_NUMBER)).next() {
+        if let Some(v) = self.bytes_mut(&atom::DISC_NUMBER).next() {
             set_total(v, total_discs);
             return;
         }
@@ -189,12 +186,12 @@ impl Tag {
 
     /// Removes the disc number and the total number of discs (`disk`).
     pub fn remove_disc(&mut self) {
-        self.remove_data(&Ident::Std(atom::DISC_NUMBER));
+        self.remove_data(&atom::DISC_NUMBER);
     }
 
     /// Removes the disc number, preserving the total number of discs if present (`disk`).
     pub fn remove_disc_number(&mut self) {
-        if let Some(v) = self.bytes_mut(&Ident::Std(atom::DISC_NUMBER)).next() {
+        if let Some(v) = self.bytes_mut(&atom::DISC_NUMBER).next() {
             if v.len() >= 6 && !(v[4] == 0 && v[5] == 0) {
                 v[2] = 0;
                 v[3] = 0;
@@ -206,7 +203,7 @@ impl Tag {
 
     /// Removes the total number of discs, preserving the disc number if present (`disk`).
     pub fn remove_total_discs(&mut self) {
-        if let Some(v) = self.bytes_mut(&Ident::Std(atom::DISC_NUMBER)).next() {
+        if let Some(v) = self.bytes_mut(&atom::DISC_NUMBER).next() {
             if v.len() >= 4 && !(v[2] == 0 && v[3] == 0) {
                 v[4] = 0;
                 v[5] = 0;
