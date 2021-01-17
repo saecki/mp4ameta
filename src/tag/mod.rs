@@ -1,36 +1,29 @@
-use core::fmt;
 use std::convert::TryFrom;
+use std::fmt;
 use std::fs::{File, OpenOptions};
 use std::io::{BufReader, Read, Seek, Write};
 use std::path::Path;
 
 use crate::{
     atom::{self, idents_match, DataIdent, Ident},
-    AdvisoryRating, Atom, AtomData, Data, MediaType,
+    ChannelConfig,
 };
+use crate::{AdvisoryRating, Atom, AtomData, Data, MediaType};
 
 pub mod genre;
 pub mod tuple;
 
 /// A MPEG-4 audio tag containing metadata atoms
-#[derive(Clone, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Tag {
     /// The `ftyp` atom.
-    pub ftyp: Option<String>,
+    pub ftyp: String,
     /// The `mvhd` atom.
     pub mvhd: Option<Vec<u8>>,
+    /// The `stsd` atom.
+    pub mp4a: Option<Vec<u8>>,
     /// A vector containing metadata atoms
     pub atoms: Vec<AtomData>,
-}
-
-impl fmt::Debug for Tag {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Tag")
-            .field("ftyp", &format!("{:?}", &self.ftyp))
-            .field("mvhd", &format!("{:?}", &self.mvhd))
-            .field("atoms", &self.atoms)
-            .finish()
-    }
 }
 
 impl fmt::Display for Tag {
@@ -136,8 +129,13 @@ impl fmt::Display for Tag {
 
 impl Tag {
     /// Creates a new MPEG-4 audio tag containing the atom.
-    pub const fn new(ftyp: Option<String>, mvhd: Option<Vec<u8>>, atoms: Vec<AtomData>) -> Self {
-        Self { ftyp, mvhd, atoms }
+    pub const fn new(
+        ftyp: String,
+        mvhd: Option<Vec<u8>>,
+        mp4a: Option<Vec<u8>>,
+        atoms: Vec<AtomData>,
+    ) -> Self {
+        Self { ftyp, mvhd, mp4a, atoms }
     }
 
     /// Attempts to read a MPEG-4 audio tag from the reader.
@@ -357,7 +355,7 @@ impl Tag {
         let vec = self.mvhd.as_ref().ok_or_else(|| {
             crate::Error::new(
                 crate::ErrorKind::AtomNotFound(atom::MOVIE_HEADER),
-                "Error ".to_owned(),
+                "Missing mvhd atom".to_owned(),
             )
         })?;
         let parsing_err = || {
@@ -418,11 +416,73 @@ impl Tag {
     }
 }
 
+/// ### Channel config
+impl Tag {
+    /// Returns the channel config.
+    pub fn channel_config(&self) -> crate::Result<ChannelConfig> {
+        let vec = self.mp4a.as_ref().ok_or_else(|| {
+            crate::Error::new(
+                crate::ErrorKind::AtomNotFound(atom::MPEG4_AUDIO),
+                "Missing mp4a atom".to_owned(),
+            )
+        })?;
+
+        // mp4a structure
+        // 4 bytes ?
+        // 2 bytes ?
+        // 2 bytes data reference index
+        // 8 bytes ?
+        // 2 bytes channel count
+        // 2 bytes sample size
+        // 4 bytes ?
+        // 4 bytes sample rate
+        //
+        //   esds box
+        //   4 bytes len
+        //   4 bytes ident
+        //   1 byte version
+        //   3 bytes flags
+        //
+        //     es descriptor
+        //     1 byte tag (0x03)
+        //     3 bytes len
+        //     2 bytes id
+        //     1 byte flag
+        //
+        //       decoder config descriptor
+        //       1 byte tag (0x04)
+        //       3 bytes len
+        //       1 byte object type indication
+        //       1 byte stream type
+        //       3 bytes buffer size
+        //       4 bytes maximum bitrate
+        //       4 bytes average bitrate
+        //
+        //         decoder specific descriptor
+        //         1 byte tag (0x05)
+        //         3 bytes len
+        //
+        //       sl config descriptor
+        //       1 byte tag (0x06)
+        //       3 bytes len
+        if let Some(f) = vec.get(28..32) {
+            if f == atom::ESDS.as_ref() {
+                return Ok(ChannelConfig::Mono);
+            }
+        }
+
+        Err(crate::Error::new(
+            crate::ErrorKind::AtomNotFound(atom::ESDS),
+            "Missing esds atom".to_owned(),
+        ))
+    }
+}
+
 /// ### Filetype
 impl Tag {
     /// returns the filetype (`ftyp`).
-    pub fn filetype(&self) -> Option<&str> {
-        self.ftyp.as_deref()
+    pub fn filetype(&self) -> &str {
+        self.ftyp.as_str()
     }
 }
 

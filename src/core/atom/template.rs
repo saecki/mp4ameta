@@ -22,7 +22,7 @@ fn metadata_write_atom_t() -> [AtomT; 2] {
         AtomT::new(MOVIE, 0, ContentT::Atoms(vec![
             AtomT::new(TRACK, 0, ContentT::atom_t(
                 AtomT::new(MEDIA, 0, ContentT::atom_t(
-                    AtomT::new(METADATA_INFORMATION, 0, ContentT::atom_t(
+                    AtomT::new(MEDIA_INFORMATION, 0, ContentT::atom_t(
                         AtomT::new(SAMPLE_TABLE, 0, ContentT::atom_t(
                             AtomT::new(SAMPLE_TABLE_CHUNK_OFFSET, 0, ContentT::RawData(data::RESERVED))
                         ))
@@ -43,6 +43,17 @@ fn metadata_write_atom_t() -> [AtomT; 2] {
 fn metadata_read_atom_t() -> AtomT {
     AtomT::new(MOVIE, 0, ContentT::Atoms(vec![
         AtomT::new(MOVIE_HEADER, 0, ContentT::RawData(data::RESERVED)),
+        AtomT::new(TRACK, 0, ContentT::atom_t(
+            AtomT::new(MEDIA, 0, ContentT::atom_t(
+                AtomT::new(MEDIA_INFORMATION, 0, ContentT::atom_t(
+                    AtomT::new(SAMPLE_TABLE, 0, ContentT::atom_t(
+                        AtomT::new(SAMPLE_TABLE_SAMPLE_DESCRIPTION, 8, ContentT::atom_t(
+                            AtomT::new(MPEG4_AUDIO, 0, ContentT::RawData(data::RESERVED))
+                        )),
+                    ))
+                )),
+            )),
+        )),
         AtomT::new(USER_DATA, 0, ContentT::atom_t(
             AtomT::new(METADATA, 4, ContentT::atom_t(
                 AtomT::new(ITEM_LIST, 0, ContentT::Atoms(vec![

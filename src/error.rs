@@ -25,6 +25,9 @@ pub enum ErrorKind {
     /// An error kind indicating that the media type integer is unknown. Contains the unknown media
     /// type.
     UnknownMediaType(u8),
+    /// An error kind indicating that the channel config integer is unknown. Contains the
+    /// unknown channel config type.
+    UnknownChannelConfig(u8),
     /// An error kind indicating that version byte is unknown.  Contains the unknown version.
     UnknownVersion(u8),
     /// An error kind indicating that a string decoding error has occurred. Contains the invalid

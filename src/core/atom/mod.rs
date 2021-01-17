@@ -5,7 +5,6 @@ use std::{convert::TryFrom, fmt};
 
 use crate::{data, Content, ContentT, Data, ErrorKind, Tag};
 
-use crate::core::data::remaining_stream_len;
 pub use ident::*;
 pub use template::*;
 
@@ -275,17 +274,18 @@ impl Atom {
         Ok(())
     }
 
-    /// Checks if the filetype is valid, returns an error otherwise.
-    pub fn check_filetype(&self) -> crate::Result<()> {
-        match &self.content {
+    /// Validates the filtype and returns it, or an error otherwise.
+    pub fn check_filetype(self) -> crate::Result<String> {
+        match self.content {
             Content::RawData(Data::Utf8(s)) => {
-                let major_brand = s.split('\u{0}').next().unwrap();
-                if VALID_FILETYPES.iter().any(|e| e.eq_ignore_ascii_case(major_brand)) {
-                    return Ok(());
+                if let Some(major_brand) = &s.get(0..4) {
+                    if VALID_FILETYPES.iter().any(|f| f.eq_ignore_ascii_case(major_brand)) {
+                        return Ok(s);
+                    }
                 }
 
                 Err(crate::Error::new(
-                    ErrorKind::InvalidFiletype(s.to_string()),
+                    ErrorKind::InvalidFiletype(s),
                     "Invalid filetype.".to_owned(),
                 ))
             }
@@ -487,8 +487,8 @@ pub fn parse_head(reader: &mut impl Read) -> crate::Result<(usize, FourCC)> {
             return Err(crate::Error::new(e.kind, "Error reading atom length".to_owned()));
         }
     };
-    let mut ident = [0u8; 4];
-    if let Err(e) = reader.read_exact(&mut ident) {
+    let mut ident = FourCC([0u8; 4]);
+    if let Err(e) = reader.read_exact(&mut *ident) {
         return Err(crate::Error::new(
             ErrorKind::Io(e),
             "Error reading atom identifier".to_owned(),
@@ -498,11 +498,11 @@ pub fn parse_head(reader: &mut impl Read) -> crate::Result<(usize, FourCC)> {
     if len < 8 {
         return Err(crate::Error::new(
             crate::ErrorKind::Parsing,
-            format!("Invalid atom length of less than 8 bytes: {}", len),
+            format!("Read length of {} which is less than 8 bytes: {}", ident, len),
         ));
     }
 
-    Ok((len, FourCC(ident)))
+    Ok((len, ident))
 }
 
 /// A struct representing of a sample table chunk offset atom (`stco`).
@@ -603,16 +603,13 @@ fn find_atoms(
 }
 
 /// Attempts to read MPEG-4 audio metadata from the reader.
-pub fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
+pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
     let mut tag_atoms = None;
     let mut mvhd_data = None;
+    let mut mp4a_data = None;
 
     let ftyp = FILETYPE_ATOM_T.parse_next(reader)?;
-    ftyp.check_filetype()?;
-    let ftyp_data = match ftyp.content {
-        Content::RawData(Data::Utf8(s)) => Some(s),
-        _ => None,
-    };
+    let ftyp_string = ftyp.check_filetype()?;
 
     let moov = METADATA_READ_ATOM_T.parse(reader)?;
     for a in moov.content.into_iter() {
@@ -620,6 +617,19 @@ pub fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
             MOVIE_HEADER => {
                 if let Content::RawData(Data::Reserved(v)) = a.content {
                     mvhd_data = Some(v);
+                }
+            }
+            TRACK => {
+                if let Some(mdia) = a.take_child(MEDIA) {
+                    if let Some(minf) = mdia.take_child(MEDIA_INFORMATION) {
+                        if let Some(stbl) = minf.take_child(SAMPLE_TABLE) {
+                            if let Some(stsd) = stbl.take_child(SAMPLE_TABLE_SAMPLE_DESCRIPTION) {
+                                if let Some(mp4a) = stsd.take_child(MPEG4_AUDIO) {
+                                    mp4a_data = mp4a.content.take_data().and_then(Data::take_bytes);
+                                }
+                            }
+                        }
+                    }
                 }
             }
             USER_DATA => {
@@ -646,17 +656,17 @@ pub fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
         None => Vec::new(),
     };
 
-    Ok(Tag::new(ftyp_data, mvhd_data, tag_atoms))
+    Ok(Tag::new(ftyp_string, mvhd_data, mp4a_data, tag_atoms))
 }
 
 /// Attempts to write the metadata atoms to the file inside the item list atom.
-pub fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()> {
+pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()> {
     let mut reader = BufReader::new(file);
 
     let ftyp = FILETYPE_ATOM_T.parse_next(&mut reader)?;
     ftyp.check_filetype()?;
 
-    let len = remaining_stream_len(&mut reader)? as usize;
+    let len = data::remaining_stream_len(&mut reader)? as usize;
     let atom_info = find_atoms(&mut reader, METADATA_WRITE_ATOM_T.deref(), len)?;
 
     let mdat_info = atom_info.iter().find(|a| a.ident == MEDIA_DATA).ok_or_else(|| {
@@ -784,7 +794,7 @@ pub fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()> {
 
 /// Attempts to dump the metadata atoms to the writer. This doesn't include a complete MPEG-4
 /// container hierarchy and won't result in a usable file.
-pub fn dump_tag_to(writer: &mut impl Write, atoms: Vec<Atom>) -> crate::Result<()> {
+pub(crate) fn dump_tag_to(writer: &mut impl Write, atoms: Vec<Atom>) -> crate::Result<()> {
     #[rustfmt::skip]
     let ftyp = Atom::new(FILETYPE, 0, Content::RawData(
         Data::Utf8("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".to_owned())),

@@ -26,6 +26,22 @@ pub const CLEAN: u8 = 2;
 /// An advisory rating code stored in the `rtng` atom.
 pub const INOFFENSIVE: u8 = 0;
 
+// channnel configurations
+/// Mono
+pub const MONO: u8 = 1;
+/// Stereo
+pub const STEREO: u8 = 2;
+/// Three
+pub const THREE: u8 = 3;
+/// 4.0
+pub const FOUR: u8 = 4;
+/// 5.0
+pub const FIVE: u8 = 5;
+/// 5.1
+pub const FIVE_ONE: u8 = 6;
+/// 7.1
+pub const SEVEN_ONE: u8 = 7;
+
 /// An enum describing the media type of a file stored in the `stik` atom.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum MediaType {
@@ -76,7 +92,7 @@ impl TryFrom<u8> for MediaType {
             SHORT_FILM => Ok(Self::ShortFilm),
             TV_SHOW => Ok(Self::TvShow),
             BOOKLET => Ok(Self::Booklet),
-            _ => Err(crate::Error::new(
+            _ => Err(Self::Error::new(
                 ErrorKind::UnknownMediaType(value),
                 "Unknown media type".to_owned(),
             )),
@@ -138,6 +154,60 @@ impl fmt::Display for AdvisoryRating {
             Self::Clean => write!(f, "Clean"),
             Self::Inoffensive => write!(f, "Inoffensive"),
             Self::Explicit(r) => write!(f, "Explicit {}", r),
+        }
+    }
+}
+
+/// An enum representing the channel configuration of an MPEG-4 audio track.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ChannelConfig {
+    /// Mono
+    Mono,
+    /// Stereo
+    Stereo,
+    /// Three
+    Three,
+    /// 4.0
+    Four,
+    /// 5.0
+    Five,
+    /// 5.1
+    FiveOne,
+    /// 7.1
+    SevenOne,
+}
+
+impl ChannelConfig {
+    /// Returns the integer value corresponding to the channel config.
+    pub fn value(&self) -> u8 {
+        match self {
+            Self::Mono => MONO,
+            Self::Stereo => STEREO,
+            Self::Three => THREE,
+            Self::Four => FOUR,
+            Self::Five => FIVE,
+            Self::FiveOne => FIVE_ONE,
+            Self::SevenOne => SEVEN_ONE,
+        }
+    }
+}
+
+impl TryFrom<u8> for ChannelConfig {
+    type Error = crate::Error;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            MONO => Ok(Self::Mono),
+            STEREO => Ok(Self::Stereo),
+            THREE => Ok(Self::Three),
+            FOUR => Ok(Self::Four),
+            FIVE => Ok(Self::Five),
+            FIVE_ONE => Ok(Self::FiveOne),
+            SEVEN_ONE => Ok(Self::SevenOne),
+            _ => Err(Self::Error::new(
+                crate::ErrorKind::UnknownChannelConfig(value),
+                "Unknown channel config".to_owned(),
+            )),
         }
     }
 }

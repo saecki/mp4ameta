@@ -1,4 +1,5 @@
-use core::{fmt, ops::Deref};
+use std::fmt;
+use std::ops::{Deref, DerefMut};
 
 /// (`ftyp`) Identifier of an atom information about the filetype.
 pub const FILETYPE: FourCC = FourCC(*b"ftyp");
@@ -15,11 +16,17 @@ pub const MEDIA: FourCC = FourCC(*b"mdia");
 /// (`mdhd`) Identifier of an atom containing information about a track
 pub const MEDIA_HEADER: FourCC = FourCC(*b"mdhd");
 /// (`minf`)
-pub const METADATA_INFORMATION: FourCC = FourCC(*b"minf");
+pub const MEDIA_INFORMATION: FourCC = FourCC(*b"minf");
 /// (`stbl`)
 pub const SAMPLE_TABLE: FourCC = FourCC(*b"stbl");
 /// (`stco`)
 pub const SAMPLE_TABLE_CHUNK_OFFSET: FourCC = FourCC(*b"stco");
+/// (`stsd`)
+pub const SAMPLE_TABLE_SAMPLE_DESCRIPTION: FourCC = FourCC(*b"stsd");
+/// (`mp4a`)
+pub const MPEG4_AUDIO: FourCC = FourCC(*b"mp4a");
+/// (`esds`)
+pub const ESDS: FourCC = FourCC(*b"esds");
 /// (`udta`) Identifier of an atom containing user metadata.
 pub const USER_DATA: FourCC = FourCC(*b"udta");
 /// (`meta`) Identifier of an atom containing a metadata item list.
@@ -140,6 +147,7 @@ pub trait Ident {
     fn freeform(&self) -> Option<FreeformIdent>;
 }
 
+// TODO: figure out how to implement PartialEq for Ident or require an implementation as a trait bound.
 /// Returns wheter the identifiers match.
 pub fn idents_match(a: &impl Ident, b: &impl Ident) -> bool {
     a.fourcc() == b.fourcc() && a.freeform() == b.freeform()
@@ -149,17 +157,17 @@ pub fn idents_match(a: &impl Ident, b: &impl Ident) -> bool {
 #[derive(Clone, Copy, Default, Eq, PartialEq)]
 pub struct FourCC(pub [u8; 4]);
 
-impl PartialEq<dyn Ident> for FourCC {
-    fn eq(&self, other: &dyn Ident) -> bool {
-        other.fourcc().map_or(false, |f| *self == f)
-    }
-}
-
 impl Deref for FourCC {
     type Target = [u8; 4];
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl DerefMut for FourCC {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 

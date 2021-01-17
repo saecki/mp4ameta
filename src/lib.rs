@@ -50,7 +50,7 @@ extern crate lazy_static;
 pub use crate::core::atom::{self, Atom, AtomData, AtomT, DataIdent, FourCC, FreeformIdent, Ident};
 pub use crate::core::content::{Content, ContentT};
 pub use crate::core::data::{self, Data};
-pub use crate::core::types::{self, AdvisoryRating, MediaType};
+pub use crate::core::types::{self, AdvisoryRating, ChannelConfig, MediaType};
 pub use crate::error::{Error, ErrorKind, Result};
 pub use crate::tag::{genre::STANDARD_GENRES, Tag};
 

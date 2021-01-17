@@ -80,7 +80,7 @@ fn verify_sample_data() {
     assert_eq!(tag.year(), Some("2013"));
     assert_eq!(tag.artwork(), Some(&Data::Png(fs::read("files/artwork.png").unwrap())));
     assert_eq!(tag.duration().ok(), Some(0.486));
-    assert_eq!(tag.filetype(), Some("M4A \u{0}\u{0}\u{2}\u{0}isomiso2"));
+    assert_eq!(tag.filetype(), "M4A \u{0}\u{0}\u{2}\u{0}isomiso2");
     assert_eq!(
         tag.string(&FreeformIdent::new("com.apple.iTunes", "ISRC")).next(),
         Some("TEST ISRC")
@@ -151,7 +151,7 @@ fn write() {
     assert_eq!(tag.year(), Some("1998"));
     assert_eq!(tag.artwork(), Some(&Data::Jpeg(b"NEW ARTWORK".to_vec())));
     assert_eq!(tag.duration().ok(), Some(0.486));
-    assert_eq!(tag.filetype(), Some("M4A \u{0}\u{0}\u{2}\u{0}isomiso2"));
+    assert_eq!(tag.filetype(), "M4A \u{0}\u{0}\u{2}\u{0}isomiso2");
     assert_eq!(
         tag.string(&FreeformIdent::new("com.apple.iTunes", "ISRC")).next(),
         Some("NEW ISRC")
@@ -202,7 +202,7 @@ fn write_same() {
     assert_eq!(tag.year(), Some("2013"));
     assert_eq!(tag.artwork(), Some(&Data::Png(fs::read("files/artwork.png").unwrap())));
     assert_eq!(tag.duration().ok(), Some(0.486));
-    assert_eq!(tag.filetype(), Some("M4A \u{0}\u{0}\u{2}\u{0}isomiso2"));
+    assert_eq!(tag.filetype(), "M4A \u{0}\u{0}\u{2}\u{0}isomiso2");
 
     println!("deleting target/write_same.m4a...");
     std::fs::remove_file("target/write_same.m4a").unwrap();
@@ -251,7 +251,7 @@ fn write_bigger() {
     assert_eq!(tag.total_tracks(), Some(13));
     assert_eq!(tag.year(), Some("2013"));
     assert_eq!(tag.duration().ok(), Some(0.486));
-    assert_eq!(tag.filetype(), Some("M4A \u{0}\u{0}\u{2}\u{0}isomiso2"));
+    assert_eq!(tag.filetype(), "M4A \u{0}\u{0}\u{2}\u{0}isomiso2");
 
     println!("deleting target/write_bigger.m4a...");
     std::fs::remove_file("target/write_bigger.m4a").unwrap();
