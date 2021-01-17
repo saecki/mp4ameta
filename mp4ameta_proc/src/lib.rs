@@ -45,25 +45,25 @@ pub fn individual_string_value_accessor(input: TokenStream) -> TokenStream {
     format!(
         "
 /// ### {0}
-impl Tag<'_> {{
+impl Tag {{
     /// Returns the {1} (`{2}`).
     pub fn {3}(&self) -> Option<&str> {{
-        self.string(&Ident::Std({4})).next()
+        self.string(&{4}).next()
     }}
 
     /// Consumes and returns the {1} (`{2}`).
     pub fn take_{3}(&mut self) -> Option<String> {{
-        self.take_string(&Ident::Std({4})).next()
+        self.take_string(&{4}).next()
     }}
 
     /// Sets the {1} (`{2}`).
     pub fn set_{3}(&mut self, {3}: impl Into<String>) {{
-        self.set_data(Ident::Std({4}), Data::Utf8({3}.into()));
+        self.set_data({4}, Data::Utf8({3}.into()));
     }}
 
     /// Removes the {1} (`{2}`).
     pub fn remove_{3}(&mut self) {{
-        self.remove_data(&Ident::Std({4}));
+        self.remove_data(&{4});
     }}
 
     /// Returns the {1} formatted in an easily readable way.
@@ -98,40 +98,40 @@ pub fn multiple_string_values_accessor(input: TokenStream) -> TokenStream {
     format!(
         "
 /// ### {0}
-impl Tag<'_> {{
+impl Tag {{
     /// Returns all {2} (`{3}`).
     pub fn {5}(&self) -> impl Iterator<Item=&str> {{
-        self.string(&Ident::Std({6}))
+        self.string(&{6})
     }}
 
     /// Returns the first {1} (`{3}`).
     pub fn {4}(&self) -> Option<&str> {{
-        self.string(&Ident::Std({6})).next()
+        self.string(&{6}).next()
     }}
 
     /// Consumes and returns all {2} (`{3}`).
     pub fn take_{5}(&mut self) -> impl Iterator<Item=String> + '_ {{
-        self.take_string(&Ident::Std({6}))
+        self.take_string(&{6})
     }}
 
     /// Consumes all and returns the first {1} (`{3}`).
     pub fn take_{4}(&mut self) -> Option<String> {{
-        self.take_string(&Ident::Std({6})).next()
+        self.take_string(&{6}).next()
     }}
 
     /// Sets the {1} (`{3}`). This will remove all other {2}.
     pub fn set_{4}(&mut self, {4}: impl Into<String>) {{
-        self.set_data(Ident::Std({6}), Data::Utf8({4}.into()));
+        self.set_data({6}, Data::Utf8({4}.into()));
     }}
 
     /// Adds an {1} (`{3}`).
     pub fn add_{4}(&mut self, {4}: impl Into<String>) {{
-        self.add_data(Ident::Std({6}), Data::Utf8({4}.into()));
+        self.add_data({6}, Data::Utf8({4}.into()));
     }}
 
     /// Removes all {2} (`{3}`).
     pub fn remove_{5}(&mut self) {{
-        self.remove_data(&Ident::Std({6}));
+        self.remove_data(&{6});
     }}
 
     /// Returns all {2} formatted in an easily readable way.
@@ -166,10 +166,10 @@ pub fn flag_value_accessor(input: TokenStream) -> TokenStream {
     format!(
         "
 /// ### {0}
-impl Tag<'_> {{
+impl Tag {{
     /// Returns the {1} flag (`{2}`).
     pub fn {3}(&self) -> bool {{
-        let vec = match self.data(&Ident::Std({4})).next() {{
+        let vec = match self.data(&{4}).next() {{
             Some(Data::Reserved(v)) => v,
             Some(Data::BeSigned(v)) => v,
             _ => return false,
@@ -180,12 +180,12 @@ impl Tag<'_> {{
 
     /// Sets the {1} flag to true (`{2}`).
     pub fn set_{3}(&mut self) {{
-        self.set_data(Ident::Std({4}), Data::BeSigned(vec![1u8]));
+        self.set_data({4}, Data::BeSigned(vec![1u8]));
     }}
 
     /// Removes the {1} flag (`{2}`).
     pub fn remove_{3}(&mut self) {{
-        self.remove_data(&Ident::Std({4}))
+        self.remove_data(&{4})
     }}
 }}
     ",
@@ -202,10 +202,10 @@ pub fn integer_value_accessor(input: TokenStream) -> TokenStream {
     format!(
         "
 /// ### {0}
-impl Tag<'_> {{
+impl Tag {{
     /// Returns the {1} (`{2}`)
     pub fn {3}(&self) -> Option<u16> {{
-        let vec = match self.data(&Ident::Std({4})).next()? {{
+        let vec = match self.data(&{4}).next()? {{
             Data::Reserved(v) => v,
             Data::BeSigned(v) => v,
             _ => return None,
@@ -217,12 +217,12 @@ impl Tag<'_> {{
     /// Sets the {1} (`{2}`)
     pub fn set_{3}(&mut self, {3}: u16) {{
         let vec: Vec<u8> = {3}.to_be_bytes().to_vec();
-        self.set_data(Ident::Std({4}), Data::BeSigned(vec));
+        self.set_data({4}, Data::BeSigned(vec));
     }}
 
     /// Removes the {1} (`{2}`).
     pub fn remove_{3}(&mut self) {{
-        self.remove_data(&Ident::Std({4}));
+        self.remove_data(&{4});
     }}
 }}
     ",

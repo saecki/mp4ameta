@@ -7,7 +7,7 @@
 
 A library for reading and writing iTunes style MPEG-4 audio metadata.
 
-## Usage
+## Examples
 
 ### The easy way
 ```rust
@@ -22,8 +22,10 @@ tag.write_to_path("music.m4a").unwrap();
 
 ### The hard way
 ```rust
+use mp4ameta::{atom, Data, FourCC, Tag};
+
 let mut tag = Tag::read_from_path("music.m4a").unwrap();
-let artist_ident = Ident::bytes(*b"\xa9ART");
+let artist_ident = FourCC(*b"\xa9ART");
 
 let artist = tag.string(&artist_ident).next().unwrap();
 println!("{}", artist);
@@ -33,12 +35,12 @@ tag.set_data(artist_ident, Data::Utf8("artist".to_owned()));
 tag.write_to_path("music.m4a").unwrap();
 ```
 
-### Using freeform idents
+### Using freeform identifiers
 ```rust
-use mp4ameta::{Data, Ident, Tag};
+use mp4ameta::{Data, FreeformIdent, Tag};
 
 let mut tag = Tag::read_from_path("music.m4a").unwrap();
-let isrc_ident = Ident::freeform("com.apple.iTunes", "ISRC");
+let isrc_ident = FreeformIdent::new("com.apple.iTunes", "ISRC");
 
 let isrc = tag.string(&isrc_ident).next().unwrap();
 println!("{}", isrc);

@@ -1,4 +1,6 @@
-use mp4ameta::{AdvisoryRating, Data, Ident, MediaType, Tag, STANDARD_GENRES};
+use mp4ameta::{
+    atom::FreeformIdent, AdvisoryRating, Data, DataIdent, MediaType, Tag, STANDARD_GENRES,
+};
 use std::fs;
 use walkdir::WalkDir;
 
@@ -80,7 +82,7 @@ fn verify_sample_data() {
     assert_eq!(tag.duration().ok(), Some(0.486));
     assert_eq!(tag.filetype(), Some("M4A \u{0}\u{0}\u{2}\u{0}isomiso2"));
     assert_eq!(
-        tag.string(&Ident::freeform_static("com.apple.iTunes", "ISRC")).next(),
+        tag.string(&FreeformIdent::new("com.apple.iTunes", "ISRC")).next(),
         Some("TEST ISRC")
     );
 }
@@ -111,7 +113,7 @@ fn write() {
     tag.set_track(3, 7);
     tag.set_year("1998");
     tag.set_artwork(Data::Jpeg(b"NEW ARTWORK".to_vec()));
-    tag.set_data(Ident::freeform_static("com.apple.iTunes", "ISRC"), Data::Utf8("NEW ISRC".into()));
+    tag.set_data(DataIdent::freeform("com.apple.iTunes", "ISRC"), Data::Utf8("NEW ISRC".into()));
 
     println!("copying files/sample.m4a to target/write.m4a...");
     std::fs::copy("files/sample.m4a", "target/write.m4a").unwrap();
@@ -151,7 +153,7 @@ fn write() {
     assert_eq!(tag.duration().ok(), Some(0.486));
     assert_eq!(tag.filetype(), Some("M4A \u{0}\u{0}\u{2}\u{0}isomiso2"));
     assert_eq!(
-        tag.string(&Ident::freeform_static("com.apple.iTunes", "ISRC")).next(),
+        tag.string(&FreeformIdent::new("com.apple.iTunes", "ISRC")).next(),
         Some("NEW ISRC")
     );
 
@@ -281,7 +283,7 @@ fn dump() {
     tag.set_track(7, 13);
     tag.set_year("2013");
     tag.set_artwork(Data::Png(b"TEST ARTWORK".to_vec()));
-    tag.set_data(Ident::freeform_static("com.apple.iTunes", "ISRC"), Data::Utf8("NEW ISRC".into()));
+    tag.set_data(DataIdent::freeform("com.apple.iTunes", "ISRC"), Data::Utf8("NEW ISRC".into()));
 
     println!("dumping...");
     tag.dump_to_path("target/dump.m4a").unwrap();
@@ -316,7 +318,7 @@ fn dump() {
     assert_eq!(tag.year(), Some("2013"));
     assert_eq!(tag.artwork(), Some(&Data::Png(b"TEST ARTWORK".to_vec())));
     assert_eq!(
-        tag.string(&Ident::freeform_static("com.apple.iTunes", "ISRC")).next(),
+        tag.string(&FreeformIdent::new("com.apple.iTunes", "ISRC")).next(),
         Some("NEW ISRC")
     );
 

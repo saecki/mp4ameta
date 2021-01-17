@@ -1,6 +1,6 @@
 //! A library for reading and writing iTunes style MPEG-4 audio metadata.
 //!
-//! # Example
+//! # Examples
 //!
 //! ## The easy way
 //! ```no_run
@@ -15,10 +15,10 @@
 //!
 //! ## The hard way
 //! ```no_run
-//! use mp4ameta::{atom, Data, Ident, Tag};
+//! use mp4ameta::{atom, Data, FourCC, Tag};
 //!
 //! let mut tag = Tag::read_from_path("music.m4a").unwrap();
-//! let artist_ident = Ident::bytes(*b"\xa9ART");
+//! let artist_ident = FourCC(*b"\xa9ART");
 //!
 //! let artist = tag.string(&artist_ident).next().unwrap();
 //! println!("{}", artist);
@@ -28,12 +28,12 @@
 //! tag.write_to_path("music.m4a").unwrap();
 //! ```
 //!
-//! ## Using freeform idents
+//! ## Using freeform identifiers
 //! ```no_run
-//! use mp4ameta::{Data, Ident, Tag};
+//! use mp4ameta::{Data, FreeformIdent, Tag};
 //!
 //! let mut tag = Tag::read_from_path("music.m4a").unwrap();
-//! let isrc_ident = Ident::freeform_static("com.apple.iTunes", "ISRC");
+//! let isrc_ident = FreeformIdent::new("com.apple.iTunes", "ISRC");
 //!
 //! let isrc = tag.string(&isrc_ident).next().unwrap();
 //! println!("{}", isrc);
@@ -47,7 +47,7 @@
 #[macro_use]
 extern crate lazy_static;
 
-pub use crate::core::atom::{self, Atom, AtomData, AtomIdent, AtomT, Ident};
+pub use crate::core::atom::{self, Atom, AtomData, AtomT, DataIdent, FourCC, FreeformIdent, Ident};
 pub use crate::core::content::{Content, ContentT};
 pub use crate::core::data::{self, Data};
 pub use crate::core::types::{self, AdvisoryRating, MediaType};

@@ -1,142 +1,161 @@
 use core::{fmt, ops::Deref};
 
 /// (`ftyp`) Identifier of an atom information about the filetype.
-pub const FILETYPE: AtomIdent = AtomIdent(*b"ftyp");
+pub const FILETYPE: FourCC = FourCC(*b"ftyp");
 /// (`mdat`)
-pub const MEDIA_DATA: AtomIdent = AtomIdent(*b"mdat");
+pub const MEDIA_DATA: FourCC = FourCC(*b"mdat");
 /// (`moov`) Identifier of an atom containing a structure of children storing metadata.
-pub const MOVIE: AtomIdent = AtomIdent(*b"moov");
+pub const MOVIE: FourCC = FourCC(*b"moov");
 /// (`mvhd`) Identifier of an atom containing information about the whole movie (or audio file).
-pub const MOVIE_HEADER: AtomIdent = AtomIdent(*b"mvhd");
+pub const MOVIE_HEADER: FourCC = FourCC(*b"mvhd");
 /// (`trak`) Identifier of an atom containing information about a single track.
-pub const TRACK: AtomIdent = AtomIdent(*b"trak");
+pub const TRACK: FourCC = FourCC(*b"trak");
 /// (`mdia`) Identifier of an atom containing information about a tracks media type and data.
-pub const MEDIA: AtomIdent = AtomIdent(*b"mdia");
+pub const MEDIA: FourCC = FourCC(*b"mdia");
 /// (`mdhd`) Identifier of an atom containing information about a track
-pub const MEDIA_HEADER: AtomIdent = AtomIdent(*b"mdhd");
+pub const MEDIA_HEADER: FourCC = FourCC(*b"mdhd");
 /// (`minf`)
-pub const METADATA_INFORMATION: AtomIdent = AtomIdent(*b"minf");
+pub const METADATA_INFORMATION: FourCC = FourCC(*b"minf");
 /// (`stbl`)
-pub const SAMPLE_TABLE: AtomIdent = AtomIdent(*b"stbl");
+pub const SAMPLE_TABLE: FourCC = FourCC(*b"stbl");
 /// (`stco`)
-pub const SAMPLE_TABLE_CHUNK_OFFSET: AtomIdent = AtomIdent(*b"stco");
+pub const SAMPLE_TABLE_CHUNK_OFFSET: FourCC = FourCC(*b"stco");
 /// (`udta`) Identifier of an atom containing user metadata.
-pub const USER_DATA: AtomIdent = AtomIdent(*b"udta");
+pub const USER_DATA: FourCC = FourCC(*b"udta");
 /// (`meta`) Identifier of an atom containing a metadata item list.
-pub const METADATA: AtomIdent = AtomIdent(*b"meta");
+pub const METADATA: FourCC = FourCC(*b"meta");
 /// (`ilst`) Identifier of an atom containing a list of metadata atoms.
-pub const ITEM_LIST: AtomIdent = AtomIdent(*b"ilst");
+pub const ITEM_LIST: FourCC = FourCC(*b"ilst");
 /// (`data`) Identifier of an atom containing typed data.
-pub const DATA: AtomIdent = AtomIdent(*b"data");
+pub const DATA: FourCC = FourCC(*b"data");
 /// (`mean`)
-pub const MEAN: AtomIdent = AtomIdent(*b"mean");
+pub const MEAN: FourCC = FourCC(*b"mean");
 /// (`name`)
-pub const NAME: AtomIdent = AtomIdent(*b"name");
+pub const NAME: FourCC = FourCC(*b"name");
 /// (`free`)
-pub const FREE: AtomIdent = AtomIdent(*b"free");
+pub const FREE: FourCC = FourCC(*b"free");
 
 /// (`----`)
-pub const FREEFORM: AtomIdent = AtomIdent(*b"----");
+pub const FREEFORM: FourCC = FourCC(*b"----");
 /// A identifier used internally as a wildcard.
-pub const WILDCARD: AtomIdent = AtomIdent([255, 255, 255, 255]);
+pub const WILDCARD: FourCC = FourCC([255, 255, 255, 255]);
 
 // iTunes 4.0 atoms
 /// (`rtng`)
-pub const ADVISORY_RATING: AtomIdent = AtomIdent(*b"rtng");
+pub const ADVISORY_RATING: FourCC = FourCC(*b"rtng");
 /// (`©alb`)
-pub const ALBUM: AtomIdent = AtomIdent(*b"\xa9alb");
+pub const ALBUM: FourCC = FourCC(*b"\xa9alb");
 /// (`aART`)
-pub const ALBUM_ARTIST: AtomIdent = AtomIdent(*b"aART");
+pub const ALBUM_ARTIST: FourCC = FourCC(*b"aART");
 /// (`©ART`)
-pub const ARTIST: AtomIdent = AtomIdent(*b"\xa9ART");
+pub const ARTIST: FourCC = FourCC(*b"\xa9ART");
 /// (`covr`)
-pub const ARTWORK: AtomIdent = AtomIdent(*b"covr");
+pub const ARTWORK: FourCC = FourCC(*b"covr");
 /// (`tmpo`)
-pub const BPM: AtomIdent = AtomIdent(*b"tmpo");
+pub const BPM: FourCC = FourCC(*b"tmpo");
 /// (`©cmt`)
-pub const COMMENT: AtomIdent = AtomIdent(*b"\xa9cmt");
+pub const COMMENT: FourCC = FourCC(*b"\xa9cmt");
 /// (`cpil`)
-pub const COMPILATION: AtomIdent = AtomIdent(*b"cpil");
+pub const COMPILATION: FourCC = FourCC(*b"cpil");
 /// (`©wrt`)
-pub const COMPOSER: AtomIdent = AtomIdent(*b"\xa9wrt");
+pub const COMPOSER: FourCC = FourCC(*b"\xa9wrt");
 /// (`cprt`)
-pub const COPYRIGHT: AtomIdent = AtomIdent(*b"cprt");
+pub const COPYRIGHT: FourCC = FourCC(*b"cprt");
 /// (`©gen`)
-pub const CUSTOM_GENRE: AtomIdent = AtomIdent(*b"\xa9gen");
+pub const CUSTOM_GENRE: FourCC = FourCC(*b"\xa9gen");
 /// (`disk`)
-pub const DISC_NUMBER: AtomIdent = AtomIdent(*b"disk");
+pub const DISC_NUMBER: FourCC = FourCC(*b"disk");
 /// (`©too`)
-pub const ENCODER: AtomIdent = AtomIdent(*b"\xa9too");
+pub const ENCODER: FourCC = FourCC(*b"\xa9too");
 /// (`gnre`)
-pub const STANDARD_GENRE: AtomIdent = AtomIdent(*b"gnre");
+pub const STANDARD_GENRE: FourCC = FourCC(*b"gnre");
 /// (`©nam`)
-pub const TITLE: AtomIdent = AtomIdent(*b"\xa9nam");
+pub const TITLE: FourCC = FourCC(*b"\xa9nam");
 /// (`trkn`)
-pub const TRACK_NUMBER: AtomIdent = AtomIdent(*b"trkn");
+pub const TRACK_NUMBER: FourCC = FourCC(*b"trkn");
 /// (`©day`)
-pub const YEAR: AtomIdent = AtomIdent(*b"\xa9day");
+pub const YEAR: FourCC = FourCC(*b"\xa9day");
 
 // iTunes 4.2 atoms
 /// (`©grp`)
-pub const GROUPING: AtomIdent = AtomIdent(*b"\xa9grp");
+pub const GROUPING: FourCC = FourCC(*b"\xa9grp");
 /// (`stik`)
-pub const MEDIA_TYPE: AtomIdent = AtomIdent(*b"stik");
+pub const MEDIA_TYPE: FourCC = FourCC(*b"stik");
 
 // iTunes 4.9 atoms
 /// (`catg`)
-pub const CATEGORY: AtomIdent = AtomIdent(*b"catg");
+pub const CATEGORY: FourCC = FourCC(*b"catg");
 /// (`keyw`)
-pub const KEYWORD: AtomIdent = AtomIdent(*b"keyw");
+pub const KEYWORD: FourCC = FourCC(*b"keyw");
 /// (`pcst`)
-pub const PODCAST: AtomIdent = AtomIdent(*b"pcst");
+pub const PODCAST: FourCC = FourCC(*b"pcst");
 /// (`egid`)
-pub const PODCAST_EPISODE_GLOBAL_UNIQUE_ID: AtomIdent = AtomIdent(*b"egid");
+pub const PODCAST_EPISODE_GLOBAL_UNIQUE_ID: FourCC = FourCC(*b"egid");
 /// (`purl`)
-pub const PODCAST_URL: AtomIdent = AtomIdent(*b"purl");
+pub const PODCAST_URL: FourCC = FourCC(*b"purl");
 
 // iTunes 5.0
 /// (`desc`)
-pub const DESCRIPTION: AtomIdent = AtomIdent(*b"desc");
+pub const DESCRIPTION: FourCC = FourCC(*b"desc");
 /// (`©lyr`)
-pub const LYRICS: AtomIdent = AtomIdent(*b"\xa9lyr");
+pub const LYRICS: FourCC = FourCC(*b"\xa9lyr");
 
 // iTunes 6.0
 /// (`tves`)
-pub const TV_EPISODE: AtomIdent = AtomIdent(*b"tves");
+pub const TV_EPISODE: FourCC = FourCC(*b"tves");
 /// (`tven`)
-pub const TV_EPISODE_NUMBER: AtomIdent = AtomIdent(*b"tven");
+pub const TV_EPISODE_NUMBER: FourCC = FourCC(*b"tven");
 /// (`tvnn`)
-pub const TV_NETWORK_NAME: AtomIdent = AtomIdent(*b"tvnn");
+pub const TV_NETWORK_NAME: FourCC = FourCC(*b"tvnn");
 /// (`tvsn`)
-pub const TV_SEASON: AtomIdent = AtomIdent(*b"tvsn");
+pub const TV_SEASON: FourCC = FourCC(*b"tvsn");
 /// (`tvsh`)
-pub const TV_SHOW_NAME: AtomIdent = AtomIdent(*b"tvsh");
+pub const TV_SHOW_NAME: FourCC = FourCC(*b"tvsh");
 
 // iTunes 6.0.2
 /// (`purd`)
-pub const PURCHASE_DATE: AtomIdent = AtomIdent(*b"purd");
+pub const PURCHASE_DATE: FourCC = FourCC(*b"purd");
 
 // iTunes 7.0
 /// (`pgap`)
-pub const GAPLESS_PLAYBACK: AtomIdent = AtomIdent(*b"pgap");
+pub const GAPLESS_PLAYBACK: FourCC = FourCC(*b"pgap");
 
 // Work, Movement
 /// (`©mvn`)
-pub const MOVEMENT: AtomIdent = AtomIdent(*b"\xa9mvn");
+pub const MOVEMENT: FourCC = FourCC(*b"\xa9mvn");
 /// (`©mvc`)
-pub const MOVEMENT_COUNT: AtomIdent = AtomIdent(*b"\xa9mvc");
+pub const MOVEMENT_COUNT: FourCC = FourCC(*b"\xa9mvc");
 /// (`©mvi`)
-pub const MOVEMENT_INDEX: AtomIdent = AtomIdent(*b"\xa9mvi");
+pub const MOVEMENT_INDEX: FourCC = FourCC(*b"\xa9mvi");
 /// (`©wrk`)
-pub const WORK: AtomIdent = AtomIdent(*b"\xa9wrk");
+pub const WORK: FourCC = FourCC(*b"\xa9wrk");
 /// (`shwm`)
-pub const SHOW_MOVEMENT: AtomIdent = AtomIdent(*b"shwm");
+pub const SHOW_MOVEMENT: FourCC = FourCC(*b"shwm");
 
-/// A 4 byte atom identifier.
+/// A trait providing information about an identifier.
+pub trait Ident {
+    /// Returns a 4 byte atom identifier.
+    fn fourcc(&self) -> Option<FourCC>;
+    /// Returns a freeform identifier.
+    fn freeform(&self) -> Option<FreeformIdent>;
+}
+
+/// Returns wheter the identifiers match.
+pub fn idents_match(a: &impl Ident, b: &impl Ident) -> bool {
+    a.fourcc() == b.fourcc() && a.freeform() == b.freeform()
+}
+
+/// A 4 byte atom identifier (four character code).
 #[derive(Clone, Copy, Default, Eq, PartialEq)]
-pub struct AtomIdent(pub [u8; 4]);
+pub struct FourCC(pub [u8; 4]);
 
-impl Deref for AtomIdent {
+impl PartialEq<dyn Ident> for FourCC {
+    fn eq(&self, other: &dyn Ident) -> bool {
+        other.fourcc().map_or(false, |f| *self == f)
+    }
+}
+
+impl Deref for FourCC {
     type Target = [u8; 4];
 
     fn deref(&self) -> &Self::Target {
@@ -144,93 +163,127 @@ impl Deref for AtomIdent {
     }
 }
 
-impl fmt::Debug for AtomIdent {
+impl Ident for FourCC {
+    fn fourcc(&self) -> Option<FourCC> {
+        Some(*self)
+    }
+
+    fn freeform(&self) -> Option<FreeformIdent> {
+        None
+    }
+}
+
+impl fmt::Debug for FourCC {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Ident({})", self.0.iter().map(|b| char::from(*b)).collect::<String>())
     }
 }
 
-impl fmt::Display for AtomIdent {
+impl fmt::Display for FourCC {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0.iter().map(|b| char::from(*b)).collect::<String>())
     }
 }
 
-/// A identifier for atoms
-#[derive(Clone, Debug, Eq)]
-pub enum Ident<'a> {
-    /// A standard identifier containing just an atom identifier.
-    Std(AtomIdent),
-    /// A identifier of a freeform (`----`) atom containing it's mean and name strings.
+/// An identifier of a freeform (`----`) atom containing borrowd mean and name strings.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FreeformIdent<'a> {
+    /// The mean string, typically in reverse domain notation.
+    mean: &'a str,
+    /// The name string used to identify the freeform atom.
+    name: &'a str,
+}
+
+impl Ident for FreeformIdent<'_> {
+    fn fourcc(&self) -> Option<FourCC> {
+        None
+    }
+
+    fn freeform(&self) -> Option<FreeformIdent> {
+        Some(self.clone())
+    }
+}
+
+impl fmt::Display for FreeformIdent<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "----:{}:{}", self.mean, self.name)
+    }
+}
+
+impl<'a> FreeformIdent<'a> {
+    /// Creates a new freeform ident containing the mean and name as borrowed strings.
+    pub fn new(mean: &'a str, name: &'a str) -> Self {
+        Self { mean, name }
+    }
+}
+
+/// An identifier for data.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum DataIdent {
+    /// A standard identifier containing a 4 byte atom identifier.
+    FourCC(FourCC),
+    /// An identifier of a freeform (`----`) atom containing owned mean and name strings.
     Freeform {
         /// The mean string, typically in reverse domain notation.
         mean: String,
-        /// The name string actually used to identify the freeform atom.
+        /// The name string used to identify the freeform atom.
         name: String,
     },
-    /// A identifier of a freeform (`----`) atom containing it's mean and name strings.
-    FreeformBorrowed {
-        /// The mean string, typically in reverse domain notation.
-        mean: &'a str,
-        /// The name string actually used to identify the freeform atom.
-        name: &'a str,
-    },
 }
 
-impl PartialEq for Ident<'_> {
-    fn eq(&self, other: &Self) -> bool {
-        if let (Self::Std(a), Self::Std(b)) = (self, other) {
-            return a == b;
-        }
-
-        let (ma, na) = match self {
-            Self::Freeform { mean, name } => (mean.as_str(), name.as_str()),
-            Self::FreeformBorrowed { mean, name } => (*mean, *name),
-            _ => return false,
-        };
-
-        let (mb, nb) = match other {
-            Self::Freeform { mean, name } => (mean.as_str(), name.as_str()),
-            Self::FreeformBorrowed { mean, name } => (*mean, *name),
-            _ => return false,
-        };
-
-        ma == mb && na == nb
-    }
-}
-
-impl fmt::Display for Ident<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Ident for DataIdent {
+    fn fourcc(&self) -> Option<FourCC> {
         match self {
-            Self::Std(ident) => write!(f, "{}", ident),
-            Self::Freeform { mean, name } => write!(f, "----:{}:{}", mean, name),
-            Self::FreeformBorrowed { mean, name } => write!(f, "----:{}:{}", mean, name),
+            Self::FourCC(i) => Some(*i),
+            Self::Freeform { .. } => None,
+        }
+    }
+
+    fn freeform(&self) -> Option<FreeformIdent> {
+        match self {
+            Self::FourCC(_) => None,
+            Self::Freeform { mean, name } => Some(FreeformIdent::new(mean.as_str(), name.as_str())),
         }
     }
 }
 
-impl From<&Self> for Ident<'_> {
-    fn from(value: &Self) -> Self {
-        value.clone()
+impl fmt::Display for DataIdent {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::FourCC(ident) => write!(f, "{}", ident),
+            Self::Freeform { mean, name } => write!(f, "----:{}:{}", mean, name),
+        }
     }
 }
 
-impl Ident<'_> {
-    /// Creates a new identifier of type [`Ident::Freeform`](Self::Freeform) containing the owned
-    /// identifier, mean, and name.
-    pub fn freeform(mean: String, name: String) -> Self {
-        Self::Freeform { mean, name }
+impl From<FourCC> for DataIdent {
+    fn from(value: FourCC) -> Self {
+        Self::FourCC(value)
+    }
+}
+
+impl From<FreeformIdent<'_>> for DataIdent {
+    fn from(value: FreeformIdent) -> Self {
+        Self::freeform(value.mean, value.name)
+    }
+}
+
+impl From<&FreeformIdent<'_>> for DataIdent {
+    fn from(value: &FreeformIdent) -> Self {
+        Self::freeform(value.mean, value.name)
+    }
+}
+
+impl DataIdent {
+    /// Creates a new identifier of type [`DataIdent::Freeform`](Self::Freeform) containing the owned
+    /// mean, and name string.
+    pub fn freeform(mean: impl Into<String>, name: impl Into<String>) -> Self {
+        Self::Freeform { mean: mean.into(), name: name.into() }
     }
 
-    /// Creates a new identifier of type [`Ident::Freeform`](Self::Freeform) containing the owned
-    /// identifier, mean, and name.
-    pub fn freeform_static(mean: &'static str, name: &'static str) -> Self {
-        Self::FreeformBorrowed { mean, name }
-    }
-
-    /// Creates a new identifier of type [`Ident::Std`](Self::Std) containing an atom identifier
+    /// Creates a new identifier of type [`DataIdent::FourCC`](Self::FourCC) containing an atom identifier
     /// with the 4-byte identifier.
-    pub const fn bytes(bytes: [u8; 4]) -> Self {
-        Self::Std(AtomIdent(bytes))
+    pub const fn fourcc(bytes: [u8; 4]) -> Self {
+        Self::FourCC(FourCC(bytes))
     }
 }
