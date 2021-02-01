@@ -253,6 +253,7 @@ impl fmt::Display for ChannelConfig {
 }
 
 /// An enum representing the sample rate of an MPEG-4 audio track.
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SampleRate {
     /// A Sample rate of 96000Hz
     F96000,
