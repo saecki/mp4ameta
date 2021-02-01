@@ -1,36 +1,31 @@
-use core::fmt;
 use std::convert::TryFrom;
+use std::fmt;
 use std::fs::{File, OpenOptions};
 use std::io::{BufReader, Read, Seek, Write};
 use std::path::Path;
 
-use crate::{
-    atom::{self, idents_match, DataIdent, Ident},
-    AdvisoryRating, Atom, AtomData, Data, MediaType,
-};
+use crate::atom::{self, idents_match, DataIdent, Ident};
+use crate::{AdvisoryRating, Atom, AtomData, Data, MediaType};
 
-pub mod genre;
-pub mod tuple;
+pub use genre::*;
+pub use readonly::*;
+pub use tuple::*;
+
+mod genre;
+mod readonly;
+mod tuple;
 
 /// A MPEG-4 audio tag containing metadata atoms
-#[derive(Clone, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Tag {
     /// The `ftyp` atom.
-    pub ftyp: Option<String>,
+    pub ftyp: String,
     /// The `mvhd` atom.
     pub mvhd: Option<Vec<u8>>,
+    /// The `stsd` atom.
+    pub mp4a: Option<Vec<u8>>,
     /// A vector containing metadata atoms
     pub atoms: Vec<AtomData>,
-}
-
-impl fmt::Debug for Tag {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Tag")
-            .field("ftyp", &format!("{:?}", &self.ftyp))
-            .field("mvhd", &format!("{:?}", &self.mvhd))
-            .field("atoms", &self.atoms)
-            .finish()
-    }
 }
 
 impl fmt::Display for Tag {
@@ -112,6 +107,12 @@ impl fmt::Display for Tag {
         if let Some(i) = self.movement_index() {
             string.push_str(&format!("movement index: {}\n", i));
         }
+        if let Ok(c) = self.channel_config() {
+            string.push_str(&format!("channel config: {}\n", c));
+        }
+        if let Ok(s) = self.sample_rate() {
+            string.push_str(&format!("sample rate: {}\n", s));
+        }
         if self.show_movement() {
             string.push_str("show movement\n");
         }
@@ -136,8 +137,13 @@ impl fmt::Display for Tag {
 
 impl Tag {
     /// Creates a new MPEG-4 audio tag containing the atom.
-    pub const fn new(ftyp: Option<String>, mvhd: Option<Vec<u8>>, atoms: Vec<AtomData>) -> Self {
-        Self { ftyp, mvhd, atoms }
+    pub const fn new(
+        ftyp: String,
+        mvhd: Option<Vec<u8>>,
+        mp4a: Option<Vec<u8>>,
+        atoms: Vec<AtomData>,
+    ) -> Self {
+        Self { ftyp, mvhd, mp4a, atoms }
     }
 
     /// Attempts to read a MPEG-4 audio tag from the reader.
@@ -346,83 +352,6 @@ impl Tag {
     /// Removes the advisory rating (`rtng`).
     pub fn remove_advisory_rating(&mut self) {
         self.remove_data(&atom::ADVISORY_RATING);
-    }
-}
-
-// ## Readonly values
-/// ### Duration
-impl Tag {
-    /// Returns the duration in seconds.
-    pub fn duration(&self) -> crate::Result<f64> {
-        let vec = self.mvhd.as_ref().ok_or_else(|| {
-            crate::Error::new(
-                crate::ErrorKind::AtomNotFound(atom::MOVIE_HEADER),
-                "Error ".to_owned(),
-            )
-        })?;
-        let parsing_err = || {
-            crate::Error::new(
-                crate::ErrorKind::Parsing,
-                "Error parsing contents of mvhd".to_owned(),
-            )
-        };
-        let version = vec.get(0).ok_or_else(parsing_err)?;
-
-        match version {
-            0 => {
-                // # Version 0
-                // 1 byte version
-                // 3 bytes flags
-                // 4 bytes creation time
-                // 4 bytes motification time
-                // 4 bytes time scale
-                // 4 bytes duration
-                // ...
-                let timescale_unit = be_int!(vec, 12, u32).ok_or_else(parsing_err)?;
-                let duration_units = be_int!(vec, 16, u32).ok_or_else(parsing_err)?;
-
-                let duration = duration_units as f64 / timescale_unit as f64;
-
-                Ok(duration)
-            }
-            1 => {
-                // # Version 1
-                // 1 byte version
-                // 3 bytes flags
-                // 8 bytes creation time
-                // 8 bytes motification time
-                // 4 bytes time scale
-                // 8 bytes duration
-                // ...
-                let timescale_unit = be_int!(vec, 20, u32).ok_or_else(parsing_err)?;
-                let duration_units = be_int!(vec, 24, u64).ok_or_else(parsing_err)?;
-
-                let duration = duration_units as f64 / timescale_unit as f64;
-
-                Ok(duration)
-            }
-            v => Err(crate::Error::new(
-                crate::ErrorKind::UnknownVersion(*v),
-                "Duration could not be parsed, unknown mdhd version".to_owned(),
-            )),
-        }
-    }
-
-    /// Returns the duration formatted in an easily readable way.
-    fn format_duration(&self) -> Option<String> {
-        let total_seconds = self.duration().ok()?.round() as usize;
-        let seconds = total_seconds % 60;
-        let minutes = total_seconds / 60;
-
-        Some(format!("duration: {}:{:02}\n", minutes, seconds))
-    }
-}
-
-/// ### Filetype
-impl Tag {
-    /// returns the filetype (`ftyp`).
-    pub fn filetype(&self) -> Option<&str> {
-        self.ftyp.as_deref()
     }
 }
 

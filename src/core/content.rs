@@ -1,7 +1,7 @@
 use std::fmt;
 use std::io::{Read, Seek, SeekFrom, Write};
 
-use crate::{core::atom, data, Atom, AtomT, Data, ErrorKind, FourCC};
+use crate::{atom, data, Atom, AtomT, Data, ErrorKind, FourCC};
 
 /// An enum representing the different types of content an atom might have.
 #[derive(Clone, Eq, PartialEq)]

@@ -10,6 +10,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum ErrorKind {
     /// An error kind indicating that an atom could not be found. Contains the atom's identifier.
     AtomNotFound(FourCC),
+    /// An error kind indicating that a descriptor could not be found. Contains the descriptor's tag.
+    DescriptorNotFound(u8),
     /// An error kind indicating that an IO error has occurred. Contains the original `io::Error`.
     Io(io::Error),
     /// An error kind indicating that the filetype read from the ftyp atom was invalid. Contains
@@ -25,6 +27,9 @@ pub enum ErrorKind {
     /// An error kind indicating that the media type integer is unknown. Contains the unknown media
     /// type.
     UnknownMediaType(u8),
+    /// An error kind indicating that the channel config integer is unknown. Contains the
+    /// unknown channel config type.
+    UnknownChannelConfig(u8),
     /// An error kind indicating that version byte is unknown.  Contains the unknown version.
     UnknownVersion(u8),
     /// An error kind indicating that a string decoding error has occurred. Contains the invalid

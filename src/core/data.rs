@@ -1,7 +1,5 @@
-use core::fmt;
+use std::fmt;
 use std::io::{Read, Seek, SeekFrom, Write};
-
-use crate::ErrorKind;
 
 // [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) codes
 /// Reserved for use where no type needs to be indicated.
@@ -395,7 +393,7 @@ pub fn parse_data(reader: &mut impl Read, datatype: u32, length: usize) -> crate
         BE_SIGNED => Data::BeSigned(read_u8_vec(reader, length)?),
         _ => {
             return Err(crate::Error::new(
-                ErrorKind::UnknownDataType(datatype),
+                crate::ErrorKind::UnknownDataType(datatype),
                 "Unknown datatype code".to_owned(),
             ));
         }
@@ -449,7 +447,7 @@ pub fn remaining_stream_len(reader: &mut impl Seek) -> crate::Result<u64> {
     Ok(len)
 }
 
-/// Attempts to read a big endian integer at the specified index from a byte array or vec.
+/// Attempts to read a big endian integer at the specified index from a byte slice.
 ///
 /// # Example
 /// ```
@@ -481,7 +479,7 @@ macro_rules! be_int {
     }};
 }
 
-/// Attempts to write a big endian integer at the specified index to a byte array or vec.
+/// Attempts to write a big endian integer at the specified index to a byte vector.
 ///
 /// # Example
 /// ```
