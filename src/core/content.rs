@@ -1,7 +1,10 @@
 use std::fmt;
 use std::io::{Read, Seek, SeekFrom, Write};
 
-use crate::{atom, data, Atom, AtomT, Data, ErrorKind, FourCC};
+use crate::{
+    atom::{self, AudioInfo},
+    data, Atom, AtomT, Data, ErrorKind, FourCC,
+};
 
 /// An enum representing the different types of content an atom might have.
 #[derive(Clone, Eq, PartialEq)]
@@ -14,6 +17,8 @@ pub enum Content {
     /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34)
     /// code.
     TypedData(Data),
+    /// A value containing audio information.
+    AudioInfo(AudioInfo),
     /// Empty content.
     Empty,
 }
@@ -30,6 +35,7 @@ impl fmt::Debug for Content {
             Content::Atoms(a) => write!(f, "Content::Atoms({:#?})", a),
             Content::RawData(d) => write!(f, "Content::RawData({:?})", d),
             Content::TypedData(d) => write!(f, "Content::TypedData({:?})", d),
+            Content::AudioInfo(d) => write!(f, "Content::AudioInfo({:?})", d),
             Content::Empty => write!(f, "Content::Empty"),
         }
     }
@@ -71,6 +77,7 @@ impl Content {
             Self::Atoms(v) => v.iter().map(|a| a.len()).sum(),
             Self::RawData(d) => d.len(),
             Self::TypedData(d) => 8 + d.len(),
+            Self::AudioInfo(_) => 0,
             Self::Empty => 0,
         }
     }
@@ -81,6 +88,7 @@ impl Content {
             Self::Atoms(v) => v.is_empty(),
             Self::RawData(d) => d.is_empty(),
             Self::TypedData(d) => d.is_empty(),
+            Self::AudioInfo(_) => true,
             Self::Empty => true,
         }
     }
@@ -176,6 +184,9 @@ impl Content {
             }
             Self::RawData(d) => d.write_raw(writer)?,
             Self::TypedData(d) => d.write_typed(writer)?,
+            Self::AudioInfo(_) => {
+                return Err(crate::Error::new(crate::ErrorKind::UnwritableData, "".to_owned()))
+            }
             Self::Empty => (),
         }
 
@@ -195,6 +206,8 @@ pub enum ContentT {
     /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34)
     /// code prior to the data parsed.
     TypedData,
+    /// A template representing audio information.
+    AudioInfo,
     /// A template for ignoring all data inside.
     Ignore,
     /// Empty content.
@@ -213,7 +226,8 @@ impl fmt::Debug for ContentT {
             Self::Atoms(a) => write!(f, "ContentT::Atoms{{ {:#?} }}", a),
             Self::RawData(d) => write!(f, "ContentT::RawData{{ {:?} }}", d),
             Self::TypedData => write!(f, "ContentT::TypedData"),
-            Self::Ignore => write!(f, "ContentT::TypedData"),
+            Self::AudioInfo => write!(f, "ContentT::AudioInfo"),
+            Self::Ignore => write!(f, "ContentT::Ignore"),
             Self::Empty => write!(f, "ContentT::Empty"),
         }
     }
@@ -302,12 +316,12 @@ impl ContentT {
     }
 
     /// Attempts to parse corresponding content from the `reader`.
-    pub fn parse(&self, reader: &mut (impl Read + Seek), length: usize) -> crate::Result<Content> {
+    pub fn parse(&self, reader: &mut (impl Read + Seek), len: usize) -> crate::Result<Content> {
         Ok(match self {
-            ContentT::Atoms(v) => Content::Atoms(atom::parse_atoms(reader, v, length)?),
-            ContentT::RawData(d) => Content::RawData(data::parse_data(reader, *d, length)?),
+            ContentT::Atoms(v) => Content::Atoms(atom::parse_atoms(reader, v, len)?),
+            ContentT::RawData(d) => Content::RawData(data::parse_data(reader, *d, len)?),
             ContentT::TypedData => {
-                if length >= 8 {
+                if len >= 8 {
                     let datatype = match data::read_u32(reader) {
                         Ok(d) => d,
                         Err(e) => {
@@ -321,7 +335,7 @@ impl ContentT {
                     // Skipping 4 byte locale indicator
                     reader.seek(SeekFrom::Current(4))?;
 
-                    Content::TypedData(data::parse_data(reader, datatype, length - 8)?)
+                    Content::TypedData(data::parse_data(reader, datatype, len - 8)?)
                 } else {
                     return Err(crate::Error::new(
                         ErrorKind::Parsing,
@@ -329,15 +343,16 @@ impl ContentT {
                     ));
                 }
             }
+            ContentT::AudioInfo => Content::AudioInfo(AudioInfo::parse(reader, len)?),
             ContentT::Ignore => {
-                reader.seek(SeekFrom::Current(length as i64))?;
+                reader.seek(SeekFrom::Current(len as i64))?;
                 Content::Empty
             }
             ContentT::Empty => {
-                if length != 0 {
+                if len != 0 {
                     return Err(crate::Error::new(
                         crate::ErrorKind::Parsing,
-                        format!("Expected empty content found content of length: {}", length),
+                        format!("Expected empty content found content of length: {}", len),
                     ));
                 }
                 Content::Empty

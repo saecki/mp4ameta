@@ -50,7 +50,7 @@ fn read_dir(path: &str) {
 }
 
 #[test]
-fn verify_sample_data() {
+fn read() {
     let tag = Tag::read_from_path("files/sample.m4a").unwrap();
 
     assert_eq!(tag.advisory_rating(), Some(AdvisoryRating::Explicit(4)));
@@ -82,10 +82,10 @@ fn verify_sample_data() {
     assert_eq!(tag.artwork(), Some(&Data::Png(fs::read("files/artwork.png").unwrap())));
     assert_eq!(tag.duration().ok(), Some(0.486));
     assert_eq!(tag.filetype(), "M4A \u{0}\u{0}\u{2}\u{0}isomiso2");
-    assert_eq!(tag.channel_config().unwrap(), ChannelConfig::Stereo);
+    assert_eq!(tag.channel_config().unwrap(), ChannelConfig::Mono);
     assert_eq!(tag.sample_rate().unwrap(), SampleRate::F44100);
-    assert_eq!(tag.average_bitrate().unwrap(), 64776);
-    assert_eq!(tag.maximum_bitrate().unwrap(), 69000);
+    assert_eq!(tag.avg_bitrate().unwrap(), 64776);
+    assert_eq!(tag.max_bitrate().unwrap(), 69000);
     assert_eq!(
         tag.string(&FreeformIdent::new("com.apple.iTunes", "ISRC")).next(),
         Some("TEST ISRC")
@@ -157,10 +157,10 @@ fn write() {
     assert_eq!(tag.artwork(), Some(&Data::Jpeg(b"NEW ARTWORK".to_vec())));
     assert_eq!(tag.duration().ok(), Some(0.486));
     assert_eq!(tag.filetype(), "M4A \u{0}\u{0}\u{2}\u{0}isomiso2");
-    assert_eq!(tag.channel_config().unwrap(), ChannelConfig::Stereo);
-    assert_eq!(tag.sample_rate().unwrap(), SampleRate::F44100);
-    assert_eq!(tag.average_bitrate().unwrap(), 64776);
-    assert_eq!(tag.maximum_bitrate().unwrap(), 69000);
+    assert_eq!(tag.channel_config(), Some(ChannelConfig::Mono));
+    assert_eq!(tag.sample_rate(), Some(SampleRate::F44100));
+    assert_eq!(tag.avg_bitrate(), Some(64776));
+    assert_eq!(tag.max_bitrate(), Some(69000));
     assert_eq!(
         tag.string(&FreeformIdent::new("com.apple.iTunes", "ISRC")).next(),
         Some("NEW ISRC")
@@ -212,10 +212,10 @@ fn write_same() {
     assert_eq!(tag.artwork(), Some(&Data::Png(fs::read("files/artwork.png").unwrap())));
     assert_eq!(tag.duration().ok(), Some(0.486));
     assert_eq!(tag.filetype(), "M4A \u{0}\u{0}\u{2}\u{0}isomiso2");
-    assert_eq!(tag.channel_config().unwrap(), ChannelConfig::Stereo);
-    assert_eq!(tag.sample_rate().unwrap(), SampleRate::F44100);
-    assert_eq!(tag.average_bitrate().unwrap(), 64776);
-    assert_eq!(tag.maximum_bitrate().unwrap(), 69000);
+    assert_eq!(tag.channel_config(), Some(ChannelConfig::Mono));
+    assert_eq!(tag.sample_rate(), Some(SampleRate::F44100));
+    assert_eq!(tag.avg_bitrate(), Some(64776));
+    assert_eq!(tag.max_bitrate(), Some(69000));
 
     println!("deleting target/write_same.m4a...");
     std::fs::remove_file("target/write_same.m4a").unwrap();
@@ -265,10 +265,10 @@ fn write_bigger() {
     assert_eq!(tag.year(), Some("2013"));
     assert_eq!(tag.duration().ok(), Some(0.486));
     assert_eq!(tag.filetype(), "M4A \u{0}\u{0}\u{2}\u{0}isomiso2");
-    assert_eq!(tag.channel_config().unwrap(), ChannelConfig::Stereo);
-    assert_eq!(tag.sample_rate().unwrap(), SampleRate::F44100);
-    assert_eq!(tag.average_bitrate().unwrap(), 64776);
-    assert_eq!(tag.maximum_bitrate().unwrap(), 69000);
+    assert_eq!(tag.channel_config(), Some(ChannelConfig::Mono));
+    assert_eq!(tag.sample_rate(), Some(SampleRate::F44100));
+    assert_eq!(tag.avg_bitrate(), Some(64776));
+    assert_eq!(tag.max_bitrate(), Some(69000));
 
     println!("deleting target/write_bigger.m4a...");
     std::fs::remove_file("target/write_bigger.m4a").unwrap();

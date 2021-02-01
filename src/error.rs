@@ -37,6 +37,8 @@ pub enum ErrorKind {
     Utf8StringDecoding(string::FromUtf8Error),
     /// An error kind indicating that a string decoding error has occurred.
     Utf16StringDecoding(string::FromUtf16Error),
+    /// An error kind indicating that the data is readonly.
+    UnwritableData,
 }
 
 /// A structure able to represent any error that may occur while performing metadata operations.

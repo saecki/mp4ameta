@@ -400,13 +400,32 @@ pub fn parse_data(reader: &mut impl Read, datatype: u32, length: usize) -> crate
     })
 }
 
-/// Attempts to read a 32 bit unsigned integer from the reader.
+/// Attempts to read a 8 bit unsigned integer from the reader.
+pub fn read_u8(reader: &mut impl Read) -> crate::Result<u8> {
+    let mut buf = [0u8];
+    reader.read_exact(&mut buf)?;
+    Ok(buf[0])
+}
+
+/// Attempts to read a 16 bit unsigned big endian integer from the reader.
+pub fn read_u16(reader: &mut impl Read) -> crate::Result<u16> {
+    let mut buf = [0u8; 2];
+    reader.read_exact(&mut buf)?;
+    Ok(u16::from_be_bytes(buf))
+}
+
+/// Attempts to read a 32 bit unsigned big endian integer from the reader.
 pub fn read_u32(reader: &mut impl Read) -> crate::Result<u32> {
     let mut buf = [0u8; 4];
-
     reader.read_exact(&mut buf)?;
-
     Ok(u32::from_be_bytes(buf))
+}
+
+/// Attempts to read a 64 bit unsigned big endian integer from the reader.
+pub fn read_u64(reader: &mut impl Read) -> crate::Result<u64> {
+    let mut buf = [0u8; 8];
+    reader.read_exact(&mut buf)?;
+    Ok(u64::from_be_bytes(buf))
 }
 
 /// Attempts to read 8 bit unsigned integers from the reader to a vector of size length.

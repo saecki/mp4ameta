@@ -26,7 +26,7 @@ pub const SAMPLE_TABLE_SAMPLE_DESCRIPTION: FourCC = FourCC(*b"stsd");
 /// (`mp4a`)
 pub const MPEG4_AUDIO: FourCC = FourCC(*b"mp4a");
 /// (`esds`)
-pub const ESDS: FourCC = FourCC(*b"esds");
+pub const ELEMENTARY_STREAM_DESCRIPTION: FourCC = FourCC(*b"esds");
 /// (`udta`) Identifier of an atom containing user metadata.
 pub const USER_DATA: FourCC = FourCC(*b"udta");
 /// (`meta`) Identifier of an atom containing a metadata item list.
@@ -140,7 +140,7 @@ pub const WORK: FourCC = FourCC(*b"\xa9wrk");
 pub const SHOW_MOVEMENT: FourCC = FourCC(*b"shwm");
 
 /// Es descriptor  tag
-pub const ES_DESCRIPTOR: u8 = 0x03;
+pub const ELEMENTARY_STREAM_DESCRIPTOR: u8 = 0x03;
 /// Decoder config descriptor tag
 pub const DECODER_CONFIG_DESCRIPTOR: u8 = 0x04;
 /// Decoder specific descriptor tag

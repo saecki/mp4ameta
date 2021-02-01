@@ -47,7 +47,9 @@
 #[macro_use]
 extern crate lazy_static;
 
-pub use crate::core::atom::{self, Atom, AtomData, AtomT, DataIdent, FourCC, FreeformIdent, Ident};
+pub use crate::core::atom::{
+    self, Atom, AtomData, AtomT, AudioInfo, DataIdent, FourCC, FreeformIdent, Ident,
+};
 pub use crate::core::content::{Content, ContentT};
 pub use crate::core::data::{self, Data};
 pub use crate::core::types::{self, AdvisoryRating, ChannelConfig, MediaType, SampleRate};

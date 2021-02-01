@@ -67,9 +67,11 @@ pub const F12000: u8 = 0x9;
 pub const F11025: u8 = 0xa;
 /// 8000Hz
 pub const F8000: u8 = 0xb;
+/// 7350Hz
+pub const F7350: u8 = 0xc;
 
 /// An enum describing the media type of a file stored in the `stik` atom.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MediaType {
     /// A media type stored as 0 in the `stik` atom.
     Movie,
@@ -142,7 +144,7 @@ impl fmt::Display for MediaType {
 }
 
 /// An enum describing the rating of a file stored in the `rtng` atom.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AdvisoryRating {
     /// An advisory rating stored as 2 in the `rtng` atom.
     Clean,
@@ -185,7 +187,7 @@ impl fmt::Display for AdvisoryRating {
 }
 
 /// An enum representing the channel configuration of an MPEG-4 audio track.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ChannelConfig {
     /// Mono
     Mono,
@@ -253,7 +255,7 @@ impl fmt::Display for ChannelConfig {
 }
 
 /// An enum representing the sample rate of an MPEG-4 audio track.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SampleRate {
     /// A Sample rate of 96000Hz
     F96000,
@@ -279,6 +281,8 @@ pub enum SampleRate {
     F11025,
     /// A Sample rate of 8000Hz
     F8000,
+    /// A Sample rate of 7350Hz
+    F7350,
 }
 
 impl TryFrom<u8> for SampleRate {
@@ -298,6 +302,7 @@ impl TryFrom<u8> for SampleRate {
             F12000 => Ok(Self::F12000),
             F11025 => Ok(Self::F11025),
             F8000 => Ok(Self::F8000),
+            F7350 => Ok(Self::F7350),
             _ => Err(Self::Error::new(
                 crate::ErrorKind::UnknownChannelConfig(value),
                 "Unknown channel config".to_owned(),
@@ -321,6 +326,7 @@ impl fmt::Display for SampleRate {
             Self::F12000 => write!(f, "12000Hz"),
             Self::F11025 => write!(f, "11025Hz"),
             Self::F8000 => write!(f, "8000Hz"),
+            Self::F7350 => write!(f, "7350Hz"),
         }
     }
 }

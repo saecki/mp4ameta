@@ -4,7 +4,7 @@ use std::fs::{File, OpenOptions};
 use std::io::{BufReader, Read, Seek, Write};
 use std::path::Path;
 
-use crate::atom::{self, idents_match, DataIdent, Ident};
+use crate::atom::{self, idents_match, AudioInfo, DataIdent, Ident};
 use crate::{AdvisoryRating, Atom, AtomData, Data, MediaType};
 
 pub use genre::*;
@@ -23,7 +23,7 @@ pub struct Tag {
     /// The `mvhd` atom.
     pub mvhd: Option<Vec<u8>>,
     /// The `stsd` atom.
-    pub mp4a: Option<Vec<u8>>,
+    pub audio_info: AudioInfo,
     /// A vector containing metadata atoms
     pub atoms: Vec<AtomData>,
 }
@@ -107,11 +107,17 @@ impl fmt::Display for Tag {
         if let Some(i) = self.movement_index() {
             string.push_str(&format!("movement index: {}\n", i));
         }
-        if let Ok(c) = self.channel_config() {
+        if let Some(c) = self.channel_config() {
             string.push_str(&format!("channel config: {}\n", c));
         }
-        if let Ok(s) = self.sample_rate() {
+        if let Some(s) = self.sample_rate() {
             string.push_str(&format!("sample rate: {}\n", s));
+        }
+        if let Some(a) = self.avg_bitrate() {
+            string.push_str(&format!("average bitrate: {}\n", a));
+        }
+        if let Some(m) = self.max_bitrate() {
+            string.push_str(&format!("maximum bitrate: {}\n", m));
         }
         if self.show_movement() {
             string.push_str("show movement\n");
@@ -140,10 +146,10 @@ impl Tag {
     pub const fn new(
         ftyp: String,
         mvhd: Option<Vec<u8>>,
-        mp4a: Option<Vec<u8>>,
+        audio_info: AudioInfo,
         atoms: Vec<AtomData>,
     ) -> Self {
-        Self { ftyp, mvhd, mp4a, atoms }
+        Self { ftyp, mvhd, audio_info, atoms }
     }
 
     /// Attempts to read a MPEG-4 audio tag from the reader.

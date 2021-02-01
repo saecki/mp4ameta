@@ -6,9 +6,11 @@ use std::ops::Deref;
 
 use crate::{data, Content, ContentT, Data, ErrorKind, Tag};
 
+pub use audio::*;
 pub use ident::*;
 pub use template::*;
 
+mod audio;
 mod ident;
 mod template;
 
@@ -421,7 +423,7 @@ impl AtomT {
 }
 
 /// Attempts to parse any amount of atoms, matching the atom hierarchy templates, from the reader.
-pub fn parse_atoms(
+pub(crate) fn parse_atoms(
     reader: &mut (impl Read + Seek),
     atoms: &[AtomT],
     len: usize,
@@ -432,6 +434,8 @@ pub fn parse_atoms(
     while pos < len {
         let (atom_len, atom_ident) = parse_head(reader)?;
         let mut parsed = false;
+
+        println!("{} {}", atom_len, atom_ident);
 
         for a in atoms {
             if atom_ident == a.ident || a.ident == WILDCARD {
@@ -462,7 +466,7 @@ pub fn parse_atoms(
 }
 
 /// Attempts to parse the atom template's content from the reader.
-pub fn parse_content(
+pub(crate) fn parse_content(
     reader: &mut (impl Read + Seek),
     content: &ContentT,
     offset: usize,
@@ -481,7 +485,7 @@ pub fn parse_content(
 
 /// Attempts to parse the atom's head containing a 32 bit unsigned integer determining the size of
 /// the atom in bytes and the following 4 byte identifier from the reader.
-pub fn parse_head(reader: &mut impl Read) -> crate::Result<(usize, FourCC)> {
+pub(crate) fn parse_head(reader: &mut impl Read) -> crate::Result<(usize, FourCC)> {
     let len = match data::read_u32(reader) {
         Ok(l) => l as usize,
         Err(e) => {
@@ -506,6 +510,31 @@ pub fn parse_head(reader: &mut impl Read) -> crate::Result<(usize, FourCC)> {
     Ok((len, ident))
 }
 
+pub(crate) fn parse_ext_head(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
+    let version = data::read_u8(reader)?;
+    let mut flags = [0u8; 3];
+    reader.read_exact(&mut flags)?;
+
+    Ok((version, flags))
+}
+
+pub(crate) fn parse_desc_head(reader: &mut impl Read) -> crate::Result<(u8, usize, usize)> {
+    let tag = data::read_u8(reader)?;
+
+    let mut head_len = 1;
+    let mut len = 0;
+    while head_len < 5 {
+        let b = data::read_u8(reader)?;
+        len = (len << 7) | (b & 0x7F) as u32;
+        head_len += 1;
+        if b & 0x80 == 0 {
+            break;
+        }
+    }
+
+    Ok((tag, head_len, len as usize))
+}
+
 /// A struct representing of a sample table chunk offset atom (`stco`).
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 struct ChunkOffset {
@@ -519,11 +548,9 @@ struct ChunkOffset {
 fn parse_chunk_offset(reader: &mut (impl Read + Seek)) -> crate::Result<ChunkOffset> {
     let pos = reader.seek(SeekFrom::Current(0))?;
 
-    let mut version = [0u8; 1];
+    let version = data::read_u8(reader)?;
     let mut flags = [0u8; 3];
-    reader.read_exact(&mut version)?;
     reader.read_exact(&mut flags)?;
-    let [version] = version;
 
     match version {
         0 => {
@@ -607,7 +634,7 @@ fn find_atoms(
 pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
     let mut tag_atoms = None;
     let mut mvhd_data = None;
-    let mut mp4a_data = None;
+    let mut audio_info = None;
 
     let ftyp = FILETYPE_ATOM_T.parse_next(reader)?;
     let ftyp_string = ftyp.check_filetype()?;
@@ -626,7 +653,9 @@ pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Ta
                         if let Some(stbl) = minf.take_child(SAMPLE_TABLE) {
                             if let Some(stsd) = stbl.take_child(SAMPLE_TABLE_SAMPLE_DESCRIPTION) {
                                 if let Some(mp4a) = stsd.take_child(MPEG4_AUDIO) {
-                                    mp4a_data = mp4a.content.take_data().and_then(Data::take_bytes);
+                                    if let Content::AudioInfo(a) = mp4a.content {
+                                        audio_info = Some(a);
+                                    }
                                 }
                             }
                         }
@@ -657,7 +686,7 @@ pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Ta
         None => Vec::new(),
     };
 
-    Ok(Tag::new(ftyp_string, mvhd_data, mp4a_data, tag_atoms))
+    Ok(Tag::new(ftyp_string, mvhd_data, audio_info.unwrap_or_default(), tag_atoms))
 }
 
 /// Attempts to write the metadata atoms to the file inside the item list atom.
