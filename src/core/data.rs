@@ -447,7 +447,7 @@ pub fn remaining_stream_len(reader: &mut impl Seek) -> crate::Result<u64> {
     Ok(len)
 }
 
-/// Attempts to read a big endian integer at the specified index from a byte array or vec.
+/// Attempts to read a big endian integer at the specified index from a byte slice.
 ///
 /// # Example
 /// ```
@@ -479,7 +479,7 @@ macro_rules! be_int {
     }};
 }
 
-/// Attempts to write a big endian integer at the specified index to a byte array or vec.
+/// Attempts to write a big endian integer at the specified index to a byte slice.
 ///
 /// # Example
 /// ```

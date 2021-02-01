@@ -4,11 +4,8 @@ use std::fs::{File, OpenOptions};
 use std::io::{BufReader, Read, Seek, Write};
 use std::path::Path;
 
-use crate::{
-    atom::{self, idents_match, DataIdent, Ident},
-    ChannelConfig,
-};
-use crate::{AdvisoryRating, Atom, AtomData, Data, MediaType};
+use crate::atom::{self, idents_match, DataIdent, Ident};
+use crate::{AdvisoryRating, Atom, AtomData, ChannelConfig, Data, MediaType};
 
 pub mod genre;
 pub mod tuple;
@@ -427,7 +424,7 @@ impl Tag {
             )
         })?;
 
-        // mp4a structure
+        // mp4a atom
         // 4 bytes ?
         // 2 bytes ?
         // 2 bytes data reference index
@@ -437,7 +434,7 @@ impl Tag {
         // 4 bytes ?
         // 4 bytes sample rate
         //
-        //   esds box
+        //   esds atom
         //   4 bytes len
         //   4 bytes ident
         //   1 byte version
@@ -445,13 +442,13 @@ impl Tag {
         //
         //     es descriptor
         //     1 byte tag (0x03)
-        //     3 bytes len
+        //     4 bytes len
         //     2 bytes id
         //     1 byte flag
         //
         //       decoder config descriptor
         //       1 byte tag (0x04)
-        //       3 bytes len
+        //       4 bytes len
         //       1 byte object type indication
         //       1 byte stream type
         //       3 bytes buffer size
@@ -460,14 +457,27 @@ impl Tag {
         //
         //         decoder specific descriptor
         //         1 byte tag (0x05)
-        //         3 bytes len
+        //         4 bytes len
+        //         5 bits profile
+        //         4 bits frequency index
+        //         4 bits channel config
+        //         3 bits ?
         //
         //       sl config descriptor
         //       1 byte tag (0x06)
-        //       3 bytes len
-        if let Some(f) = vec.get(28..32) {
+        //       4 bytes len
+
+        if let Some(f) = vec.get(32..36) {
             if f == atom::ESDS.as_ref() {
-                return Ok(ChannelConfig::Mono);
+                if let Some(0x03) = vec.get(40) {
+                    if let Some(0x04) = vec.get(48) {
+                        if let Some(0x05) = vec.get(66) {
+                            if let Some(byte) = vec.get(72) {
+                                return ChannelConfig::try_from(byte >> 3);
+                            }
+                        }
+                    }
+                }
             }
         }
 
