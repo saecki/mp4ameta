@@ -1,7 +1,8 @@
+use std::convert::TryFrom;
+use std::fmt;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use std::ops::Deref;
-use std::{convert::TryFrom, fmt};
 
 use crate::{data, Content, ContentT, Data, ErrorKind, Tag};
 
