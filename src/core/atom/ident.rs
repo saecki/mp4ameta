@@ -139,6 +139,15 @@ pub const WORK: FourCC = FourCC(*b"\xa9wrk");
 /// (`shwm`)
 pub const SHOW_MOVEMENT: FourCC = FourCC(*b"shwm");
 
+/// Es descriptor  tag
+pub const ES_DESCRIPTOR: u8 = 0x03;
+/// Decoder config descriptor tag
+pub const DECODER_CONFIG_DESCRIPTOR: u8 = 0x04;
+/// Decoder specific descriptor tag
+pub const DECODER_SPECIFIC_DESCRIPTOR: u8 = 0x05;
+/// Sl descriptor tag
+pub const SL_CONFIG_DESCRIPTOR: u8 = 0x06;
+
 /// A trait providing information about an identifier.
 pub trait Ident {
     /// Returns a 4 byte atom identifier.

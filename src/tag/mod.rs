@@ -102,6 +102,9 @@ impl fmt::Display for Tag {
         if let Some(i) = self.movement_index() {
             string.push_str(&format!("movement index: {}\n", i));
         }
+        if let Ok(c) = self.channel_config() {
+            string.push_str(&format!("channel config: {}\n", c));
+        }
         if self.show_movement() {
             string.push_str("show movement\n");
         }
@@ -467,24 +470,37 @@ impl Tag {
         //       1 byte tag (0x06)
         //       4 bytes len
 
-        if let Some(f) = vec.get(32..36) {
-            if f == atom::ESDS.as_ref() {
-                if let Some(0x03) = vec.get(40) {
-                    if let Some(0x04) = vec.get(48) {
-                        if let Some(0x05) = vec.get(66) {
-                            if let Some(byte) = vec.get(72) {
-                                return ChannelConfig::try_from(byte >> 3);
-                            }
-                        }
-                    }
-                }
-            }
+        match vec.get(32..36) {
+            Some(f) if f == atom::ESDS.as_ref() => match vec.get(40) {
+                Some(&atom::ES_DESCRIPTOR) => match vec.get(48) {
+                    Some(&atom::DECODER_CONFIG_DESCRIPTOR) => match vec.get(66) {
+                        Some(&atom::DECODER_SPECIFIC_DESCRIPTOR) => match vec.get(72) {
+                            Some(b) => ChannelConfig::try_from(b >> 3),
+                            None => Err(crate::Error::new(
+                                crate::ErrorKind::Parsing,
+                                "Error parsing decoder config descriptor".to_owned(),
+                            )),
+                        },
+                        _ => Err(crate::Error::new(
+                            crate::ErrorKind::DescriptorNotFound(atom::DECODER_SPECIFIC_DESCRIPTOR),
+                            "Missing decoder config descriptor".to_owned(),
+                        )),
+                    },
+                    _ => Err(crate::Error::new(
+                        crate::ErrorKind::DescriptorNotFound(atom::DECODER_CONFIG_DESCRIPTOR),
+                        "Missing decoder config descriptor".to_owned(),
+                    )),
+                },
+                _ => Err(crate::Error::new(
+                    crate::ErrorKind::DescriptorNotFound(atom::ES_DESCRIPTOR),
+                    "Missing es descriptor".to_owned(),
+                )),
+            },
+            _ => Err(crate::Error::new(
+                crate::ErrorKind::AtomNotFound(atom::ESDS),
+                "Missing esds atom".to_owned(),
+            )),
         }
-
-        Err(crate::Error::new(
-            crate::ErrorKind::AtomNotFound(atom::ESDS),
-            "Missing esds atom".to_owned(),
-        ))
     }
 }
 

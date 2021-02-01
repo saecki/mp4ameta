@@ -10,6 +10,8 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum ErrorKind {
     /// An error kind indicating that an atom could not be found. Contains the atom's identifier.
     AtomNotFound(FourCC),
+    /// An error kind indicating that a descriptor could not be found. Contains the descriptor's tag.
+    DescriptorNotFound(u8),
     /// An error kind indicating that an IO error has occurred. Contains the original `io::Error`.
     Io(io::Error),
     /// An error kind indicating that the filetype read from the ftyp atom was invalid. Contains

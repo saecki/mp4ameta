@@ -479,7 +479,7 @@ macro_rules! be_int {
     }};
 }
 
-/// Attempts to write a big endian integer at the specified index to a byte slice.
+/// Attempts to write a big endian integer at the specified index to a byte vector.
 ///
 /// # Example
 /// ```

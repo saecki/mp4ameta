@@ -165,7 +165,7 @@ pub enum ChannelConfig {
     Mono,
     /// Stereo
     Stereo,
-    /// Three
+    /// 3.0
     Three,
     /// 4.0
     Four,
@@ -208,6 +208,20 @@ impl TryFrom<u8> for ChannelConfig {
                 crate::ErrorKind::UnknownChannelConfig(value),
                 "Unknown channel config".to_owned(),
             )),
+        }
+    }
+}
+
+impl fmt::Display for ChannelConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Mono => write!(f, "Mono"),
+            Self::Stereo => write!(f, "Stereo"),
+            Self::Three => write!(f, "3.0"),
+            Self::Four => write!(f, "4.0"),
+            Self::Five => write!(f, "5.0"),
+            Self::FiveOne => write!(f, "5.1"),
+            Self::SevenOne => write!(f, "7.1"),
         }
     }
 }
