@@ -71,8 +71,7 @@ impl Tag {
 }
 
 impl Tag {
-    /// Returns the decoder specific descriptor inside of the mp4a atom.
-    fn decoder_specific_descriptor(&self) -> crate::Result<&[u8]> {
+    fn decoder_config_descriptor(&self) -> crate::Result<&[u8]> {
         let vec = self.mp4a.as_ref().ok_or_else(|| {
             crate::Error::new(
                 crate::ErrorKind::AtomNotFound(atom::MPEG4_AUDIO),
@@ -144,14 +143,42 @@ impl Tag {
             ));
         }
 
-        if Some(&atom::DECODER_SPECIFIC_DESCRIPTOR) != vec.get(66) {
+        vec.get(48..73).ok_or_else(|| {
+            crate::Error::new(
+                crate::ErrorKind::Parsing,
+                "Error parsing decoder config descriptor".to_owned(),
+            )
+        })
+    }
+
+    /// Returns the decoder specific descriptor inside of the mp4a atom.
+    fn decoder_specific_descriptor(&self) -> crate::Result<&[u8]> {
+        let bytes = self.decoder_config_descriptor()?;
+        // decoder config descriptor
+        // 1 byte tag (0x04)
+        // 4 bytes len
+        // 1 byte object type indication
+        // 1 byte stream type
+        // 3 bytes buffer size
+        // 4 bytes maximum bitrate
+        // 4 bytes average bitrate
+        //
+        //   decoder specific descriptor
+        //   1 byte tag (0x05)
+        //   4 bytes len
+        //   5 bits profile
+        //   4 bits frequency index
+        //   4 bits channel config
+        //   3 bits ?
+
+        if Some(&atom::DECODER_SPECIFIC_DESCRIPTOR) != bytes.get(18) {
             return Err(crate::Error::new(
                 crate::ErrorKind::DescriptorNotFound(atom::DECODER_SPECIFIC_DESCRIPTOR),
                 "Missing decoder specific descriptor".to_owned(),
             ));
         }
 
-        vec.get(66..73).ok_or_else(|| {
+        bytes.get(18..25).ok_or_else(|| {
             crate::Error::new(
                 crate::ErrorKind::Parsing,
                 "Error parsing decoder specific descriptor".to_owned(),
@@ -177,7 +204,7 @@ impl Tag {
             Some(b) => ChannelConfig::try_from(b >> 3),
             None => Err(crate::Error::new(
                 crate::ErrorKind::Parsing,
-                "Error parsing decoder config descriptor".to_owned(),
+                "Error parsing decoder specific descriptor".to_owned(),
             )),
         }
     }
@@ -199,6 +226,55 @@ impl Tag {
         if let Some(num) = be_int!(bytes, 5, u16) {
             let freq_index = ((num >> 7) & 0x0F) as u8;
             return SampleRate::try_from(freq_index);
+        }
+
+        Err(crate::Error::new(
+            crate::ErrorKind::Parsing,
+            "Error parsing decoder specific descriptor".to_owned(),
+        ))
+    }
+}
+
+/// ### Bit rate
+impl Tag {
+    /// Returns the average bitrate.
+    pub fn average_bitrate(&self) -> crate::Result<u32> {
+        let bytes = self.decoder_config_descriptor()?;
+
+        // decoder config descriptor
+        // 1 byte tag (0x04)
+        // 4 bytes len
+        // 1 byte object type indication
+        // 1 byte stream type
+        // 3 bytes buffer size
+        // 4 bytes maximum bitrate
+        // 4 bytes average bitrate
+        // ...
+        if let Some(avg_bitrate) = be_int!(bytes, 14, u32) {
+            return Ok(avg_bitrate);
+        }
+
+        Err(crate::Error::new(
+            crate::ErrorKind::Parsing,
+            "Error parsing decoder config descriptor".to_owned(),
+        ))
+    }
+
+    /// Returns the maximum bitrate.
+    pub fn maximum_bitrate(&self) -> crate::Result<u32> {
+        let bytes = self.decoder_config_descriptor()?;
+
+        // decoder config descriptor
+        // 1 byte tag (0x04)
+        // 4 bytes len
+        // 1 byte object type indication
+        // 1 byte stream type
+        // 3 bytes buffer size
+        // 4 bytes maximum bitrate
+        // 4 bytes average bitrate
+        // ...
+        if let Some(max_bitrate) = be_int!(bytes, 10, u32) {
+            return Ok(max_bitrate);
         }
 
         Err(crate::Error::new(
