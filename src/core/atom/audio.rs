@@ -16,21 +16,6 @@ pub struct AudioInfo {
     pub avg_bitrate: Option<u32>,
 }
 
-impl AudioInfo {
-    /// Attempts to parse audio information from the reader.
-    pub fn parse(reader: &mut (impl Read + Seek), len: usize) -> crate::Result<AudioInfo> {
-        let start_pos = reader.seek(SeekFrom::Current(0))?;
-
-        let audio_info = parse_mp4a(reader, len)?;
-
-        let current_pos = reader.seek(SeekFrom::Current(0))?;
-        let diff = current_pos - start_pos;
-        reader.seek(SeekFrom::Current(len as i64 - diff as i64))?;
-
-        Ok(audio_info)
-    }
-}
-
 // mp4a atom
 // 4 bytes ?
 // 2 bytes ?
@@ -75,21 +60,29 @@ impl AudioInfo {
 //       1~4 bytes len
 //       1 byte ?
 
-fn parse_mp4a(reader: &mut (impl Read + Seek), len: usize) -> crate::Result<AudioInfo> {
+/// Attempts to parse audio information from the mp4 audio sample entry.
+pub fn parse_mp4a(reader: &mut (impl Read + Seek), len: usize) -> crate::Result<AudioInfo> {
     let mut audio_info = AudioInfo::default();
+
+    let start_pos = reader.seek(SeekFrom::Current(0))?;
 
     reader.seek(SeekFrom::Current(28))?;
 
     let (_, ident) = parse_head(reader)?;
-    if ident == ELEMENTARY_STREAM_DESCRIPTION {
-        parse_esds(reader, &mut audio_info, len - 36)?;
-        return Ok(audio_info);
+    if ident != ELEMENTARY_STREAM_DESCRIPTION {
+        return Err(crate::Error::new(
+            crate::ErrorKind::AtomNotFound(ELEMENTARY_STREAM_DESCRIPTION),
+            "Missing esds atom".to_owned(),
+        ));
     }
 
-    Err(crate::Error::new(
-        crate::ErrorKind::AtomNotFound(ELEMENTARY_STREAM_DESCRIPTION),
-        "Missing esds atom".to_owned(),
-    ))
+    parse_esds(reader, &mut audio_info, len - 36)?;
+
+    let current_pos = reader.seek(SeekFrom::Current(0))?;
+    let diff = current_pos - start_pos;
+    reader.seek(SeekFrom::Current(len as i64 - diff as i64))?;
+
+    Ok(audio_info)
 }
 
 fn parse_esds(

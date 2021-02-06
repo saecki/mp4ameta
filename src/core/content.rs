@@ -1,4 +1,3 @@
-use std::fmt;
 use std::io::{Read, Seek, SeekFrom, Write};
 
 use crate::{
@@ -7,7 +6,7 @@ use crate::{
 };
 
 /// An enum representing the different types of content an atom might have.
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Content {
     /// A value containing a list of children atoms.
     Atoms(Vec<Atom>),
@@ -17,8 +16,8 @@ pub enum Content {
     /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34)
     /// code.
     TypedData(Data),
-    /// A value containing audio information.
-    AudioInfo(AudioInfo),
+    /// A value containing mp4 audio information.
+    Mp4Audio(AudioInfo),
     /// Empty content.
     Empty,
 }
@@ -26,18 +25,6 @@ pub enum Content {
 impl Default for Content {
     fn default() -> Self {
         Self::Empty
-    }
-}
-
-impl fmt::Debug for Content {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Content::Atoms(a) => write!(f, "Content::Atoms({:#?})", a),
-            Content::RawData(d) => write!(f, "Content::RawData({:?})", d),
-            Content::TypedData(d) => write!(f, "Content::TypedData({:?})", d),
-            Content::AudioInfo(d) => write!(f, "Content::AudioInfo({:?})", d),
-            Content::Empty => write!(f, "Content::Empty"),
-        }
     }
 }
 
@@ -77,7 +64,7 @@ impl Content {
             Self::Atoms(v) => v.iter().map(|a| a.len()).sum(),
             Self::RawData(d) => d.len(),
             Self::TypedData(d) => 8 + d.len(),
-            Self::AudioInfo(_) => 0,
+            Self::Mp4Audio(_) => 0,
             Self::Empty => 0,
         }
     }
@@ -88,7 +75,7 @@ impl Content {
             Self::Atoms(v) => v.is_empty(),
             Self::RawData(d) => d.is_empty(),
             Self::TypedData(d) => d.is_empty(),
-            Self::AudioInfo(_) => true,
+            Self::Mp4Audio(_) => true,
             Self::Empty => true,
         }
     }
@@ -184,7 +171,7 @@ impl Content {
             }
             Self::RawData(d) => d.write_raw(writer)?,
             Self::TypedData(d) => d.write_typed(writer)?,
-            Self::AudioInfo(_) => {
+            Self::Mp4Audio(_) => {
                 return Err(crate::Error::new(crate::ErrorKind::UnwritableData, "".to_owned()))
             }
             Self::Empty => (),
@@ -195,7 +182,7 @@ impl Content {
 }
 
 /// A template representing the different types of content an atom template might have.
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ContentT {
     /// A value containing a list of children atom templates.
     Atoms(Vec<AtomT>),
@@ -206,8 +193,8 @@ pub enum ContentT {
     /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34)
     /// code prior to the data parsed.
     TypedData,
-    /// A template representing audio information.
-    AudioInfo,
+    /// A template representing mp4 audio information.
+    Mp4Audio,
     /// A template for ignoring all data inside.
     Ignore,
     /// Empty content.
@@ -217,19 +204,6 @@ pub enum ContentT {
 impl Default for ContentT {
     fn default() -> Self {
         Self::Empty
-    }
-}
-
-impl fmt::Debug for ContentT {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Atoms(a) => write!(f, "ContentT::Atoms{{ {:#?} }}", a),
-            Self::RawData(d) => write!(f, "ContentT::RawData{{ {:?} }}", d),
-            Self::TypedData => write!(f, "ContentT::TypedData"),
-            Self::AudioInfo => write!(f, "ContentT::AudioInfo"),
-            Self::Ignore => write!(f, "ContentT::Ignore"),
-            Self::Empty => write!(f, "ContentT::Empty"),
-        }
     }
 }
 
@@ -343,7 +317,7 @@ impl ContentT {
                     ));
                 }
             }
-            ContentT::AudioInfo => Content::AudioInfo(AudioInfo::parse(reader, len)?),
+            ContentT::Mp4Audio => Content::Mp4Audio(atom::parse_mp4a(reader, len)?),
             ContentT::Ignore => {
                 reader.seek(SeekFrom::Current(len as i64))?;
                 Content::Empty

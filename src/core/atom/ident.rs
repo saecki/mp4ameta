@@ -24,7 +24,7 @@ pub const SAMPLE_TABLE_CHUNK_OFFSET: FourCC = FourCC(*b"stco");
 /// (`stsd`)
 pub const SAMPLE_TABLE_SAMPLE_DESCRIPTION: FourCC = FourCC(*b"stsd");
 /// (`mp4a`)
-pub const MPEG4_AUDIO: FourCC = FourCC(*b"mp4a");
+pub const MP4_AUDIO: FourCC = FourCC(*b"mp4a");
 /// (`esds`)
 pub const ELEMENTARY_STREAM_DESCRIPTION: FourCC = FourCC(*b"esds");
 /// (`udta`) Identifier of an atom containing user metadata.

@@ -650,8 +650,8 @@ pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Ta
                     if let Some(minf) = mdia.take_child(MEDIA_INFORMATION) {
                         if let Some(stbl) = minf.take_child(SAMPLE_TABLE) {
                             if let Some(stsd) = stbl.take_child(SAMPLE_TABLE_SAMPLE_DESCRIPTION) {
-                                if let Some(mp4a) = stsd.take_child(MPEG4_AUDIO) {
-                                    if let Content::AudioInfo(a) = mp4a.content {
+                                if let Some(mp4a) = stsd.take_child(MP4_AUDIO) {
+                                    if let Content::Mp4Audio(a) = mp4a.content {
                                         audio_info = Some(a);
                                     }
                                 }

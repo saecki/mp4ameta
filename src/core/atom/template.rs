@@ -48,7 +48,7 @@ fn metadata_read_atom_t() -> AtomT {
                 AtomT::new(MEDIA_INFORMATION, 0, ContentT::atom_t(
                     AtomT::new(SAMPLE_TABLE, 0, ContentT::atom_t(
                         AtomT::new(SAMPLE_TABLE_SAMPLE_DESCRIPTION, 8, ContentT::atom_t(
-                            AtomT::new(MPEG4_AUDIO, 0, ContentT::AudioInfo)
+                            AtomT::new(MP4_AUDIO, 0, ContentT::Mp4Audio)
                         )),
                     ))
                 )),

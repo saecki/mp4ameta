@@ -313,20 +313,27 @@ impl TryFrom<u8> for SampleRate {
 
 impl fmt::Display for SampleRate {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}Hz", self.hz())
+    }
+}
+
+impl SampleRate {
+    /// Returns the sample rate in Hz.
+    pub const fn hz(&self) -> usize {
         match self {
-            Self::Hz96000 => write!(f, "96000Hz"),
-            Self::Hz88200 => write!(f, "88200Hz"),
-            Self::Hz64000 => write!(f, "64000Hz"),
-            Self::Hz48000 => write!(f, "48000Hz"),
-            Self::Hz44100 => write!(f, "44100Hz"),
-            Self::Hz32000 => write!(f, "32000Hz"),
-            Self::Hz24000 => write!(f, "24000Hz"),
-            Self::Hz22050 => write!(f, "22050Hz"),
-            Self::Hz16000 => write!(f, "16000Hz"),
-            Self::Hz12000 => write!(f, "12000Hz"),
-            Self::Hz11025 => write!(f, "11025Hz"),
-            Self::Hz8000 => write!(f, "8000Hz"),
-            Self::Hz7350 => write!(f, "7350Hz"),
+            Self::Hz96000 => 96000,
+            Self::Hz88200 => 88200,
+            Self::Hz64000 => 64000,
+            Self::Hz48000 => 48000,
+            Self::Hz44100 => 44100,
+            Self::Hz32000 => 32000,
+            Self::Hz24000 => 24000,
+            Self::Hz22050 => 22050,
+            Self::Hz16000 => 16000,
+            Self::Hz12000 => 12000,
+            Self::Hz11025 => 11025,
+            Self::Hz8000 => 8000,
+            Self::Hz7350 => 7350,
         }
     }
 }
