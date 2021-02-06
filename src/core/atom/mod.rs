@@ -435,8 +435,6 @@ pub(crate) fn parse_atoms(
         let (atom_len, atom_ident) = parse_head(reader)?;
         let mut parsed = false;
 
-        println!("{} {}", atom_len, atom_ident);
-
         for a in atoms {
             if atom_ident == a.ident || a.ident == WILDCARD {
                 match parse_content(reader, &a.content, a.offset, atom_len - 8) {

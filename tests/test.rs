@@ -2,10 +2,10 @@ use mp4ameta::{
     atom::FreeformIdent, AdvisoryRating, ChannelConfig, Data, DataIdent, MediaType, SampleRate,
     Tag, STANDARD_GENRES,
 };
-use std::fs;
+use std::{fs, time::Duration};
 use walkdir::WalkDir;
 
-const EXTENSIONS: [&str; 4] = [".m4a", ".m4b", ".m4p", ".m4v"];
+const EXTENSIONS: [&str; 5] = [".m4a", ".m4b", ".m4p", ".m4v", ".mp4"];
 
 #[test]
 fn collection() {
@@ -80,10 +80,10 @@ fn read() {
     assert_eq!(tag.total_tracks(), Some(13));
     assert_eq!(tag.year(), Some("2013"));
     assert_eq!(tag.artwork(), Some(&Data::Png(fs::read("files/artwork.png").unwrap())));
-    assert_eq!(tag.duration().ok(), Some(0.486));
+    assert_eq!(tag.duration().ok(), Some(Duration::from_secs_f64(0.486)));
     assert_eq!(tag.filetype(), "M4A \u{0}\u{0}\u{2}\u{0}isomiso2");
     assert_eq!(tag.channel_config().unwrap(), ChannelConfig::Mono);
-    assert_eq!(tag.sample_rate().unwrap(), SampleRate::F44100);
+    assert_eq!(tag.sample_rate().unwrap(), SampleRate::Hz44100);
     assert_eq!(tag.avg_bitrate().unwrap(), 64776);
     assert_eq!(tag.max_bitrate().unwrap(), 69000);
     assert_eq!(
@@ -155,10 +155,10 @@ fn write() {
     assert_eq!(tag.total_tracks(), Some(7));
     assert_eq!(tag.year(), Some("1998"));
     assert_eq!(tag.artwork(), Some(&Data::Jpeg(b"NEW ARTWORK".to_vec())));
-    assert_eq!(tag.duration().ok(), Some(0.486));
+    assert_eq!(tag.duration().ok(), Some(Duration::from_secs_f64(0.486)));
     assert_eq!(tag.filetype(), "M4A \u{0}\u{0}\u{2}\u{0}isomiso2");
     assert_eq!(tag.channel_config(), Some(ChannelConfig::Mono));
-    assert_eq!(tag.sample_rate(), Some(SampleRate::F44100));
+    assert_eq!(tag.sample_rate(), Some(SampleRate::Hz44100));
     assert_eq!(tag.avg_bitrate(), Some(64776));
     assert_eq!(tag.max_bitrate(), Some(69000));
     assert_eq!(
@@ -210,10 +210,10 @@ fn write_same() {
     assert_eq!(tag.total_tracks(), Some(13));
     assert_eq!(tag.year(), Some("2013"));
     assert_eq!(tag.artwork(), Some(&Data::Png(fs::read("files/artwork.png").unwrap())));
-    assert_eq!(tag.duration().ok(), Some(0.486));
+    assert_eq!(tag.duration().ok(), Some(Duration::from_secs_f64(0.486)));
     assert_eq!(tag.filetype(), "M4A \u{0}\u{0}\u{2}\u{0}isomiso2");
     assert_eq!(tag.channel_config(), Some(ChannelConfig::Mono));
-    assert_eq!(tag.sample_rate(), Some(SampleRate::F44100));
+    assert_eq!(tag.sample_rate(), Some(SampleRate::Hz44100));
     assert_eq!(tag.avg_bitrate(), Some(64776));
     assert_eq!(tag.max_bitrate(), Some(69000));
 
@@ -263,10 +263,10 @@ fn write_bigger() {
     assert_eq!(tag.track_number(), Some(7));
     assert_eq!(tag.total_tracks(), Some(13));
     assert_eq!(tag.year(), Some("2013"));
-    assert_eq!(tag.duration().ok(), Some(0.486));
+    assert_eq!(tag.duration().ok(), Some(Duration::from_secs_f64(0.486)));
     assert_eq!(tag.filetype(), "M4A \u{0}\u{0}\u{2}\u{0}isomiso2");
     assert_eq!(tag.channel_config(), Some(ChannelConfig::Mono));
-    assert_eq!(tag.sample_rate(), Some(SampleRate::F44100));
+    assert_eq!(tag.sample_rate(), Some(SampleRate::Hz44100));
     assert_eq!(tag.avg_bitrate(), Some(64776));
     assert_eq!(tag.max_bitrate(), Some(69000));
 

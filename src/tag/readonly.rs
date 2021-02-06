@@ -1,9 +1,11 @@
+use std::time::Duration;
+
 use crate::{atom, ChannelConfig, SampleRate, Tag};
 
 /// ### Duration
 impl Tag {
     /// Returns the duration in seconds.
-    pub fn duration(&self) -> crate::Result<f64> {
+    pub fn duration(&self) -> crate::Result<Duration> {
         let vec = self.mvhd.as_ref().ok_or_else(|| {
             crate::Error::new(
                 crate::ErrorKind::AtomNotFound(atom::MOVIE_HEADER),
@@ -28,10 +30,10 @@ impl Tag {
                 // 4 bytes time scale
                 // 4 bytes duration
                 // ...
-                let timescale = be_int!(vec, 12, u32).ok_or_else(parsing_err)?;
-                let duration = be_int!(vec, 16, u32).ok_or_else(parsing_err)?;
+                let timescale = be_int!(vec, 12, u32).ok_or_else(parsing_err)? as u64;
+                let duration = be_int!(vec, 16, u32).ok_or_else(parsing_err)? as u64;
 
-                Ok(duration as f64 / timescale as f64)
+                Ok(Duration::from_nanos(duration * 1_000_000_000 / timescale))
             }
             1 => {
                 // # Version 1
@@ -42,10 +44,10 @@ impl Tag {
                 // 4 bytes time scale
                 // 8 bytes duration
                 // ...
-                let timescale = be_int!(vec, 20, u32).ok_or_else(parsing_err)?;
+                let timescale = be_int!(vec, 20, u32).ok_or_else(parsing_err)? as u64;
                 let duration = be_int!(vec, 24, u64).ok_or_else(parsing_err)?;
 
-                Ok(duration as f64 / timescale as f64)
+                Ok(Duration::from_nanos(duration * 1_000_000_000 / timescale))
             }
             v => Err(crate::Error::new(
                 crate::ErrorKind::UnknownVersion(*v),
@@ -56,11 +58,16 @@ impl Tag {
 
     /// Returns the duration formatted in an easily readable way.
     pub(crate) fn format_duration(&self) -> Option<String> {
-        let total_seconds = self.duration().ok()?.round() as usize;
+        let total_seconds = self.duration().ok()?.as_secs();
         let seconds = total_seconds % 60;
-        let minutes = total_seconds / 60;
+        let minutes = total_seconds / 60 % 60;
+        let hours = total_seconds / 60 / 60;
 
-        Some(format!("duration: {}:{:02}\n", minutes, seconds))
+        match (hours, minutes) {
+            (0, 0) => Some(format!("duration: {:02}\n", seconds)),
+            (0, _) => Some(format!("duration: {}:{:02}\n", minutes, seconds)),
+            (_, _) => Some(format!("duration: {}:{:02}:{:02}\n", hours, minutes, seconds)),
+        }
     }
 }
 

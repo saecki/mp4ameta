@@ -42,33 +42,33 @@ pub const FIVE_ONE: u8 = 6;
 /// 7.1
 pub const SEVEN_ONE: u8 = 7;
 
-// sample rates
-/// 96000Hz
-pub const F96000: u8 = 0x0;
-/// 882000Hz
-pub const F88200: u8 = 0x1;
-/// 640000Hz
-pub const F64000: u8 = 0x2;
-/// 480000Hz
-pub const F48000: u8 = 0x3;
-/// 44100Hz
-pub const F44100: u8 = 0x4;
-/// 32000Hz
-pub const F32000: u8 = 0x5;
-/// 242000Hz
-pub const F24000: u8 = 0x6;
-/// 22050Hz
-pub const F22050: u8 = 0x7;
-/// 16000Hz
-pub const F16000: u8 = 0x8;
-/// 12000Hz
-pub const F12000: u8 = 0x9;
-/// 11025Hz
-pub const F11025: u8 = 0xa;
-/// 8000Hz
-pub const F8000: u8 = 0xb;
-/// 7350Hz
-pub const F7350: u8 = 0xc;
+// sample rate indices
+/// Sample rate index for 96000Hz.
+pub const HZ_96000: u8 = 0;
+/// Sample rate index for 882000Hz.
+pub const HZ_88200: u8 = 1;
+/// Sample rate index for 640000Hz.
+pub const HZ_64000: u8 = 2;
+/// Sample rate index for 480000Hz.
+pub const HZ_48000: u8 = 3;
+/// Sample rate index for 44100Hz.
+pub const HZ_44100: u8 = 4;
+/// Sample rate index for 32000Hz.
+pub const HZ_32000: u8 = 5;
+/// Sample rate index for 242000Hz.
+pub const HZ_24000: u8 = 6;
+/// Sample rate index for 22050Hz.
+pub const HZ_22050: u8 = 7;
+/// Sample rate index for 16000Hz.
+pub const HZ_16000: u8 = 8;
+/// Sample rate index for 12000Hz.
+pub const HZ_12000: u8 = 9;
+/// Sample rate index for 11025Hz.
+pub const HZ_11025: u8 = 10;
+/// Sample rate index for 8000Hz.
+pub const HZ_8000: u8 = 11;
+/// Sample rate index for 7350Hz.
+pub const HZ_7350: u8 = 12;
 
 /// An enum describing the media type of a file stored in the `stik` atom.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -258,31 +258,31 @@ impl fmt::Display for ChannelConfig {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SampleRate {
     /// A Sample rate of 96000Hz
-    F96000,
+    Hz96000,
     /// A Sample rate of 88200Hz
-    F88200,
+    Hz88200,
     /// A Sample rate of 64000Hz
-    F64000,
+    Hz64000,
     /// A Sample rate of 48000Hz
-    F48000,
+    Hz48000,
     /// A Sample rate of 44100Hz
-    F44100,
+    Hz44100,
     /// A Sample rate of 32000Hz
-    F32000,
+    Hz32000,
     /// A Sample rate of 24000Hz
-    F24000,
+    Hz24000,
     /// A Sample rate of 24050Hz
-    F22050,
+    Hz22050,
     /// A Sample rate of 16000Hz
-    F16000,
+    Hz16000,
     /// A Sample rate of 12000Hz
-    F12000,
+    Hz12000,
     /// A Sample rate of 11050Hz
-    F11025,
+    Hz11025,
     /// A Sample rate of 8000Hz
-    F8000,
+    Hz8000,
     /// A Sample rate of 7350Hz
-    F7350,
+    Hz7350,
 }
 
 impl TryFrom<u8> for SampleRate {
@@ -290,19 +290,19 @@ impl TryFrom<u8> for SampleRate {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            F96000 => Ok(Self::F96000),
-            F88200 => Ok(Self::F88200),
-            F64000 => Ok(Self::F64000),
-            F48000 => Ok(Self::F48000),
-            F44100 => Ok(Self::F44100),
-            F32000 => Ok(Self::F32000),
-            F24000 => Ok(Self::F24000),
-            F22050 => Ok(Self::F22050),
-            F16000 => Ok(Self::F16000),
-            F12000 => Ok(Self::F12000),
-            F11025 => Ok(Self::F11025),
-            F8000 => Ok(Self::F8000),
-            F7350 => Ok(Self::F7350),
+            HZ_96000 => Ok(Self::Hz96000),
+            HZ_88200 => Ok(Self::Hz88200),
+            HZ_64000 => Ok(Self::Hz64000),
+            HZ_48000 => Ok(Self::Hz48000),
+            HZ_44100 => Ok(Self::Hz44100),
+            HZ_32000 => Ok(Self::Hz32000),
+            HZ_24000 => Ok(Self::Hz24000),
+            HZ_22050 => Ok(Self::Hz22050),
+            HZ_16000 => Ok(Self::Hz16000),
+            HZ_12000 => Ok(Self::Hz12000),
+            HZ_11025 => Ok(Self::Hz11025),
+            HZ_8000 => Ok(Self::Hz8000),
+            HZ_7350 => Ok(Self::Hz7350),
             _ => Err(Self::Error::new(
                 crate::ErrorKind::UnknownChannelConfig(value),
                 "Unknown channel config".to_owned(),
@@ -314,19 +314,19 @@ impl TryFrom<u8> for SampleRate {
 impl fmt::Display for SampleRate {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::F96000 => write!(f, "96000Hz"),
-            Self::F88200 => write!(f, "88200Hz"),
-            Self::F64000 => write!(f, "64000Hz"),
-            Self::F48000 => write!(f, "48000Hz"),
-            Self::F44100 => write!(f, "44100Hz"),
-            Self::F32000 => write!(f, "32000Hz"),
-            Self::F24000 => write!(f, "24000Hz"),
-            Self::F22050 => write!(f, "22050Hz"),
-            Self::F16000 => write!(f, "16000Hz"),
-            Self::F12000 => write!(f, "12000Hz"),
-            Self::F11025 => write!(f, "11025Hz"),
-            Self::F8000 => write!(f, "8000Hz"),
-            Self::F7350 => write!(f, "7350Hz"),
+            Self::Hz96000 => write!(f, "96000Hz"),
+            Self::Hz88200 => write!(f, "88200Hz"),
+            Self::Hz64000 => write!(f, "64000Hz"),
+            Self::Hz48000 => write!(f, "48000Hz"),
+            Self::Hz44100 => write!(f, "44100Hz"),
+            Self::Hz32000 => write!(f, "32000Hz"),
+            Self::Hz24000 => write!(f, "24000Hz"),
+            Self::Hz22050 => write!(f, "22050Hz"),
+            Self::Hz16000 => write!(f, "16000Hz"),
+            Self::Hz12000 => write!(f, "12000Hz"),
+            Self::Hz11025 => write!(f, "11025Hz"),
+            Self::Hz8000 => write!(f, "8000Hz"),
+            Self::Hz7350 => write!(f, "7350Hz"),
         }
     }
 }
