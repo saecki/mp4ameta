@@ -242,20 +242,9 @@ impl Atom {
         8 + self.offset + self.content.len()
     }
 
-    /// Returns true if the atom has no `offset` or `content` and only consists of it's 8 byte head.
-    pub fn is_empty(&self) -> bool {
-        self.offset + self.content.len() == 0
-    }
-
     /// Returns a reference to the first children atom matching the `identifier`, if present.
     pub fn child(&self, ident: FourCC) -> Option<&Self> {
         self.content.child(ident)
-    }
-
-    /// Returns a mutable reference to the first children atom matching the `identifier`, if
-    /// present.
-    pub fn child_mut(&mut self, ident: FourCC) -> Option<&mut Self> {
-        self.content.child_mut(ident)
     }
 
     /// Consumes self and returns the first children atom matching the `identifier`, if present.

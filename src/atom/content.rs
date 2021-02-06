@@ -52,31 +52,11 @@ impl Content {
         }
     }
 
-    /// Returns whether the content is empty.
-    pub fn is_empty(&self) -> bool {
-        match self {
-            Self::Atoms(v) => v.is_empty(),
-            Self::RawData(d) => d.is_empty(),
-            Self::TypedData(d) => d.is_empty(),
-            Self::Mp4Audio(_) => true,
-            Self::MovieHeader(_) => true,
-            Self::Empty => true,
-        }
-    }
-
     /// Returns an iterator over the children atoms.
     pub fn atoms(&self) -> impl Iterator<Item = &Atom> {
         match self {
             Self::Atoms(v) => v.iter(),
             _ => [].iter(),
-        }
-    }
-
-    /// Returns a mutable iterator over the children atoms.
-    pub fn atoms_mut(&mut self) -> impl Iterator<Item = &mut Atom> {
-        match self {
-            Self::Atoms(v) => v.iter_mut(),
-            _ => [].iter_mut(),
         }
     }
 
@@ -92,11 +72,6 @@ impl Content {
         self.atoms().find(|a| a.ident == ident)
     }
 
-    /// Returns a mutable reference to the first children atom matching the `identfier`, if present.
-    pub fn child_mut(&mut self, ident: FourCC) -> Option<&mut Atom> {
-        self.atoms_mut().find(|a| a.ident == ident)
-    }
-
     /// Consumes self and returns the first children atom matching the `identfier`, if present.
     pub fn take_child(self, ident: FourCC) -> Option<Atom> {
         self.into_atoms().find(|a| a.ident == ident)
@@ -105,16 +80,6 @@ impl Content {
     /// Return a data reference if `self` is of type [`Content::RawData`](crate::Content::RawData)
     /// or [`Content::TypedData`](crate::Content::TypedData).
     pub fn data(&self) -> Option<&Data> {
-        match self {
-            Self::TypedData(d) => Some(d),
-            Self::RawData(d) => Some(d),
-            _ => None,
-        }
-    }
-
-    /// Return a data reference if `self` is of type [`Content::RawData`](crate::Content::RawData)
-    /// or [`Content::TypedData`](crate::Content::TypedData).
-    pub fn data_mut(&mut self) -> Option<&mut Data> {
         match self {
             Self::TypedData(d) => Some(d),
             Self::RawData(d) => Some(d),
