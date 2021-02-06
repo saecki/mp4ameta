@@ -1,6 +1,6 @@
 use mp4ameta::{
-    atom::FreeformIdent, AdvisoryRating, ChannelConfig, Data, DataIdent, MediaType, SampleRate,
-    Tag, STANDARD_GENRES,
+    AdvisoryRating, ChannelConfig, Data, DataIdent, FreeformIdent, MediaType, SampleRate, Tag,
+    STANDARD_GENRES,
 };
 use std::{fs, time::Duration};
 use walkdir::WalkDir;
@@ -82,10 +82,10 @@ fn read() {
     assert_eq!(tag.artwork(), Some(&Data::Png(fs::read("files/artwork.png").unwrap())));
     assert_eq!(tag.duration().ok(), Some(Duration::from_secs_f64(0.486)));
     assert_eq!(tag.filetype(), "M4A \u{0}\u{0}\u{2}\u{0}isomiso2");
-    assert_eq!(tag.channel_config().unwrap(), ChannelConfig::Mono);
-    assert_eq!(tag.sample_rate().unwrap(), SampleRate::Hz44100);
-    assert_eq!(tag.avg_bitrate().unwrap(), 64776);
-    assert_eq!(tag.max_bitrate().unwrap(), 69000);
+    assert_eq!(tag.channel_config(), Some(ChannelConfig::Mono));
+    assert_eq!(tag.sample_rate(), Some(SampleRate::Hz44100));
+    assert_eq!(tag.avg_bitrate(), Some(64776));
+    assert_eq!(tag.max_bitrate(), Some(69000));
     assert_eq!(
         tag.string(&FreeformIdent::new("com.apple.iTunes", "ISRC")).next(),
         Some("TEST ISRC")

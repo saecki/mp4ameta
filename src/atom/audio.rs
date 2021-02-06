@@ -61,7 +61,7 @@ pub struct AudioInfo {
 //       1 byte ?
 
 /// Attempts to parse audio information from the mp4 audio sample entry.
-pub fn parse_mp4a(reader: &mut (impl Read + Seek), len: usize) -> crate::Result<AudioInfo> {
+pub(crate) fn parse_mp4a(reader: &mut (impl Read + Seek), len: usize) -> crate::Result<AudioInfo> {
     let mut audio_info = AudioInfo::default();
 
     let start_pos = reader.seek(SeekFrom::Current(0))?;

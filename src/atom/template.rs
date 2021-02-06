@@ -2,11 +2,11 @@ use super::*;
 
 lazy_static! {
     /// Lazily initialized static reference of a filetype (`ftyp`) atom template.
-    pub static ref FILETYPE_ATOM_T: AtomT = filetype_atom_t();
+    pub(crate) static ref FILETYPE_ATOM_T: AtomT = filetype_atom_t();
     /// Lazily initialized static reference of an atom template hierarchy needed to write metadata.
-    pub static ref METADATA_WRITE_ATOM_T: [AtomT; 2] = metadata_write_atom_t();
+    pub(crate) static ref METADATA_WRITE_ATOM_T: [AtomT; 2] = metadata_write_atom_t();
     /// Lazily initialized static reference of an atom template hierarchy needed to read metadata.
-    pub static ref METADATA_READ_ATOM_T: AtomT = metadata_read_atom_t();
+    pub(crate) static ref METADATA_READ_ATOM_T: AtomT = metadata_read_atom_t();
 }
 
 /// Returns an file type (`ftyp`) atom template.

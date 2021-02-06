@@ -2,50 +2,48 @@ use std::fmt;
 use std::ops::{Deref, DerefMut};
 
 /// (`ftyp`) Identifier of an atom information about the filetype.
-pub const FILETYPE: FourCC = FourCC(*b"ftyp");
+pub(crate) const FILETYPE: FourCC = FourCC(*b"ftyp");
 /// (`mdat`)
-pub const MEDIA_DATA: FourCC = FourCC(*b"mdat");
+pub(crate) const MEDIA_DATA: FourCC = FourCC(*b"mdat");
 /// (`moov`) Identifier of an atom containing a structure of children storing metadata.
-pub const MOVIE: FourCC = FourCC(*b"moov");
+pub(crate) const MOVIE: FourCC = FourCC(*b"moov");
 /// (`mvhd`) Identifier of an atom containing information about the whole movie (or audio file).
-pub const MOVIE_HEADER: FourCC = FourCC(*b"mvhd");
+pub(crate) const MOVIE_HEADER: FourCC = FourCC(*b"mvhd");
 /// (`trak`) Identifier of an atom containing information about a single track.
-pub const TRACK: FourCC = FourCC(*b"trak");
+pub(crate) const TRACK: FourCC = FourCC(*b"trak");
 /// (`mdia`) Identifier of an atom containing information about a tracks media type and data.
-pub const MEDIA: FourCC = FourCC(*b"mdia");
-/// (`mdhd`) Identifier of an atom containing information about a track
-pub const MEDIA_HEADER: FourCC = FourCC(*b"mdhd");
+pub(crate) const MEDIA: FourCC = FourCC(*b"mdia");
 /// (`minf`)
-pub const MEDIA_INFORMATION: FourCC = FourCC(*b"minf");
+pub(crate) const MEDIA_INFORMATION: FourCC = FourCC(*b"minf");
 /// (`stbl`)
-pub const SAMPLE_TABLE: FourCC = FourCC(*b"stbl");
+pub(crate) const SAMPLE_TABLE: FourCC = FourCC(*b"stbl");
 /// (`stco`)
-pub const SAMPLE_TABLE_CHUNK_OFFSET: FourCC = FourCC(*b"stco");
+pub(crate) const SAMPLE_TABLE_CHUNK_OFFSET: FourCC = FourCC(*b"stco");
 /// (`stsd`)
-pub const SAMPLE_TABLE_SAMPLE_DESCRIPTION: FourCC = FourCC(*b"stsd");
+pub(crate) const SAMPLE_TABLE_SAMPLE_DESCRIPTION: FourCC = FourCC(*b"stsd");
 /// (`mp4a`)
-pub const MP4_AUDIO: FourCC = FourCC(*b"mp4a");
+pub(crate) const MP4_AUDIO: FourCC = FourCC(*b"mp4a");
 /// (`esds`)
-pub const ELEMENTARY_STREAM_DESCRIPTION: FourCC = FourCC(*b"esds");
+pub(crate) const ELEMENTARY_STREAM_DESCRIPTION: FourCC = FourCC(*b"esds");
 /// (`udta`) Identifier of an atom containing user metadata.
-pub const USER_DATA: FourCC = FourCC(*b"udta");
+pub(crate) const USER_DATA: FourCC = FourCC(*b"udta");
 /// (`meta`) Identifier of an atom containing a metadata item list.
-pub const METADATA: FourCC = FourCC(*b"meta");
+pub(crate) const METADATA: FourCC = FourCC(*b"meta");
 /// (`ilst`) Identifier of an atom containing a list of metadata atoms.
-pub const ITEM_LIST: FourCC = FourCC(*b"ilst");
+pub(crate) const ITEM_LIST: FourCC = FourCC(*b"ilst");
 /// (`data`) Identifier of an atom containing typed data.
-pub const DATA: FourCC = FourCC(*b"data");
+pub(crate) const DATA: FourCC = FourCC(*b"data");
 /// (`mean`)
-pub const MEAN: FourCC = FourCC(*b"mean");
+pub(crate) const MEAN: FourCC = FourCC(*b"mean");
 /// (`name`)
-pub const NAME: FourCC = FourCC(*b"name");
+pub(crate) const NAME: FourCC = FourCC(*b"name");
 /// (`free`)
-pub const FREE: FourCC = FourCC(*b"free");
+pub(crate) const FREE: FourCC = FourCC(*b"free");
+/// A identifier internally used as a wildcard.
+pub(crate) const WILDCARD: FourCC = FourCC([255, 255, 255, 255]);
 
 /// (`----`)
 pub const FREEFORM: FourCC = FourCC(*b"----");
-/// A identifier used internally as a wildcard.
-pub const WILDCARD: FourCC = FourCC([255, 255, 255, 255]);
 
 // iTunes 4.0 atoms
 /// (`rtng`)
@@ -140,13 +138,11 @@ pub const WORK: FourCC = FourCC(*b"\xa9wrk");
 pub const SHOW_MOVEMENT: FourCC = FourCC(*b"shwm");
 
 /// Es descriptor  tag
-pub const ELEMENTARY_STREAM_DESCRIPTOR: u8 = 0x03;
+pub(crate) const ELEMENTARY_STREAM_DESCRIPTOR: u8 = 0x03;
 /// Decoder config descriptor tag
-pub const DECODER_CONFIG_DESCRIPTOR: u8 = 0x04;
+pub(crate) const DECODER_CONFIG_DESCRIPTOR: u8 = 0x04;
 /// Decoder specific descriptor tag
-pub const DECODER_SPECIFIC_DESCRIPTOR: u8 = 0x05;
-/// Sl descriptor tag
-pub const SL_CONFIG_DESCRIPTOR: u8 = 0x06;
+pub(crate) const DECODER_SPECIFIC_DESCRIPTOR: u8 = 0x05;
 
 /// A trait providing information about an identifier.
 pub trait Ident {

@@ -15,7 +15,7 @@
 //!
 //! ## The hard way
 //! ```no_run
-//! use mp4ameta::{atom, Data, FourCC, Tag};
+//! use mp4ameta::{Data, FourCC, Tag};
 //!
 //! let mut tag = Tag::read_from_path("music.m4a").unwrap();
 //! let artist_ident = FourCC(*b"\xa9ART");
@@ -47,16 +47,13 @@
 #[macro_use]
 extern crate lazy_static;
 
-pub use crate::core::atom::{
-    self, Atom, AtomData, AtomT, AudioInfo, DataIdent, FourCC, FreeformIdent, Ident,
-};
-pub use crate::core::content::{Content, ContentT};
-pub use crate::core::data::{self, Data};
-pub use crate::core::types::{self, AdvisoryRating, ChannelConfig, MediaType, SampleRate};
+pub use crate::atom::{ident, AtomData, AudioInfo, Data, DataIdent, FourCC, FreeformIdent, Ident};
 pub use crate::error::{Error, ErrorKind, Result};
 pub use crate::tag::{Tag, STANDARD_GENRES};
+pub use crate::types::*;
 
 #[macro_use]
-mod core;
+mod atom;
 mod error;
 mod tag;
+mod types;

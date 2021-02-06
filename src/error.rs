@@ -41,7 +41,7 @@ pub enum ErrorKind {
     UnwritableData,
 }
 
-/// A structure able to represent any error that may occur while performing metadata operations.
+/// A struct able to represent any error that may occur while performing metadata operations.
 pub struct Error {
     /// The kind of error.
     pub kind: ErrorKind,

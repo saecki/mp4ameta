@@ -4,15 +4,23 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use std::ops::Deref;
 
-use crate::{data, Content, ContentT, Data, ErrorKind, Tag};
+use crate::{ErrorKind, Tag};
 
 pub use audio::*;
+pub use data::*;
 pub use ident::*;
-pub use template::*;
 
-mod audio;
-mod ident;
-mod template;
+use content::*;
+use template::*;
+
+#[macro_use]
+pub mod data;
+pub mod audio;
+/// A module for the use of identifiers.
+pub mod ident;
+
+pub(crate) mod content;
+pub(crate) mod template;
 
 /// A list of valid file types in lowercase defined by the filetype (`ftyp`) atom.
 #[rustfmt::skip]
@@ -27,7 +35,7 @@ pub const VALID_FILETYPES: [&str; 8] = [
     "mp42",
 ];
 
-/// A struct representing data that is associated with an Atom identifier.
+/// A struct representing data that is associated with an atom identifier.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AtomData {
     /// The identifier of the atom.
@@ -159,7 +167,7 @@ impl AtomData {
 
 /// A struct that represents a MPEG-4 audio metadata atom.
 #[derive(Clone, Default, Eq, PartialEq)]
-pub struct Atom {
+pub(crate) struct Atom {
     /// The 4 byte identifier of the atom.
     pub ident: FourCC,
     /// The offset in bytes separating the head from the content.
@@ -251,19 +259,9 @@ impl Atom {
         self.content.child_mut(ident)
     }
 
-    /// Returns a mutable reference to the first children atom, if present.
-    pub fn mut_first_child(&mut self) -> Option<&mut Self> {
-        self.content.first_child_mut()
-    }
-
     /// Consumes self and returns the first children atom matching the `identifier`, if present.
     pub fn take_child(self, ident: FourCC) -> Option<Self> {
         self.content.take_child(ident)
-    }
-
-    /// Consumes self and returns the first children atom, if present.
-    pub fn take_first_child(self) -> Option<Self> {
-        self.content.take_first_child()
     }
 
     /// Attempts to write the atom to the writer.
@@ -299,7 +297,7 @@ impl Atom {
 
 /// A template representing a MPEG-4 audio metadata atom.
 #[derive(Clone, Default, Eq, PartialEq)]
-pub struct AtomT {
+pub(crate) struct AtomT {
     /// The 4 byte identifier of the atom.
     pub ident: FourCC,
     /// The offset in bytes separating the head from the content.
@@ -333,38 +331,6 @@ impl AtomT {
     /// Creates a name atom template containing [`ContentT::TypedData`](crate::ContentT::TypedData).
     pub const fn name_atom() -> Self {
         Self::new(NAME, 4, ContentT::RawData(data::UTF8))
-    }
-
-    /// Returns a reference to the first children atom template matching the identifier, if present.
-    pub fn child(&self, ident: FourCC) -> Option<&Self> {
-        self.content.child(ident)
-    }
-
-    /// Returns a reference to the first children atom template, if present.
-    pub fn first_child(&self) -> Option<&Self> {
-        self.content.first_child()
-    }
-
-    /// Returns a mutable reference to the first children atom template matching the identifier, if
-    /// present.
-    pub fn child_mut(&mut self, ident: FourCC) -> Option<&mut Self> {
-        self.content.child_mut(ident)
-    }
-
-    /// Returns a mutable reference to the first children atom template, if present.
-    pub fn first_child_mut(&mut self) -> Option<&mut Self> {
-        self.content.first_child_mut()
-    }
-
-    /// Consumes self and returns the first children atom template matching the `identifier`, if
-    /// present.
-    pub fn take_child(self, ident: FourCC) -> Option<Self> {
-        self.content.take_child(ident)
-    }
-
-    /// Consumes self and returns the first children atom template, if present.
-    pub fn take_first_child(self) -> Option<Self> {
-        self.content.take_first_child()
     }
 
     /// Attempts to parse one atom, that matches the template, from the `reader`.  This should only

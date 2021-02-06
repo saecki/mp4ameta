@@ -3,64 +3,83 @@ use std::io::{Read, Seek, SeekFrom, Write};
 
 // [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) codes
 /// Reserved for use where no type needs to be indicated.
-pub const RESERVED: u32 = 0;
+pub(crate) const RESERVED: u32 = 0;
 /// UTF-8 without any count or NULL terminator.
-pub const UTF8: u32 = 1;
+pub(crate) const UTF8: u32 = 1;
 /// UTF-16 also known as UTF-16BE.
-pub const UTF16: u32 = 2;
+pub(crate) const UTF16: u32 = 2;
 /// UTF-8 variant storage of a string for sorting only.
-pub const UTF8_SORT: u32 = 4;
+#[allow(unused)]
+pub(crate) const UTF8_SORT: u32 = 4;
 /// UTF-16 variant storage of a string for sorting only.
-pub const UTF16_SORT: u32 = 5;
+#[allow(unused)]
+pub(crate) const UTF16_SORT: u32 = 5;
 /// JPEG in a JFIF wrapper.
-pub const JPEG: u32 = 13;
+pub(crate) const JPEG: u32 = 13;
 /// PNG in a PNG wrapper.
-pub const PNG: u32 = 14;
+pub(crate) const PNG: u32 = 14;
 /// A big-endian signed integer in 1,2,3 or 4 bytes.
-pub const BE_SIGNED: u32 = 21;
+pub(crate) const BE_SIGNED: u32 = 21;
 /// A big-endian unsigned integer in 1,2,3 or 4 bytes.
-pub const BE_UNSIGNED: u32 = 22;
+#[allow(unused)]
+pub(crate) const BE_UNSIGNED: u32 = 22;
 /// A big-endian 32-bit floating point value (`IEEE754`).
-pub const BE_F32: u32 = 23;
+#[allow(unused)]
+pub(crate) const BE_F32: u32 = 23;
 /// A big-endian 64-bit floating point value (`IEEE754`).
-pub const BE_F64: u32 = 24;
+#[allow(unused)]
+pub(crate) const BE_F64: u32 = 24;
 /// Windows bitmap format graphics.
-pub const BMP: u32 = 27;
+#[allow(unused)]
+pub(crate) const BMP: u32 = 27;
 /// QuickTime Metadata atom.
-pub const QT_META: u32 = 28;
+#[allow(unused)]
+pub(crate) const QT_META: u32 = 28;
 /// An 8-bit signed integer.
-pub const I8: u32 = 65;
+#[allow(unused)]
+pub(crate) const I8: u32 = 65;
 /// A big-endian 16-bit signed integer.
-pub const BE_I16: u32 = 66;
+#[allow(unused)]
+pub(crate) const BE_I16: u32 = 66;
 /// A big-endian 32-bit signed integer.
-pub const BE_I32: u32 = 67;
+#[allow(unused)]
+pub(crate) const BE_I32: u32 = 67;
 /// A block of data representing a two dimensional (2D) point with 32-bit big-endian floating point
 /// x and y coordinates. It has the structure:<br/> `{ BE_F32 x; BE_F32 y; }`
-pub const BE_POINT_F32: u32 = 70;
+#[allow(unused)]
+pub(crate) const BE_POINT_F32: u32 = 70;
 /// A block of data representing 2D dimensions with 32-bit big-endian floating point width and
 /// height. It has the structure:<br/>
 /// `{ width: BE_F32, height: BE_F32 }`
-pub const BE_DIMS_F32: u32 = 71;
+#[allow(unused)]
+pub(crate) const BE_DIMS_F32: u32 = 71;
 /// A block of data representing a 2D rectangle with 32-bit big-endian floating point x and y
 /// coordinates and a 32-bit big-endian floating point width and height size. It has the
 /// structure:<br/>
 /// `{ x: BE_F32, y: BE_F32, width: BE_F32, height: BE_F32 }`<br/>
 /// or the equivalent structure:<br/>
 /// `{ origin: BE_Point_F32, size: BE_DIMS_F32 }`
-pub const BE_RECT_F32: u32 = 72;
+#[allow(unused)]
+pub(crate) const BE_RECT_F32: u32 = 72;
 /// A big-endian 64-bit signed integer.
-pub const BE_I64: u32 = 74;
+#[allow(unused)]
+pub(crate) const BE_I64: u32 = 74;
 /// An 8-bit unsigned integer.
-pub const U8: u32 = 75;
+#[allow(unused)]
+pub(crate) const U8: u32 = 75;
 /// A big-endian 16-bit unsigned integer.
-pub const BE_U16: u32 = 76;
+#[allow(unused)]
+pub(crate) const BE_U16: u32 = 76;
 /// A big-endian 32-bit unsigned integer.
-pub const BE_U32: u32 = 77;
+#[allow(unused)]
+pub(crate) const BE_U32: u32 = 77;
 /// A big-endian 64-bit unsigned integer.
-pub const BE_U64: u32 = 78;
+#[allow(unused)]
+pub(crate) const BE_U64: u32 = 78;
 /// A block of data representing a 3x3 transformation matrix. It has the structure:<br/>
 /// `{ matrix: [[BE_F64; 3]; 3] }`
-pub const AFFINE_TRANSFORM_F64: u32 = 79;
+#[allow(unused)]
+pub(crate) const AFFINE_TRANSFORM_F64: u32 = 79;
 
 /// An enum that holds different types of data defined by
 /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
@@ -383,7 +402,11 @@ impl Data {
 }
 
 /// Parses data based on [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
-pub fn parse_data(reader: &mut impl Read, datatype: u32, length: usize) -> crate::Result<Data> {
+pub(crate) fn parse_data(
+    reader: &mut impl Read,
+    datatype: u32,
+    length: usize,
+) -> crate::Result<Data> {
     Ok(match datatype {
         RESERVED => Data::Reserved(read_u8_vec(reader, length)?),
         UTF8 => Data::Utf8(read_utf8(reader, length)?),
@@ -401,35 +424,35 @@ pub fn parse_data(reader: &mut impl Read, datatype: u32, length: usize) -> crate
 }
 
 /// Attempts to read a 8 bit unsigned integer from the reader.
-pub fn read_u8(reader: &mut impl Read) -> crate::Result<u8> {
+pub(crate) fn read_u8(reader: &mut impl Read) -> crate::Result<u8> {
     let mut buf = [0u8];
     reader.read_exact(&mut buf)?;
     Ok(buf[0])
 }
 
 /// Attempts to read a 16 bit unsigned big endian integer from the reader.
-pub fn read_u16(reader: &mut impl Read) -> crate::Result<u16> {
+pub(crate) fn read_u16(reader: &mut impl Read) -> crate::Result<u16> {
     let mut buf = [0u8; 2];
     reader.read_exact(&mut buf)?;
     Ok(u16::from_be_bytes(buf))
 }
 
 /// Attempts to read a 32 bit unsigned big endian integer from the reader.
-pub fn read_u32(reader: &mut impl Read) -> crate::Result<u32> {
+pub(crate) fn read_u32(reader: &mut impl Read) -> crate::Result<u32> {
     let mut buf = [0u8; 4];
     reader.read_exact(&mut buf)?;
     Ok(u32::from_be_bytes(buf))
 }
 
 /// Attempts to read a 64 bit unsigned big endian integer from the reader.
-pub fn read_u64(reader: &mut impl Read) -> crate::Result<u64> {
+pub(crate) fn read_u64(reader: &mut impl Read) -> crate::Result<u64> {
     let mut buf = [0u8; 8];
     reader.read_exact(&mut buf)?;
     Ok(u64::from_be_bytes(buf))
 }
 
 /// Attempts to read 8 bit unsigned integers from the reader to a vector of size length.
-pub fn read_u8_vec(reader: &mut impl Read, length: usize) -> crate::Result<Vec<u8>> {
+pub(crate) fn read_u8_vec(reader: &mut impl Read, length: usize) -> crate::Result<Vec<u8>> {
     let mut buf = vec![0u8; length];
 
     reader.read_exact(&mut buf)?;
@@ -438,14 +461,14 @@ pub fn read_u8_vec(reader: &mut impl Read, length: usize) -> crate::Result<Vec<u
 }
 
 /// Attempts to read a utf-8 string from the reader.
-pub fn read_utf8(reader: &mut impl Read, length: usize) -> crate::Result<String> {
+pub(crate) fn read_utf8(reader: &mut impl Read, length: usize) -> crate::Result<String> {
     let data = read_u8_vec(reader, length)?;
 
     Ok(String::from_utf8(data)?)
 }
 
 /// Attempts to read a utf-16 string from the reader.
-pub fn read_utf16(reader: &mut impl Read, length: usize) -> crate::Result<String> {
+pub(crate) fn read_utf16(reader: &mut impl Read, length: usize) -> crate::Result<String> {
     let mut buf = vec![0u8; length];
 
     reader.read_exact(&mut buf)?;
@@ -456,7 +479,7 @@ pub fn read_utf16(reader: &mut impl Read, length: usize) -> crate::Result<String
 }
 
 /// Attempts to read the remaining stream length and returns to the starting position.
-pub fn remaining_stream_len(reader: &mut impl Seek) -> crate::Result<u64> {
+pub(crate) fn remaining_stream_len(reader: &mut impl Seek) -> crate::Result<u64> {
     let current_pos = reader.seek(SeekFrom::Current(0))?;
     let complete_len = reader.seek(SeekFrom::End(0))?;
     let len = complete_len - current_pos;

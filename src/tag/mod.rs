@@ -4,8 +4,8 @@ use std::fs::{File, OpenOptions};
 use std::io::{BufReader, Read, Seek, Write};
 use std::path::Path;
 
-use crate::atom::{self, idents_match, AudioInfo, DataIdent, Ident};
-use crate::{AdvisoryRating, Atom, AtomData, Data, MediaType};
+use crate::atom::{self, idents_match, Atom, AudioInfo, DataIdent, Ident};
+use crate::{AdvisoryRating, AtomData, Data, MediaType};
 
 pub use genre::*;
 pub use readonly::*;
