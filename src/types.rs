@@ -4,73 +4,73 @@ use std::time::Duration;
 
 use crate::ErrorKind;
 
-// iTunes media types
+// iTunes media type indices
 /// A media type code stored in the `stik` atom.
-pub const MOVIE: u8 = 0;
+const MOVIE: u8 = 0;
 /// A media type code stored in the `stik` atom.
-pub const NORMAL: u8 = 1;
+const NORMAL: u8 = 1;
 /// A media type code stored in the `stik` atom.
-pub const AUDIOBOOK: u8 = 2;
+const AUDIOBOOK: u8 = 2;
 /// A media type code stored in the `stik` atom.
-pub const WHACKED_BOOKMARK: u8 = 5;
+const WHACKED_BOOKMARK: u8 = 5;
 /// A media type code stored in the `stik` atom.
-pub const MUSIC_VIDEO: u8 = 6;
+const MUSIC_VIDEO: u8 = 6;
 /// A media type code stored in the `stik` atom.
-pub const SHORT_FILM: u8 = 9;
+const SHORT_FILM: u8 = 9;
 /// A media type code stored in the `stik` atom.
-pub const TV_SHOW: u8 = 10;
+const TV_SHOW: u8 = 10;
 /// A media type code stored in the `stik` atom.
-pub const BOOKLET: u8 = 11;
+const BOOKLET: u8 = 11;
 
-// iTunes advisory ratings
+// iTunes advisory rating indices
 /// An advisory rating code stored in the `rtng` atom.
-pub const CLEAN: u8 = 2;
+const CLEAN: u8 = 2;
 /// An advisory rating code stored in the `rtng` atom.
-pub const INOFFENSIVE: u8 = 0;
+const INOFFENSIVE: u8 = 0;
 
-// channnel configurations
+// channnel configuration indices
 /// Mono
-pub const MONO: u8 = 1;
+const MONO: u8 = 1;
 /// Stereo
-pub const STEREO: u8 = 2;
+const STEREO: u8 = 2;
 /// 3.0
-pub const THREE: u8 = 3;
+const THREE: u8 = 3;
 /// 4.0
-pub const FOUR: u8 = 4;
+const FOUR: u8 = 4;
 /// 5.0
-pub const FIVE: u8 = 5;
+const FIVE: u8 = 5;
 /// 5.1
-pub const FIVE_ONE: u8 = 6;
+const FIVE_ONE: u8 = 6;
 /// 7.1
-pub const SEVEN_ONE: u8 = 7;
+const SEVEN_ONE: u8 = 7;
 
 // sample rate indices
 /// Sample rate index for 96000Hz.
-pub const HZ_96000: u8 = 0;
+const HZ_96000: u8 = 0;
 /// Sample rate index for 882000Hz.
-pub const HZ_88200: u8 = 1;
+const HZ_88200: u8 = 1;
 /// Sample rate index for 640000Hz.
-pub const HZ_64000: u8 = 2;
+const HZ_64000: u8 = 2;
 /// Sample rate index for 480000Hz.
-pub const HZ_48000: u8 = 3;
+const HZ_48000: u8 = 3;
 /// Sample rate index for 44100Hz.
-pub const HZ_44100: u8 = 4;
+const HZ_44100: u8 = 4;
 /// Sample rate index for 32000Hz.
-pub const HZ_32000: u8 = 5;
+const HZ_32000: u8 = 5;
 /// Sample rate index for 242000Hz.
-pub const HZ_24000: u8 = 6;
+const HZ_24000: u8 = 6;
 /// Sample rate index for 22050Hz.
-pub const HZ_22050: u8 = 7;
+const HZ_22050: u8 = 7;
 /// Sample rate index for 16000Hz.
-pub const HZ_16000: u8 = 8;
+const HZ_16000: u8 = 8;
 /// Sample rate index for 12000Hz.
-pub const HZ_12000: u8 = 9;
+const HZ_12000: u8 = 9;
 /// Sample rate index for 11025Hz.
-pub const HZ_11025: u8 = 10;
+const HZ_11025: u8 = 10;
 /// Sample rate index for 8000Hz.
-pub const HZ_8000: u8 = 11;
+const HZ_8000: u8 = 11;
 /// Sample rate index for 7350Hz.
-pub const HZ_7350: u8 = 12;
+const HZ_7350: u8 = 12;
 
 /// An enum describing the media type of a file stored in the `stik` atom.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

@@ -6,7 +6,7 @@ use crate::{ChannelConfig, SampleRate};
 
 /// A struct containing information about an MPEG-4 AAC track.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct Mp4aInfo {
+pub(crate) struct Mp4aInfo {
     /// The channel configuration of the track.
     pub channel_config: Option<ChannelConfig>,
     /// The sample rate of the track.
@@ -170,7 +170,7 @@ fn parse_ds_desc(reader: &mut (impl Read + Seek), audio_info: &mut Mp4aInfo) -> 
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct MvhdInfo {
+pub(crate) struct MvhdInfo {
     /// The duration of the track.
     pub duration: Option<Duration>,
 }

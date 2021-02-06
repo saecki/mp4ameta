@@ -44,7 +44,7 @@
 //! ```
 #![warn(missing_docs)]
 
-pub use crate::atom::{ident, AtomData, Data, DataIdent, FourCC, FreeformIdent, Ident, Mp4aInfo};
+pub use crate::atom::{ident, AtomData, Data, DataIdent, FourCC, FreeformIdent, Ident};
 pub use crate::error::{Error, ErrorKind, Result};
 pub use crate::tag::{Tag, STANDARD_GENRES};
 pub use crate::types::*;

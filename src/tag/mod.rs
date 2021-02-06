@@ -4,7 +4,7 @@ use std::fs::{File, OpenOptions};
 use std::io::{BufReader, Read, Seek, Write};
 use std::path::Path;
 
-use crate::atom::{self, idents_match, Atom, DataIdent, Ident};
+use crate::atom::{self, idents_match, DataIdent, Ident};
 use crate::{be_int, AdvisoryRating, AtomData, Data, Info, MediaType};
 
 pub use genre::*;
@@ -171,8 +171,7 @@ impl Tag {
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.
     pub fn dump_to(&self, writer: &mut impl Write) -> crate::Result<()> {
-        let atoms: Vec<Atom> = self.atoms.iter().map(Atom::from).collect();
-        atom::dump_tag_to(writer, atoms)
+        atom::dump_tag_to(writer, &self.atoms)
     }
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.

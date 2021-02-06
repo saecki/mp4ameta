@@ -4,7 +4,7 @@ use super::*;
 
 /// An enum representing the different types of content an atom might have.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) enum Content {
+pub(super) enum Content {
     /// A value containing a list of children atoms.
     Atoms(Vec<Atom>),
     /// A value containing raw data.
@@ -127,7 +127,7 @@ impl Content {
 
 /// A template representing the different types of content an atom template might have.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) enum ContentT {
+pub(super) enum ContentT {
     /// A value containing a list of children atom templates.
     Atoms(Vec<AtomT>),
     /// A template for raw data containing a datatype definded by

@@ -1,7 +1,7 @@
 use crate::{atom, Data, Tag};
 
-/// A list of standard genre codes and values found in the `gnre` atom. This list is equal to the
-/// ID3v1 genre list but all codes are incremented by 1.
+/// A list of standard genre codes and values found in the `gnre` atom. The codes are equivalent to the
+/// ID3v1 genre codes plus 1.
 pub const STANDARD_GENRES: [(u16, &str); 80] = [
     (1, "Blues"),
     (2, "Classic rock"),

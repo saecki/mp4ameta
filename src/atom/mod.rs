@@ -8,22 +8,23 @@ use crate::{ErrorKind, Info, Tag};
 
 pub use data::*;
 pub use ident::*;
-pub use info::*;
 
 use content::*;
+use info::*;
 use template::*;
 
 /// A module for the use of identifiers.
 pub mod ident;
 
-pub(crate) mod content;
-pub(crate) mod data;
-pub(crate) mod info;
-pub(crate) mod template;
+pub mod data;
+
+mod content;
+mod info;
+mod template;
 
 /// A list of valid file types in lowercase defined by the filetype (`ftyp`) atom.
 #[rustfmt::skip]
-pub const VALID_FILETYPES: [&str; 8] = [
+const VALID_FILETYPES: [&str; 8] = [
     "iso2",
     "isom",
     "m4a ",
@@ -166,7 +167,7 @@ impl AtomData {
 
 /// A struct that represents a MPEG-4 audio metadata atom.
 #[derive(Clone, Default, Eq, PartialEq)]
-pub(crate) struct Atom {
+struct Atom {
     /// The 4 byte identifier of the atom.
     pub ident: FourCC,
     /// The offset in bytes separating the head from the content.
@@ -285,7 +286,7 @@ impl Atom {
 
 /// A template representing a MPEG-4 audio metadata atom.
 #[derive(Clone, Default, Eq, PartialEq)]
-pub(crate) struct AtomT {
+struct AtomT {
     /// The 4 byte identifier of the atom.
     pub ident: FourCC,
     /// The offset in bytes separating the head from the content.
@@ -377,7 +378,7 @@ impl AtomT {
 }
 
 /// Attempts to parse any amount of atoms, matching the atom hierarchy templates, from the reader.
-pub(crate) fn parse_atoms(
+fn parse_atoms(
     reader: &mut (impl Read + Seek),
     atoms: &[AtomT],
     len: usize,
@@ -418,7 +419,7 @@ pub(crate) fn parse_atoms(
 }
 
 /// Attempts to parse the atom template's content from the reader.
-pub(crate) fn parse_content(
+fn parse_content(
     reader: &mut (impl Read + Seek),
     content: &ContentT,
     offset: usize,
@@ -437,7 +438,7 @@ pub(crate) fn parse_content(
 
 /// Attempts to parse the atom's head containing a 32 bit unsigned integer determining the size of
 /// the atom in bytes and the following 4 byte identifier from the reader.
-pub(crate) fn parse_head(reader: &mut impl Read) -> crate::Result<(usize, FourCC)> {
+fn parse_head(reader: &mut impl Read) -> crate::Result<(usize, FourCC)> {
     let len = match data::read_u32(reader) {
         Ok(l) => l as usize,
         Err(e) => {
@@ -462,7 +463,7 @@ pub(crate) fn parse_head(reader: &mut impl Read) -> crate::Result<(usize, FourCC
     Ok((len, ident))
 }
 
-pub(crate) fn parse_ext_head(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
+fn parse_ext_head(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
     let version = data::read_u8(reader)?;
     let mut flags = [0u8; 3];
     reader.read_exact(&mut flags)?;
@@ -470,7 +471,7 @@ pub(crate) fn parse_ext_head(reader: &mut impl Read) -> crate::Result<(u8, [u8; 
     Ok((version, flags))
 }
 
-pub(crate) fn parse_desc_head(reader: &mut impl Read) -> crate::Result<(u8, usize, usize)> {
+fn parse_desc_head(reader: &mut impl Read) -> crate::Result<(u8, usize, usize)> {
     let tag = data::read_u8(reader)?;
 
     let mut head_len = 1;
@@ -525,13 +526,13 @@ fn parse_chunk_offset(reader: &mut (impl Read + Seek)) -> crate::Result<ChunkOff
 
 /// A struct storing the position and size of an atom.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-struct AtomInfo {
+struct AtomBounds {
     pub ident: FourCC,
     pub pos: u64,
     pub len: usize,
 }
 
-impl AtomInfo {
+impl AtomBounds {
     fn new(ident: FourCC, pos: u64, len: usize) -> Self {
         Self { ident, pos, len }
     }
@@ -542,7 +543,7 @@ fn find_atoms(
     reader: &mut (impl Read + Seek),
     atoms: &[AtomT],
     len: usize,
-) -> crate::Result<Vec<AtomInfo>> {
+) -> crate::Result<Vec<AtomBounds>> {
     let mut atom_info = Vec::new();
     let mut pos = 0;
 
@@ -552,7 +553,7 @@ fn find_atoms(
         match atoms.iter().find(|a| a.ident == atom_ident) {
             Some(a) => {
                 let atom_pos = reader.seek(SeekFrom::Current(0))? - 8;
-                atom_info.push(AtomInfo::new(atom_ident, atom_pos, atom_len));
+                atom_info.push(AtomBounds::new(atom_ident, atom_pos, atom_len));
 
                 if let ContentT::Atoms(c) = &a.content {
                     if a.offset != 0 {
@@ -758,7 +759,7 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
             file.set_len((old_file_len as i64 + metadata_len_diff as i64) as u64)?;
 
             // adjusting the atom lengths
-            let mut write_pos = |a: &AtomInfo| -> crate::Result<()> {
+            let mut write_pos = |a: &AtomBounds| -> crate::Result<()> {
                 let new_len = (a.len as i64 + metadata_len_diff) as u32;
                 writer.seek(SeekFrom::Start(a.pos as u64))?;
                 writer.write_all(&new_len.to_be_bytes())?;
@@ -786,7 +787,9 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
 
 /// Attempts to dump the metadata atoms to the writer. This doesn't include a complete MPEG-4
 /// container hierarchy and won't result in a usable file.
-pub(crate) fn dump_tag_to(writer: &mut impl Write, atoms: Vec<Atom>) -> crate::Result<()> {
+pub(crate) fn dump_tag_to(writer: &mut impl Write, atoms: &[AtomData]) -> crate::Result<()> {
+    let atoms = atoms.iter().map(Atom::from).collect();
+
     #[rustfmt::skip]
     let ftyp = Atom::new(FILETYPE, 0, Content::RawData(
         Data::Utf8("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".to_owned())),
