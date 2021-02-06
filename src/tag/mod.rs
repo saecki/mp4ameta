@@ -4,8 +4,8 @@ use std::fs::{File, OpenOptions};
 use std::io::{BufReader, Read, Seek, Write};
 use std::path::Path;
 
-use crate::atom::{self, idents_match, Atom, AudioInfo, DataIdent, Ident};
-use crate::{AdvisoryRating, AtomData, Data, MediaType};
+use crate::atom::{self, idents_match, Atom, DataIdent, Ident};
+use crate::{be_int, AdvisoryRating, AtomData, Data, Info, MediaType};
 
 pub use genre::*;
 pub use readonly::*;
@@ -20,10 +20,8 @@ mod tuple;
 pub struct Tag {
     /// The `ftyp` atom.
     pub ftyp: String,
-    /// The `mvhd` atom.
-    pub mvhd: Option<Vec<u8>>,
-    /// The `stsd` atom.
-    pub audio_info: AudioInfo,
+    /// Readonly information
+    pub info: Info,
     /// A vector containing metadata atoms
     pub atoms: Vec<AtomData>,
 }
@@ -57,9 +55,6 @@ impl fmt::Display for Tag {
             string.push_str(&s);
         }
         if let Some(s) = self.format_disc() {
-            string.push_str(&s);
-        }
-        if let Some(s) = self.format_duration() {
             string.push_str(&s);
         }
         if let Some(s) = self.format_artworks() {
@@ -107,6 +102,9 @@ impl fmt::Display for Tag {
         if let Some(i) = self.movement_index() {
             string.push_str(&format!("movement index: {}\n", i));
         }
+        if let Some(s) = self.format_duration() {
+            string.push_str(&s);
+        }
         if let Some(c) = self.channel_config() {
             string.push_str(&format!("channel config: {}\n", c));
         }
@@ -143,13 +141,8 @@ impl fmt::Display for Tag {
 
 impl Tag {
     /// Creates a new MPEG-4 audio tag containing the atom.
-    pub const fn new(
-        ftyp: String,
-        mvhd: Option<Vec<u8>>,
-        audio_info: AudioInfo,
-        atoms: Vec<AtomData>,
-    ) -> Self {
-        Self { ftyp, mvhd, audio_info, atoms }
+    pub const fn new(ftyp: String, info: Info, atoms: Vec<AtomData>) -> Self {
+        Self { ftyp, info, atoms }
     }
 
     /// Attempts to read a MPEG-4 audio tag from the reader.
@@ -596,7 +589,7 @@ impl Tag {
         let mut i = 0;
         while i < self.atoms.len() {
             if idents_match(&self.atoms[i].ident, ident) {
-                let removed = self.atoms.swap_remove(i);
+                let removed = self.atoms.remove(i);
                 data.push(removed.data);
             } else {
                 i += 1;

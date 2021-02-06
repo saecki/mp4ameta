@@ -4,22 +4,21 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use std::ops::Deref;
 
-use crate::{ErrorKind, Tag};
+use crate::{ErrorKind, Info, Tag};
 
-pub use audio::*;
 pub use data::*;
 pub use ident::*;
+pub use info::*;
 
 use content::*;
 use template::*;
 
-#[macro_use]
-pub mod data;
-pub mod audio;
 /// A module for the use of identifiers.
 pub mod ident;
 
 pub(crate) mod content;
+pub(crate) mod data;
+pub(crate) mod info;
 pub(crate) mod template;
 
 /// A list of valid file types in lowercase defined by the filetype (`ftyp`) atom.
@@ -52,7 +51,7 @@ impl TryFrom<Atom> for AtomData {
         let mut mean: Option<String> = None;
         let mut name: Option<String> = None;
 
-        for atom in value.content.into_iter() {
+        for atom in value.content.into_atoms() {
             match atom.ident {
                 DATA => data = atom.content.take_data(),
                 MEAN => mean = atom.content.take_data().and_then(Data::take_string),
@@ -597,18 +596,18 @@ fn find_atoms(
 /// Attempts to read MPEG-4 audio metadata from the reader.
 pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
     let mut tag_atoms = None;
-    let mut mvhd_data = None;
-    let mut audio_info = None;
+    let mut mvhd_info = None;
+    let mut mp4a_info = None;
 
     let ftyp = FILETYPE_ATOM_T.parse_next(reader)?;
     let ftyp_string = ftyp.check_filetype()?;
 
     let moov = METADATA_READ_ATOM_T.parse(reader)?;
-    for a in moov.content.into_iter() {
+    for a in moov.content.into_atoms() {
         match a.ident {
             MOVIE_HEADER => {
-                if let Content::RawData(Data::Reserved(v)) = a.content {
-                    mvhd_data = Some(v);
+                if let Content::MovieHeader(i) = a.content {
+                    mvhd_info = Some(i);
                 }
             }
             TRACK => {
@@ -617,8 +616,8 @@ pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Ta
                         if let Some(stbl) = minf.take_child(SAMPLE_TABLE) {
                             if let Some(stsd) = stbl.take_child(SAMPLE_TABLE_SAMPLE_DESCRIPTION) {
                                 if let Some(mp4a) = stsd.take_child(MP4_AUDIO) {
-                                    if let Content::Mp4Audio(a) = mp4a.content {
-                                        audio_info = Some(a);
+                                    if let Content::Mp4Audio(i) = mp4a.content {
+                                        mp4a_info = Some(i);
                                     }
                                 }
                             }
@@ -650,7 +649,17 @@ pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Ta
         None => Vec::new(),
     };
 
-    Ok(Tag::new(ftyp_string, mvhd_data, audio_info.unwrap_or_default(), tag_atoms))
+    let mut info = Info::default();
+    if let Some(i) = mvhd_info {
+        info.duration = i.duration;
+    }
+    if let Some(i) = mp4a_info {
+        info.channel_config = i.channel_config;
+        info.sample_rate = i.sample_rate;
+        info.max_bitrate = i.max_bitrate;
+        info.avg_bitrate = i.avg_bitrate;
+    }
+    Ok(Tag::new(ftyp_string, info, tag_atoms))
 }
 
 /// Attempts to write the metadata atoms to the file inside the item list atom.

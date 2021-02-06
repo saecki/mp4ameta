@@ -1,4 +1,6 @@
-use std::{convert::TryFrom, fmt};
+use std::convert::TryFrom;
+use std::fmt;
+use std::time::Duration;
 
 use crate::ErrorKind;
 
@@ -336,4 +338,19 @@ impl SampleRate {
             Self::Hz7350 => 7350,
         }
     }
+}
+
+/// A struct containing information about a mp4 file.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct Info {
+    /// The duration of the track.
+    pub duration: Option<Duration>,
+    /// The channel configuration of the track.
+    pub channel_config: Option<ChannelConfig>,
+    /// The sample rate of the track.
+    pub sample_rate: Option<SampleRate>,
+    /// The maximum bitrate of the track.
+    pub max_bitrate: Option<u32>,
+    /// The average bitrate of the track.
+    pub avg_bitrate: Option<u32>,
 }

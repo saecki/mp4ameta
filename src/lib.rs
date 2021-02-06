@@ -44,15 +44,11 @@
 //! ```
 #![warn(missing_docs)]
 
-#[macro_use]
-extern crate lazy_static;
-
-pub use crate::atom::{ident, AtomData, AudioInfo, Data, DataIdent, FourCC, FreeformIdent, Ident};
+pub use crate::atom::{ident, AtomData, Data, DataIdent, FourCC, FreeformIdent, Ident, Mp4aInfo};
 pub use crate::error::{Error, ErrorKind, Result};
 pub use crate::tag::{Tag, STANDARD_GENRES};
 pub use crate::types::*;
 
-#[macro_use]
 mod atom;
 mod error;
 mod tag;

@@ -14,7 +14,9 @@ pub(crate) enum Content {
     /// code.
     TypedData(Data),
     /// A value containing mp4 audio information.
-    Mp4Audio(AudioInfo),
+    Mp4Audio(Mp4aInfo),
+    /// A value containing mp4 audio information.
+    MovieHeader(MvhdInfo),
     /// Empty content.
     Empty,
 }
@@ -25,24 +27,7 @@ impl Default for Content {
     }
 }
 
-impl IntoIterator for Content {
-    type Item = Atom;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        match self {
-            Self::Atoms(v) => v.into_iter(),
-            _ => Vec::new().into_iter(),
-        }
-    }
-}
-
 impl Content {
-    /// Creates new empty content of type [Self::Atoms](Self::Atoms).
-    pub fn atoms() -> Self {
-        Self::Atoms(Vec::new())
-    }
-
     /// Creates new content of type [Self::Atoms](Self::Atoms) containing the
     /// atom.
     pub fn atom(atom: Atom) -> Self {
@@ -62,6 +47,7 @@ impl Content {
             Self::RawData(d) => d.len(),
             Self::TypedData(d) => 8 + d.len(),
             Self::Mp4Audio(_) => 0,
+            Self::MovieHeader(_) => 0,
             Self::Empty => 0,
         }
     }
@@ -73,12 +59,13 @@ impl Content {
             Self::RawData(d) => d.is_empty(),
             Self::TypedData(d) => d.is_empty(),
             Self::Mp4Audio(_) => true,
+            Self::MovieHeader(_) => true,
             Self::Empty => true,
         }
     }
 
     /// Returns an iterator over the children atoms.
-    pub fn iter(&self) -> std::slice::Iter<Atom> {
+    pub fn atoms(&self) -> impl Iterator<Item = &Atom> {
         match self {
             Self::Atoms(v) => v.iter(),
             _ => [].iter(),
@@ -86,26 +73,33 @@ impl Content {
     }
 
     /// Returns a mutable iterator over the children atoms.
-    pub fn iter_mut(&mut self) -> std::slice::IterMut<Atom> {
+    pub fn atoms_mut(&mut self) -> impl Iterator<Item = &mut Atom> {
         match self {
             Self::Atoms(v) => v.iter_mut(),
             _ => [].iter_mut(),
         }
     }
 
+    pub fn into_atoms(self) -> impl Iterator<Item = Atom> {
+        match self {
+            Self::Atoms(v) => v.into_iter(),
+            _ => Vec::new().into_iter(),
+        }
+    }
+
     /// Returns a reference to the first children atom matching the `identifier`, if present.
     pub fn child(&self, ident: FourCC) -> Option<&Atom> {
-        self.iter().find(|a| a.ident == ident)
+        self.atoms().find(|a| a.ident == ident)
     }
 
     /// Returns a mutable reference to the first children atom matching the `identfier`, if present.
     pub fn child_mut(&mut self, ident: FourCC) -> Option<&mut Atom> {
-        self.iter_mut().find(|a| a.ident == ident)
+        self.atoms_mut().find(|a| a.ident == ident)
     }
 
     /// Consumes self and returns the first children atom matching the `identfier`, if present.
     pub fn take_child(self, ident: FourCC) -> Option<Atom> {
-        self.into_iter().find(|a| a.ident == ident)
+        self.into_atoms().find(|a| a.ident == ident)
     }
 
     /// Return a data reference if `self` is of type [`Content::RawData`](crate::Content::RawData)
@@ -148,7 +142,16 @@ impl Content {
             Self::RawData(d) => d.write_raw(writer)?,
             Self::TypedData(d) => d.write_typed(writer)?,
             Self::Mp4Audio(_) => {
-                return Err(crate::Error::new(crate::ErrorKind::UnwritableData, "".to_owned()))
+                return Err(crate::Error::new(
+                    crate::ErrorKind::UnwritableData,
+                    "Mp4 audio information cannot be written".to_owned(),
+                ))
+            }
+            Self::MovieHeader(_) => {
+                return Err(crate::Error::new(
+                    crate::ErrorKind::UnwritableData,
+                    "Movie header information cannot be written".to_owned(),
+                ))
             }
             Self::Empty => (),
         }
@@ -171,6 +174,8 @@ pub(crate) enum ContentT {
     TypedData,
     /// A template representing mp4 audio information.
     Mp4Audio,
+    /// A template representing movie header information.
+    MovieHeader,
     /// A template for ignoring all data inside.
     Ignore,
     /// Empty content.
@@ -198,9 +203,9 @@ impl ContentT {
     /// Attempts to parse corresponding content from the `reader`.
     pub fn parse(&self, reader: &mut (impl Read + Seek), len: usize) -> crate::Result<Content> {
         Ok(match self {
-            ContentT::Atoms(v) => Content::Atoms(parse_atoms(reader, v, len)?),
-            ContentT::RawData(d) => Content::RawData(data::parse_data(reader, *d, len)?),
-            ContentT::TypedData => {
+            Self::Atoms(v) => Content::Atoms(parse_atoms(reader, v, len)?),
+            Self::RawData(d) => Content::RawData(data::parse_data(reader, *d, len)?),
+            Self::TypedData => {
                 if len >= 8 {
                     let datatype = match data::read_u32(reader) {
                         Ok(d) => d,
@@ -223,12 +228,13 @@ impl ContentT {
                     ));
                 }
             }
-            ContentT::Mp4Audio => Content::Mp4Audio(parse_mp4a(reader, len)?),
-            ContentT::Ignore => {
+            Self::Mp4Audio => Content::Mp4Audio(Mp4aInfo::parse(reader, len)?),
+            Self::MovieHeader => Content::MovieHeader(MvhdInfo::parse(reader, len)?),
+            Self::Ignore => {
                 reader.seek(SeekFrom::Current(len as i64))?;
                 Content::Empty
             }
-            ContentT::Empty => {
+            Self::Empty => {
                 if len != 0 {
                     return Err(crate::Error::new(
                         crate::ErrorKind::Parsing,

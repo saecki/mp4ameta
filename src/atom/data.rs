@@ -423,28 +423,28 @@ pub(crate) fn parse_data(
     })
 }
 
-/// Attempts to read a 8 bit unsigned integer from the reader.
+/// Attempts to read an unsigned 8 bit integer from the reader.
 pub(crate) fn read_u8(reader: &mut impl Read) -> crate::Result<u8> {
     let mut buf = [0u8];
     reader.read_exact(&mut buf)?;
     Ok(buf[0])
 }
 
-/// Attempts to read a 16 bit unsigned big endian integer from the reader.
+/// Attempts to read an unsigned 16 bit big endian integer from the reader.
 pub(crate) fn read_u16(reader: &mut impl Read) -> crate::Result<u16> {
     let mut buf = [0u8; 2];
     reader.read_exact(&mut buf)?;
     Ok(u16::from_be_bytes(buf))
 }
 
-/// Attempts to read a 32 bit unsigned big endian integer from the reader.
+/// Attempts to read an unsigned 32 bit big endian integer from the reader.
 pub(crate) fn read_u32(reader: &mut impl Read) -> crate::Result<u32> {
     let mut buf = [0u8; 4];
     reader.read_exact(&mut buf)?;
     Ok(u32::from_be_bytes(buf))
 }
 
-/// Attempts to read a 64 bit unsigned big endian integer from the reader.
+/// Attempts to read an unsigned 64 bit big endian integer from the reader.
 pub(crate) fn read_u64(reader: &mut impl Read) -> crate::Result<u64> {
     let mut buf = [0u8; 8];
     reader.read_exact(&mut buf)?;

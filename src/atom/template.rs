@@ -1,5 +1,7 @@
 use super::*;
 
+use lazy_static::lazy_static;
+
 lazy_static! {
     /// Lazily initialized static reference of a filetype (`ftyp`) atom template.
     pub(crate) static ref FILETYPE_ATOM_T: AtomT = filetype_atom_t();
@@ -42,7 +44,7 @@ fn metadata_write_atom_t() -> [AtomT; 2] {
 #[rustfmt::skip]
 fn metadata_read_atom_t() -> AtomT {
     AtomT::new(MOVIE, 0, ContentT::Atoms(vec![
-        AtomT::new(MOVIE_HEADER, 0, ContentT::RawData(data::RESERVED)),
+        AtomT::new(MOVIE_HEADER, 0, ContentT::MovieHeader),
         AtomT::new(TRACK, 0, ContentT::atom_t(
             AtomT::new(MEDIA, 0, ContentT::atom_t(
                 AtomT::new(MEDIA_INFORMATION, 0, ContentT::atom_t(
