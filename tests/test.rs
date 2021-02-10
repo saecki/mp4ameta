@@ -391,7 +391,7 @@ fn multiple_values() {
 
 #[test]
 fn genre_handling() {
-    let (code, name) = STANDARD_GENRES[4];
+    let (code, name) = (5, STANDARD_GENRES[4]);
 
     let mut tag = Tag::default();
     assert_eq!(tag.genre(), None);
@@ -412,8 +412,8 @@ fn genre_handling() {
     assert_eq!(tag.genre(), None);
     assert_eq!(tag.genres().next(), None);
 
-    let (code1, name1) = STANDARD_GENRES[6];
-    let (code2, name2) = STANDARD_GENRES[23];
+    let (code1, name1) = (7, STANDARD_GENRES[6]);
+    let (code2, name2) = (24, STANDARD_GENRES[23]);
     tag.add_custom_genre("GENRE 1");
     tag.add_standard_genre(code1);
     tag.add_custom_genre("GENRE 2");

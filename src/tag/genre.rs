@@ -2,87 +2,87 @@ use crate::{atom, Data, Tag};
 
 /// A list of standard genre codes and values found in the `gnre` atom. The codes are equivalent to the
 /// ID3v1 genre codes plus 1.
-pub const STANDARD_GENRES: [(u16, &str); 80] = [
-    (1, "Blues"),
-    (2, "Classic rock"),
-    (3, "Country"),
-    (4, "Dance"),
-    (5, "Disco"),
-    (6, "Funk"),
-    (7, "Grunge"),
-    (8, "Hip,-Hop"),
-    (9, "Jazz"),
-    (10, "Metal"),
-    (11, "New Age"),
-    (12, "Oldies"),
-    (13, "Other"),
-    (14, "Pop"),
-    (15, "Rhythm and Blues"),
-    (16, "Rap"),
-    (17, "Reggae"),
-    (18, "Rock"),
-    (19, "Techno"),
-    (20, "Industrial"),
-    (21, "Alternative"),
-    (22, "Ska"),
-    (23, "Death metal"),
-    (24, "Pranks"),
-    (25, "Soundtrack"),
-    (26, "Euro-Techno"),
-    (27, "Ambient"),
-    (28, "Trip-Hop"),
-    (29, "Vocal"),
-    (30, "Jazz & Funk"),
-    (31, "Fusion"),
-    (32, "Trance"),
-    (33, "Classical"),
-    (34, "Instrumental"),
-    (35, "Acid"),
-    (36, "House"),
-    (37, "Game"),
-    (38, "Sound clip"),
-    (39, "Gospel"),
-    (40, "Noise"),
-    (41, "Alternative Rock"),
-    (42, "Bass"),
-    (43, "Soul"),
-    (44, "Punk"),
-    (45, "Space"),
-    (46, "Meditative"),
-    (47, "Instrumental Pop"),
-    (48, "Instrumental Rock"),
-    (49, "Ethnic"),
-    (50, "Gothic"),
-    (51, "Darkwave"),
-    (52, "Techno-Industrial"),
-    (53, "Electronic"),
-    (54, "Pop-Folk"),
-    (55, "Eurodance"),
-    (56, "Dream"),
-    (57, "Southern Rock"),
-    (58, "Comedy"),
-    (59, "Cult"),
-    (60, "Gangsta"),
-    (61, "Top 41"),
-    (62, "Christian Rap"),
-    (63, "Pop/Funk"),
-    (64, "Jungle"),
-    (65, "Native US"),
-    (66, "Cabaret"),
-    (67, "New Wave"),
-    (68, "Psychedelic"),
-    (69, "Rave"),
-    (70, "Show tunes"),
-    (71, "Trailer"),
-    (72, "Lo,-Fi"),
-    (73, "Tribal"),
-    (74, "Acid Punk"),
-    (75, "Acid Jazz"),
-    (76, "Polka"),
-    (77, "Retro"),
-    (78, "Musical"),
-    (79, "Rock ’n’ Roll"),
-    (80, "Hard Rock"),
+pub const STANDARD_GENRES: [&str; 80] = [
+    "Blues",
+    "Classic rock",
+    "Country",
+    "Dance",
+    "Disco",
+    "Funk",
+    "Grunge",
+    "Hip,-Hop",
+    "Jazz",
+    "Metal",
+    "New Age",
+    "Oldies",
+    "Other",
+    "Pop",
+    "Rhythm and Blues",
+    "Rap",
+    "Reggae",
+    "Rock",
+    "Techno",
+    "Industrial",
+    "Alternative",
+    "Ska",
+    "Death metal",
+    "Pranks",
+    "Soundtrack",
+    "Euro-Techno",
+    "Ambient",
+    "Trip-Hop",
+    "Vocal",
+    "Jazz & Funk",
+    "Fusion",
+    "Trance",
+    "Classical",
+    "Instrumental",
+    "Acid",
+    "House",
+    "Game",
+    "Sound clip",
+    "Gospel",
+    "Noise",
+    "Alternative Rock",
+    "Bass",
+    "Soul",
+    "Punk",
+    "Space",
+    "Meditative",
+    "Instrumental Pop",
+    "Instrumental Rock",
+    "Ethnic",
+    "Gothic",
+    "Darkwave",
+    "Techno-Industrial",
+    "Electronic",
+    "Pop-Folk",
+    "Eurodance",
+    "Dream",
+    "Southern Rock",
+    "Comedy",
+    "Cult",
+    "Gangsta",
+    "Top 41",
+    "Christian Rap",
+    "Pop/Funk",
+    "Jungle",
+    "Native US",
+    "Cabaret",
+    "New Wave",
+    "Psychedelic",
+    "Rave",
+    "Show tunes",
+    "Trailer",
+    "Lo,-Fi",
+    "Tribal",
+    "Acid Punk",
+    "Acid Jazz",
+    "Polka",
+    "Retro",
+    "Musical",
+    "Rock ’n’ Roll",
+    "Hard Rock",
 ];
 
 /// ### Standard genre
@@ -130,14 +130,13 @@ impl Tag {
 /// These are convenience functions that combine the values from the standard genre (`gnre`) and
 /// custom genre (`©gen`).
 impl Tag {
-    /// Returns all genres (`gnre` or `©gen`).
+    /// Returns all genres, first the standard genres (`gnre`) then custom ones (`©gen`).
     pub fn genres(&self) -> impl Iterator<Item = &str> {
         self.standard_genres()
             .filter_map(|genre_code| {
-                for g in STANDARD_GENRES.iter() {
-                    if g.0 == genre_code {
-                        return Some(g.1);
-                    }
+                if genre_code >= 1 && genre_code <= 80 {
+                    let index = (genre_code - 1) as usize;
+                    return Some(STANDARD_GENRES[index]);
                 }
                 None
             })
@@ -146,28 +145,19 @@ impl Tag {
 
     /// Returns the first genre (`gnre` or `©gen`).
     pub fn genre(&self) -> Option<&str> {
-        if let Some(genre_code) = self.standard_genre() {
-            for g in STANDARD_GENRES.iter() {
-                if g.0 == genre_code {
-                    return Some(g.1);
-                }
-            }
+        if let Some(g) = self.standard_genre().and_then(genre) {
+            return Some(g);
         }
 
         self.custom_genre()
     }
 
-    /// Consumes all custom genres (`©gen`) and returns all genres (`gnre` or `©gen`).
+    /// Consumes all custom genres (`©gen`) and returns all genres, first standard genres (`gnre`)
+    /// then custom ones (`©gen`).
     pub fn take_genres(&mut self) -> impl Iterator<Item = String> + '_ {
         self.standard_genres()
-            .filter_map(|genre_code| {
-                for g in STANDARD_GENRES.iter() {
-                    if g.0 == genre_code {
-                        return Some(g.1.to_owned());
-                    }
-                }
-                None
-            })
+            .filter_map(genre)
+            .map(str::to_owned)
             .collect::<Vec<String>>()
             .into_iter()
             .chain(self.take_custom_genres())
@@ -175,12 +165,8 @@ impl Tag {
 
     /// Consumes all custom genres (`©gen`) and returns the first genre (`gnre` or `©gen`).
     pub fn take_genre(&mut self) -> Option<String> {
-        if let Some(genre_code) = self.standard_genre() {
-            for g in STANDARD_GENRES.iter() {
-                if g.0 == genre_code {
-                    return Some(g.1.to_owned());
-                }
-            }
+        if let Some(g) = self.standard_genre().and_then(genre) {
+            return Some(g.to_owned());
         }
 
         self.take_custom_genre()
@@ -191,30 +177,27 @@ impl Tag {
     pub fn set_genre(&mut self, genre: impl Into<String>) {
         let gen = genre.into();
 
-        for g in STANDARD_GENRES.iter() {
-            if g.1 == gen {
+        match genre_code(&gen) {
+            Some(c) => {
+                self.set_standard_genre(c);
                 self.remove_custom_genres();
-                self.set_standard_genre(g.0);
-                return;
+            }
+            None => {
+                self.set_custom_genre(gen);
+                self.remove_standard_genres();
             }
         }
-
-        self.remove_standard_genres();
-        self.set_custom_genre(gen)
     }
 
-    /// Adds the standard genre (`gnre`) if it matches one otherwise a custom genre (`©gen`).
+    /// Adds a standard genre (`gnre`) if it matches a predefined value otherwise a custom genre
+    /// (`©gen`).
     pub fn add_genre(&mut self, genre: impl Into<String>) {
         let gen = genre.into();
 
-        for g in STANDARD_GENRES.iter() {
-            if g.1 == gen {
-                self.add_standard_genre(g.0);
-                return;
-            }
+        match genre_code(&gen) {
+            Some(c) => self.add_standard_genre(c),
+            None => self.add_custom_genre(gen),
         }
-
-        self.add_custom_genre(gen)
     }
 
     /// Removes the genre (`gnre` or `©gen`).
@@ -240,4 +223,23 @@ impl Tag {
             None => None,
         }
     }
+}
+
+fn genre(code: u16) -> Option<&'static str> {
+    let c = code as usize;
+    if c >= 1 && c <= STANDARD_GENRES.len() {
+        return Some(&STANDARD_GENRES[c - 1]);
+    }
+
+    None
+}
+
+fn genre_code(genre: &str) -> Option<u16> {
+    for (i, &g) in STANDARD_GENRES.iter().enumerate() {
+        if g == genre {
+            return Some(i as u16 + 1);
+        };
+    }
+
+    None
 }
