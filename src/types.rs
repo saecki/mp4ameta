@@ -321,7 +321,7 @@ impl fmt::Display for SampleRate {
 
 impl SampleRate {
     /// Returns the sample rate in Hz.
-    pub const fn hz(&self) -> usize {
+    pub const fn hz(&self) -> u32 {
         match self {
             Self::Hz96000 => 96000,
             Self::Hz88200 => 88200,
