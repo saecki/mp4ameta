@@ -130,62 +130,52 @@ impl Data {
         self.len() == 0
     }
 
-    /// Returns true if `self` is of type [`Data::Reserved`](crate::Data::Reserved) or
-    /// [`Data::BeSigned`](crate::Data::BeSigned), false otherwise.
+    /// Returns true if `self` is of type [`Self::Reserved`] or [`Self::BeSigned`], false otherwise.
     pub const fn is_bytes(&self) -> bool {
         matches!(self, Self::Reserved(_) | Self::BeSigned(_))
     }
 
-    /// Returns true if `self` is of type [`Data::Utf8`](crate::Data::Utf8) or
-    /// [`Data::Utf16`](crate::Data::Utf16), false otherwise.
+    /// Returns true if `self` is of type [`Self::Utf8`] or [`Self::Utf16`], false otherwise.
     pub const fn is_string(&self) -> bool {
         matches!(self, Self::Utf8(_) | Self::Utf16(_))
     }
 
-    /// Returns true if `self` is of type [`Data::Jpeg`](crate::Data::Jpeg) or
-    /// [`Data::Png`](crate::Data::Png), false otherwise.
+    /// Returns true if `self` is of type [`Self::Jpeg`] or [`Self::Png`] false otherwise.
     pub const fn is_image(&self) -> bool {
         matches!(self, Self::Jpeg(_) | Self::Png(_))
     }
 
-    /// Returns true if `self` is of type [`Data::Reserved`](crate::Data::Reserved), false
-    /// otherwise.
+    /// Returns true if `self` is of type [`Self::Reserved`] false otherwise.
     pub const fn is_reserved(&self) -> bool {
         matches!(self, Self::Reserved(_))
     }
 
-    /// Returns true if `self` is of type [`Data::Utf8`](crate::Data::Utf8), false
-    /// otherwise.
+    /// Returns true if `self` is of type [`Self::Utf8`] false otherwise.
     pub const fn is_utf8(&self) -> bool {
         matches!(self, Self::Utf8(_))
     }
 
-    /// Returns true if `self` is of type [`Data::Utf16`](crate::Data::Utf16), false
-    /// otherwise.
+    /// Returns true if `self` is of type [`Self::Utf16`] false otherwise.
     pub const fn is_utf16(&self) -> bool {
         matches!(self, Self::Utf16(_))
     }
 
-    /// Returns true if `self` is of type [`Data::Jpeg`](crate::Data::Jpeg), false
-    /// otherwise.
+    /// Returns true if `self` is of type [`Self::Jpeg`] false otherwise.
     pub const fn is_jpeg(&self) -> bool {
         matches!(self, Self::Jpeg(_))
     }
 
-    /// Returns true if `self` is of type [`Data::Png`](crate::Data::Png), false
-    /// otherwise.
+    /// Returns true if `self` is of type [`Self::Png`] false otherwise.
     pub const fn is_png(&self) -> bool {
         matches!(self, Self::Png(_))
     }
 
-    /// Returns true if `self` is of type [`Data::BeSigned`](crate::Data::BeSigned),
-    /// false otherwise.
+    /// Returns true if `self` is of type [`Self::BeSigned`] false otherwise.
     pub const fn is_be_signed(&self) -> bool {
         matches!(self, Self::BeSigned(_))
     }
 
-    /// Returns a byte vec reference if `self` is of type [`Data::Reserved`](crate::Data::Reserved)
-    /// or [`Data::BeSigned`](crate::Data::BeSigned).
+    /// Returns a byte vec reference if `self` is of type [`Self::Reserved`] or [`Self::BeSigned`].
     pub const fn bytes(&self) -> Option<&Vec<u8>> {
         match self {
             Self::Reserved(v) => Some(v),
@@ -194,8 +184,8 @@ impl Data {
         }
     }
 
-    /// Returns a mutable byte vec reference if `self` is of type [`Data::Reserved`](crate::Data::Reserved)
-    /// or [`Data::BeSigned`](crate::Data::BeSigned).
+    /// Returns a mutable byte vec reference if `self` is of type [`Self::Reserved`] or
+    /// [`Self::BeSigned`].
     pub fn bytes_mut(&mut self) -> Option<&mut Vec<u8>> {
         match self {
             Self::Reserved(v) => Some(v),
@@ -204,8 +194,8 @@ impl Data {
         }
     }
 
-    /// Consumes `self` and returns a byte vec if `self` is of type [`Data::Reserved`](crate::Data::Reserved)
-    /// or [`Data::BeSigned`](crate::Data::BeSigned).
+    /// Consumes `self` and returns a byte vec if `self` is of type [`Self::Reserved`] or
+    /// [`Self::BeSigned`].
     pub fn take_bytes(self) -> Option<Vec<u8>> {
         match self {
             Self::Reserved(v) => Some(v),
@@ -214,8 +204,7 @@ impl Data {
         }
     }
 
-    /// Returns a string reference if `self` is either of type [`Data::Utf8`](crate::Data::Utf8)
-    /// or [`Data::Utf16`](crate::Data::Utf16).
+    /// Returns a string reference if `self` is either of type [`Self::Utf8`] or [`Self::Utf16`].
     pub fn string(&self) -> Option<&str> {
         match self {
             Self::Utf8(s) => Some(s.as_str()),
@@ -224,8 +213,8 @@ impl Data {
         }
     }
 
-    /// Returns a mutable string reference if `self` is either of type [`Data::Utf8`](crate::Data::Utf8)
-    /// or [`Data::Utf16`](crate::Data::Utf16).
+    /// Returns a mutable string reference if `self` is either of type [`Self::Utf8`] or
+    /// [`Self::Utf16`].
     pub fn string_mut(&mut self) -> Option<&mut String> {
         match self {
             Self::Utf8(s) => Some(s),
@@ -234,8 +223,8 @@ impl Data {
         }
     }
 
-    /// Consumes `self` and returns a string if `self` is either of type [`Data::Utf8`](crate::Data::Utf8)
-    /// or [`Data::Utf16`](crate::Data::Utf16).
+    /// Consumes `self` and returns a string if `self` is either of type [`Self::Utf8`] or
+    /// [`Self::Utf16`].
     pub fn take_string(self) -> Option<String> {
         match self {
             Self::Utf8(s) => Some(s),
@@ -244,8 +233,7 @@ impl Data {
         }
     }
 
-    /// Returns a data reference if `self` is of type [`Data::Jpeg`](crate::Data::Jpeg) or
-    /// [`Data::Png`](crate::Data::Png).
+    /// Returns a data reference if `self` is of type [`Self::Jpeg`] or [`Self::Png`].
     pub const fn image(&self) -> Option<&Data> {
         match self {
             d if d.is_jpeg() => Some(d),
@@ -254,8 +242,7 @@ impl Data {
         }
     }
 
-    /// Returns a data reference if `self` is of type [`Data::Jpeg`](crate::Data::Jpeg) or
-    /// [`Data::Png`](crate::Data::Png).
+    /// Returns a data reference if `self` is of type [`Self::Jpeg`] or [`Self::Png`].
     pub fn image_mut(&mut self) -> Option<&mut Data> {
         match self {
             d if d.is_jpeg() => Some(d),
@@ -264,8 +251,7 @@ impl Data {
         }
     }
 
-    /// Consumes `self` and returns data if `self` is of type [`Data::Jpeg`](crate::Data::Jpeg) or
-    /// [`Data::Png`](crate::Data::Png).
+    /// Consumes `self` and returns data if `self` is of type [`Self::Jpeg`] or [`Self::Png`].
     pub fn take_image(self) -> Option<Data> {
         match self {
             d if d.is_jpeg() => Some(d),
@@ -274,8 +260,7 @@ impl Data {
         }
     }
 
-    /// Returns a byte vec reference if `self` is of type [`Data::Jpeg`](crate::Data::Jpeg)
-    /// or [`Data::Png`](crate::Data::Png).
+    /// Returns a byte vec reference if `self` is of type [`Self::Jpeg`] or [`Self::Png`].
     pub const fn image_data(&self) -> Option<&Vec<u8>> {
         match self {
             Self::Jpeg(v) => Some(v),
@@ -284,8 +269,7 @@ impl Data {
         }
     }
 
-    /// Returns a mutable byte vec reference if `self` is of type [`Data::Jpeg`](crate::Data::Jpeg)
-    /// or [`Data::Png`](crate::Data::Png).
+    /// Returns a mutable byte vec reference if `self` is of type [`Self::Jpeg`] or [`Self::Png`].
     pub fn image_data_mut(&mut self) -> Option<&mut Vec<u8>> {
         match self {
             Self::Jpeg(v) => Some(v),
@@ -294,8 +278,7 @@ impl Data {
         }
     }
 
-    /// Consumes `self` and returns a byte vec if `self` is of type [`Data::Jpeg`](crate::Data::Jpeg)
-    /// or [`Data::Png`](crate::Data::Png).
+    /// Consumes `self` and returns a byte vec if `self` is of type [`Self::Jpeg`] or [`Self::Png`].
     pub fn take_image_data(self) -> Option<Vec<u8>> {
         match self {
             Self::Jpeg(v) => Some(v),
@@ -304,7 +287,7 @@ impl Data {
         }
     }
 
-    /// Returns a byte vec reference if `self` is of type [`Data::Reserved`](crate::Data::Reserved).
+    /// Returns a byte vec reference if `self` is of type [`Self::Reserved`].
     pub const fn reserved(&self) -> Option<&Vec<u8>> {
         match self {
             Self::Reserved(v) => Some(v),
@@ -312,7 +295,7 @@ impl Data {
         }
     }
 
-    /// Returns a string reference if `self` is of type [`Data::Utf8`](crate::Data::Utf8).
+    /// Returns a string reference if `self` is of type [`Self::Utf8`].
     pub const fn utf8(&self) -> Option<&String> {
         match self {
             Self::Utf8(s) => Some(s),
@@ -320,7 +303,7 @@ impl Data {
         }
     }
 
-    /// Returns a string reference if `self` is of type [`Data::Utf16`](crate::Data::Utf16).
+    /// Returns a string reference if `self` is of type [`Self::Utf16`].
     pub const fn utf16(&self) -> Option<&String> {
         match self {
             Self::Utf16(s) => Some(s),
@@ -328,7 +311,7 @@ impl Data {
         }
     }
 
-    /// Returns a byte vec reference if `self` is of type [`Data::Jpeg`](crate::Data::Jpeg).
+    /// Returns a byte vec reference if `self` is of type [`Self::Jpeg`].
     pub const fn jpeg(&self) -> Option<&Vec<u8>> {
         match self {
             Self::Jpeg(v) => Some(v),
@@ -336,7 +319,7 @@ impl Data {
         }
     }
 
-    /// Returns a byte vec reference if `self` is of type [`Data::Png`](crate::Data::Png).
+    /// Returns a byte vec reference if `self` is of type [`Self::Png`].
     pub const fn png(&self) -> Option<&Vec<u8>> {
         match self {
             Self::Png(v) => Some(v),
@@ -344,7 +327,7 @@ impl Data {
         }
     }
 
-    /// Returns a byte vec reference if `self` is of type [`Data::BeSigned`](crate::Data::BeSigned).
+    /// Returns a byte vec reference if `self` is of type [`Self::BeSigned`].
     pub const fn be_signed(&self) -> Option<&Vec<u8>> {
         match self {
             Self::BeSigned(v) => Some(v),

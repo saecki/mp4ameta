@@ -21,15 +21,15 @@ pub enum ErrorKind {
     NoTag,
     /// An error kind indicating that something wasn't found,
     Parsing,
+    /// An error kind indicating that the channel configuration index is unknown. Contains the
+    /// unknown channel configuration index.
+    UnknownChannelConfig(u8),
     /// An error kind indicating that the datatype integer describing the typed data is unknown.
     /// Contains the unknown datatype.
     UnknownDataType(u32),
     /// An error kind indicating that the media type integer is unknown. Contains the unknown media
     /// type.
     UnknownMediaType(u8),
-    /// An error kind indicating that the channel config integer is unknown. Contains the
-    /// unknown channel config type.
-    UnknownChannelConfig(u8),
     /// An error kind indicating that version byte is unknown.  Contains the unknown version.
     UnknownVersion(u8),
     /// An error kind indicating that a string decoding error has occurred. Contains the invalid
@@ -43,7 +43,7 @@ pub enum ErrorKind {
 
 /// A struct able to represent any error that may occur while performing metadata operations.
 pub struct Error {
-    /// The kind of error.
+    /// The kind of error that occurred.
     pub kind: ErrorKind,
     /// A human readable string describing the error.
     pub description: String,

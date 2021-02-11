@@ -137,13 +137,6 @@ pub const WORK: FourCC = FourCC(*b"\xa9wrk");
 /// (`shwm`)
 pub const SHOW_MOVEMENT: FourCC = FourCC(*b"shwm");
 
-/// Es descriptor  tag
-pub(crate) const ELEMENTARY_STREAM_DESCRIPTOR: u8 = 0x03;
-/// Decoder config descriptor tag
-pub(crate) const DECODER_CONFIG_DESCRIPTOR: u8 = 0x04;
-/// Decoder specific descriptor tag
-pub(crate) const DECODER_SPECIFIC_DESCRIPTOR: u8 = 0x05;
-
 /// A trait providing information about an identifier.
 pub trait Ident {
     /// Returns a 4 byte atom identifier.
@@ -288,14 +281,14 @@ impl From<&FreeformIdent<'_>> for DataIdent {
 }
 
 impl DataIdent {
-    /// Creates a new identifier of type [`DataIdent::Freeform`](Self::Freeform) containing the owned
-    /// mean, and name string.
+    /// Creates a new identifier of type [`DataIdent::Freeform`] containing the owned mean, and
+    /// name string.
     pub fn freeform(mean: impl Into<String>, name: impl Into<String>) -> Self {
         Self::Freeform { mean: mean.into(), name: name.into() }
     }
 
-    /// Creates a new identifier of type [`DataIdent::FourCC`](Self::FourCC) containing an atom identifier
-    /// with the 4-byte identifier.
+    /// Creates a new identifier of type [`DataIdent::FourCC`] containing an atom identifier with
+    /// the 4-byte identifier.
     pub const fn fourcc(bytes: [u8; 4]) -> Self {
         Self::FourCC(FourCC(bytes))
     }

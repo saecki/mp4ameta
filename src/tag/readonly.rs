@@ -24,9 +24,9 @@ impl Tag {
     }
 }
 
-/// ### Channel config
+/// ### Channel configuration
 impl Tag {
-    /// Returns the channel config.
+    /// Returns the channel configuration.
     pub fn channel_config(&self) -> Option<ChannelConfig> {
         self.info.channel_config
     }
@@ -34,7 +34,7 @@ impl Tag {
 
 /// ### Sample rate
 impl Tag {
-    /// Returns the channel config.
+    /// Returns the channel configuration.
     pub fn sample_rate(&self) -> Option<SampleRate> {
         self.info.sample_rate
     }

@@ -220,20 +220,17 @@ impl Atom {
         Self { ident, offset, content }
     }
 
-    /// Creates a mean atom containing [`Content::RawData`](crate::Content::RawData)
-    /// with the provided `mean` string.
+    /// Creates a mean atom containing [`Content::RawData`] with the provided `mean` string.
     pub const fn mean_atom_with(mean: String) -> Self {
         Self::new(MEAN, 4, Content::RawData(Data::Utf8(mean)))
     }
 
-    /// Creates a name atom containing [`Content::RawData`](crate::Content::RawData)
-    /// with the provided `name` string.
+    /// Creates a name atom containing [`Content::RawData`] with the provided `name` string.
     pub const fn name_atom_with(name: String) -> Self {
         Self::new(NAME, 4, Content::RawData(Data::Utf8(name)))
     }
 
-    /// Creates a data atom containing [`Content::TypedData`](crate::Content::TypedData)
-    /// with the provided `data`.
+    /// Creates a data atom containing [`Content::TypedData`] with the provided `data`.
     pub const fn data_atom_with(data: Data) -> Self {
         Self::new(DATA, 0, Content::TypedData(data))
     }
@@ -243,12 +240,12 @@ impl Atom {
         8 + self.offset + self.content.len()
     }
 
-    /// Returns a reference to the first children atom matching the `identifier`, if present.
+    /// Returns a reference to the first children atom matching the identifier, if present.
     pub fn child(&self, ident: FourCC) -> Option<&Self> {
         self.content.child(ident)
     }
 
-    /// Consumes self and returns the first children atom matching the `identifier`, if present.
+    /// Consumes self and returns the first children atom matching the identifier, if present.
     pub fn take_child(self, ident: FourCC) -> Option<Self> {
         self.content.take_child(ident)
     }
@@ -307,17 +304,17 @@ impl AtomT {
         Self { ident, offset, content }
     }
 
-    /// Creates a data atom template containing [`ContentT::TypedData`](crate::ContentT::TypedData).
+    /// Creates a data atom template containing [`ContentT::TypedData`].
     pub const fn data_atom() -> Self {
         Self::new(DATA, 0, ContentT::TypedData)
     }
 
-    /// Creates a mean atom template containing [`ContentT::RawData`](crate::ContentT::RawData).
+    /// Creates a mean atom template containing [`ContentT::RawData`].
     pub const fn mean_atom() -> Self {
         Self::new(MEAN, 4, ContentT::RawData(data::UTF8))
     }
 
-    /// Creates a name atom template containing [`ContentT::TypedData`](crate::ContentT::TypedData).
+    /// Creates a name atom template containing [`ContentT::TypedData`].
     pub const fn name_atom() -> Self {
         Self::new(NAME, 4, ContentT::RawData(data::UTF8))
     }

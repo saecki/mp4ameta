@@ -4,6 +4,13 @@ use std::time::Duration;
 use super::*;
 use crate::{ChannelConfig, SampleRate};
 
+/// Es descriptor  tag
+const ELEMENTARY_STREAM_DESCRIPTOR: u8 = 0x03;
+/// Decoder config descriptor tag
+const DECODER_CONFIG_DESCRIPTOR: u8 = 0x04;
+/// Decoder specific descriptor tag
+const DECODER_SPECIFIC_DESCRIPTOR: u8 = 0x05;
+
 /// A struct containing information about an MPEG-4 AAC track.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(crate) struct Mp4aInfo {

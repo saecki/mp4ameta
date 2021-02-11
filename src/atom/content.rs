@@ -28,14 +28,12 @@ impl Default for Content {
 }
 
 impl Content {
-    /// Creates new content of type [Self::Atoms](Self::Atoms) containing the
-    /// atom.
+    /// Creates new content of type [Self::Atoms] containing the atom.
     pub fn atom(atom: Atom) -> Self {
         Self::Atoms(vec![atom])
     }
 
-    /// Creates new content of type [Self::Atoms](Self::Atoms) containing a data
-    /// [`Atom`](struct.Atom.html) with the data.
+    /// Creates new content of type [Self::Atoms] containing a data [`Atom`] with the data.
     pub fn data_atom_with(data: Data) -> Self {
         Self::atom(Atom::data_atom_with(data))
     }
@@ -77,8 +75,7 @@ impl Content {
         self.into_atoms().find(|a| a.ident == ident)
     }
 
-    /// Return a data reference if `self` is of type [`Content::RawData`](crate::Content::RawData)
-    /// or [`Content::TypedData`](crate::Content::TypedData).
+    /// Return a data reference if `self` is of type [`Self::RawData`] or [`Self::TypedData`].
     pub fn data(&self) -> Option<&Data> {
         match self {
             Self::TypedData(d) => Some(d),
@@ -87,7 +84,7 @@ impl Content {
         }
     }
 
-    /// Replaces `self` with it's default value and returns the data, if present.
+    /// Consumes self and returns data if `self` is of type [`Self::RawData`] or [`Self::TypedData`].
     pub fn take_data(self) -> Option<Data> {
         match self {
             Self::TypedData(d) => Some(d),
@@ -154,13 +151,12 @@ impl Default for ContentT {
 }
 
 impl ContentT {
-    /// Creates a new empty content template of type [Self::Atoms](Self::Atoms).
+    /// Creates a new empty content template of type [Self::Atoms].
     pub const fn atoms_t() -> Self {
         Self::Atoms(Vec::new())
     }
 
-    /// Creates a new content template of type [Self::Atoms](Self::Atoms)
-    /// containing the `atom` template.
+    /// Creates a new content template of type [Self::Atoms] containing the `atom` template.
     pub fn atom_t(atom: AtomT) -> Self {
         Self::Atoms(vec![atom])
     }
