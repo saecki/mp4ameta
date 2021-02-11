@@ -202,9 +202,9 @@ impl fmt::Display for FourCC {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FreeformIdent<'a> {
     /// The mean string, typically in reverse domain notation.
-    mean: &'a str,
+    pub mean: &'a str,
     /// The name string used to identify the freeform atom.
-    name: &'a str,
+    pub name: &'a str,
 }
 
 impl Ident for FreeformIdent<'_> {
