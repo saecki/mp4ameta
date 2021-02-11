@@ -39,7 +39,7 @@ fn base_values(input: TokenStream) -> (String, String, String, String, String) {
 }
 
 #[proc_macro]
-pub fn individual_string_value_accessor(input: TokenStream) -> TokenStream {
+pub fn single_string_value_accessor(input: TokenStream) -> TokenStream {
     let (value_ident, name, headline, atom_ident, atom_ident_string) = base_values(input);
 
     format!(

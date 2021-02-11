@@ -182,17 +182,17 @@ impl Tag {
 }
 
 // ## Individual string values
-mp4ameta_proc::individual_string_value_accessor!("album", "©alb");
-mp4ameta_proc::individual_string_value_accessor!("copyright", "cprt");
-mp4ameta_proc::individual_string_value_accessor!("encoder", "©too");
-mp4ameta_proc::individual_string_value_accessor!("lyrics", "©lyr");
-mp4ameta_proc::individual_string_value_accessor!("movement", "©mvn");
-mp4ameta_proc::individual_string_value_accessor!("title", "©nam");
-mp4ameta_proc::individual_string_value_accessor!("tv_episode_number", "tven");
-mp4ameta_proc::individual_string_value_accessor!("tv_network_name", "tvnn");
-mp4ameta_proc::individual_string_value_accessor!("tv_show_name", "tvsh");
-mp4ameta_proc::individual_string_value_accessor!("work", "©wrk");
-mp4ameta_proc::individual_string_value_accessor!("year", "©day");
+mp4ameta_proc::single_string_value_accessor!("album", "©alb");
+mp4ameta_proc::single_string_value_accessor!("copyright", "cprt");
+mp4ameta_proc::single_string_value_accessor!("encoder", "©too");
+mp4ameta_proc::single_string_value_accessor!("lyrics", "©lyr");
+mp4ameta_proc::single_string_value_accessor!("movement", "©mvn");
+mp4ameta_proc::single_string_value_accessor!("title", "©nam");
+mp4ameta_proc::single_string_value_accessor!("tv_episode_number", "tven");
+mp4ameta_proc::single_string_value_accessor!("tv_network_name", "tvnn");
+mp4ameta_proc::single_string_value_accessor!("tv_show_name", "tvsh");
+mp4ameta_proc::single_string_value_accessor!("work", "©wrk");
+mp4ameta_proc::single_string_value_accessor!("year", "©day");
 
 // ## Multiple string values
 mp4ameta_proc::multiple_string_values_accessor!("album_artist", "aART");
