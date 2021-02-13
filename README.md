@@ -71,5 +71,5 @@ __Run all tests:__<br/>
 `cargo test`
 
 __Test this library on your collection:__<br/>
-`cargo test -- --show-output collection <path>`
+`cargo test -- --nocapture collection <path>`
 

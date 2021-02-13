@@ -1,7 +1,7 @@
 use crate::{atom, Data, Tag};
 
-/// A list of standard genre codes and values found in the `gnre` atom. The codes are equivalent to the
-/// ID3v1 genre codes plus 1.
+/// A list of standard genre codes and values found in the `gnre` atom. The codes are equivalent to
+/// the ID3v1 genre codes plus 1.
 pub const STANDARD_GENRES: [&str; 80] = [
     "Blues",
     "Classic rock",
@@ -127,8 +127,8 @@ impl Tag {
 
 /// ### Genre
 ///
-/// These are convenience functions that combine the values from the standard genre (`gnre`) and
-/// custom genre (`©gen`).
+/// These are convenience methods that operate on values of both standard genres (`gnre`) and
+/// custom genres (`©gen`).
 impl Tag {
     /// Returns all genres, first the standard genres (`gnre`) then custom ones (`©gen`).
     pub fn genres(&self) -> impl Iterator<Item = &str> {
@@ -227,7 +227,7 @@ impl Tag {
 
 fn genre(code: u16) -> Option<&'static str> {
     let c = code as usize;
-    if c >= 1 && c <= STANDARD_GENRES.len() {
+    if c > 0 && c <= STANDARD_GENRES.len() {
         return Some(&STANDARD_GENRES[c - 1]);
     }
 

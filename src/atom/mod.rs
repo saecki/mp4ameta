@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use std::ops::Deref;
 
-use crate::{ErrorKind, Info, Tag};
+use crate::{AudioInfo, ErrorKind, Tag};
 
 pub use data::*;
 pub use ident::*;
@@ -13,7 +13,7 @@ use content::*;
 use info::*;
 use template::*;
 
-/// A module for the use of identifiers.
+/// A module for working with identifiers.
 pub mod ident;
 
 pub mod data;
@@ -103,7 +103,7 @@ impl TryFrom<&Atom> for AtomData {
 }
 
 impl AtomData {
-    /// Creates atom data with the `identifier` and `data`.
+    /// Creates atom data with the identifier and data.
     pub const fn new(ident: DataIdent, data: Data) -> Self {
         Self { ident, data }
     }
@@ -636,7 +636,7 @@ pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Ta
         None => Vec::new(),
     };
 
-    let mut info = Info::default();
+    let mut info = AudioInfo::default();
     if let Some(i) = mvhd_info {
         info.duration = i.duration;
     }
@@ -662,31 +662,31 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
     let mdat_info = atom_info.iter().find(|a| a.ident == MEDIA_DATA).ok_or_else(|| {
         crate::Error::new(
             crate::ErrorKind::AtomNotFound(MEDIA_DATA),
-            "Missing necessary data, no media data atom found".to_owned(),
+            "Missing necessary data, no media data (mdat) atom found".to_owned(),
         )
     })?;
     let moov_info = atom_info.iter().find(|a| a.ident == MOVIE).ok_or_else(|| {
         crate::Error::new(
             crate::ErrorKind::AtomNotFound(MOVIE),
-            "Missing necessary data, no movie atom found".to_owned(),
+            "Missing necessary data, no movie (moov) atom found".to_owned(),
         )
     })?;
     let udta_info = atom_info.iter().find(|a| a.ident == USER_DATA).ok_or_else(|| {
         crate::Error::new(
             crate::ErrorKind::AtomNotFound(USER_DATA),
-            "Missing necessary data, no user data atom found".to_owned(),
+            "Missing necessary data, no user data (udta) atom found".to_owned(),
         )
     })?;
     let meta_info = atom_info.iter().find(|a| a.ident == METADATA).ok_or_else(|| {
         crate::Error::new(
             crate::ErrorKind::AtomNotFound(METADATA),
-            "Missing necessary data, no metadata atom found".to_owned(),
+            "Missing necessary data, no metadata (meta) atom found".to_owned(),
         )
     })?;
     let ilst_info = atom_info.iter().find(|a| a.ident == ITEM_LIST).ok_or_else(|| {
         crate::Error::new(
             crate::ErrorKind::AtomNotFound(ITEM_LIST),
-            "Missing necessary data, no item list atom found".to_owned(),
+            "Missing necessary data, no item list (ilst) atom found".to_owned(),
         )
     })?;
 
@@ -747,7 +747,7 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
                 if !stco_present {
                     return Err(crate::Error::new(
                         crate::ErrorKind::AtomNotFound(SAMPLE_TABLE_CHUNK_OFFSET),
-                        "No sample table chunk offset atom found".to_owned(),
+                        "No sample table chunk offset (stco) atom found".to_owned(),
                     ));
                 }
             }

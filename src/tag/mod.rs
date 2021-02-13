@@ -5,7 +5,7 @@ use std::io::{BufReader, Read, Seek, Write};
 use std::path::Path;
 
 use crate::atom::{self, idents_match, DataIdent, Ident};
-use crate::{be_int, AdvisoryRating, AtomData, Data, Info, MediaType};
+use crate::{be_int, AdvisoryRating, AtomData, AudioInfo, Data, MediaType};
 
 pub use genre::*;
 pub use readonly::*;
@@ -20,8 +20,8 @@ mod tuple;
 pub struct Tag {
     /// The `ftyp` atom.
     pub ftyp: String,
-    /// Readonly information
-    pub info: Info,
+    /// Readonly audio information
+    pub info: AudioInfo,
     /// A vector containing metadata atoms
     pub atoms: Vec<AtomData>,
 }
@@ -112,10 +112,10 @@ impl fmt::Display for Tag {
             string.push_str(&format!("sample rate: {}\n", s));
         }
         if let Some(a) = self.avg_bitrate() {
-            string.push_str(&format!("average bitrate: {}\n", a));
+            string.push_str(&format!("average bitrate: {}kbps\n", a / 1024));
         }
         if let Some(m) = self.max_bitrate() {
-            string.push_str(&format!("maximum bitrate: {}\n", m));
+            string.push_str(&format!("maximum bitrate: {}kbps\n", m / 1024));
         }
         if self.show_movement() {
             string.push_str("show movement\n");
@@ -141,7 +141,7 @@ impl fmt::Display for Tag {
 
 impl Tag {
     /// Creates a new MPEG-4 audio tag containing the atom.
-    pub const fn new(ftyp: String, info: Info, atoms: Vec<AtomData>) -> Self {
+    pub const fn new(ftyp: String, info: AudioInfo, atoms: Vec<AtomData>) -> Self {
         Self { ftyp, info, atoms }
     }
 

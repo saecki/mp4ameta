@@ -340,9 +340,9 @@ impl SampleRate {
     }
 }
 
-/// A struct containing information about a mp4 file.
+/// A struct containing information about a mp4 track.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct Info {
+pub struct AudioInfo {
     /// The duration of the track.
     pub duration: Option<Duration>,
     /// The channel configuration of the track.

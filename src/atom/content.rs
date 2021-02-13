@@ -28,12 +28,12 @@ impl Default for Content {
 }
 
 impl Content {
-    /// Creates new content of type [Self::Atoms] containing the atom.
+    /// Creates new content of type [`Self::Atoms`] containing the atom.
     pub fn atom(atom: Atom) -> Self {
         Self::Atoms(vec![atom])
     }
 
-    /// Creates new content of type [Self::Atoms] containing a data [`Atom`] with the data.
+    /// Creates new content of type [`Self::Atoms`] containing a data [`Atom`] with the data.
     pub fn data_atom_with(data: Data) -> Self {
         Self::atom(Atom::data_atom_with(data))
     }
@@ -65,12 +65,12 @@ impl Content {
         }
     }
 
-    /// Returns a reference to the first children atom matching the `identifier`, if present.
+    /// Returns a reference to the first children atom matching the identifier, if present.
     pub fn child(&self, ident: FourCC) -> Option<&Atom> {
         self.atoms().find(|a| a.ident == ident)
     }
 
-    /// Consumes self and returns the first children atom matching the `identfier`, if present.
+    /// Consumes self and returns the first children atom matching the identifier, if present.
     pub fn take_child(self, ident: FourCC) -> Option<Atom> {
         self.into_atoms().find(|a| a.ident == ident)
     }
@@ -93,7 +93,7 @@ impl Content {
         }
     }
 
-    /// Attempts to write the content to the `writer`.
+    /// Attempts to write the content to the writer.
     pub fn write_to(&self, writer: &mut impl Write) -> crate::Result<()> {
         match self {
             Self::Atoms(v) => {
@@ -151,17 +151,17 @@ impl Default for ContentT {
 }
 
 impl ContentT {
-    /// Creates a new empty content template of type [Self::Atoms].
+    /// Creates a new empty content template of type [`Self::Atoms`].
     pub const fn atoms_t() -> Self {
         Self::Atoms(Vec::new())
     }
 
-    /// Creates a new content template of type [Self::Atoms] containing the `atom` template.
+    /// Creates a new content template of type [`Self::Atoms`] containing the atom template.
     pub fn atom_t(atom: AtomT) -> Self {
         Self::Atoms(vec![atom])
     }
 
-    /// Attempts to parse corresponding content from the `reader`.
+    /// Attempts to parse corresponding content from the reader.
     pub fn parse(&self, reader: &mut (impl Read + Seek), len: usize) -> crate::Result<Content> {
         Ok(match self {
             Self::Atoms(v) => Content::Atoms(parse_atoms(reader, v, len)?),

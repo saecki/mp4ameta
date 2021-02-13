@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crate::{ChannelConfig, SampleRate, Tag};
 
-/// ### Duration
+/// ### Audio information
 impl Tag {
     /// Returns the duration in seconds.
     pub fn duration(&self) -> Option<Duration> {
@@ -22,26 +22,17 @@ impl Tag {
             (_, _) => Some(format!("duration: {}:{:02}:{:02}\n", hours, minutes, seconds)),
         }
     }
-}
 
-/// ### Channel configuration
-impl Tag {
     /// Returns the channel configuration.
     pub fn channel_config(&self) -> Option<ChannelConfig> {
         self.info.channel_config
     }
-}
 
-/// ### Sample rate
-impl Tag {
     /// Returns the channel configuration.
     pub fn sample_rate(&self) -> Option<SampleRate> {
         self.info.sample_rate
     }
-}
 
-/// ### Bit rate
-impl Tag {
     /// Returns the average bitrate.
     pub fn avg_bitrate(&self) -> Option<u32> {
         self.info.avg_bitrate
