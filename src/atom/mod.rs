@@ -24,13 +24,18 @@ mod template;
 
 /// A list of valid file types in lowercase defined by the filetype (`ftyp`) atom.
 #[rustfmt::skip]
-const VALID_FILETYPES: [&str; 8] = [
-    "iso2",
-    "isom",
-    "m4a ",
-    "m4b ",
-    "m4p ",
-    "m4v ",
+const VALID_FILETYPES: [&str; 13] = [
+    "3gp4", 
+    "3gp5", 
+    "3gp6",
+    "3gs7", 
+    "dash", 
+    "iso2", 
+    "isom", 
+    "m4a ", 
+    "m4b ", 
+    "m4p ", 
+    "m4v ", 
     "mp41",
     "mp42",
 ];
@@ -466,23 +471,6 @@ fn parse_ext_head(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
     reader.read_exact(&mut flags)?;
 
     Ok((version, flags))
-}
-
-fn parse_desc_head(reader: &mut impl Read) -> crate::Result<(u8, usize, usize)> {
-    let tag = data::read_u8(reader)?;
-
-    let mut head_len = 1;
-    let mut len = 0;
-    while head_len < 5 {
-        let b = data::read_u8(reader)?;
-        len = (len << 7) | (b & 0x7F) as u32;
-        head_len += 1;
-        if b & 0x80 == 0 {
-            break;
-        }
-    }
-
-    Ok((tag, head_len, len as usize))
 }
 
 /// A struct representing of a sample table chunk offset atom (`stco`).

@@ -77,7 +77,7 @@ impl Mp4aInfo {
 
         reader.seek(SeekFrom::Current(28))?;
 
-        let (_, ident) = parse_head(reader)?;
+        let (esds_len, ident) = parse_head(reader)?;
         if ident != ELEMENTARY_STREAM_DESCRIPTION {
             return Err(crate::Error::new(
                 crate::ErrorKind::AtomNotFound(ELEMENTARY_STREAM_DESCRIPTION),
@@ -85,7 +85,7 @@ impl Mp4aInfo {
             ));
         }
 
-        parse_esds(reader, &mut info, len - 36)?;
+        parse_esds(reader, &mut info, esds_len)?;
 
         let current_pos = reader.seek(SeekFrom::Current(0))?;
         let diff = current_pos - start_pos;
@@ -174,6 +174,23 @@ fn parse_ds_desc(reader: &mut (impl Read + Seek), audio_info: &mut Mp4aInfo) -> 
     audio_info.channel_config = ChannelConfig::try_from(channel_config).ok();
 
     Ok(())
+}
+
+fn parse_desc_head(reader: &mut impl Read) -> crate::Result<(u8, usize, usize)> {
+    let tag = data::read_u8(reader)?;
+
+    let mut head_len = 1;
+    let mut len = 0;
+    while head_len < 5 {
+        let b = data::read_u8(reader)?;
+        len = (len << 7) | (b & 0x7F) as u32;
+        head_len += 1;
+        if b & 0x80 == 0 {
+            break;
+        }
+    }
+
+    Ok((tag, head_len, len as usize))
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
