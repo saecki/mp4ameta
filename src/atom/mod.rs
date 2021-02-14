@@ -25,17 +25,17 @@ mod template;
 /// A list of valid file types in lowercase defined by the filetype (`ftyp`) atom.
 #[rustfmt::skip]
 const VALID_FILETYPES: [&str; 13] = [
-    "3gp4", 
-    "3gp5", 
+    "3gp4",
+    "3gp5",
     "3gp6",
-    "3gs7", 
-    "dash", 
-    "iso2", 
-    "isom", 
-    "m4a ", 
-    "m4b ", 
-    "m4p ", 
-    "m4v ", 
+    "3gs7",
+    "dash",
+    "iso2",
+    "isom",
+    "m4a ",
+    "m4b ",
+    "m4p ",
+    "m4v ",
     "mp41",
     "mp42",
 ];
@@ -473,42 +473,6 @@ fn parse_ext_head(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
     Ok((version, flags))
 }
 
-/// A struct representing of a sample table chunk offset atom (`stco`).
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-struct ChunkOffset {
-    pub pos: u64,
-    pub version: u8,
-    pub flags: [u8; 3],
-    pub offsets: Vec<u32>,
-}
-
-/// Parses the content of a sample table chunk offset atom (`stco`).
-fn parse_chunk_offset(reader: &mut (impl Read + Seek)) -> crate::Result<ChunkOffset> {
-    let pos = reader.seek(SeekFrom::Current(0))?;
-
-    let version = data::read_u8(reader)?;
-    let mut flags = [0u8; 3];
-    reader.read_exact(&mut flags)?;
-
-    match version {
-        0 => {
-            let entries = data::read_u32(reader)?;
-            let mut offsets = Vec::new();
-
-            for _ in 0..entries {
-                let offset = data::read_u32(reader)?;
-                offsets.push(offset);
-            }
-
-            Ok(ChunkOffset { pos, version, flags, offsets })
-        }
-        _ => Err(crate::Error::new(
-            crate::ErrorKind::UnknownVersion(version),
-            "Unknown sample table chunk offset (stco) version".to_owned(),
-        )),
-    }
-}
-
 /// A struct storing the position and size of an atom.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 struct AtomBounds {
@@ -722,7 +686,7 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
                 let mut stco_present = false;
                 for a in stco_info {
                     reader.seek(SeekFrom::Start(a.pos as u64 + 8))?;
-                    let chunk_offset = parse_chunk_offset(&mut reader)?;
+                    let chunk_offset = ChunkOffsetInfo::parse(&mut reader)?;
 
                     writer.seek(SeekFrom::Start(chunk_offset.pos + 8))?;
                     for co in chunk_offset.offsets.iter() {

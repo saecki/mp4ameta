@@ -13,7 +13,7 @@ const DECODER_SPECIFIC_DESCRIPTOR: u8 = 0x05;
 
 /// A struct containing information about an MPEG-4 AAC track.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub(crate) struct Mp4aInfo {
+pub(super) struct Mp4aInfo {
     /// The channel configuration of the track.
     pub channel_config: Option<ChannelConfig>,
     /// The sample rate of the track.
@@ -70,7 +70,7 @@ pub(crate) struct Mp4aInfo {
 
 impl Mp4aInfo {
     /// Attempts to parse audio information from the mp4 audio sample entry.
-    pub(crate) fn parse(reader: &mut (impl Read + Seek), len: usize) -> crate::Result<Self> {
+    pub(super) fn parse(reader: &mut (impl Read + Seek), len: usize) -> crate::Result<Self> {
         let mut info = Self::default();
 
         let start_pos = reader.seek(SeekFrom::Current(0))?;
@@ -194,13 +194,13 @@ fn parse_desc_head(reader: &mut impl Read) -> crate::Result<(u8, usize, usize)> 
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub(crate) struct MvhdInfo {
+pub(super) struct MvhdInfo {
     /// The duration of the track.
     pub duration: Option<Duration>,
 }
 
 impl MvhdInfo {
-    pub(crate) fn parse(reader: &mut (impl Read + Seek), len: usize) -> crate::Result<Self> {
+    pub(super) fn parse(reader: &mut (impl Read + Seek), len: usize) -> crate::Result<Self> {
         let mut info = Self::default();
 
         let start_pos = reader.seek(SeekFrom::Current(0))?;
@@ -250,5 +250,41 @@ impl MvhdInfo {
         reader.seek(SeekFrom::Current(len as i64 - diff as i64))?;
 
         Ok(info)
+    }
+}
+
+/// A struct representing of a sample table chunk offset atom (`stco`).
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub(super) struct ChunkOffsetInfo {
+    pub pos: u64,
+    pub version: u8,
+    pub flags: [u8; 3],
+    pub offsets: Vec<u32>,
+}
+
+impl ChunkOffsetInfo {
+    /// Parses the content of a sample table chunk offset atom (`stco`).
+    pub(super) fn parse(reader: &mut (impl Read + Seek)) -> crate::Result<Self> {
+        let pos = reader.seek(SeekFrom::Current(0))?;
+
+        let (version, flags) = parse_ext_head(reader)?;
+
+        match version {
+            0 => {
+                let entries = data::read_u32(reader)?;
+                let mut offsets = Vec::new();
+
+                for _ in 0..entries {
+                    let offset = data::read_u32(reader)?;
+                    offsets.push(offset);
+                }
+
+                Ok(Self { pos, version, flags, offsets })
+            }
+            _ => Err(crate::Error::new(
+                crate::ErrorKind::UnknownVersion(version),
+                "Unknown sample table chunk offset (stco) version".to_owned(),
+            )),
+        }
     }
 }
