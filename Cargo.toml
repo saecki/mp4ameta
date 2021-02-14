@@ -1,6 +1,6 @@
 [package]
 name = "mp4ameta"
-version = "0.9.0"
+version = "0.9.1"
 authors = ["Saecki <tobiasschmitz2001@gmail.com>"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
@@ -12,7 +12,7 @@ edition = "2018"
 
 [dependencies]
 lazy_static = "1.4.0"
-mp4ameta_proc = { path = "proc", version = "0.3.0" }
+mp4ameta_proc = { path = "proc", version = "0.4.0" }
 
 [dev-dependencies]
 walkdir = "2.3.1"
