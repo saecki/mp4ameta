@@ -257,7 +257,7 @@ pub(super) struct ChunkOffsetInfo {
 }
 
 impl ChunkOffsetInfo {
-    pub(super) fn parse(reader: &mut (impl Read + Seek)) -> crate::Result<Self> {
+    pub(super) fn parse(reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Self> {
         let pos = reader.seek(SeekFrom::Current(0))?;
 
         let (version, _) = parse_ext_head(reader)?;
@@ -265,8 +265,14 @@ impl ChunkOffsetInfo {
         match version {
             0 => {
                 let entries = data::read_u32(reader)?;
-                let mut offsets = Vec::new();
+                if 8 + 4 * entries > len as u32 {
+                    return Err(crate::Error::new(
+                        crate::ErrorKind::Parsing,
+                        "Sample table chunk offset (stco) size too big".to_owned(),
+                    ));
+                }
 
+                let mut offsets = Vec::new();
                 for _ in 0..entries {
                     let offset = data::read_u32(reader)?;
                     offsets.push(offset);
@@ -290,7 +296,7 @@ pub(super) struct ChunkOffsetInfo64 {
 }
 
 impl ChunkOffsetInfo64 {
-    pub(super) fn parse(reader: &mut (impl Read + Seek)) -> crate::Result<Self> {
+    pub(super) fn parse(reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Self> {
         let pos = reader.seek(SeekFrom::Current(0))?;
 
         let (version, _) = parse_ext_head(reader)?;
@@ -298,8 +304,14 @@ impl ChunkOffsetInfo64 {
         match version {
             0 => {
                 let entries = data::read_u32(reader)?;
-                let mut offsets = Vec::new();
+                if 8 + 8 * entries > len as u32 {
+                    return Err(crate::Error::new(
+                        crate::ErrorKind::Parsing,
+                        "Sample table chunk offset (stco) size too big".to_owned(),
+                    ));
+                }
 
+                let mut offsets = Vec::new();
                 for _ in 0..entries {
                     let offset = data::read_u64(reader)?;
                     offsets.push(offset);

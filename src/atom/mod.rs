@@ -489,12 +489,13 @@ fn parse_ext_head(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
 struct AtomBounds {
     pub ident: Fourcc,
     pub pos: u64,
-    pub len: u64,
+    pub head_len: u64,
+    pub content_len: u64,
 }
 
 impl AtomBounds {
-    fn new(ident: Fourcc, pos: u64, len: u64) -> Self {
-        Self { ident, pos, len }
+    fn new(ident: Fourcc, pos: u64, head_len: u64, content_len: u64) -> Self {
+        Self { ident, pos, head_len, content_len }
     }
 }
 
@@ -513,7 +514,7 @@ fn find_atoms(
         match atoms.iter().find(|a| a.ident == atom_ident) {
             Some(a) => {
                 let atom_pos = reader.seek(SeekFrom::Current(0))? - 8;
-                atom_info.push(AtomBounds::new(atom_ident, atom_pos, head_len + content_len));
+                atom_info.push(AtomBounds::new(atom_ident, atom_pos, head_len, content_len));
 
                 if let ContentT::Atoms(c) = &a.content {
                     if a.offset != 0 {
@@ -656,7 +657,7 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
     let mut writer = BufWriter::new(file);
     let old_file_len = reader.seek(SeekFrom::End(0))?;
     let metadata_pos = ilst_info.pos + 8;
-    let old_metadata_len = ilst_info.len - 8;
+    let old_metadata_len = ilst_info.head_len - 8;
     let new_metadata_len = atoms.iter().map(AtomData::len).sum::<u64>();
     let metadata_len_diff = new_metadata_len as i64 - old_metadata_len as i64;
 
@@ -694,10 +695,10 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
 
                 let mut stco_present = false;
                 for a in stco {
-                    reader.seek(SeekFrom::Start(a.pos as u64 + 8))?;
-                    let chunk_offset = ChunkOffsetInfo::parse(&mut reader)?;
+                    reader.seek(SeekFrom::Start(a.pos as u64 + a.head_len))?;
+                    let chunk_offset = ChunkOffsetInfo::parse(&mut reader, a.content_len)?;
 
-                    writer.seek(SeekFrom::Start(chunk_offset.pos + 8))?;
+                    writer.seek(SeekFrom::Start(chunk_offset.pos + a.head_len))?;
                     for co in chunk_offset.offsets.iter() {
                         let new_offset = (*co as i64 + metadata_len_diff) as u32;
                         writer.write_all(&new_offset.to_be_bytes())?;
@@ -710,7 +711,7 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
                 let mut co64_present = false;
                 for a in co64 {
                     reader.seek(SeekFrom::Start(a.pos as u64 + 8))?;
-                    let chunk_offset = ChunkOffsetInfo64::parse(&mut reader)?;
+                    let chunk_offset = ChunkOffsetInfo64::parse(&mut reader, a.content_len)?;
 
                     writer.seek(SeekFrom::Start(chunk_offset.pos + 8))?;
                     for co in chunk_offset.offsets.iter() {
@@ -734,7 +735,7 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
 
             // adjusting the atom lengths
             let mut write_pos = |a: &AtomBounds| -> crate::Result<()> {
-                let new_len = (a.len as i64 + metadata_len_diff) as u32;
+                let new_len = (a.head_len as i64 + metadata_len_diff) as u32;
                 writer.seek(SeekFrom::Start(a.pos as u64))?;
                 writer.write_all(&new_len.to_be_bytes())?;
                 Ok(())
