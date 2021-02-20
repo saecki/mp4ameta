@@ -2,145 +2,147 @@ use std::fmt;
 use std::ops::{Deref, DerefMut};
 
 /// (`ftyp`) Identifier of an atom information about the filetype.
-pub(crate) const FILETYPE: FourCC = FourCC(*b"ftyp");
+pub(crate) const FILETYPE: Fourcc = Fourcc(*b"ftyp");
 /// (`mdat`)
-pub(crate) const MEDIA_DATA: FourCC = FourCC(*b"mdat");
+pub(crate) const MEDIA_DATA: Fourcc = Fourcc(*b"mdat");
 /// (`moov`) Identifier of an atom containing a structure of children storing metadata.
-pub(crate) const MOVIE: FourCC = FourCC(*b"moov");
+pub(crate) const MOVIE: Fourcc = Fourcc(*b"moov");
 /// (`mvhd`) Identifier of an atom containing information about the whole movie (or audio file).
-pub(crate) const MOVIE_HEADER: FourCC = FourCC(*b"mvhd");
+pub(crate) const MOVIE_HEADER: Fourcc = Fourcc(*b"mvhd");
 /// (`trak`) Identifier of an atom containing information about a single track.
-pub(crate) const TRACK: FourCC = FourCC(*b"trak");
+pub(crate) const TRACK: Fourcc = Fourcc(*b"trak");
 /// (`mdia`) Identifier of an atom containing information about a tracks media type and data.
-pub(crate) const MEDIA: FourCC = FourCC(*b"mdia");
+pub(crate) const MEDIA: Fourcc = Fourcc(*b"mdia");
 /// (`minf`)
-pub(crate) const MEDIA_INFORMATION: FourCC = FourCC(*b"minf");
+pub(crate) const MEDIA_INFORMATION: Fourcc = Fourcc(*b"minf");
 /// (`stbl`)
-pub(crate) const SAMPLE_TABLE: FourCC = FourCC(*b"stbl");
+pub(crate) const SAMPLE_TABLE: Fourcc = Fourcc(*b"stbl");
 /// (`stco`)
-pub(crate) const SAMPLE_TABLE_CHUNK_OFFSET: FourCC = FourCC(*b"stco");
+pub(crate) const SAMPLE_TABLE_CHUNK_OFFSET: Fourcc = Fourcc(*b"stco");
+/// (`co64`)
+pub(crate) const SAMPLE_TABLE_CHUNK_OFFSET_64: Fourcc = Fourcc(*b"co64");
 /// (`stsd`)
-pub(crate) const SAMPLE_TABLE_SAMPLE_DESCRIPTION: FourCC = FourCC(*b"stsd");
+pub(crate) const SAMPLE_TABLE_SAMPLE_DESCRIPTION: Fourcc = Fourcc(*b"stsd");
 /// (`mp4a`)
-pub(crate) const MP4_AUDIO: FourCC = FourCC(*b"mp4a");
+pub(crate) const MP4_AUDIO: Fourcc = Fourcc(*b"mp4a");
 /// (`esds`)
-pub(crate) const ELEMENTARY_STREAM_DESCRIPTION: FourCC = FourCC(*b"esds");
+pub(crate) const ELEMENTARY_STREAM_DESCRIPTION: Fourcc = Fourcc(*b"esds");
 /// (`udta`) Identifier of an atom containing user metadata.
-pub(crate) const USER_DATA: FourCC = FourCC(*b"udta");
+pub(crate) const USER_DATA: Fourcc = Fourcc(*b"udta");
 /// (`meta`) Identifier of an atom containing a metadata item list.
-pub(crate) const METADATA: FourCC = FourCC(*b"meta");
+pub(crate) const METADATA: Fourcc = Fourcc(*b"meta");
 /// (`ilst`) Identifier of an atom containing a list of metadata atoms.
-pub(crate) const ITEM_LIST: FourCC = FourCC(*b"ilst");
+pub(crate) const ITEM_LIST: Fourcc = Fourcc(*b"ilst");
 /// (`data`) Identifier of an atom containing typed data.
-pub(crate) const DATA: FourCC = FourCC(*b"data");
+pub(crate) const DATA: Fourcc = Fourcc(*b"data");
 /// (`mean`)
-pub(crate) const MEAN: FourCC = FourCC(*b"mean");
+pub(crate) const MEAN: Fourcc = Fourcc(*b"mean");
 /// (`name`)
-pub(crate) const NAME: FourCC = FourCC(*b"name");
+pub(crate) const NAME: Fourcc = Fourcc(*b"name");
 /// (`free`)
-pub(crate) const FREE: FourCC = FourCC(*b"free");
+pub(crate) const FREE: Fourcc = Fourcc(*b"free");
 /// A identifier internally used as a wildcard.
-pub(crate) const WILDCARD: FourCC = FourCC([255, 255, 255, 255]);
+pub(crate) const WILDCARD: Fourcc = Fourcc([255, 255, 255, 255]);
 
 /// (`----`)
-pub const FREEFORM: FourCC = FourCC(*b"----");
+pub const FREEFORM: Fourcc = Fourcc(*b"----");
 
 // iTunes 4.0 atoms
 /// (`rtng`)
-pub const ADVISORY_RATING: FourCC = FourCC(*b"rtng");
+pub const ADVISORY_RATING: Fourcc = Fourcc(*b"rtng");
 /// (`©alb`)
-pub const ALBUM: FourCC = FourCC(*b"\xa9alb");
+pub const ALBUM: Fourcc = Fourcc(*b"\xa9alb");
 /// (`aART`)
-pub const ALBUM_ARTIST: FourCC = FourCC(*b"aART");
+pub const ALBUM_ARTIST: Fourcc = Fourcc(*b"aART");
 /// (`©ART`)
-pub const ARTIST: FourCC = FourCC(*b"\xa9ART");
+pub const ARTIST: Fourcc = Fourcc(*b"\xa9ART");
 /// (`covr`)
-pub const ARTWORK: FourCC = FourCC(*b"covr");
+pub const ARTWORK: Fourcc = Fourcc(*b"covr");
 /// (`tmpo`)
-pub const BPM: FourCC = FourCC(*b"tmpo");
+pub const BPM: Fourcc = Fourcc(*b"tmpo");
 /// (`©cmt`)
-pub const COMMENT: FourCC = FourCC(*b"\xa9cmt");
+pub const COMMENT: Fourcc = Fourcc(*b"\xa9cmt");
 /// (`cpil`)
-pub const COMPILATION: FourCC = FourCC(*b"cpil");
+pub const COMPILATION: Fourcc = Fourcc(*b"cpil");
 /// (`©wrt`)
-pub const COMPOSER: FourCC = FourCC(*b"\xa9wrt");
+pub const COMPOSER: Fourcc = Fourcc(*b"\xa9wrt");
 /// (`cprt`)
-pub const COPYRIGHT: FourCC = FourCC(*b"cprt");
+pub const COPYRIGHT: Fourcc = Fourcc(*b"cprt");
 /// (`©gen`)
-pub const CUSTOM_GENRE: FourCC = FourCC(*b"\xa9gen");
+pub const CUSTOM_GENRE: Fourcc = Fourcc(*b"\xa9gen");
 /// (`disk`)
-pub const DISC_NUMBER: FourCC = FourCC(*b"disk");
+pub const DISC_NUMBER: Fourcc = Fourcc(*b"disk");
 /// (`©too`)
-pub const ENCODER: FourCC = FourCC(*b"\xa9too");
+pub const ENCODER: Fourcc = Fourcc(*b"\xa9too");
 /// (`gnre`)
-pub const STANDARD_GENRE: FourCC = FourCC(*b"gnre");
+pub const STANDARD_GENRE: Fourcc = Fourcc(*b"gnre");
 /// (`©nam`)
-pub const TITLE: FourCC = FourCC(*b"\xa9nam");
+pub const TITLE: Fourcc = Fourcc(*b"\xa9nam");
 /// (`trkn`)
-pub const TRACK_NUMBER: FourCC = FourCC(*b"trkn");
+pub const TRACK_NUMBER: Fourcc = Fourcc(*b"trkn");
 /// (`©day`)
-pub const YEAR: FourCC = FourCC(*b"\xa9day");
+pub const YEAR: Fourcc = Fourcc(*b"\xa9day");
 
 // iTunes 4.2 atoms
 /// (`©grp`)
-pub const GROUPING: FourCC = FourCC(*b"\xa9grp");
+pub const GROUPING: Fourcc = Fourcc(*b"\xa9grp");
 /// (`stik`)
-pub const MEDIA_TYPE: FourCC = FourCC(*b"stik");
+pub const MEDIA_TYPE: Fourcc = Fourcc(*b"stik");
 
 // iTunes 4.9 atoms
 /// (`catg`)
-pub const CATEGORY: FourCC = FourCC(*b"catg");
+pub const CATEGORY: Fourcc = Fourcc(*b"catg");
 /// (`keyw`)
-pub const KEYWORD: FourCC = FourCC(*b"keyw");
+pub const KEYWORD: Fourcc = Fourcc(*b"keyw");
 /// (`pcst`)
-pub const PODCAST: FourCC = FourCC(*b"pcst");
+pub const PODCAST: Fourcc = Fourcc(*b"pcst");
 /// (`egid`)
-pub const PODCAST_EPISODE_GLOBAL_UNIQUE_ID: FourCC = FourCC(*b"egid");
+pub const PODCAST_EPISODE_GLOBAL_UNIQUE_ID: Fourcc = Fourcc(*b"egid");
 /// (`purl`)
-pub const PODCAST_URL: FourCC = FourCC(*b"purl");
+pub const PODCAST_URL: Fourcc = Fourcc(*b"purl");
 
 // iTunes 5.0
 /// (`desc`)
-pub const DESCRIPTION: FourCC = FourCC(*b"desc");
+pub const DESCRIPTION: Fourcc = Fourcc(*b"desc");
 /// (`©lyr`)
-pub const LYRICS: FourCC = FourCC(*b"\xa9lyr");
+pub const LYRICS: Fourcc = Fourcc(*b"\xa9lyr");
 
 // iTunes 6.0
 /// (`tves`)
-pub const TV_EPISODE: FourCC = FourCC(*b"tves");
+pub const TV_EPISODE: Fourcc = Fourcc(*b"tves");
 /// (`tven`)
-pub const TV_EPISODE_NUMBER: FourCC = FourCC(*b"tven");
+pub const TV_EPISODE_NUMBER: Fourcc = Fourcc(*b"tven");
 /// (`tvnn`)
-pub const TV_NETWORK_NAME: FourCC = FourCC(*b"tvnn");
+pub const TV_NETWORK_NAME: Fourcc = Fourcc(*b"tvnn");
 /// (`tvsn`)
-pub const TV_SEASON: FourCC = FourCC(*b"tvsn");
+pub const TV_SEASON: Fourcc = Fourcc(*b"tvsn");
 /// (`tvsh`)
-pub const TV_SHOW_NAME: FourCC = FourCC(*b"tvsh");
+pub const TV_SHOW_NAME: Fourcc = Fourcc(*b"tvsh");
 
 // iTunes 6.0.2
 /// (`purd`)
-pub const PURCHASE_DATE: FourCC = FourCC(*b"purd");
+pub const PURCHASE_DATE: Fourcc = Fourcc(*b"purd");
 
 // iTunes 7.0
 /// (`pgap`)
-pub const GAPLESS_PLAYBACK: FourCC = FourCC(*b"pgap");
+pub const GAPLESS_PLAYBACK: Fourcc = Fourcc(*b"pgap");
 
 // Work, Movement
 /// (`©mvn`)
-pub const MOVEMENT: FourCC = FourCC(*b"\xa9mvn");
+pub const MOVEMENT: Fourcc = Fourcc(*b"\xa9mvn");
 /// (`©mvc`)
-pub const MOVEMENT_COUNT: FourCC = FourCC(*b"\xa9mvc");
+pub const MOVEMENT_COUNT: Fourcc = Fourcc(*b"\xa9mvc");
 /// (`©mvi`)
-pub const MOVEMENT_INDEX: FourCC = FourCC(*b"\xa9mvi");
+pub const MOVEMENT_INDEX: Fourcc = Fourcc(*b"\xa9mvi");
 /// (`©wrk`)
-pub const WORK: FourCC = FourCC(*b"\xa9wrk");
+pub const WORK: Fourcc = Fourcc(*b"\xa9wrk");
 /// (`shwm`)
-pub const SHOW_MOVEMENT: FourCC = FourCC(*b"shwm");
+pub const SHOW_MOVEMENT: Fourcc = Fourcc(*b"shwm");
 
 /// A trait providing information about an identifier.
 pub trait Ident {
     /// Returns a 4 byte atom identifier.
-    fn fourcc(&self) -> Option<FourCC>;
+    fn fourcc(&self) -> Option<Fourcc>;
     /// Returns a freeform identifier.
     fn freeform(&self) -> Option<FreeformIdent>;
 }
@@ -153,9 +155,9 @@ pub fn idents_match(a: &impl Ident, b: &impl Ident) -> bool {
 
 /// A 4 byte atom identifier (four character code).
 #[derive(Clone, Copy, Default, Eq, PartialEq)]
-pub struct FourCC(pub [u8; 4]);
+pub struct Fourcc(pub [u8; 4]);
 
-impl Deref for FourCC {
+impl Deref for Fourcc {
     type Target = [u8; 4];
 
     fn deref(&self) -> &Self::Target {
@@ -163,14 +165,14 @@ impl Deref for FourCC {
     }
 }
 
-impl DerefMut for FourCC {
+impl DerefMut for Fourcc {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl Ident for FourCC {
-    fn fourcc(&self) -> Option<FourCC> {
+impl Ident for Fourcc {
+    fn fourcc(&self) -> Option<Fourcc> {
         Some(*self)
     }
 
@@ -179,13 +181,13 @@ impl Ident for FourCC {
     }
 }
 
-impl fmt::Debug for FourCC {
+impl fmt::Debug for Fourcc {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Ident({})", self.0.iter().map(|b| char::from(*b)).collect::<String>())
     }
 }
 
-impl fmt::Display for FourCC {
+impl fmt::Display for Fourcc {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0.iter().map(|b| char::from(*b)).collect::<String>())
     }
@@ -201,7 +203,7 @@ pub struct FreeformIdent<'a> {
 }
 
 impl Ident for FreeformIdent<'_> {
-    fn fourcc(&self) -> Option<FourCC> {
+    fn fourcc(&self) -> Option<Fourcc> {
         None
     }
 
@@ -227,7 +229,7 @@ impl<'a> FreeformIdent<'a> {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DataIdent {
     /// A standard identifier containing a 4 byte atom identifier.
-    FourCC(FourCC),
+    Fourcc(Fourcc),
     /// An identifier of a freeform (`----`) atom containing owned mean and name strings.
     Freeform {
         /// The mean string, typically in reverse domain notation.
@@ -238,16 +240,16 @@ pub enum DataIdent {
 }
 
 impl Ident for DataIdent {
-    fn fourcc(&self) -> Option<FourCC> {
+    fn fourcc(&self) -> Option<Fourcc> {
         match self {
-            Self::FourCC(i) => Some(*i),
+            Self::Fourcc(i) => Some(*i),
             Self::Freeform { .. } => None,
         }
     }
 
     fn freeform(&self) -> Option<FreeformIdent> {
         match self {
-            Self::FourCC(_) => None,
+            Self::Fourcc(_) => None,
             Self::Freeform { mean, name } => Some(FreeformIdent::new(mean.as_str(), name.as_str())),
         }
     }
@@ -256,15 +258,15 @@ impl Ident for DataIdent {
 impl fmt::Display for DataIdent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::FourCC(ident) => write!(f, "{}", ident),
+            Self::Fourcc(ident) => write!(f, "{}", ident),
             Self::Freeform { mean, name } => write!(f, "----:{}:{}", mean, name),
         }
     }
 }
 
-impl From<FourCC> for DataIdent {
-    fn from(value: FourCC) -> Self {
-        Self::FourCC(value)
+impl From<Fourcc> for DataIdent {
+    fn from(value: Fourcc) -> Self {
+        Self::Fourcc(value)
     }
 }
 
@@ -287,9 +289,9 @@ impl DataIdent {
         Self::Freeform { mean: mean.into(), name: name.into() }
     }
 
-    /// Creates a new identifier of type [`DataIdent::FourCC`] containing an atom identifier with
+    /// Creates a new identifier of type [`DataIdent::Fourcc`] containing an atom identifier with
     /// the 4-byte identifier.
     pub const fn fourcc(bytes: [u8; 4]) -> Self {
-        Self::FourCC(FourCC(bytes))
+        Self::Fourcc(Fourcc(bytes))
     }
 }

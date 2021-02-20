@@ -105,7 +105,7 @@ impl Tag {
 
     /// Sets the standard genre (`gnre`). This will remove all other standard genres.
     pub fn set_standard_genre(&mut self, genre_code: u16) {
-        if genre_code > 0 && genre_code <= 80 {
+        if genre_code > 0 {
             let vec: Vec<u8> = genre_code.to_be_bytes().to_vec();
             self.set_data(atom::STANDARD_GENRE, Data::Reserved(vec));
         }
@@ -113,7 +113,7 @@ impl Tag {
 
     /// Adds a standard genre (`gnre`).
     pub fn add_standard_genre(&mut self, genre_code: u16) {
-        if genre_code > 0 && genre_code <= 80 {
+        if genre_code > 0 {
             let vec: Vec<u8> = genre_code.to_be_bytes().to_vec();
             self.add_data(atom::STANDARD_GENRE, Data::Reserved(vec))
         }
@@ -131,16 +131,8 @@ impl Tag {
 /// custom genres (`©gen`).
 impl Tag {
     /// Returns all genres, first the standard genres (`gnre`) then custom ones (`©gen`).
-    pub fn genres(&self) -> impl Iterator<Item = &str> {
-        self.standard_genres()
-            .filter_map(|genre_code| {
-                if genre_code >= 1 && genre_code <= 80 {
-                    let index = (genre_code - 1) as usize;
-                    return Some(STANDARD_GENRES[index]);
-                }
-                None
-            })
-            .chain(self.custom_genres())
+    pub fn genres(&self) -> impl Iterator<Item = &str> + '_ {
+        self.standard_genres().filter_map(|c| genre(c)).chain(self.custom_genres())
     }
 
     /// Returns the first genre (`gnre` or `©gen`).

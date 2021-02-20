@@ -114,15 +114,15 @@ impl fmt::Debug for Data {
 
 impl Data {
     /// Returns the length in bytes.
-    pub fn len(&self) -> usize {
-        match self {
+    pub fn len(&self) -> u64 {
+        (match self {
             Self::Reserved(v) => v.len(),
             Self::Utf8(s) => s.len(),
             Self::Utf16(s) => s.encode_utf16().count(),
             Self::Jpeg(v) => v.len(),
             Self::Png(v) => v.len(),
             Self::BeSigned(v) => v.len(),
-        }
+        }) as u64
     }
 
     /// Returns true if the data is empty, false otherwise.
@@ -385,18 +385,14 @@ impl Data {
 }
 
 /// Parses data based on [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
-pub(crate) fn parse_data(
-    reader: &mut impl Read,
-    datatype: u32,
-    length: usize,
-) -> crate::Result<Data> {
+pub(crate) fn parse_data(reader: &mut impl Read, datatype: u32, len: u64) -> crate::Result<Data> {
     Ok(match datatype {
-        RESERVED => Data::Reserved(read_u8_vec(reader, length)?),
-        UTF8 => Data::Utf8(read_utf8(reader, length)?),
-        UTF16 => Data::Utf16(read_utf16(reader, length)?),
-        JPEG => Data::Jpeg(read_u8_vec(reader, length)?),
-        PNG => Data::Png(read_u8_vec(reader, length)?),
-        BE_SIGNED => Data::BeSigned(read_u8_vec(reader, length)?),
+        RESERVED => Data::Reserved(read_u8_vec(reader, len)?),
+        UTF8 => Data::Utf8(read_utf8(reader, len)?),
+        UTF16 => Data::Utf16(read_utf16(reader, len)?),
+        JPEG => Data::Jpeg(read_u8_vec(reader, len)?),
+        PNG => Data::Png(read_u8_vec(reader, len)?),
+        BE_SIGNED => Data::BeSigned(read_u8_vec(reader, len)?),
         _ => {
             return Err(crate::Error::new(
                 crate::ErrorKind::UnknownDataType(datatype),
@@ -435,8 +431,8 @@ pub(crate) fn read_u64(reader: &mut impl Read) -> crate::Result<u64> {
 }
 
 /// Attempts to read 8 bit unsigned integers from the reader to a vector of size length.
-pub(crate) fn read_u8_vec(reader: &mut impl Read, length: usize) -> crate::Result<Vec<u8>> {
-    let mut buf = vec![0u8; length];
+pub(crate) fn read_u8_vec(reader: &mut impl Read, len: u64) -> crate::Result<Vec<u8>> {
+    let mut buf = vec![0u8; len as usize];
 
     reader.read_exact(&mut buf)?;
 
@@ -444,15 +440,15 @@ pub(crate) fn read_u8_vec(reader: &mut impl Read, length: usize) -> crate::Resul
 }
 
 /// Attempts to read a utf-8 string from the reader.
-pub(crate) fn read_utf8(reader: &mut impl Read, length: usize) -> crate::Result<String> {
-    let data = read_u8_vec(reader, length)?;
+pub(crate) fn read_utf8(reader: &mut impl Read, len: u64) -> crate::Result<String> {
+    let data = read_u8_vec(reader, len)?;
 
     Ok(String::from_utf8(data)?)
 }
 
 /// Attempts to read a utf-16 string from the reader.
-pub(crate) fn read_utf16(reader: &mut impl Read, length: usize) -> crate::Result<String> {
-    let mut buf = vec![0u8; length];
+pub(crate) fn read_utf16(reader: &mut impl Read, len: u64) -> crate::Result<String> {
+    let mut buf = vec![0u8; len as usize];
 
     reader.read_exact(&mut buf)?;
 

@@ -15,10 +15,10 @@
 //!
 //! ## The hard way
 //! ```no_run
-//! use mp4ameta::{Data, FourCC, Tag};
+//! use mp4ameta::{Data, Fourcc, Tag};
 //!
 //! let mut tag = Tag::read_from_path("music.m4a").unwrap();
-//! let artist_ident = FourCC(*b"\xa9ART");
+//! let artist_ident = Fourcc(*b"\xa9ART");
 //!
 //! let artist = tag.string(&artist_ident).next().unwrap();
 //! println!("{}", artist);
@@ -44,7 +44,7 @@
 //! ```
 #![warn(missing_docs)]
 
-pub use crate::atom::{ident, AtomData, Data, DataIdent, FourCC, FreeformIdent, Ident};
+pub use crate::atom::{ident, AtomData, Data, DataIdent, Fourcc, FreeformIdent, Ident};
 pub use crate::error::{Error, ErrorKind, Result};
 pub use crate::tag::{Tag, STANDARD_GENRES};
 pub use crate::types::*;

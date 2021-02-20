@@ -25,11 +25,12 @@ fn metadata_write_atom_t() -> [AtomT; 2] {
             AtomT::new(TRACK, 0, ContentT::atom_t(
                 AtomT::new(MEDIA, 0, ContentT::atom_t(
                     AtomT::new(MEDIA_INFORMATION, 0, ContentT::atom_t(
-                        AtomT::new(SAMPLE_TABLE, 0, ContentT::atom_t(
-                            AtomT::new(SAMPLE_TABLE_CHUNK_OFFSET, 0, ContentT::RawData(data::RESERVED))
-                        ))
-                    )),
-                )),
+                        AtomT::new(SAMPLE_TABLE, 0, ContentT::Atoms(vec![
+                            AtomT::new(SAMPLE_TABLE_CHUNK_OFFSET, 0, ContentT::RawData(data::RESERVED)),
+                            AtomT::new(SAMPLE_TABLE_CHUNK_OFFSET_64, 0, ContentT::RawData(data::RESERVED)),
+                        ]))
+                    ))
+                ))
             )),
             AtomT::new(USER_DATA, 0, ContentT::atom_t(
                 AtomT::new(METADATA, 4, ContentT::atom_t(

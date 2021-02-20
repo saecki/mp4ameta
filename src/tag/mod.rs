@@ -359,10 +359,10 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data, FourCC};
+    /// use mp4ameta::{Tag, Data, Fourcc};
     ///
     /// let mut tag = Tag::default();
-    /// let test = FourCC(*b"test");
+    /// let test = Fourcc(*b"test");
     ///
     /// tag.set_data(test, Data::BeSigned(b"data".to_vec()));
     /// assert_eq!(tag.bytes(&test).next().unwrap(), b"data");
@@ -375,10 +375,10 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data, FourCC};
+    /// use mp4ameta::{Tag, Data, Fourcc};
     ///
     /// let mut tag = Tag::default();
-    /// let test = FourCC(*b"test");
+    /// let test = Fourcc(*b"test");
     ///
     /// tag.set_data(test, Data::Reserved(b"data".to_vec()));
     /// tag.bytes_mut(&test).next().unwrap().push(49);
@@ -395,10 +395,10 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data, FourCC};
+    /// use mp4ameta::{Tag, Data, Fourcc};
     ///
     /// let mut tag = Tag::default();
-    /// let test = FourCC(*b"test");
+    /// let test = Fourcc(*b"test");
     ///
     /// tag.set_data(test, Data::Reserved(b"data".to_vec()));
     /// assert_eq!(tag.take_bytes(&test).next(), Some(b"data".to_vec()));
@@ -415,10 +415,10 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data, FourCC};
+    /// use mp4ameta::{Tag, Data, Fourcc};
     ///
     /// let mut tag = Tag::default();
-    /// let test = FourCC(*b"test");
+    /// let test = Fourcc(*b"test");
     ///
     /// tag.set_data(test, Data::Utf8("data".into()));
     /// assert_eq!(tag.string(&test).next().unwrap(), "data");
@@ -431,10 +431,10 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data, FourCC};
+    /// use mp4ameta::{Tag, Data, Fourcc};
     ///
     /// let mut tag = Tag::default();
-    /// let test = FourCC(*b"test");
+    /// let test = Fourcc(*b"test");
     ///
     /// tag.set_data(test, Data::Utf8("data".into()));
     /// tag.string_mut(&test).next().unwrap().push('1');
@@ -451,10 +451,10 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data, FourCC};
+    /// use mp4ameta::{Tag, Data, Fourcc};
     ///
     /// let mut tag = Tag::default();
-    /// let test = FourCC(*b"test");
+    /// let test = Fourcc(*b"test");
     ///
     /// tag.set_data(test, Data::Utf8("data".into()));
     /// assert_eq!(tag.take_string(&test).next(), Some("data".into()));
@@ -469,10 +469,10 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data, FourCC};
+    /// use mp4ameta::{Tag, Data, Fourcc};
     ///
     /// let mut tag = Tag::default();
-    /// let test = FourCC(*b"test");
+    /// let test = Fourcc(*b"test");
     ///
     /// tag.set_data(test, Data::Jpeg(b"<the image data>".to_vec()));
     /// match tag.image(&test).next().unwrap() {
@@ -489,10 +489,10 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data, FourCC};
+    /// use mp4ameta::{Tag, Data, Fourcc};
     ///
     /// let mut tag = Tag::default();
-    /// let test = FourCC(*b"test");
+    /// let test = Fourcc(*b"test");
     ///
     /// tag.set_data(test, Data::Jpeg(b"<the image data>".to_vec()));
     /// match tag.image_mut(&test).next().unwrap() {
@@ -512,10 +512,10 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data, FourCC};
+    /// use mp4ameta::{Tag, Data, Fourcc};
     ///
     /// let mut tag = Tag::default();
-    /// let test = FourCC(*b"test");
+    /// let test = Fourcc(*b"test");
     ///
     /// tag.set_data(test, Data::Png(b"<the image data>".to_vec()));
     /// match tag.take_data(&test).next().unwrap() {
@@ -532,10 +532,10 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data, FourCC};
+    /// use mp4ameta::{Tag, Data, Fourcc};
     ///
     /// let mut tag = Tag::default();
-    /// let test = FourCC(*b"test");
+    /// let test = Fourcc(*b"test");
     ///
     /// tag.set_data(test, Data::Utf8("data".into()));
     /// match tag.data(&test).next().unwrap() {
@@ -551,10 +551,10 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data, FourCC};
+    /// use mp4ameta::{Tag, Data, Fourcc};
     ///
     /// let mut tag = Tag::default();
-    /// let test = FourCC(*b"test");
+    /// let test = Fourcc(*b"test");
     ///
     /// tag.set_data(test, Data::Utf8("data".into()));
     /// if let Data::Utf8(s) = tag.data_mut(&test).next().unwrap() {
@@ -570,10 +570,10 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data, FourCC};
+    /// use mp4ameta::{Tag, Data, Fourcc};
     ///
     /// let mut tag = Tag::default();
-    /// let test = FourCC(*b"test");
+    /// let test = Fourcc(*b"test");
     ///
     /// tag.set_data(test, Data::Utf8("data".into()));
     /// match tag.take_data(&test).next().unwrap() {
@@ -603,10 +603,10 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data, FourCC};
+    /// use mp4ameta::{Tag, Data, Fourcc};
     ///
     /// let mut tag = Tag::default();
-    /// let test = FourCC(*b"test");
+    /// let test = Fourcc(*b"test");
     ///
     /// tag.set_data(test, Data::Utf8("data".into()));
     /// assert_eq!(tag.string(&test).next().unwrap(), "data");
@@ -621,10 +621,10 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data, FourCC};
+    /// use mp4ameta::{Tag, Data, Fourcc};
     ///
     /// let mut tag = Tag::default();
-    /// let test = FourCC(*b"test");
+    /// let test = Fourcc(*b"test");
     ///
     /// tag.add_data(test, Data::Utf8("data1".into()));
     /// tag.add_data(test, Data::Utf8("data2".into()));
@@ -641,10 +641,10 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data, FourCC};
+    /// use mp4ameta::{Tag, Data, Fourcc};
     ///
     /// let mut tag = Tag::default();
-    /// let test = FourCC(*b"test");
+    /// let test = Fourcc(*b"test");
     ///
     /// tag.set_data(test, Data::Utf8("data".into()));
     /// assert!(tag.data(&test).next().is_some());

@@ -39,9 +39,9 @@ impl Content {
     }
 
     /// Returns the length in bytes.
-    pub fn len(&self) -> usize {
+    pub fn len(&self) -> u64 {
         match self {
-            Self::Atoms(v) => v.iter().map(|a| a.len()).sum(),
+            Self::Atoms(v) => v.iter().map(|a| a.len() as u64).sum(),
             Self::RawData(d) => d.len(),
             Self::TypedData(d) => 8 + d.len(),
             Self::Mp4Audio(_) => 0,
@@ -66,12 +66,12 @@ impl Content {
     }
 
     /// Returns a reference to the first children atom matching the identifier, if present.
-    pub fn child(&self, ident: FourCC) -> Option<&Atom> {
+    pub fn child(&self, ident: Fourcc) -> Option<&Atom> {
         self.atoms().find(|a| a.ident == ident)
     }
 
     /// Consumes self and returns the first children atom matching the identifier, if present.
-    pub fn take_child(self, ident: FourCC) -> Option<Atom> {
+    pub fn take_child(self, ident: Fourcc) -> Option<Atom> {
         self.into_atoms().find(|a| a.ident == ident)
     }
 
@@ -162,7 +162,7 @@ impl ContentT {
     }
 
     /// Attempts to parse corresponding content from the reader.
-    pub fn parse(&self, reader: &mut (impl Read + Seek), len: usize) -> crate::Result<Content> {
+    pub fn parse(&self, reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Content> {
         Ok(match self {
             Self::Atoms(v) => Content::Atoms(parse_atoms(reader, v, len)?),
             Self::RawData(d) => Content::RawData(data::parse_data(reader, *d, len)?),

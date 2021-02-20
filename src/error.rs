@@ -1,6 +1,6 @@
 use std::{error, fmt, io, string};
 
-use crate::FourCC;
+use crate::Fourcc;
 
 /// Type alias for the result of tag operations.
 pub type Result<T> = std::result::Result<T, Error>;
@@ -9,7 +9,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug)]
 pub enum ErrorKind {
     /// An error kind indicating that an atom could not be found. Contains the atom's identifier.
-    AtomNotFound(FourCC),
+    AtomNotFound(Fourcc),
     /// An error kind indicating that a descriptor could not be found. Contains the descriptor's tag.
     DescriptorNotFound(u8),
     /// An error kind indicating that an IO error has occurred. Contains the original `io::Error`.

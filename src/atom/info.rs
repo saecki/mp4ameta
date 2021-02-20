@@ -70,14 +70,14 @@ pub(super) struct Mp4aInfo {
 
 impl Mp4aInfo {
     /// Attempts to parse audio information from the mp4 audio sample entry.
-    pub(super) fn parse(reader: &mut (impl Read + Seek), len: usize) -> crate::Result<Self> {
+    pub(super) fn parse(reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Self> {
         let mut info = Self::default();
 
         let start_pos = reader.seek(SeekFrom::Current(0))?;
 
         reader.seek(SeekFrom::Current(28))?;
 
-        let (esds_len, ident) = parse_head(reader)?;
+        let (_, esds_content_len, ident) = parse_head(reader)?;
         if ident != ELEMENTARY_STREAM_DESCRIPTION {
             return Err(crate::Error::new(
                 crate::ErrorKind::AtomNotFound(ELEMENTARY_STREAM_DESCRIPTION),
@@ -85,7 +85,7 @@ impl Mp4aInfo {
             ));
         }
 
-        parse_esds(reader, &mut info, esds_len)?;
+        parse_esds(reader, &mut info, esds_content_len)?;
 
         let current_pos = reader.seek(SeekFrom::Current(0))?;
         let diff = current_pos - start_pos;
@@ -95,11 +95,7 @@ impl Mp4aInfo {
     }
 }
 
-fn parse_esds(
-    reader: &mut (impl Read + Seek),
-    info: &mut Mp4aInfo,
-    len: usize,
-) -> crate::Result<()> {
+fn parse_esds(reader: &mut (impl Read + Seek), info: &mut Mp4aInfo, len: u64) -> crate::Result<()> {
     let (version, _) = parse_ext_head(reader)?;
 
     if version != 0 {
@@ -125,7 +121,7 @@ fn parse_esds(
 fn parse_es_desc(
     reader: &mut (impl Read + Seek),
     info: &mut Mp4aInfo,
-    len: usize,
+    len: u64,
 ) -> crate::Result<()> {
     reader.seek(SeekFrom::Current(3))?;
 
@@ -176,21 +172,21 @@ fn parse_ds_desc(reader: &mut (impl Read + Seek), audio_info: &mut Mp4aInfo) -> 
     Ok(())
 }
 
-fn parse_desc_head(reader: &mut impl Read) -> crate::Result<(u8, usize, usize)> {
+fn parse_desc_head(reader: &mut impl Read) -> crate::Result<(u8, u64, u64)> {
     let tag = data::read_u8(reader)?;
 
     let mut head_len = 1;
     let mut len = 0;
     while head_len < 5 {
         let b = data::read_u8(reader)?;
-        len = (len << 7) | (b & 0x7F) as u32;
+        len = (len << 7) | (b & 0x7F) as u64;
         head_len += 1;
         if b & 0x80 == 0 {
             break;
         }
     }
 
-    Ok((tag, head_len, len as usize))
+    Ok((tag, head_len, len))
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -200,7 +196,7 @@ pub(super) struct MvhdInfo {
 }
 
 impl MvhdInfo {
-    pub(super) fn parse(reader: &mut (impl Read + Seek), len: usize) -> crate::Result<Self> {
+    pub(super) fn parse(reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Self> {
         let mut info = Self::default();
 
         let start_pos = reader.seek(SeekFrom::Current(0))?;
@@ -257,17 +253,14 @@ impl MvhdInfo {
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(super) struct ChunkOffsetInfo {
     pub pos: u64,
-    pub version: u8,
-    pub flags: [u8; 3],
     pub offsets: Vec<u32>,
 }
 
 impl ChunkOffsetInfo {
-    /// Parses the content of a sample table chunk offset atom (`stco`).
     pub(super) fn parse(reader: &mut (impl Read + Seek)) -> crate::Result<Self> {
         let pos = reader.seek(SeekFrom::Current(0))?;
 
-        let (version, flags) = parse_ext_head(reader)?;
+        let (version, _) = parse_ext_head(reader)?;
 
         match version {
             0 => {
@@ -279,11 +272,44 @@ impl ChunkOffsetInfo {
                     offsets.push(offset);
                 }
 
-                Ok(Self { pos, version, flags, offsets })
+                Ok(Self { pos, offsets })
             }
             _ => Err(crate::Error::new(
                 crate::ErrorKind::UnknownVersion(version),
                 "Unknown sample table chunk offset (stco) version".to_owned(),
+            )),
+        }
+    }
+}
+
+/// A struct representing of a 64bit sample table chunk offset atom (`co64`).
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub(super) struct ChunkOffsetInfo64 {
+    pub pos: u64,
+    pub offsets: Vec<u64>,
+}
+
+impl ChunkOffsetInfo64 {
+    pub(super) fn parse(reader: &mut (impl Read + Seek)) -> crate::Result<Self> {
+        let pos = reader.seek(SeekFrom::Current(0))?;
+
+        let (version, _) = parse_ext_head(reader)?;
+
+        match version {
+            0 => {
+                let entries = data::read_u32(reader)?;
+                let mut offsets = Vec::new();
+
+                for _ in 0..entries {
+                    let offset = data::read_u64(reader)?;
+                    offsets.push(offset);
+                }
+
+                Ok(Self { pos, offsets })
+            }
+            _ => Err(crate::Error::new(
+                crate::ErrorKind::UnknownVersion(version),
+                "Unknown 64bit sample table chunk offset (co64) version".to_owned(),
             )),
         }
     }

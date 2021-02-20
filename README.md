@@ -22,10 +22,10 @@ tag.write_to_path("music.m4a").unwrap();
 
 ### The hard way
 ```rust
-use mp4ameta::{Data, FourCC, Tag};
+use mp4ameta::{Data, Fourcc, Tag};
 
 let mut tag = Tag::read_from_path("music.m4a").unwrap();
-let artist_ident = FourCC(*b"\xa9ART");
+let artist_ident = Fourcc(*b"\xa9ART");
 
 let artist = tag.string(&artist_ident).next().unwrap();
 println!("{}", artist);
