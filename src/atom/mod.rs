@@ -425,15 +425,15 @@ fn parse_content(
     reader: &mut (impl Read + Seek),
     content: &ContentT,
     offset: u64,
-    length: u64,
+    len: u64,
 ) -> crate::Result<Content> {
-    match length {
+    match len {
         0 => Ok(Content::Empty),
         _ => {
             if offset != 0 {
                 reader.seek(SeekFrom::Current(offset as i64))?;
             }
-            content.parse(reader, length - offset)
+            content.parse(reader, len - offset)
         }
     }
 }
