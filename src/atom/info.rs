@@ -265,7 +265,7 @@ impl ChunkOffsetInfo {
         match version {
             0 => {
                 let entries = data::read_u32(reader)?;
-                if 8 + 4 * entries > len as u32 {
+                if 8 + 4 * entries as u64 > len {
                     return Err(crate::Error::new(
                         crate::ErrorKind::Parsing,
                         "Sample table chunk offset (stco) size too big".to_owned(),
@@ -304,7 +304,7 @@ impl ChunkOffsetInfo64 {
         match version {
             0 => {
                 let entries = data::read_u32(reader)?;
-                if 8 + 8 * entries > len as u32 {
+                if 8 + 8 * entries as u64 > len {
                     return Err(crate::Error::new(
                         crate::ErrorKind::Parsing,
                         "Sample table chunk offset (stco) size too big".to_owned(),
