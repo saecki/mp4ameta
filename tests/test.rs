@@ -2,7 +2,11 @@ use mp4ameta::{
     AdvisoryRating, ChannelConfig, Data, DataIdent, FreeformIdent, MediaType, SampleRate, Tag,
     STANDARD_GENRES,
 };
-use std::{fs, time::Duration};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    time::Duration,
+};
 use walkdir::WalkDir;
 
 const EXTENSIONS: [&str; 5] = [".m4a", ".m4b", ".m4p", ".m4v", ".mp4"];
@@ -11,7 +15,7 @@ const EXTENSIONS: [&str; 5] = [".m4a", ".m4b", ".m4p", ".m4v", ".mp4"];
 fn collection() {
     if let Some(path) = std::env::args().skip_while(|a| a != "collection").skip(1).next() {
         println!("Testing collection at {}", &path);
-        read_dir(&path);
+        read_dir(&path, |_, _| {});
     } else {
         println!("Skipping collection test since no path was provided.");
     }
@@ -19,10 +23,27 @@ fn collection() {
 
 #[test]
 fn sample_files() {
-    read_dir("files");
+    let _ = fs::create_dir("target/files");
+    read_dir("files", |p, t| {
+        let mut pb = PathBuf::from(p);
+        let file_name = pb.file_name().unwrap().to_owned();
+        pb.pop();
+        pb.pop();
+        pb.push("target");
+        pb.push("files");
+        pb.push(file_name);
+
+        fs::copy(p, &pb).unwrap();
+        let audio_info = &t.info;
+        Tag::default().write_to_path(&pb).unwrap();
+        let tag = Tag::read_from_path(&pb).unwrap();
+
+        assert_eq!(&tag.info, audio_info);
+        assert_eq!(tag.atoms, Vec::new());
+    });
 }
 
-fn read_dir(path: &str) {
+fn read_dir(path: &str, fun: impl Fn(&Path, &Tag)) {
     for d in WalkDir::new(path)
         .follow_links(true)
         .into_iter()
@@ -44,8 +65,9 @@ fn read_dir(path: &str) {
         let filepath = d.into_path();
 
         println!("{}:", filepath.display());
-        let tag_sample = Tag::read_from_path(&filepath).unwrap();
-        println!("{}", tag_sample);
+        let tag = Tag::read_from_path(&filepath).unwrap();
+        println!("{}", tag);
+        fun(&filepath, &tag);
     }
 }
 

@@ -24,13 +24,14 @@ mod template;
 
 /// A list of valid file types in lowercase defined by the filetype (`ftyp`) atom.
 #[rustfmt::skip]
-const VALID_FILETYPES: [&str; 13] = [
+const VALID_FILETYPES: [&str; 14] = [
     "3gp4",
     "3gp5",
     "3gp6",
     "3gs7",
     "dash",
     "iso2",
+    "iso5",
     "isom",
     "m4a ",
     "m4b ",
