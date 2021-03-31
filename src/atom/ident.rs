@@ -1,6 +1,9 @@
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 
+/// !!NOT AN ACTUAL IDENTIFIER!! Internally used as a wildcard.
+pub(crate) const WILDCARD: Fourcc = Fourcc([255, 255, 255, 255]);
+
 /// (`ftyp`) Identifier of an atom information about the filetype.
 pub(crate) const FILETYPE: Fourcc = Fourcc(*b"ftyp");
 /// (`mdat`)
@@ -41,8 +44,6 @@ pub(crate) const MEAN: Fourcc = Fourcc(*b"mean");
 pub(crate) const NAME: Fourcc = Fourcc(*b"name");
 /// (`free`)
 pub(crate) const FREE: Fourcc = Fourcc(*b"free");
-/// A identifier internally used as a wildcard.
-pub(crate) const WILDCARD: Fourcc = Fourcc([255, 255, 255, 255]);
 
 /// (`----`)
 pub const FREEFORM: Fourcc = Fourcc(*b"----");

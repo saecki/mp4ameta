@@ -77,15 +77,15 @@ impl Mp4aInfo {
 
         reader.seek(SeekFrom::Current(28))?;
 
-        let (_, esds_content_len, ident) = parse_head(reader)?;
-        if ident != ELEMENTARY_STREAM_DESCRIPTION {
+        let head = parse_head(reader)?;
+        if head.ident != ELEMENTARY_STREAM_DESCRIPTION {
             return Err(crate::Error::new(
                 crate::ErrorKind::AtomNotFound(ELEMENTARY_STREAM_DESCRIPTION),
                 "Missing esds atom".to_owned(),
             ));
         }
 
-        parse_esds(reader, &mut info, esds_content_len)?;
+        parse_esds(reader, &mut info, head.content_len())?;
 
         let current_pos = reader.seek(SeekFrom::Current(0))?;
         let diff = current_pos - start_pos;
@@ -258,7 +258,7 @@ pub(super) struct ChunkOffsetInfo {
 
 impl ChunkOffsetInfo {
     pub(super) fn parse(reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Self> {
-        let pos = reader.seek(SeekFrom::Current(0))?;
+        let pos = reader.seek(SeekFrom::Current(0))? + 8;
 
         let (version, _) = parse_ext_head(reader)?;
 
@@ -272,7 +272,7 @@ impl ChunkOffsetInfo {
                     ));
                 }
 
-                let mut offsets = Vec::new();
+                let mut offsets = Vec::with_capacity(entries as usize);
                 for _ in 0..entries {
                     let offset = data::read_u32(reader)?;
                     offsets.push(offset);
@@ -297,7 +297,7 @@ pub(super) struct ChunkOffsetInfo64 {
 
 impl ChunkOffsetInfo64 {
     pub(super) fn parse(reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Self> {
-        let pos = reader.seek(SeekFrom::Current(0))?;
+        let pos = reader.seek(SeekFrom::Current(0))? + 8;
 
         let (version, _) = parse_ext_head(reader)?;
 
@@ -311,7 +311,7 @@ impl ChunkOffsetInfo64 {
                     ));
                 }
 
-                let mut offsets = Vec::new();
+                let mut offsets = Vec::with_capacity(entries as usize);
                 for _ in 0..entries {
                     let offset = data::read_u64(reader)?;
                     offsets.push(offset);

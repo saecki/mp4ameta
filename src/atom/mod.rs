@@ -328,23 +328,23 @@ impl AtomT {
     /// be used if the atom has to be in this exact position, if the parsed and expected `ident`s
     /// don't match this will return an error.
     fn parse_next(&self, reader: &mut (impl Read + Seek)) -> crate::Result<Atom> {
-        let (_, content_len, ident) = match parse_head(reader) {
+        let head = match parse_head(reader) {
             Ok(h) => h,
             Err(e) => return Err(e),
         };
 
-        if ident == self.ident || self.ident == WILDCARD {
-            match parse_content(reader, &self.content, self.offset, content_len) {
-                Ok(c) => Ok(Atom::new(ident, self.offset, c)),
+        if head.ident == self.ident || self.ident == WILDCARD {
+            match parse_content(reader, &self.content, self.offset, head.content_len()) {
+                Ok(c) => Ok(Atom::new(head.ident, self.offset, c)),
                 Err(e) => Err(crate::Error::new(
                     e.kind,
-                    format!("Error reading {}: {}", ident, e.description),
+                    format!("Error reading {}: {}", head.ident, e.description),
                 )),
             }
         } else {
             Err(crate::Error::new(
                 ErrorKind::AtomNotFound(self.ident),
-                format!("Expected {} found {}", self.ident, ident),
+                format!("Expected {} found {}", self.ident, head.ident),
             ))
         }
     }
@@ -355,21 +355,21 @@ impl AtomT {
         let mut parsed_bytes = 0;
 
         while parsed_bytes < len {
-            let (head_len, content_len, atom_ident) = parse_head(reader)?;
+            let head = parse_head(reader)?;
 
-            if atom_ident == self.ident || self.ident == WILDCARD {
-                return match parse_content(reader, &self.content, self.offset, content_len) {
-                    Ok(c) => Ok(Atom::new(atom_ident, self.offset, c)),
+            if head.ident == self.ident || self.ident == WILDCARD {
+                return match parse_content(reader, &self.content, self.offset, head.content_len()) {
+                    Ok(c) => Ok(Atom::new(head.ident, self.offset, c)),
                     Err(e) => Err(crate::Error::new(
                         e.kind,
-                        format!("Error reading {}: {}", atom_ident, e.description),
+                        format!("Error reading {}: {}", head.ident, e.description),
                     )),
                 };
             } else {
-                reader.seek(SeekFrom::Current(content_len as i64))?;
+                reader.seek(SeekFrom::Current(head.content_len() as i64))?;
             }
 
-            parsed_bytes += head_len + content_len;
+            parsed_bytes += head.len;
         }
 
         Err(crate::Error::new(
@@ -389,20 +389,20 @@ fn parse_atoms(
     let mut pos = 0;
 
     while pos < len {
-        let (head_len, content_len, atom_ident) = parse_head(reader)?;
+        let head = parse_head(reader)?;
         let mut parsed = false;
 
         for a in atoms {
-            if atom_ident == a.ident || a.ident == WILDCARD {
-                match parse_content(reader, &a.content, a.offset, content_len) {
+            if head.ident == a.ident || a.ident == WILDCARD {
+                match parse_content(reader, &a.content, a.offset, head.content_len()) {
                     Ok(c) => {
-                        parsed_atoms.push(Atom::new(atom_ident, a.offset, c));
+                        parsed_atoms.push(Atom::new(head.ident, a.offset, c));
                         parsed = true;
                     }
                     Err(e) => {
                         return Err(crate::Error::new(
                             e.kind,
-                            format!("Error reading {}: {}", atom_ident, e.description),
+                            format!("Error reading {}: {}", head.ident, e.description),
                         ));
                     }
                 }
@@ -411,10 +411,10 @@ fn parse_atoms(
         }
 
         if !parsed {
-            reader.seek(SeekFrom::Current(content_len as i64))?;
+            reader.seek(SeekFrom::Current(head.content_len() as i64))?;
         }
 
-        pos += head_len + content_len;
+        pos += head.len
     }
 
     Ok(parsed_atoms)
@@ -438,11 +438,37 @@ fn parse_content(
     }
 }
 
+struct Head {
+    short: bool,
+    len: u64,
+    ident: Fourcc,
+}
+
+impl Head {
+    const fn new(short: bool, len: u64, ident: Fourcc) -> Self {
+        Self { short, len, ident }
+    }
+
+    const fn head_len(&self) -> u64 {
+        match self.short {
+            true => 8,
+            false => 16,
+        }
+    }
+
+    const fn content_len(&self) -> u64 {
+        match self.short {
+            true => self.len - 8,
+            false => self.len - 16,
+        }
+    }
+}
+
 /// Attempts to parse the atom's head containing a 32 bit unsigned integer determining the size of
 /// the atom in bytes and the following 4 byte identifier from the reader. If the 32 len is set to
-/// 1 an extended length 64 bit length is read. Returns the length of the head, the length of the
+/// 1 an extended 64 bit length is read. Returns the length of the head, the length of the
 /// content and the identifier of the atom.
-fn parse_head(reader: &mut impl Read) -> crate::Result<(u64, u64, Fourcc)> {
+fn parse_head(reader: &mut impl Read) -> crate::Result<Head> {
     let len = match data::read_u32(reader) {
         Ok(l) => l as u64,
         Err(mut e) => {
@@ -460,7 +486,7 @@ fn parse_head(reader: &mut impl Read) -> crate::Result<(u64, u64, Fourcc)> {
 
     if len == 1 {
         match data::read_u64(reader) {
-            Ok(l) => Ok((16, l - 16, ident)),
+            Ok(l) => Ok(Head::new(false, l, ident)),
             Err(mut e) => {
                 e.description = "Error reading extended atom length".to_owned();
                 Err(e)
@@ -472,7 +498,7 @@ fn parse_head(reader: &mut impl Read) -> crate::Result<(u64, u64, Fourcc)> {
             format!("Read length of {} which is less than 8 bytes: {}", ident, len),
         ));
     } else {
-        Ok((8, len - 8, ident))
+        Ok(Head::new(true, len, ident))
     }
 }
 
@@ -487,15 +513,33 @@ fn parse_ext_head(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
 /// A struct storing the position and size of an atom.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 struct AtomBounds {
-    ident: Fourcc,
     pos: u64,
-    head_len: u64,
-    content_len: u64,
+    short: bool,
+    len: u64,
+    ident: Fourcc,
 }
 
 impl AtomBounds {
-    fn new(ident: Fourcc, pos: u64, head_len: u64, content_len: u64) -> Self {
-        Self { ident, pos, head_len, content_len }
+    fn new(pos: u64, short: bool, len: u64, ident: Fourcc) -> Self {
+        Self { pos, short, len, ident }
+    }
+
+    const fn head_len(&self) -> u64 {
+        match self.short {
+            true => 8,
+            false => 16,
+        }
+    }
+
+    const fn content_len(&self) -> u64 {
+        match self.short {
+            true => self.len - 8,
+            false => self.len - 16,
+        }
+    }
+
+    const fn content_pos(&self) -> u64 {
+        self.pos + self.head_len()
     }
 }
 
@@ -509,36 +553,36 @@ fn find_atoms(
     let mut pos = 0;
 
     while pos < len {
-        let (head_len, content_len, atom_ident) = parse_head(reader)?;
+        let head = parse_head(reader)?;
 
-        match atoms.iter().find(|a| a.ident == atom_ident) {
+        match atoms.iter().find(|a| a.ident == head.ident) {
             Some(a) => {
                 let atom_pos = reader.seek(SeekFrom::Current(0))? - 8;
-                atom_info.push(AtomBounds::new(atom_ident, atom_pos, head_len, content_len));
+                atom_info.push(AtomBounds::new(atom_pos, head.short, head.len, head.ident));
 
                 if let ContentT::Atoms(c) = &a.content {
                     if a.offset != 0 {
                         reader.seek(SeekFrom::Current(a.offset as i64))?;
                     }
-                    match find_atoms(reader, c, content_len - a.offset) {
+                    match find_atoms(reader, c, head.content_len() - a.offset) {
                         Ok(mut a) => atom_info.append(&mut a),
                         Err(e) => {
                             return Err(crate::Error::new(
                                 e.kind,
-                                format!("Error finding {}: {}", atom_ident, e.description),
+                                format!("Error finding {}: {}", head.ident, e.description),
                             ));
                         }
                     }
                 } else {
-                    reader.seek(SeekFrom::Current(content_len as i64))?;
+                    reader.seek(SeekFrom::Current(head.content_len() as i64))?;
                 }
             }
             None => {
-                reader.seek(SeekFrom::Current(content_len as i64))?;
+                reader.seek(SeekFrom::Current(head.content_len() as i64))?;
             }
         }
 
-        pos += head_len + content_len;
+        pos += head.len;
     }
 
     Ok(atom_info)
@@ -656,8 +700,8 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
 
     let mut writer = BufWriter::new(file);
     let old_file_len = reader.seek(SeekFrom::End(0))?;
-    let metadata_pos = ilst_info.pos + 8;
-    let old_metadata_len = ilst_info.head_len - 8;
+    let metadata_pos = ilst_info.content_pos();
+    let old_metadata_len = ilst_info.content_len();
     let new_metadata_len = atoms.iter().map(AtomData::len).sum::<u64>();
     let metadata_len_diff = new_metadata_len as i64 - old_metadata_len as i64;
 
@@ -680,42 +724,32 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
             if mdat_info.pos > moov_info.pos {
                 reader.seek(SeekFrom::Start(0))?;
 
-                let stco = atom_bounds.iter().filter(|a| a.ident == SAMPLE_TABLE_CHUNK_OFFSET);
+                let stco_atoms =
+                    atom_bounds.iter().filter(|a| a.ident == SAMPLE_TABLE_CHUNK_OFFSET);
 
-                let mut stco_present = false;
-                for a in stco {
-                    reader.seek(SeekFrom::Start(a.pos as u64 + a.head_len))?;
-                    let chunk_offset = ChunkOffsetInfo::parse(&mut reader, a.content_len)?;
+                for a in stco_atoms {
+                    reader.seek(SeekFrom::Start(a.content_pos()))?;
+                    let chunk_offset = ChunkOffsetInfo::parse(&mut reader, a.content_len())?;
 
-                    writer.seek(SeekFrom::Start(chunk_offset.pos + a.head_len))?;
+                    writer.seek(SeekFrom::Start(chunk_offset.pos))?;
                     for co in chunk_offset.offsets.iter() {
                         let new_offset = (*co as i64 + metadata_len_diff) as u32;
                         writer.write_all(&u32::to_be_bytes(new_offset))?;
                     }
-                    stco_present = true;
                 }
 
-                let co64 = atom_bounds.iter().filter(|a| a.ident == SAMPLE_TABLE_CHUNK_OFFSET_64);
+                let co64_atoms =
+                    atom_bounds.iter().filter(|a| a.ident == SAMPLE_TABLE_CHUNK_OFFSET_64);
 
-                let mut co64_present = false;
-                for a in co64 {
-                    reader.seek(SeekFrom::Start(a.pos as u64 + 8))?;
-                    let chunk_offset = ChunkOffsetInfo64::parse(&mut reader, a.content_len)?;
+                for a in co64_atoms {
+                    reader.seek(SeekFrom::Start(a.content_pos()))?;
+                    let chunk_offset = ChunkOffsetInfo64::parse(&mut reader, a.content_len())?;
 
-                    writer.seek(SeekFrom::Start(chunk_offset.pos + 8))?;
+                    writer.seek(SeekFrom::Start(chunk_offset.pos))?;
                     for co in chunk_offset.offsets.iter() {
                         let new_offset = (*co as i64 + metadata_len_diff) as u64;
                         writer.write_all(&u64::to_be_bytes(new_offset))?;
                     }
-                    co64_present = true;
-                }
-
-                if !stco_present && !co64_present {
-                    return Err(crate::Error::new(
-                        crate::ErrorKind::AtomNotFound(SAMPLE_TABLE_CHUNK_OFFSET),
-                        "No 32bit (stco) or 64bit (co64) sample table chunk offset atom found"
-                            .to_owned(),
-                    ));
                 }
             }
 
@@ -723,17 +757,22 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
             file.set_len((old_file_len as i64 + metadata_len_diff as i64) as u64)?;
 
             // adjusting the atom lengths
-            let mut write_pos = |a: &AtomBounds| -> crate::Result<()> {
-                let new_len = ((a.head_len + a.content_len) as i64 + metadata_len_diff) as u32;
+            let mut update_len = |a: &AtomBounds| -> crate::Result<()> {
+                let new_len = a.len as i64 + metadata_len_diff;
 
-                writer.seek(SeekFrom::Start(a.pos as u64))?;
-                writer.write_all(&u32::to_be_bytes(new_len))?;
+                if a.short {
+                    writer.seek(SeekFrom::Start(a.pos))?;
+                    writer.write_all(&u32::to_be_bytes(new_len as u32))?;
+                } else {
+                    writer.seek(SeekFrom::Start(a.pos + 8))?;
+                    writer.write_all(&u64::to_be_bytes(new_len as u64))?;
+                }
                 Ok(())
             };
-            write_pos(moov_info)?;
-            write_pos(udta_info)?;
-            write_pos(meta_info)?;
-            write_pos(ilst_info)?;
+            update_len(moov_info)?;
+            update_len(udta_info)?;
+            update_len(meta_info)?;
+            update_len(ilst_info)?;
 
             // writing metadata
             writer.seek(SeekFrom::Current(4))?;
