@@ -136,7 +136,7 @@ impl AtomData {
 
     /// Attempts to write the atom data to the writer.
     pub fn write_to(&self, writer: &mut impl Write) -> crate::Result<()> {
-        writer.write_all(&(self.len() as u32).to_be_bytes())?;
+        writer.write_all(&u32::to_be_bytes(self.len() as u32))?;
 
         match &self.ident {
             DataIdent::Fourcc(ident) => writer.write_all(ident.deref())?,
@@ -148,13 +148,13 @@ impl AtomData {
                 writer.write_all(FREEFORM.deref())?;
 
                 let mean_len: u32 = 12 + mean.len() as u32;
-                writer.write_all(&mean_len.to_be_bytes())?;
+                writer.write_all(&u32::to_be_bytes(mean_len))?;
                 writer.write_all(MEAN.deref())?;
                 writer.write_all(&[0u8; 4])?;
                 writer.write_all(&mean.as_bytes())?;
 
                 let name_len: u32 = 12 + name.len() as u32;
-                writer.write_all(&name_len.to_be_bytes())?;
+                writer.write_all(&u32::to_be_bytes(name_len))?;
                 writer.write_all(NAME.deref())?;
                 writer.write_all(&[0u8; 4])?;
                 writer.write_all(&name.as_bytes())?;
@@ -162,7 +162,7 @@ impl AtomData {
         }
 
         let data_len: u32 = 16 + self.data.len() as u32;
-        writer.write_all(&data_len.to_be_bytes())?;
+        writer.write_all(&u32::to_be_bytes(data_len))?;
         writer.write_all(DATA.deref())?;
         self.data.write_typed(writer)?;
 
@@ -174,11 +174,11 @@ impl AtomData {
 #[derive(Clone, Default, Eq, PartialEq)]
 struct Atom {
     /// The 4 byte identifier of the atom.
-    pub ident: Fourcc,
+    ident: Fourcc,
     /// The offset in bytes separating the head from the content.
-    pub offset: u64,
+    offset: u64,
     /// The content of an atom.
-    pub content: Content,
+    content: Content,
 }
 
 impl From<AtomData> for Atom {
@@ -221,43 +221,43 @@ impl fmt::Debug for Atom {
 
 impl Atom {
     /// Creates an atom containing the provided content at a n byte offset.
-    pub const fn new(ident: Fourcc, offset: u64, content: Content) -> Self {
+    const fn new(ident: Fourcc, offset: u64, content: Content) -> Self {
         Self { ident, offset, content }
     }
 
     /// Creates a mean atom containing [`Content::RawData`] with the provided `mean` string.
-    pub const fn mean_atom_with(mean: String) -> Self {
+    const fn mean_atom_with(mean: String) -> Self {
         Self::new(MEAN, 4, Content::RawData(Data::Utf8(mean)))
     }
 
     /// Creates a name atom containing [`Content::RawData`] with the provided `name` string.
-    pub const fn name_atom_with(name: String) -> Self {
+    const fn name_atom_with(name: String) -> Self {
         Self::new(NAME, 4, Content::RawData(Data::Utf8(name)))
     }
 
     /// Creates a data atom containing [`Content::TypedData`] with the provided `data`.
-    pub const fn data_atom_with(data: Data) -> Self {
+    const fn data_atom_with(data: Data) -> Self {
         Self::new(DATA, 0, Content::TypedData(data))
     }
 
     /// Returns the length of the atom in bytes.
-    pub fn len(&self) -> u64 {
+    fn len(&self) -> u64 {
         8 + self.offset + self.content.len()
     }
 
     /// Returns a reference to the first children atom matching the identifier, if present.
-    pub fn child(&self, ident: Fourcc) -> Option<&Self> {
+    fn child(&self, ident: Fourcc) -> Option<&Self> {
         self.content.child(ident)
     }
 
     /// Consumes self and returns the first children atom matching the identifier, if present.
-    pub fn take_child(self, ident: Fourcc) -> Option<Self> {
+    fn take_child(self, ident: Fourcc) -> Option<Self> {
         self.content.take_child(ident)
     }
 
     /// Attempts to write the atom to the writer.
-    pub fn write_to(&self, writer: &mut impl Write) -> crate::Result<()> {
-        writer.write_all(&(self.len() as u32).to_be_bytes())?;
+    fn write_to(&self, writer: &mut impl Write) -> crate::Result<()> {
+        writer.write_all(&u32::to_be_bytes(self.len() as u32))?;
         writer.write_all(self.ident.deref())?;
         writer.write_all(&vec![0u8; self.offset as usize])?;
 
@@ -267,7 +267,7 @@ impl Atom {
     }
 
     /// Validates the filtype and returns it, or an error otherwise.
-    pub fn check_filetype(self) -> crate::Result<String> {
+    fn check_filetype(self) -> crate::Result<String> {
         match self.content {
             Content::RawData(Data::Utf8(s)) => {
                 if let Some(major_brand) = &s.get(0..4) {
@@ -290,11 +290,11 @@ impl Atom {
 #[derive(Clone, Default, Eq, PartialEq)]
 struct AtomT {
     /// The 4 byte identifier of the atom.
-    pub ident: Fourcc,
+    ident: Fourcc,
     /// The offset in bytes separating the head from the content.
-    pub offset: u64,
+    offset: u64,
     /// The content template of an atom template.
-    pub content: ContentT,
+    content: ContentT,
 }
 
 impl fmt::Debug for AtomT {
@@ -305,29 +305,29 @@ impl fmt::Debug for AtomT {
 
 impl AtomT {
     /// Creates an atom template containing the provided content at a n byte offset.
-    pub const fn new(ident: Fourcc, offset: u64, content: ContentT) -> Self {
+    const fn new(ident: Fourcc, offset: u64, content: ContentT) -> Self {
         Self { ident, offset, content }
     }
 
     /// Creates a data atom template containing [`ContentT::TypedData`].
-    pub const fn data_atom() -> Self {
+    const fn data_atom() -> Self {
         Self::new(DATA, 0, ContentT::TypedData)
     }
 
     /// Creates a mean atom template containing [`ContentT::RawData`].
-    pub const fn mean_atom() -> Self {
+    const fn mean_atom() -> Self {
         Self::new(MEAN, 4, ContentT::RawData(data::UTF8))
     }
 
     /// Creates a name atom template containing [`ContentT::TypedData`].
-    pub const fn name_atom() -> Self {
+    const fn name_atom() -> Self {
         Self::new(NAME, 4, ContentT::RawData(data::UTF8))
     }
 
     /// Attempts to parse one atom, that matches the template, from the `reader`.  This should only
     /// be used if the atom has to be in this exact position, if the parsed and expected `ident`s
     /// don't match this will return an error.
-    pub fn parse_next(&self, reader: &mut (impl Read + Seek)) -> crate::Result<Atom> {
+    fn parse_next(&self, reader: &mut (impl Read + Seek)) -> crate::Result<Atom> {
         let (_, content_len, ident) = match parse_head(reader) {
             Ok(h) => h,
             Err(e) => return Err(e),
@@ -350,7 +350,7 @@ impl AtomT {
     }
 
     /// Attempts to parse one atom hierarchy, that matches this template, from the reader.
-    pub fn parse(&self, reader: &mut (impl Read + Seek)) -> crate::Result<Atom> {
+    fn parse(&self, reader: &mut (impl Read + Seek)) -> crate::Result<Atom> {
         let len = data::remaining_stream_len(reader)?;
         let mut parsed_bytes = 0;
 
@@ -487,10 +487,10 @@ fn parse_ext_head(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
 /// A struct storing the position and size of an atom.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 struct AtomBounds {
-    pub ident: Fourcc,
-    pub pos: u64,
-    pub head_len: u64,
-    pub content_len: u64,
+    ident: Fourcc,
+    pos: u64,
+    head_len: u64,
+    content_len: u64,
 }
 
 impl AtomBounds {
@@ -669,17 +669,6 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
                 a.write_to(&mut writer)?;
             }
         }
-        len_diff if len_diff <= -8 => {
-            // writing metadata
-            writer.seek(SeekFrom::Start(metadata_pos as u64))?;
-            for a in atoms {
-                a.write_to(&mut writer)?;
-            }
-
-            // Fill remaining space with a free atom
-            let free = Atom::new(FREE, len_diff.abs() as u64 - 8, Content::Empty);
-            free.write_to(&mut writer)?;
-        }
         _ => {
             // reading additional data after metadata
             let additional_data_len = old_file_len - (metadata_pos + old_metadata_len as u64);
@@ -701,7 +690,7 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
                     writer.seek(SeekFrom::Start(chunk_offset.pos + a.head_len))?;
                     for co in chunk_offset.offsets.iter() {
                         let new_offset = (*co as i64 + metadata_len_diff) as u32;
-                        writer.write_all(&new_offset.to_be_bytes())?;
+                        writer.write_all(&u32::to_be_bytes(new_offset))?;
                     }
                     stco_present = true;
                 }
@@ -716,7 +705,7 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
                     writer.seek(SeekFrom::Start(chunk_offset.pos + 8))?;
                     for co in chunk_offset.offsets.iter() {
                         let new_offset = (*co as i64 + metadata_len_diff) as u64;
-                        writer.write_all(&new_offset.to_be_bytes())?;
+                        writer.write_all(&u64::to_be_bytes(new_offset))?;
                     }
                     co64_present = true;
                 }
@@ -735,9 +724,10 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
 
             // adjusting the atom lengths
             let mut write_pos = |a: &AtomBounds| -> crate::Result<()> {
-                let new_len = (a.head_len as i64 + metadata_len_diff) as u32;
+                let new_len = ((a.head_len + a.content_len) as i64 + metadata_len_diff) as u32;
+
                 writer.seek(SeekFrom::Start(a.pos as u64))?;
-                writer.write_all(&new_len.to_be_bytes())?;
+                writer.write_all(&u32::to_be_bytes(new_len))?;
                 Ok(())
             };
             write_pos(moov_info)?;
