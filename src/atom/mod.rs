@@ -661,12 +661,9 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
     let len = data::remaining_stream_len(&mut reader)?;
     let atom_bounds = find_atoms(&mut reader, METADATA_WRITE_ATOM_T.deref(), len)?;
 
-    let mdat_info = atom_bounds.iter().find(|a| a.ident == MEDIA_DATA).ok_or_else(|| {
-        crate::Error::new(
-            crate::ErrorKind::AtomNotFound(MEDIA_DATA),
-            "Missing necessary data, no media data (mdat) atom found".to_owned(),
-        )
-    })?;
+    let mdat_info = atom_bounds.iter().find(|a| a.ident == MEDIA_DATA);
+    let mdat_pos = mdat_info.map(|a| a.pos).unwrap_or(0);
+
     let moov_info = atom_bounds.iter().find(|a| a.ident == MOVIE).ok_or_else(|| {
         crate::Error::new(
             crate::ErrorKind::AtomNotFound(MOVIE),
@@ -715,9 +712,7 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
             reader.read_to_end(&mut additional_data)?;
 
             // adjusting sample table chunk offsets
-            if mdat_info.pos > moov_info.pos {
-                reader.seek(SeekFrom::Start(0))?;
-
+            if mdat_pos > moov_info.pos {
                 let stco_atoms =
                     atom_bounds.iter().filter(|a| a.ident == SAMPLE_TABLE_CHUNK_OFFSET);
 
