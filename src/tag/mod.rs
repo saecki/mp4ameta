@@ -87,6 +87,21 @@ impl fmt::Display for Tag {
         if let Some(s) = self.format_encoder() {
             string.push_str(&s);
         }
+        if let Some(s) = self.format_tv_show_name() {
+            string.push_str(&s);
+        }
+        if let Some(s) = self.format_tv_network_name() {
+            string.push_str(&s);
+        }
+        if let Some(s) = self.format_tv_episode_name() {
+            string.push_str(&s);
+        }
+        if let Some(e) = self.tv_episode() {
+            string.push_str(&format!("tv episode: {}\n", e));
+        }
+        if let Some(s) = self.tv_season() {
+            string.push_str(&format!("tv season: {}\n", s));
+        }
         if let Some(i) = self.bpm() {
             string.push_str(&format!("bpm: {}\n", i));
         }
@@ -188,7 +203,7 @@ mp4ameta_proc::single_string_value_accessor!("encoder", "©too");
 mp4ameta_proc::single_string_value_accessor!("lyrics", "©lyr");
 mp4ameta_proc::single_string_value_accessor!("movement", "©mvn");
 mp4ameta_proc::single_string_value_accessor!("title", "©nam");
-mp4ameta_proc::single_string_value_accessor!("tv_episode_number", "tven");
+mp4ameta_proc::single_string_value_accessor!("tv_episode_name", "tven");
 mp4ameta_proc::single_string_value_accessor!("tv_network_name", "tvnn");
 mp4ameta_proc::single_string_value_accessor!("tv_show_name", "tvsh");
 mp4ameta_proc::single_string_value_accessor!("work", "©wrk");
@@ -211,9 +226,12 @@ mp4ameta_proc::flag_value_accessor!("gapless_playback", "pgap");
 mp4ameta_proc::flag_value_accessor!("show_movement", "shwm");
 
 // ## Integer values
-mp4ameta_proc::integer_value_accessor!("bpm", "tmpo");
-mp4ameta_proc::integer_value_accessor!("movement_count", "©mvc");
-mp4ameta_proc::integer_value_accessor!("movement_index", "©mvi");
+mp4ameta_proc::u16_value_accessor!("bpm", "tmpo");
+mp4ameta_proc::u16_value_accessor!("movement_count", "©mvc");
+mp4ameta_proc::u16_value_accessor!("movement_index", "©mvi");
+
+mp4ameta_proc::u32_value_accessor!("tv_episode", "tves");
+mp4ameta_proc::u32_value_accessor!("tv_season", "tvsn");
 
 // ## Custom values
 /// ### Artwork

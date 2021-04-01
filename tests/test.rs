@@ -213,6 +213,7 @@ fn sample_files() {
         let tag = Tag::read_from_path(&path).unwrap();
         assert_tag_2(&tag);
         assert_eq!(&tag.info, &t.info);
+        println!();
     });
 }
 

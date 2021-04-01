@@ -112,7 +112,7 @@ pub const LYRICS: Fourcc = Fourcc(*b"\xa9lyr");
 /// (`tves`)
 pub const TV_EPISODE: Fourcc = Fourcc(*b"tves");
 /// (`tven`)
-pub const TV_EPISODE_NUMBER: Fourcc = Fourcc(*b"tven");
+pub const TV_EPISODE_NAME: Fourcc = Fourcc(*b"tven");
 /// (`tvnn`)
 pub const TV_NETWORK_NAME: Fourcc = Fourcc(*b"tvnn");
 /// (`tvsn`)

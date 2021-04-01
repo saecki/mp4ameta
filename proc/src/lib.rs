@@ -69,7 +69,7 @@ impl Tag {{
     /// Returns the {1} formatted in an easily readable way.
     fn format_{3}(&self) -> Option<String> {{
         match self.{3}() {{
-            Some(s) => Some(format!(\"{3}: {{}}\\n\", s)),
+            Some(s) => Some(format!(\"{1}: {{}}\\n\", s)),
             None => None,
         }}
     }}
@@ -137,7 +137,7 @@ impl Tag {{
     /// Returns all {2} formatted in an easily readable way.
     fn format_{5}(&self) -> Option<String> {{
         if self.{5}().count() > 1 {{
-            let mut string = String::from(\"{5}:\\n\");
+            let mut string = String::from(\"{2}:\\n\");
             for v in self.{5}() {{
                 string.push_str(\"    \");
                 string.push_str(v);
@@ -147,7 +147,7 @@ impl Tag {{
         }}
 
         match self.{4}() {{
-            Some(s) => Some(format!(\"{4}: {{}}\\n\", s)),
+            Some(s) => Some(format!(\"{1}: {{}}\\n\", s)),
             None => None,
         }}
     }}
@@ -196,7 +196,7 @@ impl Tag {{
 }
 
 #[proc_macro]
-pub fn integer_value_accessor(input: TokenStream) -> TokenStream {
+pub fn u16_value_accessor(input: TokenStream) -> TokenStream {
     let (value_ident, name, headline, atom_ident, atom_ident_string) = base_values(input);
 
     format!(
@@ -216,6 +216,43 @@ impl Tag {{
 
     /// Sets the {1} (`{2}`)
     pub fn set_{3}(&mut self, {3}: u16) {{
+        let vec: Vec<u8> = {3}.to_be_bytes().to_vec();
+        self.set_data({4}, Data::BeSigned(vec));
+    }}
+
+    /// Removes the {1} (`{2}`).
+    pub fn remove_{3}(&mut self) {{
+        self.remove_data(&{4});
+    }}
+}}
+    ",
+        headline, name, atom_ident_string, value_ident, atom_ident,
+    )
+    .parse()
+    .expect("Error parsing accessor impl block:")
+}
+
+#[proc_macro]
+pub fn u32_value_accessor(input: TokenStream) -> TokenStream {
+    let (value_ident, name, headline, atom_ident, atom_ident_string) = base_values(input);
+
+    format!(
+        "
+/// ### {0}
+impl Tag {{
+    /// Returns the {1} (`{2}`)
+    pub fn {3}(&self) -> Option<u32> {{
+        let vec = match self.data(&{4}).next()? {{
+            Data::Reserved(v) => v,
+            Data::BeSigned(v) => v,
+            _ => return None,
+        }};
+
+        be_int!(vec, 0, u32)
+    }}
+
+    /// Sets the {1} (`{2}`)
+    pub fn set_{3}(&mut self, {3}: u32) {{
         let vec: Vec<u8> = {3}.to_be_bytes().to_vec();
         self.set_data({4}, Data::BeSigned(vec));
     }}
