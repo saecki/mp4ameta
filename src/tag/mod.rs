@@ -236,40 +236,38 @@ mp4ameta_proc::u32_value_accessor!("tv_season", "tvsn");
 // ## Custom values
 /// ### Artwork
 impl Tag {
-    /// Returns all artwork images of type [`Data::Jpeg`] or
-    /// [`Data::Png`] (`covr`).
+    /// Returns all artwork images of type [`Data:Jpeg`], [`Data::Png`] or [`Data::Bmp`] (`covr`).
     pub fn artworks(&self) -> impl Iterator<Item = &Data> {
         self.image(&atom::ARTWORK)
     }
 
-    /// Returns the first artwork image of type [`Data::Jpeg`] or
-    /// [`Data::Png`] (`covr`).
+    /// Returns the first artwork image of type [`Data:Jpeg`], [`Data::Png`] or [`Data::Bmp`]
+    /// (`covr`).
     pub fn artwork(&self) -> Option<&Data> {
         self.image(&atom::ARTWORK).next()
     }
 
-    /// Consumes and returns all artwork images of type [`Data::Jpeg`] or
-    /// [`Data::Png`] (`covr`).
+    /// Consumes and returns all artwork images of type [`Data:Jpeg`], [`Data::Png`] or
+    /// [`Data::Bmp`] (`covr`).
     pub fn take_artworks(&mut self) -> impl Iterator<Item = Data> + '_ {
         self.take_image(&atom::ARTWORK)
     }
 
-    /// Consumes all and returns the first artwork image of type [`Data::Jpeg`] or
-    /// [`Data::Png`] (`covr`).
+    /// Consumes all and returns the first artwork image of type [`Data:Jpeg`], [`Data::Png`] or
+    /// [`Data::Bmp`] (`covr`).
     pub fn take_artwork(&mut self) -> Option<Data> {
         self.take_image(&atom::ARTWORK).next()
     }
 
-    /// Sets the artwork image data of type [`Data::Jpeg`] or
-    /// [`Data::Png`] (`covr`). This will remove all other artworks.
+    /// Sets the artwork image data of type [`Data:Jpeg`], [`Data::Png`] or [`Data::Bmp`] (`covr`).
+    /// This will remove all other artworks.
     pub fn set_artwork(&mut self, image: Data) {
         if image.is_image() {
             self.set_data(atom::ARTWORK, image);
         }
     }
 
-    /// Adds artwork image data of type [`Data::Jpeg`] or
-    /// [`Data::Png`] (`covr`).
+    /// Adds artwork image data of type [`Data:Jpeg`], [`Data::Png`] or [`Data::Bmp`] (`covr`).
     pub fn add_artwork(&mut self, image: Data) {
         if image.is_image() {
             self.add_data(atom::ARTWORK, image);
@@ -482,8 +480,8 @@ impl Tag {
         self.take_data(ident).filter_map(Data::take_string)
     }
 
-    /// Returns all image data references of type [Data::Jpeg]
-    /// or [Data::Jpeg] corresponding to the identifier.
+    /// Returns all image data references of type [Data::Jpeg], [`Self::Png`] or [`Self::Bmp`]
+    /// corresponding to the identifier.
     ///
     /// # Example
     /// ```
@@ -502,8 +500,8 @@ impl Tag {
         self.data(ident).filter_map(Data::image)
     }
 
-    /// Returns all mutable image data references of type [Data::Jpeg]
-    /// or [Data::Jpeg] corresponding to the identifier.
+    /// Returns all mutable image data references of type [Data::Jpeg], [`Self::Png`] or
+    /// [`Self::Bmp`] corresponding to the identifier.
     ///
     /// # Example
     /// ```
@@ -526,7 +524,7 @@ impl Tag {
         self.data_mut(ident).filter_map(Data::image_mut)
     }
 
-    /// Consumes all data corresponding to the identifier and returns it.
+    /// Consumes all images corresponding to the identifier and returns them.
     ///
     /// # Example
     /// ```
