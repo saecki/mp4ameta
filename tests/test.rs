@@ -1,6 +1,6 @@
 use mp4ameta::{
-    AdvisoryRating, ChannelConfig, Data, DataIdent, FreeformIdent, MediaType, SampleRate, Tag,
-    STANDARD_GENRES,
+    AdvisoryRating, ChannelConfig, Data, DataIdent, Fourcc, FreeformIdent, MediaType, SampleRate,
+    Tag, STANDARD_GENRES,
 };
 use std::{
     fs,
@@ -10,38 +10,6 @@ use std::{
 use walkdir::WalkDir;
 
 const EXTENSIONS: [&str; 5] = [".m4a", ".m4b", ".m4p", ".m4v", ".mp4"];
-
-#[test]
-fn collection() {
-    if let Some(path) = std::env::args().skip_while(|a| a != "collection").skip(1).next() {
-        println!("Testing collection at {}", &path);
-        read_dir(&path, |_, _| {});
-    } else {
-        println!("Skipping collection test since no path was provided.");
-    }
-}
-
-#[test]
-fn sample_files() {
-    let _ = fs::create_dir("target/files");
-    read_dir("files", |p, t| {
-        let mut pb = PathBuf::from(p);
-        let file_name = pb.file_name().unwrap().to_owned();
-        pb.pop();
-        pb.pop();
-        pb.push("target");
-        pb.push("files");
-        pb.push(file_name);
-
-        fs::copy(p, &pb).unwrap();
-        let audio_info = &t.info;
-        Tag::default().write_to_path(&pb).unwrap();
-        let tag = Tag::read_from_path(&pb).unwrap();
-
-        assert_eq!(&tag.info, audio_info);
-        assert_eq!(tag.atoms, Vec::new());
-    });
-}
 
 fn read_dir(path: &str, fun: impl Fn(&Path, &Tag)) {
     for d in WalkDir::new(path)
@@ -71,10 +39,65 @@ fn read_dir(path: &str, fun: impl Fn(&Path, &Tag)) {
     }
 }
 
-#[test]
-fn read() {
-    let tag = Tag::read_from_path("files/sample.m4a").unwrap();
+fn get_tag_1() -> Tag {
+    let mut tag = Tag::default();
+    tag.set_advisory_rating(AdvisoryRating::Explicit(4));
+    tag.set_album("TEST ALBUM");
+    tag.set_album_artist("TEST ALBUM ARTIST");
+    tag.set_artist("TEST ARTIST");
+    tag.set_bpm(132);
+    tag.set_category("TEST CATEGORY");
+    tag.set_comment("TEST COMMENT");
+    tag.set_compilation();
+    tag.set_composer("TEST COMPOSER");
+    tag.set_copyright("TEST COPYRIGHT");
+    tag.set_description("TEST DESCRIPTION");
+    tag.set_disc(1, 2);
+    tag.set_encoder("Lavf58.29.100");
+    tag.set_gapless_playback();
+    tag.set_genre("Hard Rock");
+    tag.set_grouping("TEST GROUPING");
+    tag.set_keyword("TEST KEYWORD");
+    tag.set_lyrics("TEST LYRICS");
+    tag.set_media_type(MediaType::Normal);
+    tag.set_title("TEST TITLE");
+    tag.set_track(7, 13);
+    tag.set_year("2013");
+    tag.set_artwork(Data::Png(fs::read("files/artwork.png").unwrap()));
+    tag.set_data(DataIdent::freeform("com.apple.iTunes", "ISRC"), Data::Utf8("TEST ISRC".into()));
+    tag
+}
 
+fn get_tag_2() -> Tag {
+    let mut tag = Tag::default();
+    tag.set_advisory_rating(AdvisoryRating::Inoffensive);
+    tag.set_album("NEW ALBUM");
+    tag.set_album_artist("NEW ALBUM ARTIST");
+    tag.set_artist("NEW ARTIST");
+    tag.set_bpm(98);
+    tag.set_category("NEW CATEGORY");
+    tag.set_comment("NEW COMMENT");
+    tag.set_compilation();
+    tag.set_composer("NEW COMPOSER");
+    tag.set_copyright("NEW COPYRIGHT");
+    tag.set_description("NEW DESCRIPTION");
+    tag.set_disc(2, 0);
+    tag.set_encoder("Lavf58.12.100");
+    tag.set_gapless_playback();
+    tag.set_genre("Hard Rock");
+    tag.set_grouping("NEW GROUPING");
+    tag.set_keyword("NEW KEYWORD");
+    tag.set_lyrics("NEW LYRICS");
+    tag.set_media_type(MediaType::AudioBook);
+    tag.set_title("NEW TITLE");
+    tag.set_track(3, 7);
+    tag.set_year("1998");
+    tag.set_artwork(Data::Jpeg(b"NEW ARTWORK".to_vec()));
+    tag.set_data(DataIdent::freeform("com.apple.iTunes", "ISRC"), Data::Utf8("NEW ISRC".into()));
+    tag
+}
+
+fn assert_tag_1(tag: &Tag) {
     assert_eq!(tag.advisory_rating(), Some(AdvisoryRating::Explicit(4)));
     assert_eq!(tag.album(), Some("TEST ALBUM"));
     assert_eq!(tag.album_artist(), Some("TEST ALBUM ARTIST"));
@@ -102,54 +125,13 @@ fn read() {
     assert_eq!(tag.total_tracks(), Some(13));
     assert_eq!(tag.year(), Some("2013"));
     assert_eq!(tag.artwork(), Some(&Data::Png(fs::read("files/artwork.png").unwrap())));
-    assert_eq!(tag.duration(), Some(Duration::from_secs_f64(0.486)));
-    assert_eq!(tag.filetype(), "M4A \u{0}\u{0}\u{2}\u{0}isomiso2");
-    assert_eq!(tag.channel_config(), Some(ChannelConfig::Mono));
-    assert_eq!(tag.sample_rate(), Some(SampleRate::Hz44100));
-    assert_eq!(tag.avg_bitrate(), Some(64776));
-    assert_eq!(tag.max_bitrate(), Some(69000));
     assert_eq!(
         tag.string(&FreeformIdent::new("com.apple.iTunes", "ISRC")).next(),
         Some("TEST ISRC")
     );
 }
 
-#[test]
-fn write() {
-    let mut tag = Tag::default();
-    tag.set_advisory_rating(AdvisoryRating::Inoffensive);
-    tag.set_album("NEW ALBUM");
-    tag.set_album_artist("NEW ALBUM ARTIST");
-    tag.set_artist("NEW ARTIST");
-    tag.set_bpm(98);
-    tag.set_category("NEW CATEGORY");
-    tag.set_comment("NEW COMMENT");
-    tag.set_compilation();
-    tag.set_composer("NEW COMPOSER");
-    tag.set_copyright("NEW COPYRIGHT");
-    tag.set_description("NEW DESCRIPTION");
-    tag.set_disc(2, 0);
-    tag.set_encoder("Lavf58.12.100");
-    tag.set_gapless_playback();
-    tag.set_genre("Hard Rock");
-    tag.set_grouping("NEW GROUPING");
-    tag.set_keyword("NEW KEYWORD");
-    tag.set_lyrics("NEW LYRICS");
-    tag.set_media_type(MediaType::AudioBook);
-    tag.set_title("NEW TITLE");
-    tag.set_track(3, 7);
-    tag.set_year("1998");
-    tag.set_artwork(Data::Jpeg(b"NEW ARTWORK".to_vec()));
-    tag.set_data(DataIdent::freeform("com.apple.iTunes", "ISRC"), Data::Utf8("NEW ISRC".into()));
-
-    println!("copying files/sample.m4a to target/write.m4a...");
-    std::fs::copy("files/sample.m4a", "target/write.m4a").unwrap();
-
-    println!("writing...");
-    tag.write_to_path("target/write.m4a").unwrap();
-
-    println!("reading...");
-    let tag = Tag::read_from_path("target/write.m4a").unwrap();
+fn assert_tag_2(tag: &Tag) {
     assert_eq!(tag.advisory_rating(), Some(AdvisoryRating::Inoffensive));
     assert_eq!(tag.album(), Some("NEW ALBUM"));
     assert_eq!(tag.album_artist(), Some("NEW ALBUM ARTIST"));
@@ -177,16 +159,85 @@ fn write() {
     assert_eq!(tag.total_tracks(), Some(7));
     assert_eq!(tag.year(), Some("1998"));
     assert_eq!(tag.artwork(), Some(&Data::Jpeg(b"NEW ARTWORK".to_vec())));
+    assert_eq!(
+        tag.string(&FreeformIdent::new("com.apple.iTunes", "ISRC")).next(),
+        Some("NEW ISRC")
+    );
+}
+
+fn assert_readonly(tag: &Tag) {
     assert_eq!(tag.duration(), Some(Duration::from_secs_f64(0.486)));
     assert_eq!(tag.filetype(), "M4A \u{0}\u{0}\u{2}\u{0}isomiso2");
     assert_eq!(tag.channel_config(), Some(ChannelConfig::Mono));
     assert_eq!(tag.sample_rate(), Some(SampleRate::Hz44100));
     assert_eq!(tag.avg_bitrate(), Some(64776));
     assert_eq!(tag.max_bitrate(), Some(69000));
-    assert_eq!(
-        tag.string(&FreeformIdent::new("com.apple.iTunes", "ISRC")).next(),
-        Some("NEW ISRC")
-    );
+}
+
+#[test]
+fn collection() {
+    if let Some(path) = std::env::args().skip_while(|a| a != "collection").skip(1).next() {
+        println!("Testing collection at {}", &path);
+        read_dir(&path, |_, _| {});
+    } else {
+        println!("Skipping collection test since no path was provided.");
+    }
+}
+
+#[test]
+fn sample_files() {
+    let _ = fs::create_dir("target/files");
+
+    read_dir("files", |p, t| {
+        let file_name = p.file_name().unwrap().to_owned();
+        let mut path = PathBuf::from("target/files");
+        path.push(file_name);
+
+        println!("copying {} to {}...", p.display(), path.display());
+        fs::copy(p, &path).unwrap();
+
+        println!("writing empty tag to {}...", path.display());
+        Tag::default().write_to_path(&path).unwrap();
+        let tag = Tag::read_from_path(&path).unwrap();
+        assert!(&tag.atoms.is_empty());
+        assert_eq!(&tag.info, &t.info);
+
+        println!("writing sample tag 2 to {}...", path.display());
+        get_tag_1().write_to_path(&path).unwrap();
+        let tag = Tag::read_from_path(&path).unwrap();
+        assert_tag_1(&tag);
+        assert_eq!(&tag.info, &t.info);
+
+        println!("writing sample tag 2 to {}...", path.display());
+        get_tag_2().write_to_path(&path).unwrap();
+        let tag = Tag::read_from_path(&path).unwrap();
+        assert_tag_2(&tag);
+        assert_eq!(&tag.info, &t.info);
+    });
+}
+
+#[test]
+fn read() {
+    let tag = Tag::read_from_path("files/sample.m4a").unwrap();
+
+    assert_tag_1(&tag);
+    assert_readonly(&tag);
+}
+
+#[test]
+fn write() {
+    let tag = get_tag_2();
+
+    println!("copying files/sample.m4a to target/write.m4a...");
+    std::fs::copy("files/sample.m4a", "target/write.m4a").unwrap();
+
+    println!("writing...");
+    tag.write_to_path("target/write.m4a").unwrap();
+
+    println!("reading...");
+    let tag = Tag::read_from_path("target/write.m4a").unwrap();
+    assert_tag_2(&tag);
+    assert_readonly(&tag);
 
     println!("deleting target/write.m4a...");
     std::fs::remove_file("target/write.m4a").unwrap();
@@ -194,8 +245,7 @@ fn write() {
 
 #[test]
 fn write_same() {
-    println!("reading...");
-    let tag = Tag::read_from_path("files/sample.m4a").unwrap();
+    let tag = get_tag_1();
 
     println!("copying files/sample.m4a to target/write_same.m4a...");
     std::fs::copy("files/sample.m4a", "target/write_same.m4a").unwrap();
@@ -205,39 +255,8 @@ fn write_same() {
 
     println!("reading...");
     let tag = Tag::read_from_path("target/write_same.m4a").unwrap();
-    assert_eq!(tag.advisory_rating(), Some(AdvisoryRating::Explicit(4)));
-    assert_eq!(tag.album(), Some("TEST ALBUM"));
-    assert_eq!(tag.album_artist(), Some("TEST ALBUM ARTIST"));
-    assert_eq!(tag.artist(), Some("TEST ARTIST"));
-    assert_eq!(tag.bpm(), Some(132));
-    assert_eq!(tag.category(), Some("TEST CATEGORY"));
-    assert_eq!(tag.comment(), Some("TEST COMMENT"));
-    assert_eq!(tag.compilation(), true);
-    assert_eq!(tag.composer(), Some("TEST COMPOSER"));
-    assert_eq!(tag.copyright(), Some("TEST COPYRIGHT"));
-    assert_eq!(tag.description(), Some("TEST DESCRIPTION"));
-    assert_eq!(tag.disc(), (Some(1), Some(2)));
-    assert_eq!(tag.disc_number(), Some(1));
-    assert_eq!(tag.total_discs(), Some(2));
-    assert_eq!(tag.encoder(), Some("Lavf58.29.100"));
-    assert_eq!(tag.gapless_playback(), true);
-    assert_eq!(tag.genre(), Some("Hard Rock"));
-    assert_eq!(tag.grouping(), Some("TEST GROUPING"));
-    assert_eq!(tag.keyword(), Some("TEST KEYWORD"));
-    assert_eq!(tag.lyrics(), Some("TEST LYRICS"));
-    assert_eq!(tag.media_type(), Some(MediaType::Normal));
-    assert_eq!(tag.title(), Some("TEST TITLE"));
-    assert_eq!(tag.track(), (Some(7), Some(13)));
-    assert_eq!(tag.track_number(), Some(7));
-    assert_eq!(tag.total_tracks(), Some(13));
-    assert_eq!(tag.year(), Some("2013"));
-    assert_eq!(tag.artwork(), Some(&Data::Png(fs::read("files/artwork.png").unwrap())));
-    assert_eq!(tag.duration(), Some(Duration::from_secs_f64(0.486)));
-    assert_eq!(tag.filetype(), "M4A \u{0}\u{0}\u{2}\u{0}isomiso2");
-    assert_eq!(tag.channel_config(), Some(ChannelConfig::Mono));
-    assert_eq!(tag.sample_rate(), Some(SampleRate::Hz44100));
-    assert_eq!(tag.avg_bitrate(), Some(64776));
-    assert_eq!(tag.max_bitrate(), Some(69000));
+    assert_tag_1(&tag);
+    assert_readonly(&tag);
 
     println!("deleting target/write_same.m4a...");
     std::fs::remove_file("target/write_same.m4a").unwrap();
@@ -245,11 +264,9 @@ fn write_same() {
 
 #[test]
 fn write_bigger() {
-    println!("reading...");
-    let mut tag = Tag::read_from_path("files/sample.m4a").unwrap();
-
-    let artwork: Vec<u8> = (0..2048).map(|n| (n % 255) as u8).collect();
-    tag.set_artwork(Data::Jpeg(artwork));
+    let mut tag = get_tag_2();
+    let data: Vec<u8> = (0..2048).map(|n| (n % 255) as u8).collect();
+    tag.add_data(Fourcc(*b"test"), Data::Reserved(data));
 
     println!("copying files/sample.m4a to target/write_bigger.m4a...");
     std::fs::copy("files/sample.m4a", "target/write_bigger.m4a").unwrap();
@@ -259,110 +276,60 @@ fn write_bigger() {
 
     println!("reading...");
     let tag = Tag::read_from_path("target/write_bigger.m4a").unwrap();
-    assert_eq!(tag.advisory_rating(), Some(AdvisoryRating::Explicit(4)));
-    assert_eq!(tag.album(), Some("TEST ALBUM"));
-    assert_eq!(tag.album_artist(), Some("TEST ALBUM ARTIST"));
-    assert_eq!(tag.artist(), Some("TEST ARTIST"));
-    assert_eq!(tag.bpm(), Some(132));
-    assert_eq!(tag.category(), Some("TEST CATEGORY"));
-    assert_eq!(tag.comment(), Some("TEST COMMENT"));
-    assert_eq!(tag.compilation(), true);
-    assert_eq!(tag.composer(), Some("TEST COMPOSER"));
-    assert_eq!(tag.copyright(), Some("TEST COPYRIGHT"));
-    assert_eq!(tag.description(), Some("TEST DESCRIPTION"));
-    assert_eq!(tag.disc(), (Some(1), Some(2)));
-    assert_eq!(tag.disc_number(), Some(1));
-    assert_eq!(tag.total_discs(), Some(2));
-    assert_eq!(tag.encoder(), Some("Lavf58.29.100"));
-    assert_eq!(tag.gapless_playback(), true);
-    assert_eq!(tag.genre(), Some("Hard Rock"));
-    assert_eq!(tag.grouping(), Some("TEST GROUPING"));
-    assert_eq!(tag.keyword(), Some("TEST KEYWORD"));
-    assert_eq!(tag.lyrics(), Some("TEST LYRICS"));
-    assert_eq!(tag.media_type(), Some(MediaType::Normal));
-    assert_eq!(tag.title(), Some("TEST TITLE"));
-    assert_eq!(tag.track(), (Some(7), Some(13)));
-    assert_eq!(tag.track_number(), Some(7));
-    assert_eq!(tag.total_tracks(), Some(13));
-    assert_eq!(tag.year(), Some("2013"));
-    assert_eq!(tag.duration(), Some(Duration::from_secs_f64(0.486)));
-    assert_eq!(tag.filetype(), "M4A \u{0}\u{0}\u{2}\u{0}isomiso2");
-    assert_eq!(tag.channel_config(), Some(ChannelConfig::Mono));
-    assert_eq!(tag.sample_rate(), Some(SampleRate::Hz44100));
-    assert_eq!(tag.avg_bitrate(), Some(64776));
-    assert_eq!(tag.max_bitrate(), Some(69000));
+    assert_tag_2(&tag);
+    assert_readonly(&tag);
 
     println!("deleting target/write_bigger.m4a...");
     std::fs::remove_file("target/write_bigger.m4a").unwrap();
 }
 
 #[test]
-fn dump() {
-    let mut tag = Tag::default();
-    tag.set_advisory_rating(AdvisoryRating::Explicit(4));
-    tag.set_album("TEST ALBUM");
-    tag.set_album_artist("TEST ALBUM ARTIST");
-    tag.set_artist("TEST ARTIST");
-    tag.set_bpm(132);
-    tag.set_category("TEST CATEGORY");
-    tag.set_comment("TEST COMMENT");
-    tag.set_compilation();
-    tag.set_composer("TEST COMPOSER");
-    tag.set_copyright("TEST COPYRIGHT");
-    tag.set_description("TEST DESCRIPTION");
-    tag.set_disc(1, 2);
-    tag.set_encoder("Lavf58.29.100");
-    tag.set_gapless_playback();
-    tag.set_genre("Hard Rock");
-    tag.set_grouping("TEST GROUPING");
-    tag.set_keyword("TEST KEYWORD");
-    tag.set_lyrics("TEST LYRICS");
-    tag.set_media_type(MediaType::Normal);
-    tag.set_title("TEST TITLE");
-    tag.set_track(7, 13);
-    tag.set_year("2013");
-    tag.set_artwork(Data::Png(b"TEST ARTWORK".to_vec()));
-    tag.set_data(DataIdent::freeform("com.apple.iTunes", "ISRC"), Data::Utf8("NEW ISRC".into()));
+fn write_empty() {
+    let tag = Tag::default();
 
-    println!("dumping...");
-    tag.dump_to_path("target/dump.m4a").unwrap();
+    println!("copying files/sample.m4a to target/write_empty.m4a...");
+    std::fs::copy("files/sample.m4a", "target/write_empty.m4a").unwrap();
+
+    println!("writing...");
+    tag.write_to_path("target/write_empty.m4a").unwrap();
 
     println!("reading...");
-    let tag = Tag::read_from_path("target/dump.m4a").unwrap();
-    assert_eq!(tag.advisory_rating(), Some(AdvisoryRating::Explicit(4)));
-    assert_eq!(tag.album(), Some("TEST ALBUM"));
-    assert_eq!(tag.album_artist(), Some("TEST ALBUM ARTIST"));
-    assert_eq!(tag.artist(), Some("TEST ARTIST"));
-    assert_eq!(tag.bpm(), Some(132));
-    assert_eq!(tag.category(), Some("TEST CATEGORY"));
-    assert_eq!(tag.comment(), Some("TEST COMMENT"));
-    assert_eq!(tag.compilation(), true);
-    assert_eq!(tag.composer(), Some("TEST COMPOSER"));
-    assert_eq!(tag.copyright(), Some("TEST COPYRIGHT"));
-    assert_eq!(tag.description(), Some("TEST DESCRIPTION"));
-    assert_eq!(tag.disc(), (Some(1), Some(2)));
-    assert_eq!(tag.disc_number(), Some(1));
-    assert_eq!(tag.total_discs(), Some(2));
-    assert_eq!(tag.encoder(), Some("Lavf58.29.100"));
-    assert_eq!(tag.gapless_playback(), true);
-    assert_eq!(tag.genre(), Some("Hard Rock"));
-    assert_eq!(tag.grouping(), Some("TEST GROUPING"));
-    assert_eq!(tag.keyword(), Some("TEST KEYWORD"));
-    assert_eq!(tag.lyrics(), Some("TEST LYRICS"));
-    assert_eq!(tag.media_type(), Some(MediaType::Normal));
-    assert_eq!(tag.title(), Some("TEST TITLE"));
-    assert_eq!(tag.track(), (Some(7), Some(13)));
-    assert_eq!(tag.track_number(), Some(7));
-    assert_eq!(tag.total_tracks(), Some(13));
-    assert_eq!(tag.year(), Some("2013"));
-    assert_eq!(tag.artwork(), Some(&Data::Png(b"TEST ARTWORK".to_vec())));
-    assert_eq!(
-        tag.string(&FreeformIdent::new("com.apple.iTunes", "ISRC")).next(),
-        Some("NEW ISRC")
-    );
+    let tag = Tag::read_from_path("target/write_empty.m4a").unwrap();
+    assert!(tag.atoms.is_empty());
+    assert_readonly(&tag);
 
-    println!("deleting target/dump.m4a...");
-    std::fs::remove_file("target/dump.m4a").unwrap();
+    println!("deleting target/write_empty.m4a...");
+    std::fs::remove_file("target/write_empty.m4a").unwrap();
+}
+
+#[test]
+fn dump_1() {
+    let tag = get_tag_1();
+
+    println!("dumping to target/dump_1.m4a...");
+    tag.dump_to_path("target/dump_1.m4a").unwrap();
+
+    println!("reading target/dump_1.m4a....");
+    let tag = Tag::read_from_path("target/dump_1.m4a").unwrap();
+    assert_tag_1(&tag);
+
+    println!("deleting target/dump_1.m4a...");
+    std::fs::remove_file("target/dump_1.m4a").unwrap();
+}
+
+#[test]
+fn dump_2() {
+    let tag = get_tag_2();
+
+    println!("dumping to target/dump_2.m4a...");
+    tag.dump_to_path("target/dump_2.m4a").unwrap();
+
+    println!("reading target/dump_2.m4a...");
+    let tag = Tag::read_from_path("target/dump_2.m4a").unwrap();
+    assert_tag_2(&tag);
+
+    println!("deleting target/dump_2.m4a...");
+    std::fs::remove_file("target/dump_2.m4a").unwrap();
 }
 
 #[test]
