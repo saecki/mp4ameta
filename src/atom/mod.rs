@@ -450,13 +450,6 @@ impl Head {
         Self { short, len, ident }
     }
 
-    const fn head_len(&self) -> u64 {
-        match self.short {
-            true => 8,
-            false => 16,
-        }
-    }
-
     const fn content_len(&self) -> u64 {
         match self.short {
             true => self.len - 8,
