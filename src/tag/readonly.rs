@@ -11,15 +11,22 @@ impl Tag {
 
     /// Returns the duration formatted in an easily readable way.
     pub(crate) fn format_duration(&self) -> Option<String> {
-        let total_seconds = self.duration()?.as_secs();
+        let duration = self.duration()?;
+        let total_seconds = duration.as_secs();
+        let nanos = duration.subsec_nanos();
+        let micros = nanos / 1_000;
+        let millis = nanos / 1_000_000;
         let seconds = total_seconds % 60;
         let minutes = total_seconds / 60 % 60;
         let hours = total_seconds / 60 / 60;
 
-        match (hours, minutes) {
-            (0, 0) => Some(format!("duration: {:02}\n", seconds)),
-            (0, _) => Some(format!("duration: {}:{:02}\n", minutes, seconds)),
-            (_, _) => Some(format!("duration: {}:{:02}:{:02}\n", hours, minutes, seconds)),
+        match (hours, minutes, seconds, millis, micros, nanos) {
+            (0, 0, 0, 0, 0, n) => Some(format!("duration: {}ns\n", n)),
+            (0, 0, 0, 0, u, _) => Some(format!("duration: {}µs\n", u)),
+            (0, 0, 0, m, _, _) => Some(format!("duration: {}ms\n", m)),
+            (0, 0, s, _, _, _) => Some(format!("duration: {}s\n", s)),
+            (0, m, s, _, _, _) => Some(format!("duration: {}:{:02}\n", m, s)),
+            (h, m, s, _, _, _) => Some(format!("duration: {}:{:02}:{:02}\n", h, m, s)),
         }
     }
 
