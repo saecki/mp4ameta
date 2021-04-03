@@ -18,7 +18,7 @@ fn base_values(input: TokenStream) -> (String, String, String, String, String) {
     let mut name_chars = name.chars();
     let headline = name_chars.next().unwrap().to_uppercase().chain(name_chars).collect::<String>();
 
-    let atom_ident = format!("atom::{}", value_ident.to_uppercase());
+    let atom_ident = format!("ident::{}", value_ident.to_uppercase());
 
     let atom_ident_string = strings
         .next()

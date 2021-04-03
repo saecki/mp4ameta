@@ -4,8 +4,10 @@ use std::fs::{File, OpenOptions};
 use std::io::{BufReader, Read, Seek, Write};
 use std::path::Path;
 
-use crate::atom::{self, idents_match, DataIdent, Ident};
-use crate::{be_int, AdvisoryRating, AtomData, AudioInfo, Data, MediaType};
+use crate::ident::idents_match;
+use crate::{
+    atom, be_int, ident, AdvisoryRating, AtomData, AudioInfo, Data, DataIdent, Ident, MediaType,
+};
 
 pub use genre::*;
 pub use readonly::*;
@@ -208,6 +210,7 @@ mp4ameta_proc::single_string_value_accessor!("tv_network_name", "tvnn");
 mp4ameta_proc::single_string_value_accessor!("tv_show_name", "tvsh");
 mp4ameta_proc::single_string_value_accessor!("work", "©wrk");
 mp4ameta_proc::single_string_value_accessor!("year", "©day");
+mp4ameta_proc::single_string_value_accessor!("isrc", "----:com.apple.iTunes:ISRC");
 
 // ## Multiple string values
 mp4ameta_proc::multiple_string_values_accessor!("album_artist", "aART");
@@ -219,6 +222,7 @@ mp4ameta_proc::multiple_string_values_accessor!("custom_genre", "©gen");
 mp4ameta_proc::multiple_string_values_accessor!("description", "desc");
 mp4ameta_proc::multiple_string_values_accessor!("grouping", "©grp");
 mp4ameta_proc::multiple_string_values_accessor!("keyword", "keyw");
+mp4ameta_proc::multiple_string_values_accessor!("lyricist", "----:com.apple.iTunes:LYRICIST");
 
 // ## Flags
 mp4ameta_proc::flag_value_accessor!("compilation", "cpil");
@@ -236,47 +240,47 @@ mp4ameta_proc::u32_value_accessor!("tv_season", "tvsn");
 // ## Custom values
 /// ### Artwork
 impl Tag {
-    /// Returns all artwork images of type [`Data:Jpeg`], [`Data::Png`] or [`Data::Bmp`] (`covr`).
+    /// Returns all artwork images of type [`Data::Jpeg`], [`Data::Png`] or [`Data::Bmp`] (`covr`).
     pub fn artworks(&self) -> impl Iterator<Item = &Data> {
-        self.image(&atom::ARTWORK)
+        self.image(&ident::ARTWORK)
     }
 
-    /// Returns the first artwork image of type [`Data:Jpeg`], [`Data::Png`] or [`Data::Bmp`]
+    /// Returns the first artwork image of type [`Data::Jpeg`], [`Data::Png`] or [`Data::Bmp`]
     /// (`covr`).
     pub fn artwork(&self) -> Option<&Data> {
-        self.image(&atom::ARTWORK).next()
+        self.image(&ident::ARTWORK).next()
     }
 
-    /// Consumes and returns all artwork images of type [`Data:Jpeg`], [`Data::Png`] or
+    /// Consumes and returns all artwork images of type [`Data::Jpeg`], [`Data::Png`] or
     /// [`Data::Bmp`] (`covr`).
     pub fn take_artworks(&mut self) -> impl Iterator<Item = Data> + '_ {
-        self.take_image(&atom::ARTWORK)
+        self.take_image(&ident::ARTWORK)
     }
 
-    /// Consumes all and returns the first artwork image of type [`Data:Jpeg`], [`Data::Png`] or
+    /// Consumes all and returns the first artwork image of type [`Data::Jpeg`], [`Data::Png`] or
     /// [`Data::Bmp`] (`covr`).
     pub fn take_artwork(&mut self) -> Option<Data> {
-        self.take_image(&atom::ARTWORK).next()
+        self.take_image(&ident::ARTWORK).next()
     }
 
-    /// Sets the artwork image data of type [`Data:Jpeg`], [`Data::Png`] or [`Data::Bmp`] (`covr`).
+    /// Sets the artwork image data of type [`Data::Jpeg`], [`Data::Png`] or [`Data::Bmp`] (`covr`).
     /// This will remove all other artworks.
     pub fn set_artwork(&mut self, image: Data) {
         if image.is_image() {
-            self.set_data(atom::ARTWORK, image);
+            self.set_data(ident::ARTWORK, image);
         }
     }
 
-    /// Adds artwork image data of type [`Data:Jpeg`], [`Data::Png`] or [`Data::Bmp`] (`covr`).
+    /// Adds artwork image data of type [`Data::Jpeg`], [`Data::Png`] or [`Data::Bmp`] (`covr`).
     pub fn add_artwork(&mut self, image: Data) {
         if image.is_image() {
-            self.add_data(atom::ARTWORK, image);
+            self.add_data(ident::ARTWORK, image);
         }
     }
 
     /// Removes all artworks (`covr`).
     pub fn remove_artwork(&mut self) {
-        self.remove_data(&atom::ARTWORK);
+        self.remove_data(&ident::ARTWORK);
     }
 
     /// Returns information about all artworks formatted in an easily readable way.
@@ -325,7 +329,7 @@ impl Tag {
 impl Tag {
     /// Returns the media type (`stik`).
     pub fn media_type(&self) -> Option<MediaType> {
-        let vec = self.bytes(&atom::MEDIA_TYPE).next()?;
+        let vec = self.bytes(&ident::MEDIA_TYPE).next()?;
 
         if vec.is_empty() {
             return None;
@@ -336,12 +340,12 @@ impl Tag {
 
     /// Sets the media type (`stik`).
     pub fn set_media_type(&mut self, media_type: MediaType) {
-        self.set_data(atom::MEDIA_TYPE, Data::Reserved(vec![media_type.value()]));
+        self.set_data(ident::MEDIA_TYPE, Data::Reserved(vec![media_type.value()]));
     }
 
     /// Removes the media type (`stik`).
     pub fn remove_media_type(&mut self) {
-        self.remove_data(&atom::MEDIA_TYPE);
+        self.remove_data(&ident::MEDIA_TYPE);
     }
 }
 
@@ -349,7 +353,7 @@ impl Tag {
 impl Tag {
     /// Returns the advisory rating (`rtng`).
     pub fn advisory_rating(&self) -> Option<AdvisoryRating> {
-        let vec = self.bytes(&atom::ADVISORY_RATING).next()?;
+        let vec = self.bytes(&ident::ADVISORY_RATING).next()?;
 
         if vec.is_empty() {
             return None;
@@ -360,12 +364,12 @@ impl Tag {
 
     /// Sets the advisory rating (`rtng`).
     pub fn set_advisory_rating(&mut self, rating: AdvisoryRating) {
-        self.set_data(atom::ADVISORY_RATING, Data::Reserved(vec![rating.value()]));
+        self.set_data(ident::ADVISORY_RATING, Data::Reserved(vec![rating.value()]));
     }
 
     /// Removes the advisory rating (`rtng`).
     pub fn remove_advisory_rating(&mut self) {
-        self.remove_data(&atom::ADVISORY_RATING);
+        self.remove_data(&ident::ADVISORY_RATING);
     }
 }
 
@@ -480,7 +484,7 @@ impl Tag {
         self.take_data(ident).filter_map(Data::take_string)
     }
 
-    /// Returns all image data references of type [Data::Jpeg], [`Self::Png`] or [`Self::Bmp`]
+    /// Returns all image data references of type [Data::Jpeg], [`Data::Png`] or [`Data::Bmp`]
     /// corresponding to the identifier.
     ///
     /// # Example
@@ -500,8 +504,8 @@ impl Tag {
         self.data(ident).filter_map(Data::image)
     }
 
-    /// Returns all mutable image data references of type [Data::Jpeg], [`Self::Png`] or
-    /// [`Self::Bmp`] corresponding to the identifier.
+    /// Returns all mutable image data references of type [Data::Jpeg], [`Data::Png`] or
+    /// [`Data::Bmp`] corresponding to the identifier.
     ///
     /// # Example
     /// ```

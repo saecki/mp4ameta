@@ -140,6 +140,15 @@ pub const WORK: Fourcc = Fourcc(*b"\xa9wrk");
 /// (`shwm`)
 pub const SHOW_MOVEMENT: Fourcc = Fourcc(*b"shwm");
 
+// Freeform
+/// Mean string of most freeform identifiers (`com.apple.iTunes`)
+pub const APPLE_ITUNES_MEAN: &str = "com.apple.iTunes";
+
+/// (`----:com.apple.iTunes:ISRC`)
+pub const ISRC: FreeformIdent = FreeformIdent::new(APPLE_ITUNES_MEAN, "ISRC");
+/// (`----:com.apple.iTunes:LYRICIST`)
+pub const LYRICIST: FreeformIdent = FreeformIdent::new(APPLE_ITUNES_MEAN, "LYRICIST");
+
 /// A trait providing information about an identifier.
 pub trait Ident {
     /// Returns a 4 byte atom identifier.
@@ -221,7 +230,7 @@ impl fmt::Display for FreeformIdent<'_> {
 
 impl<'a> FreeformIdent<'a> {
     /// Creates a new freeform ident containing the mean and name as borrowed strings.
-    pub fn new(mean: &'a str, name: &'a str) -> Self {
+    pub const fn new(mean: &'a str, name: &'a str) -> Self {
         Self { mean, name }
     }
 }

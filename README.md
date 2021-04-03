@@ -57,13 +57,14 @@ tag.write_to_path("music.m4a").unwrap();
 - M4V
 
 ## Useful Links
-- [AtomicParsley docs](http://atomicparsley.sourceforge.net/mpeg-4files.html)
-- [Mutagen docs](https://mutagen.readthedocs.io/en/latest/api/mp4.html)
 - QuickTime spec
     - [Overview of QTFF](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap1/qtff1.html)
     - [Movie Atoms](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap2/qtff2.html)
     - [Metadata](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html)
 - [QuickTime container](https://wiki.multimedia.cx/index.php/QuickTime_container)
+- [AtomicParsley docs](http://atomicparsley.sourceforge.net/mpeg-4files.html)
+- [Mutagen docs](https://mutagen.readthedocs.io/en/latest/api/mp4.html)
+- [Hydrogen audio tag mapping](https://wiki.hydrogenaud.io/index.php?title=Tag_Mapping)
 - [MusicBrainz Picard tag mapping](https://picard-docs.musicbrainz.org/en/appendices/tag_mapping.html)
 - [Filetype list](https://ftyps.com/)
 
