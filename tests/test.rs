@@ -1,6 +1,5 @@
 use mp4ameta::{
-    AdvisoryRating, ChannelConfig, Data, DataIdent, Fourcc, FreeformIdent, MediaType, SampleRate,
-    Tag, STANDARD_GENRES,
+    AdvisoryRating, ChannelConfig, Data, Fourcc, MediaType, SampleRate, Tag, STANDARD_GENRES,
 };
 use std::{
     fs,
@@ -64,7 +63,8 @@ fn get_tag_1() -> Tag {
     tag.set_track(7, 13);
     tag.set_year("2013");
     tag.set_artwork(Data::Png(fs::read("files/artwork.png").unwrap()));
-    tag.set_data(DataIdent::freeform("com.apple.iTunes", "ISRC"), Data::Utf8("TEST ISRC".into()));
+    tag.set_isrc("TEST ISRC");
+    tag.set_lyricist("TEST LYRICIST");
     tag
 }
 
@@ -93,7 +93,8 @@ fn get_tag_2() -> Tag {
     tag.set_track(3, 7);
     tag.set_year("1998");
     tag.set_artwork(Data::Jpeg(b"NEW ARTWORK".to_vec()));
-    tag.set_data(DataIdent::freeform("com.apple.iTunes", "ISRC"), Data::Utf8("NEW ISRC".into()));
+    tag.set_isrc("NEW ISRC");
+    tag.set_lyricist("NEW LYRICIST");
     tag
 }
 
@@ -125,10 +126,8 @@ fn assert_tag_1(tag: &Tag) {
     assert_eq!(tag.total_tracks(), Some(13));
     assert_eq!(tag.year(), Some("2013"));
     assert_eq!(tag.artwork(), Some(&Data::Png(fs::read("files/artwork.png").unwrap())));
-    assert_eq!(
-        tag.string(&FreeformIdent::new("com.apple.iTunes", "ISRC")).next(),
-        Some("TEST ISRC")
-    );
+    assert_eq!(tag.isrc(), Some("TEST ISRC"));
+    assert_eq!(tag.lyricist(), Some("TEST LYRICIST"));
 }
 
 fn assert_tag_2(tag: &Tag) {
@@ -159,10 +158,8 @@ fn assert_tag_2(tag: &Tag) {
     assert_eq!(tag.total_tracks(), Some(7));
     assert_eq!(tag.year(), Some("1998"));
     assert_eq!(tag.artwork(), Some(&Data::Jpeg(b"NEW ARTWORK".to_vec())));
-    assert_eq!(
-        tag.string(&FreeformIdent::new("com.apple.iTunes", "ISRC")).next(),
-        Some("NEW ISRC")
-    );
+    assert_eq!(tag.isrc(), Some("NEW ISRC"));
+    assert_eq!(tag.lyricist(), Some("NEW LYRICIST"));
 }
 
 fn assert_readonly(tag: &Tag) {
