@@ -151,6 +151,9 @@ impl fmt::Display for Tag {
                 string.push_str(&format!("{}: {}\n", a.ident, s));
             }
         }
+        string.push_str("filetype: ");
+        string.push_str(self.filetype());
+        string.push('\n');
 
         write!(f, "{}", string)
     }
