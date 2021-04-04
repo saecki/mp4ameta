@@ -22,25 +22,6 @@ mod content;
 mod info;
 mod template;
 
-/// A list of valid file types in lowercase defined by the filetype (`ftyp`) atom.
-#[rustfmt::skip]
-const VALID_FILETYPES: [&str; 14] = [
-    "3gp4",
-    "3gp5",
-    "3gp6",
-    "3gs7",
-    "dash",
-    "iso2",
-    "iso5",
-    "isom",
-    "m4a ",
-    "m4b ",
-    "m4p ",
-    "m4v ",
-    "mp41",
-    "mp42",
-];
-
 /// A struct representing data that is associated with an atom identifier.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AtomData {
@@ -270,18 +251,7 @@ impl Atom {
     /// Validates the filtype and returns it, or an error otherwise.
     fn check_filetype(self) -> crate::Result<String> {
         match self.content {
-            Content::RawData(Data::Utf8(s)) => {
-                if let Some(major_brand) = &s.get(0..4) {
-                    if VALID_FILETYPES.iter().any(|f| f.eq_ignore_ascii_case(major_brand)) {
-                        return Ok(s);
-                    }
-                }
-
-                Err(crate::Error::new(
-                    ErrorKind::InvalidFiletype(s),
-                    "Invalid filetype.".to_owned(),
-                ))
-            }
+            Content::RawData(Data::Utf8(s)) => Ok(s),
             _ => Err(crate::Error::new(ErrorKind::NoTag, "No filetype atom found.".to_owned())),
         }
     }
