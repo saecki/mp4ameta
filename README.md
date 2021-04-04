@@ -6,6 +6,7 @@
 ![LOC](https://tokei.rs/b1/github/saecki/rust-mp4ameta?category=code)
 
 A library for reading and writing iTunes style MPEG-4 audio metadata.
+Most commonly this kind of metadata is found inside `m4a` or `m4b` files but basically any `mp4` container supports it.
 
 ## Examples
 
@@ -16,7 +17,6 @@ let mut tag = mp4ameta::Tag::read_from_path("music.m4a").unwrap();
 println!("{}", tag.artist().unwrap());
 
 tag.set_artist("artist");
-
 tag.write_to_path("music.m4a").unwrap();
 ```
 
@@ -31,7 +31,6 @@ let artist = tag.string(&artist_ident).next().unwrap();
 println!("{}", artist);
 
 tag.set_data(artist_ident, Data::Utf8("artist".to_owned()));
-
 tag.write_to_path("music.m4a").unwrap();
 ```
 
@@ -46,15 +45,8 @@ let isrc = tag.string(&isrc_ident).next().unwrap();
 println!("{}", isrc);
 
 tag.set_data(isrc_ident, Data::Utf8("isrc".to_owned()));
-
 tag.write_to_path("music.m4a").unwrap();
 ```
-
-## Supported Filetypes
-- M4A
-- M4B
-- M4P
-- M4V
 
 ## Useful Links
 - QuickTime spec

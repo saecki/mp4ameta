@@ -9,7 +9,6 @@
 //! println!("{}", tag.artist().unwrap());
 //!
 //! tag.set_artist("artist");
-//!
 //! tag.write_to_path("music.m4a").unwrap();
 //! ```
 //!
@@ -24,7 +23,6 @@
 //! println!("{}", artist);
 //!
 //! tag.set_data(artist_ident, Data::Utf8("artist".to_owned()));
-//!
 //! tag.write_to_path("music.m4a").unwrap();
 //! ```
 //!
@@ -39,7 +37,6 @@
 //! println!("{}", isrc);
 //!
 //! tag.set_data(isrc_ident, Data::Utf8("isrc".to_owned()));
-//!
 //! tag.write_to_path("music.m4a").unwrap();
 //! ```
 #![warn(missing_docs)]
