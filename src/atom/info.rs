@@ -252,7 +252,7 @@ impl MvhdInfo {
 /// A struct representing of a sample table chunk offset atom (`stco`).
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(super) struct ChunkOffsetInfo {
-    pub pos: u64,
+    pub table_pos: u64,
     pub offsets: Vec<u32>,
 }
 
@@ -278,7 +278,7 @@ impl ChunkOffsetInfo {
                     offsets.push(offset);
                 }
 
-                Ok(Self { pos, offsets })
+                Ok(Self { table_pos: pos, offsets })
             }
             _ => Err(crate::Error::new(
                 crate::ErrorKind::UnknownVersion(version),
@@ -291,7 +291,7 @@ impl ChunkOffsetInfo {
 /// A struct representing of a 64bit sample table chunk offset atom (`co64`).
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub(super) struct ChunkOffsetInfo64 {
-    pub pos: u64,
+    pub table_pos: u64,
     pub offsets: Vec<u64>,
 }
 
@@ -317,7 +317,7 @@ impl ChunkOffsetInfo64 {
                     offsets.push(offset);
                 }
 
-                Ok(Self { pos, offsets })
+                Ok(Self { table_pos: pos, offsets })
             }
             _ => Err(crate::Error::new(
                 crate::ErrorKind::UnknownVersion(version),

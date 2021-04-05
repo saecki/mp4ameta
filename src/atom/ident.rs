@@ -34,6 +34,8 @@ pub(crate) const ELEMENTARY_STREAM_DESCRIPTION: Fourcc = Fourcc(*b"esds");
 pub(crate) const USER_DATA: Fourcc = Fourcc(*b"udta");
 /// (`meta`) Identifier of an atom containing a metadata item list.
 pub(crate) const METADATA: Fourcc = Fourcc(*b"meta");
+/// (`hdlr`) Identifier of an atom specifying the handler component that should interpret the medias data.
+pub(crate) const HANDLER_REFERENCE: Fourcc = Fourcc(*b"hdlr");
 /// (`ilst`) Identifier of an atom containing a list of metadata atoms.
 pub(crate) const ITEM_LIST: Fourcc = Fourcc(*b"ilst");
 /// (`data`) Identifier of an atom containing typed data.

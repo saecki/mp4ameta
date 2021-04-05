@@ -4,9 +4,11 @@ use super::*;
 
 /// An enum representing the different types of content an atom might have.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(super) enum Content {
+pub(super) enum Content<'a> {
     /// A value containing a list of children atoms.
-    Atoms(Vec<Atom>),
+    Atoms(Vec<Atom<'a>>),
+    /// A value containing a list of children atoms.
+    AtomDataRef(&'a [AtomData]),
     /// A value containing raw data.
     RawData(Data),
     /// A value containing data defined by a
@@ -21,15 +23,15 @@ pub(super) enum Content {
     Empty,
 }
 
-impl Default for Content {
+impl Default for Content<'_> {
     fn default() -> Self {
         Self::Empty
     }
 }
 
-impl Content {
+impl<'a> Content<'a> {
     /// Creates new content of type [`Self::Atoms`] containing the atom.
-    pub fn atom(atom: Atom) -> Self {
+    pub fn atom(atom: Atom<'a>) -> Self {
         Self::Atoms(vec![atom])
     }
 
@@ -41,7 +43,8 @@ impl Content {
     /// Returns the length in bytes.
     pub fn len(&self) -> u64 {
         match self {
-            Self::Atoms(v) => v.iter().map(|a| a.len() as u64).sum(),
+            Self::Atoms(v) => v.iter().map(|a| a.len()).sum(),
+            Self::AtomDataRef(v) => v.iter().map(|a| a.len()).sum(),
             Self::RawData(d) => d.len(),
             Self::TypedData(d) => 8 + d.len(),
             Self::Mp4Audio(_) => 0,
@@ -51,14 +54,14 @@ impl Content {
     }
 
     /// Returns an iterator over the children atoms.
-    pub fn atoms(&self) -> impl Iterator<Item = &Atom> {
+    pub fn atoms(&self) -> impl Iterator<Item = &Atom<'a>> {
         match self {
             Self::Atoms(v) => v.iter(),
             _ => [].iter(),
         }
     }
 
-    pub fn into_atoms(self) -> impl Iterator<Item = Atom> {
+    pub fn into_atoms(self) -> impl Iterator<Item = Atom<'a>> {
         match self {
             Self::Atoms(v) => v.into_iter(),
             _ => Vec::new().into_iter(),
@@ -66,12 +69,12 @@ impl Content {
     }
 
     /// Returns a reference to the first children atom matching the identifier, if present.
-    pub fn child(&self, ident: Fourcc) -> Option<&Atom> {
+    pub fn child(&self, ident: Fourcc) -> Option<&Atom<'a>> {
         self.atoms().find(|a| a.ident == ident)
     }
 
     /// Consumes self and returns the first children atom matching the identifier, if present.
-    pub fn take_child(self, ident: Fourcc) -> Option<Atom> {
+    pub fn take_child(self, ident: Fourcc) -> Option<Atom<'a>> {
         self.into_atoms().find(|a| a.ident == ident)
     }
 
@@ -98,6 +101,11 @@ impl Content {
         match self {
             Self::Atoms(v) => {
                 for a in v {
+                    a.write_to(writer)?;
+                }
+            }
+            Self::AtomDataRef(v) => {
+                for a in *v {
                     a.write_to(writer)?;
                 }
             }
@@ -162,7 +170,11 @@ impl ContentT {
     }
 
     /// Attempts to parse corresponding content from the reader.
-    pub fn parse(&self, reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Content> {
+    pub fn parse<'a>(
+        &self,
+        reader: &mut (impl Read + Seek),
+        len: u64,
+    ) -> crate::Result<Content<'a>> {
         Ok(match self {
             Self::Atoms(v) => Content::Atoms(parse_atoms(reader, v, len)?),
             Self::RawData(d) => Content::RawData(data::parse_data(reader, *d, len)?),

@@ -8,7 +8,7 @@ use std::{
 };
 use walkdir::WalkDir;
 
-const EXTENSIONS: [&str; 5] = [".m4a", ".m4b", ".m4p", ".m4v", ".mp4"];
+const EXTENSIONS: [&str; 6] = [".m4a", ".m4b", ".m4p", ".m4v", ".mp4", ".3gp"];
 
 fn read_dir(path: &str, fun: impl Fn(&Path, &Tag)) {
     for d in WalkDir::new(path)
@@ -183,6 +183,7 @@ fn collection() {
 
 #[test]
 fn sample_files() {
+    let _ = fs::remove_dir_all("target/files");
     let _ = fs::create_dir("target/files");
 
     read_dir("files", |p, t| {
@@ -193,20 +194,23 @@ fn sample_files() {
         println!("copying {} to {}...", p.display(), path.display());
         fs::copy(p, &path).unwrap();
 
-        println!("writing empty tag to {}...", path.display());
+        println!("writing empty tag");
         Tag::default().write_to_path(&path).unwrap();
+        println!("reading empty tag");
         let tag = Tag::read_from_path(&path).unwrap();
         assert!(&tag.atoms.is_empty());
         assert_eq!(&tag.info, &t.info);
 
-        println!("writing sample tag 2 to {}...", path.display());
+        println!("writing sample tag 1");
         get_tag_1().write_to_path(&path).unwrap();
+        println!("reading sample tag 1");
         let tag = Tag::read_from_path(&path).unwrap();
         assert_tag_1(&tag);
         assert_eq!(&tag.info, &t.info);
 
-        println!("writing sample tag 2 to {}...", path.display());
+        println!("writing sample tag 2");
         get_tag_2().write_to_path(&path).unwrap();
+        println!("reading sample tag 2");
         let tag = Tag::read_from_path(&path).unwrap();
         assert_tag_2(&tag);
         assert_eq!(&tag.info, &t.info);
@@ -226,6 +230,7 @@ fn read() {
 fn write() {
     let tag = get_tag_2();
 
+    let _ = std::fs::remove_file("target/write.m4a");
     println!("copying files/sample.m4a to target/write.m4a...");
     std::fs::copy("files/sample.m4a", "target/write.m4a").unwrap();
 
@@ -236,15 +241,13 @@ fn write() {
     let tag = Tag::read_from_path("target/write.m4a").unwrap();
     assert_tag_2(&tag);
     assert_readonly(&tag);
-
-    println!("deleting target/write.m4a...");
-    std::fs::remove_file("target/write.m4a").unwrap();
 }
 
 #[test]
 fn write_same() {
     let tag = get_tag_1();
 
+    let _ = std::fs::remove_file("target/write_same.m4a");
     println!("copying files/sample.m4a to target/write_same.m4a...");
     std::fs::copy("files/sample.m4a", "target/write_same.m4a").unwrap();
 
@@ -255,9 +258,6 @@ fn write_same() {
     let tag = Tag::read_from_path("target/write_same.m4a").unwrap();
     assert_tag_1(&tag);
     assert_readonly(&tag);
-
-    println!("deleting target/write_same.m4a...");
-    std::fs::remove_file("target/write_same.m4a").unwrap();
 }
 
 #[test]
@@ -266,6 +266,7 @@ fn write_bigger() {
     let data: Vec<u8> = (0..2048).map(|n| (n % 255) as u8).collect();
     tag.add_data(Fourcc(*b"test"), Data::Reserved(data));
 
+    let _ = std::fs::remove_file("target/write_bigger.m4a");
     println!("copying files/sample.m4a to target/write_bigger.m4a...");
     std::fs::copy("files/sample.m4a", "target/write_bigger.m4a").unwrap();
 
@@ -276,15 +277,13 @@ fn write_bigger() {
     let tag = Tag::read_from_path("target/write_bigger.m4a").unwrap();
     assert_tag_2(&tag);
     assert_readonly(&tag);
-
-    println!("deleting target/write_bigger.m4a...");
-    std::fs::remove_file("target/write_bigger.m4a").unwrap();
 }
 
 #[test]
 fn write_empty() {
     let tag = Tag::default();
 
+    let _ = std::fs::remove_file("target/write_empty.m4a");
     println!("copying files/sample.m4a to target/write_empty.m4a...");
     std::fs::copy("files/sample.m4a", "target/write_empty.m4a").unwrap();
 
@@ -295,39 +294,32 @@ fn write_empty() {
     let tag = Tag::read_from_path("target/write_empty.m4a").unwrap();
     assert!(tag.atoms.is_empty());
     assert_readonly(&tag);
-
-    println!("deleting target/write_empty.m4a...");
-    std::fs::remove_file("target/write_empty.m4a").unwrap();
 }
 
 #[test]
 fn dump_1() {
     let tag = get_tag_1();
 
+    let _ = std::fs::remove_file("target/dump_1.m4a");
     println!("dumping to target/dump_1.m4a...");
     tag.dump_to_path("target/dump_1.m4a").unwrap();
 
     println!("reading target/dump_1.m4a....");
     let tag = Tag::read_from_path("target/dump_1.m4a").unwrap();
     assert_tag_1(&tag);
-
-    println!("deleting target/dump_1.m4a...");
-    std::fs::remove_file("target/dump_1.m4a").unwrap();
 }
 
 #[test]
 fn dump_2() {
     let tag = get_tag_2();
 
+    let _ = std::fs::remove_file("target/dump_2.m4a");
     println!("dumping to target/dump_2.m4a...");
     tag.dump_to_path("target/dump_2.m4a").unwrap();
 
     println!("reading target/dump_2.m4a...");
     let tag = Tag::read_from_path("target/dump_2.m4a").unwrap();
     assert_tag_2(&tag);
-
-    println!("deleting target/dump_2.m4a...");
-    std::fs::remove_file("target/dump_2.m4a").unwrap();
 }
 
 #[test]
