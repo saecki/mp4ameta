@@ -1,4 +1,6 @@
 *
 !.gitignore
 !sample.m4a
+!sample-64.mp4
+!sample-multi-track.3gp
 !artwork.png
