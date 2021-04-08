@@ -74,7 +74,7 @@ fn metadata_read_atom_t() -> AtomT {
 }
 
 #[rustfmt::skip]
-pub(super) fn meta_handler_reference_atom_t() -> Atom<'static> {
+pub(super) fn meta_handler_reference_atom() -> Atom<'static> {
     Atom::new(HANDLER_REFERENCE, 0, Content::RawData(
         Data::Reserved(vec![
             0x00, 0x00, 0x00, 0x00, // version + flags
@@ -83,7 +83,7 @@ pub(super) fn meta_handler_reference_atom_t() -> Atom<'static> {
             0x61, 0x70, 0x70, 0x6c, // component manufacturer
             0x00, 0x00, 0x00, 0x00, // component flags
             0x00, 0x00, 0x00, 0x00, // component flags mask
-            0x00,        // component name
+            0x00,                   // component name
         ])
     ))
 }

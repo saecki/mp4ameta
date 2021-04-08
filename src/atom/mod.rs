@@ -687,79 +687,63 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
 
     let metadata_len: u64 = atoms.iter().map(|a| a.len()).sum();
 
-    let update_atoms;
-    let new_atoms;
-    let moved_data_start;
-    let len_diff;
+    let mut update_atoms = Vec::new();
+    let mut new_atoms = Vec::new();
+    let mut new_atoms_start = 0;
+    let mut moved_data_start = 0;
+    let mut len_diff = 0;
     let metadata_start;
     let write_metadta_separately;
-    match (udta, meta, hdlr, ilst) {
-        (Some(udta), Some(meta), Some(_hdlr), Some(ilst)) => {
-            update_atoms = vec![moov, udta, meta, ilst];
-            new_atoms = Vec::new();
+
+    if hdlr.is_none() {
+        new_atoms.push(template::meta_handler_reference_atom());
+    }
+    match ilst {
+        Some(ilst) => {
+            update_atoms.push(ilst);
+            new_atoms_start = ilst.content_pos() + metadata_len;
             moved_data_start = ilst.end();
-            len_diff = metadata_len as i64 - ilst.content_len() as i64;
+            let new_atom_len: u64 = new_atoms.iter().map(|a| a.len()).sum();
+            len_diff = (new_atom_len + metadata_len) as i64 - ilst.content_len() as i64;
             metadata_start = ilst.content_pos();
             write_metadta_separately = true;
         }
-        #[rustfmt::skip]
-        (Some(udta), Some(meta), Some(_hdlr), None) => {
-            update_atoms = vec![moov, udta, meta];
-            new_atoms = vec![Atom::new(ITEM_LIST, 0, Content::AtomDataRef(atoms))];
-            moved_data_start = meta.end();
-            len_diff = new_atoms.iter().map(|a| a.len()).sum::<u64>() as i64;
+        None => {
+            new_atoms.push(Atom::new(ITEM_LIST, 0, Content::AtomDataRef(atoms)));
             metadata_start = 0;
             write_metadta_separately = false;
         }
-        #[rustfmt::skip]
-        (Some(udta), Some(meta), None, Some(ilst)) => {
-            update_atoms = vec![moov, udta, meta];
-            new_atoms = vec![template::meta_handler_reference_atom_t()];
-            moved_data_start = meta.end();
-            len_diff = new_atoms.iter().map(|a| a.len()).sum::<u64>() as i64 + metadata_len as i64 - ilst.content_len() as i64;
-            metadata_start = ilst.content_pos();
-            write_metadta_separately = true;
+    }
+    match meta {
+        Some(meta) => {
+            update_atoms.push(meta);
+            if let None = ilst {
+                new_atoms_start = meta.end();
+                moved_data_start = meta.end();
+                len_diff = new_atoms.iter().map(|a| a.len()).sum::<u64>() as i64;
+            }
         }
-        #[rustfmt::skip]
-        (Some(udta), Some(meta), None, None) => {
-            update_atoms = vec![moov, udta, meta];
-            new_atoms = vec![
-                template::meta_handler_reference_atom_t(),
-                Atom::new(ITEM_LIST, 0, Content::AtomDataRef(atoms)),
-            ];
-            moved_data_start = meta.end();
-            len_diff = new_atoms.iter().map(|a| a.len()).sum::<u64>() as i64;
-            metadata_start = 0;
-            write_metadta_separately = false;
+        None => {
+            new_atoms = vec![Atom::new(METADATA, 4, Content::Atoms(new_atoms))];
         }
-        #[rustfmt::skip]
-        (Some(udta), None, None, None) => {
-            update_atoms = vec![moov, udta];
-            new_atoms = vec![Atom::new(METADATA, 4, Content::Atoms(vec![
-                template::meta_handler_reference_atom_t(),
-                Atom::new(ITEM_LIST, 0, Content::AtomDataRef(atoms)),
-            ]))];
-            moved_data_start = udta.end();
-            len_diff = new_atoms.iter().map(|a| a.len()).sum::<u64>() as i64;
-            metadata_start = 0;
-            write_metadta_separately = false;
+    }
+    match udta {
+        Some(udta) => {
+            update_atoms.push(udta);
+            if let None = meta {
+                new_atoms_start = udta.end();
+                moved_data_start = udta.end();
+                len_diff = new_atoms.iter().map(|a| a.len()).sum::<u64>() as i64;
+            }
         }
-        #[rustfmt::skip]
-        (None, None, None, None) => {
-            update_atoms = vec![moov];
-            new_atoms = vec![Atom::new(USER_DATA, 0, Content::atom(
-                Atom::new(METADATA, 4, Content::Atoms(vec![
-                    template::meta_handler_reference_atom_t(),
-                    Atom::new(ITEM_LIST, 0, Content::AtomDataRef(atoms)),
-                ]))
-            ))];
+        None => {
+            new_atoms = vec![Atom::new(USER_DATA, 0, Content::Atoms(new_atoms))];
+            new_atoms_start = moov.end();
             moved_data_start = moov.end();
             len_diff = new_atoms.iter().map(|a| a.len()).sum::<u64>() as i64;
-            metadata_start = 0;
-            write_metadta_separately = false;
         }
-        _ => unreachable!(),
     }
+    update_atoms.push(moov);
 
     // reading moved data
     let old_file_len = reader.seek(SeekFrom::End(0))?;
@@ -811,7 +795,7 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
     file.set_len((old_file_len as i64 + len_diff) as u64)?;
 
     // update existing ilst hierarchy atom lengths
-    for a in update_atoms.iter() {
+    for a in update_atoms.iter().rev() {
         let new_len = a.len as i64 + len_diff;
         if a.short {
             writer.seek(SeekFrom::Start(a.pos))?;
@@ -825,11 +809,12 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
     }
 
     // write missing ilst hierarchy and metadata
-    writer.seek(SeekFrom::Start(moved_data_start))?;
-    for a in new_atoms.iter() {
-        a.write_to(&mut writer)?;
+    if !new_atoms.is_empty() {
+        writer.seek(SeekFrom::Start(new_atoms_start))?;
+        for a in new_atoms.iter() {
+            a.write_to(&mut writer)?;
+        }
     }
-
     if write_metadta_separately {
         writer.seek(SeekFrom::Start(metadata_start))?;
         for a in atoms {
