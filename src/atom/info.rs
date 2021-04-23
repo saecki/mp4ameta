@@ -258,27 +258,26 @@ pub(super) struct ChunkOffsetInfo {
 
 impl ChunkOffsetInfo {
     pub(super) fn parse(reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Self> {
-        let pos = reader.seek(SeekFrom::Current(0))? + 8;
-
         let (version, _) = parse_ext_head(reader)?;
 
         match version {
             0 => {
                 let entries = data::read_u32(reader)?;
-                if 8 + 4 * entries as u64 > len {
+                if 8 + 4 * entries as u64 != len {
                     return Err(crate::Error::new(
                         crate::ErrorKind::Parsing,
-                        "Sample table chunk offset (stco) size too big".to_owned(),
+                        "Sample table chunk offset (stco) offset table size doesn't match atom length".to_owned(),
                     ));
                 }
 
+                let table_pos = reader.seek(SeekFrom::Current(0))?;
                 let mut offsets = Vec::with_capacity(entries as usize);
                 for _ in 0..entries {
                     let offset = data::read_u32(reader)?;
                     offsets.push(offset);
                 }
 
-                Ok(Self { table_pos: pos, offsets })
+                Ok(Self { table_pos, offsets })
             }
             _ => Err(crate::Error::new(
                 crate::ErrorKind::UnknownVersion(version),
@@ -297,27 +296,26 @@ pub(super) struct ChunkOffsetInfo64 {
 
 impl ChunkOffsetInfo64 {
     pub(super) fn parse(reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Self> {
-        let pos = reader.seek(SeekFrom::Current(0))? + 8;
-
         let (version, _) = parse_ext_head(reader)?;
 
         match version {
             0 => {
                 let entries = data::read_u32(reader)?;
-                if 8 + 8 * entries as u64 > len {
+                if 8 + 8 * entries as u64 != len {
                     return Err(crate::Error::new(
                         crate::ErrorKind::Parsing,
-                        "Sample table chunk offset (stco) size too big".to_owned(),
+                        "Sample table chunk offset 64 (co64) offset table size doesn't match atom length".to_owned(),
                     ));
                 }
 
+                let table_pos = reader.seek(SeekFrom::Current(0))?;
                 let mut offsets = Vec::with_capacity(entries as usize);
                 for _ in 0..entries {
                     let offset = data::read_u64(reader)?;
                     offsets.push(offset);
                 }
 
-                Ok(Self { table_pos: pos, offsets })
+                Ok(Self { table_pos, offsets })
             }
             _ => Err(crate::Error::new(
                 crate::ErrorKind::UnknownVersion(version),

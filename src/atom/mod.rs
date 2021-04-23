@@ -685,42 +685,28 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
     let hdlr = meta.and_then(|a| a.atoms.iter().find(|a| a.ident == HANDLER_REFERENCE));
     let ilst = meta.and_then(|a| a.atoms.iter().find(|a| a.ident == ITEM_LIST));
 
-    let metadata_len: u64 = atoms.iter().map(|a| a.len()).sum();
-
     let mut update_atoms = Vec::new();
     let mut new_atoms = Vec::new();
     let mut new_atoms_start = 0;
     let mut moved_data_start = 0;
     let mut len_diff = 0;
-    let metadata_start;
-    let write_metadta_separately;
 
-    if hdlr.is_none() {
+    if let None = hdlr {
         new_atoms.push(template::meta_handler_reference_atom());
     }
-    match ilst {
-        Some(ilst) => {
-            update_atoms.push(ilst);
-            new_atoms_start = ilst.content_pos() + metadata_len;
-            moved_data_start = ilst.end();
-            let new_atom_len: u64 = new_atoms.iter().map(|a| a.len()).sum();
-            len_diff = (new_atom_len + metadata_len) as i64 - ilst.content_len() as i64;
-            metadata_start = ilst.content_pos();
-            write_metadta_separately = true;
-        }
-        None => {
-            new_atoms.push(Atom::new(ITEM_LIST, 0, Content::AtomDataRef(atoms)));
-            metadata_start = 0;
-            write_metadta_separately = false;
-        }
+    if let Some(ilst) = ilst {
+        new_atoms_start = ilst.pos;
+        moved_data_start = ilst.end();
+        len_diff -= ilst.len as i64;
     }
+    new_atoms.push(Atom::new(ITEM_LIST, 0, Content::AtomDataRef(atoms)));
+
     match meta {
         Some(meta) => {
             update_atoms.push(meta);
             if let None = ilst {
                 new_atoms_start = meta.end();
                 moved_data_start = meta.end();
-                len_diff = new_atoms.iter().map(|a| a.len()).sum::<u64>() as i64;
             }
         }
         None => {
@@ -733,16 +719,15 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
             if let None = meta {
                 new_atoms_start = udta.end();
                 moved_data_start = udta.end();
-                len_diff = new_atoms.iter().map(|a| a.len()).sum::<u64>() as i64;
             }
         }
         None => {
             new_atoms = vec![Atom::new(USER_DATA, 0, Content::Atoms(new_atoms))];
             new_atoms_start = moov.end();
             moved_data_start = moov.end();
-            len_diff = new_atoms.iter().map(|a| a.len()).sum::<u64>() as i64;
         }
     }
+    len_diff += new_atoms.iter().map(|a| a.len()).sum::<u64>() as i64;
     update_atoms.push(moov);
 
     // reading moved data
@@ -764,35 +749,36 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
             .filter_map(|a| a.atoms.iter().find(|a| a.ident == MEDIA_INFORMATION))
             .filter_map(|a| a.atoms.iter().find(|a| a.ident == SAMPLE_TABLE));
 
-        for a in stbl_atoms {
-            match a.ident {
-                SAMPLE_TABLE_CHUNK_OFFSET => {
-                    reader.seek(SeekFrom::Start(a.content_pos()))?;
-                    let chunk_offset = ChunkOffsetInfo::parse(&mut reader, a.content_len())?;
+        for stbl in stbl_atoms {
+            for a in stbl.atoms.iter() {
+                match a.ident {
+                    SAMPLE_TABLE_CHUNK_OFFSET => {
+                        reader.seek(SeekFrom::Start(a.content_pos()))?;
+                        let chunk_offset = ChunkOffsetInfo::parse(&mut reader, a.content_len())?;
 
-                    writer.seek(SeekFrom::Start(chunk_offset.table_pos))?;
-                    for co in chunk_offset.offsets.iter() {
-                        let new_offset = (*co as i64 + len_diff) as u32;
-                        writer.write_all(&u32::to_be_bytes(new_offset))?;
+                        writer.seek(SeekFrom::Start(chunk_offset.table_pos))?;
+                        for co in chunk_offset.offsets.iter() {
+                            let new_offset = (*co as i64 + len_diff) as u32;
+                            writer.write_all(&u32::to_be_bytes(new_offset))?;
+                        }
+                        writer.flush()?;
                     }
-                }
-                SAMPLE_TABLE_CHUNK_OFFSET_64 => {
-                    reader.seek(SeekFrom::Start(a.content_pos()))?;
-                    let chunk_offset = ChunkOffsetInfo64::parse(&mut reader, a.content_len())?;
+                    SAMPLE_TABLE_CHUNK_OFFSET_64 => {
+                        reader.seek(SeekFrom::Start(a.content_pos()))?;
+                        let chunk_offset = ChunkOffsetInfo64::parse(&mut reader, a.content_len())?;
 
-                    writer.seek(SeekFrom::Start(chunk_offset.table_pos))?;
-                    for co in chunk_offset.offsets.iter() {
-                        let new_offset = (*co as i64 + len_diff) as u64;
-                        writer.write_all(&u64::to_be_bytes(new_offset))?;
+                        writer.seek(SeekFrom::Start(chunk_offset.table_pos))?;
+                        for co in chunk_offset.offsets.iter() {
+                            let new_offset = (*co as i64 + len_diff) as u64;
+                            writer.write_all(&u64::to_be_bytes(new_offset))?;
+                        }
+                        writer.flush()?;
                     }
+                    _ => (),
                 }
-                _ => (),
             }
         }
     }
-
-    // adjusting the file length
-    file.set_len((old_file_len as i64 + len_diff) as u64)?;
 
     // update existing ilst hierarchy atom lengths
     for a in update_atoms.iter().rev() {
@@ -808,6 +794,9 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
         }
     }
 
+    // adjusting the file length
+    file.set_len((old_file_len as i64 + len_diff) as u64)?;
+
     // write missing ilst hierarchy and metadata
     if !new_atoms.is_empty() {
         writer.seek(SeekFrom::Start(new_atoms_start))?;
@@ -815,14 +804,9 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
             a.write_to(&mut writer)?;
         }
     }
-    if write_metadta_separately {
-        writer.seek(SeekFrom::Start(metadata_start))?;
-        for a in atoms {
-            a.write_to(&mut writer)?;
-        }
-    }
 
     // writing moved data
+    writer.seek(SeekFrom::Start((moved_data_start as i64 + len_diff) as u64))?;
     writer.write_all(&moved_data)?;
     writer.flush()?;
 
@@ -841,9 +825,10 @@ pub(crate) fn dump_tag_to(writer: &mut impl Write, atoms: &[AtomData]) -> crate:
     #[rustfmt::skip]
     let moov = Atom::new(MOVIE, 0, Content::atom(
         Atom::new(USER_DATA, 0, Content::atom(
-            Atom::new(METADATA, 4, Content::atom(
+            Atom::new(METADATA, 4, Content::Atoms(vec![
+                template::meta_handler_reference_atom(),
                 Atom::new(ITEM_LIST, 0, Content::Atoms(atoms))
-            )),
+            ])),
         )),
     ));
 

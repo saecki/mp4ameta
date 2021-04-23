@@ -195,7 +195,7 @@ impl Ident for Fourcc {
 
 impl fmt::Debug for Fourcc {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Ident({})", self.0.iter().map(|b| char::from(*b)).collect::<String>())
+        write!(f, "Fourcc({})", self.0.iter().map(|b| char::from(*b)).collect::<String>())
     }
 }
 
