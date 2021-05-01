@@ -147,8 +147,12 @@ impl fmt::Display for Tag {
             string.push_str(&s);
         }
         for a in self.atoms.iter() {
-            if let (DataIdent::Freeform { .. }, Some(s)) = (&a.ident, &a.data.string()) {
-                string.push_str(&format!("{}: {}\n", a.ident, s));
+            if let DataIdent::Freeform { .. } = &a.ident {
+                string.push_str(&format!("{}:\n", a.ident));
+                a.data.iter().filter_map(|a| a.string()).for_each(|s| {
+                    string.push_str(s);
+                    string.push('\n');
+                });
             }
         }
         string.push_str("filetype: ");
@@ -567,7 +571,7 @@ impl Tag {
     /// };
     /// ```
     pub fn data<'a>(&'a self, ident: &'a impl Ident) -> impl Iterator<Item = &Data> {
-        self.atoms.iter().filter(move |a| idents_match(&a.ident, ident)).map(|a| &a.data)
+        self.atoms.iter().filter(move |a| idents_match(&a.ident, ident)).flat_map(|a| a.data.iter())
     }
 
     /// Returns all mutable data references corresponding to the identifier.
@@ -586,7 +590,10 @@ impl Tag {
     /// assert_eq!(tag.string(&test).next().unwrap(), "data1");
     /// ```
     pub fn data_mut<'a>(&'a mut self, ident: &'a impl Ident) -> impl Iterator<Item = &mut Data> {
-        self.atoms.iter_mut().filter(move |a| idents_match(&a.ident, ident)).map(|a| &mut a.data)
+        self.atoms
+            .iter_mut()
+            .filter(move |a| idents_match(&a.ident, ident))
+            .flat_map(|a| a.data.iter_mut())
     }
 
     /// Consumes all data corresponding to the identifier and returns it.
@@ -612,7 +619,7 @@ impl Tag {
         while i < self.atoms.len() {
             if idents_match(&self.atoms[i].ident, ident) {
                 let removed = self.atoms.remove(i);
-                data.push(removed.data);
+                data.extend(removed.data);
             } else {
                 i += 1;
             }
@@ -634,10 +641,14 @@ impl Tag {
     /// tag.set_data(test, Data::Utf8("data".into()));
     /// assert_eq!(tag.string(&test).next().unwrap(), "data");
     /// ```
-    pub fn set_data(&mut self, ident: impl Into<DataIdent>, data: Data) {
-        let ident = ident.into();
-        self.remove_data(&ident);
-        self.atoms.push(AtomData::new(ident, data));
+    pub fn set_data(&mut self, ident: (impl Ident + Into<DataIdent>), data: Data) {
+        match self.atoms.iter_mut().find(|a| idents_match(&a.ident, &ident)) {
+            Some(a) => {
+                a.data.clear();
+                a.data.push(data);
+            }
+            None => self.atoms.push(AtomData::new(ident.into(), vec![data])),
+        }
     }
 
     /// Adds a new atom, corresponding to the identifier, containing the provided data.
@@ -656,8 +667,11 @@ impl Tag {
     /// assert_eq!(strings.next(), Some("data2"));
     /// assert_eq!(strings.next(), None)
     /// ```
-    pub fn add_data(&mut self, ident: impl Into<DataIdent>, data: Data) {
-        self.atoms.push(AtomData::new(ident.into(), data));
+    pub fn add_data(&mut self, ident: (impl Ident + Into<DataIdent>), data: Data) {
+        match self.atoms.iter_mut().find(|a| idents_match(&a.ident, &ident)) {
+            Some(a) => a.data.push(data),
+            None => self.atoms.push(AtomData::new(ident.into(), vec![data])),
+        }
     }
 
     /// Removes the data corresponding to the identifier.

@@ -35,11 +35,6 @@ impl<'a> Content<'a> {
         Self::Atoms(vec![atom])
     }
 
-    /// Creates new content of type [`Self::Atoms`] containing a data [`Atom`] with the data.
-    pub fn data_atom_with(data: Data) -> Self {
-        Self::atom(Atom::data_atom_with(data))
-    }
-
     /// Returns the length in bytes.
     pub fn len(&self) -> u64 {
         match self {
@@ -54,13 +49,6 @@ impl<'a> Content<'a> {
     }
 
     /// Returns an iterator over the children atoms.
-    pub fn atoms(&self) -> impl Iterator<Item = &Atom<'a>> {
-        match self {
-            Self::Atoms(v) => v.iter(),
-            _ => [].iter(),
-        }
-    }
-
     pub fn into_atoms(self) -> impl Iterator<Item = Atom<'a>> {
         match self {
             Self::Atoms(v) => v.into_iter(),
@@ -68,23 +56,9 @@ impl<'a> Content<'a> {
         }
     }
 
-    /// Returns a reference to the first children atom matching the identifier, if present.
-    pub fn child(&self, ident: Fourcc) -> Option<&Atom<'a>> {
-        self.atoms().find(|a| a.ident == ident)
-    }
-
     /// Consumes self and returns the first children atom matching the identifier, if present.
     pub fn take_child(self, ident: Fourcc) -> Option<Atom<'a>> {
         self.into_atoms().find(|a| a.ident == ident)
-    }
-
-    /// Return a data reference if `self` is of type [`Self::RawData`] or [`Self::TypedData`].
-    pub fn data(&self) -> Option<&Data> {
-        match self {
-            Self::TypedData(d) => Some(d),
-            Self::RawData(d) => Some(d),
-            _ => None,
-        }
     }
 
     /// Consumes self and returns data if `self` is of type [`Self::RawData`] or [`Self::TypedData`].
