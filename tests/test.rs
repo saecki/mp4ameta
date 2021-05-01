@@ -162,6 +162,58 @@ fn assert_tag_2(tag: &Tag) {
     assert_eq!(tag.lyricist(), Some("NEW LYRICIST"));
 }
 
+fn assert_tag_3(tag: &Tag) {
+    assert_eq!(tag.advisory_rating(), Some(AdvisoryRating::Explicit(4)));
+    assert_eq!(tag.album(), Some("TEST ALBUM"));
+    assert_eq!(tag.album_artist(), Some("TEST ALBUM ARTIST"));
+
+    let mut artists = tag.artists();
+    assert_eq!(artists.next(), Some("ARTIST 1"));
+    assert_eq!(artists.next(), Some("ARTIST 2"));
+    assert_eq!(artists.next(), Some("ARTIST 3"));
+    assert_eq!(artists.next(), None);
+
+    assert_eq!(tag.bpm(), Some(132));
+    assert_eq!(tag.category(), Some("TEST CATEGORY"));
+    assert_eq!(tag.comment(), Some("TEST COMMENT"));
+    assert_eq!(tag.compilation(), true);
+    assert_eq!(tag.composer(), Some("TEST COMPOSER"));
+    assert_eq!(tag.copyright(), Some("TEST COPYRIGHT"));
+    assert_eq!(tag.description(), Some("TEST DESCRIPTION"));
+    assert_eq!(tag.disc(), (Some(1), Some(2)));
+    assert_eq!(tag.disc_number(), Some(1));
+    assert_eq!(tag.total_discs(), Some(2));
+    assert_eq!(tag.encoder(), Some("Lavf58.29.100"));
+    assert_eq!(tag.gapless_playback(), true);
+
+    let mut genres = tag.genres();
+    assert_eq!(genres.next(), Some("GENRE 1"));
+    assert_eq!(genres.next(), Some("GENRE 2"));
+    assert_eq!(genres.next(), Some("GENRE 3"));
+    assert_eq!(genres.next(), Some("GENRE 4"));
+    assert_eq!(genres.next(), None);
+
+    assert_eq!(tag.grouping(), Some("TEST GROUPING"));
+    assert_eq!(tag.keyword(), Some("TEST KEYWORD"));
+    assert_eq!(tag.lyrics(), Some("TEST LYRICS"));
+    assert_eq!(tag.media_type(), Some(MediaType::Normal));
+    assert_eq!(tag.title(), Some("TEST TITLE"));
+    assert_eq!(tag.track(), (Some(7), Some(13)));
+    assert_eq!(tag.track_number(), Some(7));
+    assert_eq!(tag.total_tracks(), Some(13));
+    assert_eq!(tag.year(), Some("2013"));
+    assert_eq!(tag.artwork(), Some(&Data::Png(fs::read("files/artwork.png").unwrap())));
+    assert_eq!(tag.isrc(), Some("TEST ISRC"));
+
+    let mut lyricists = tag.lyricists();
+    assert_eq!(lyricists.next(), Some("LYRICIST 1"));
+    assert_eq!(lyricists.next(), Some("LYRICIST 2"));
+    assert_eq!(lyricists.next(), Some("LYRICIST 3"));
+    assert_eq!(lyricists.next(), Some("LYRICIST 4"));
+    assert_eq!(lyricists.next(), Some("LYRICIST 5"));
+    assert_eq!(lyricists.next(), None);
+}
+
 fn assert_readonly(tag: &Tag) {
     assert_eq!(tag.duration(), Some(Duration::from_secs_f64(0.486)));
     assert_eq!(tag.filetype(), "M4A \u{0}\u{0}\u{2}\u{0}isomiso2");
@@ -219,10 +271,18 @@ fn sample_files() {
 }
 
 #[test]
-fn read() {
+fn read_sample() {
     let tag = Tag::read_from_path("files/sample.m4a").unwrap();
 
     assert_tag_1(&tag);
+    assert_readonly(&tag);
+}
+
+#[test]
+fn read_sample_multi_data() {
+    let tag = Tag::read_from_path("files/sample-multi-data.m4a").unwrap();
+
+    assert_tag_3(&tag);
     assert_readonly(&tag);
 }
 
