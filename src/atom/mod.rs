@@ -621,7 +621,7 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
     let mut moved_data_start = 0;
     let mut len_diff = 0;
 
-    if let None = hdlr {
+    if hdlr.is_none() {
         new_atoms.push(template::meta_handler_reference_atom());
     }
     if let Some(ilst) = ilst {
