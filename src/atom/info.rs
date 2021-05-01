@@ -96,7 +96,7 @@ impl Mp4aInfo {
 }
 
 fn parse_esds(reader: &mut (impl Read + Seek), info: &mut Mp4aInfo, len: u64) -> crate::Result<()> {
-    let (version, _) = parse_ext_head(reader)?;
+    let (version, _) = parse_full_head(reader)?;
 
     if version != 0 {
         return Err(crate::Error::new(
@@ -201,7 +201,7 @@ impl MvhdInfo {
 
         let start_pos = reader.seek(SeekFrom::Current(0))?;
 
-        let (version, _) = parse_ext_head(reader)?;
+        let (version, _) = parse_full_head(reader)?;
         match version {
             0 => {
                 // # Version 0
@@ -258,7 +258,7 @@ pub(super) struct ChunkOffsetInfo {
 
 impl ChunkOffsetInfo {
     pub(super) fn parse(reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Self> {
-        let (version, _) = parse_ext_head(reader)?;
+        let (version, _) = parse_full_head(reader)?;
 
         match version {
             0 => {
@@ -296,7 +296,7 @@ pub(super) struct ChunkOffsetInfo64 {
 
 impl ChunkOffsetInfo64 {
     pub(super) fn parse(reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Self> {
-        let (version, _) = parse_ext_head(reader)?;
+        let (version, _) = parse_full_head(reader)?;
 
         match version {
             0 => {

@@ -154,15 +154,15 @@ impl ContentT {
             Self::RawData(d) => Content::RawData(data::parse_data(reader, *d, len)?),
             Self::TypedData => {
                 if len >= 8 {
-                    let datatype = match data::read_u32(reader) {
-                        Ok(d) => d,
-                        Err(e) => {
-                            return Err(crate::Error::new(
-                                e.kind,
-                                "Error reading typed data head".to_owned(),
-                            ));
-                        }
-                    };
+                    let (version, flags) = parse_full_head(reader)?;
+                    if version != 0 {
+                        return Err(crate::Error::new(
+                            crate::ErrorKind::UnknownVersion(version),
+                            "Error reading data atom (data)".to_owned(),
+                        ));
+                    }
+                    let [b2, b1, b0] = flags;
+                    let datatype = u32::from_be_bytes([0, b2, b1, b0]);
 
                     // Skipping 4 byte locale indicator
                     reader.seek(SeekFrom::Current(4))?;

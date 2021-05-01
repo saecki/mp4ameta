@@ -1,5 +1,5 @@
 use std::fmt;
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::io::{self, Read, Seek, SeekFrom, Write};
 
 // [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) codes
 /// Reserved for use where no type needs to be indicated.
@@ -437,39 +437,37 @@ pub(crate) fn parse_data(reader: &mut impl Read, datatype: u32, len: u64) -> cra
 }
 
 /// Attempts to read an unsigned 8 bit integer from the reader.
-pub(crate) fn read_u8(reader: &mut impl Read) -> crate::Result<u8> {
+pub(crate) fn read_u8(reader: &mut impl Read) -> io::Result<u8> {
     let mut buf = [0u8];
     reader.read_exact(&mut buf)?;
     Ok(buf[0])
 }
 
 /// Attempts to read an unsigned 16 bit big endian integer from the reader.
-pub(crate) fn read_u16(reader: &mut impl Read) -> crate::Result<u16> {
+pub(crate) fn read_u16(reader: &mut impl Read) -> io::Result<u16> {
     let mut buf = [0u8; 2];
     reader.read_exact(&mut buf)?;
     Ok(u16::from_be_bytes(buf))
 }
 
 /// Attempts to read an unsigned 32 bit big endian integer from the reader.
-pub(crate) fn read_u32(reader: &mut impl Read) -> crate::Result<u32> {
+pub(crate) fn read_u32(reader: &mut impl Read) -> io::Result<u32> {
     let mut buf = [0u8; 4];
     reader.read_exact(&mut buf)?;
     Ok(u32::from_be_bytes(buf))
 }
 
 /// Attempts to read an unsigned 64 bit big endian integer from the reader.
-pub(crate) fn read_u64(reader: &mut impl Read) -> crate::Result<u64> {
+pub(crate) fn read_u64(reader: &mut impl Read) -> io::Result<u64> {
     let mut buf = [0u8; 8];
     reader.read_exact(&mut buf)?;
     Ok(u64::from_be_bytes(buf))
 }
 
 /// Attempts to read 8 bit unsigned integers from the reader to a vector of size length.
-pub(crate) fn read_u8_vec(reader: &mut impl Read, len: u64) -> crate::Result<Vec<u8>> {
+pub(crate) fn read_u8_vec(reader: &mut impl Read, len: u64) -> io::Result<Vec<u8>> {
     let mut buf = vec![0u8; len as usize];
-
     reader.read_exact(&mut buf)?;
-
     Ok(buf)
 }
 
@@ -492,7 +490,7 @@ pub(crate) fn read_utf16(reader: &mut impl Read, len: u64) -> crate::Result<Stri
 }
 
 /// Attempts to read the remaining stream length and returns to the starting position.
-pub(crate) fn remaining_stream_len(reader: &mut impl Seek) -> crate::Result<u64> {
+pub(crate) fn remaining_stream_len(reader: &mut impl Seek) -> io::Result<u64> {
     let current_pos = reader.seek(SeekFrom::Current(0))?;
     let complete_len = reader.seek(SeekFrom::End(0))?;
     let len = complete_len - current_pos;

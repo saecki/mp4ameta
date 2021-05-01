@@ -338,9 +338,18 @@ fn parse_content<'a>(
     }
 }
 
+/// A head specifying the size and type of an atom.
+///
+/// 4 bytes standard length
+/// 4 bytes identifier
+/// 8 bytes optional length
 struct Head {
+    /// Whether the head is of standard size (8 bytes) with a 32 bit length or extended (16 bytes)
+    /// with a 64 bit length.
     short: bool,
+    /// The length including this head.
     len: u64,
+    /// The identifier.
     ident: Fourcc,
 }
 
@@ -366,14 +375,15 @@ impl Head {
 
 /// Attempts to parse the atom's head containing a 32 bit unsigned integer determining the size of
 /// the atom in bytes and the following 4 byte identifier from the reader. If the 32 len is set to
-/// 1 an extended 64 bit length is read. Returns the length of the head, the length of the
-/// content and the identifier of the atom.
+/// 1 an extended 64 bit length is read.
 fn parse_head(reader: &mut impl Read) -> crate::Result<Head> {
     let len = match data::read_u32(reader) {
         Ok(l) => l as u64,
-        Err(mut e) => {
-            e.description = "Error reading atom length".to_owned();
-            return Err(e);
+        Err(e) => {
+            return Err(crate::Error::new(
+                ErrorKind::Io(e),
+                "Error reading atom length".to_owned(),
+            ));
         }
     };
     let mut ident = Fourcc([0u8; 4]);
@@ -387,10 +397,10 @@ fn parse_head(reader: &mut impl Read) -> crate::Result<Head> {
     if len == 1 {
         match data::read_u64(reader) {
             Ok(l) => Ok(Head::new(false, l, ident)),
-            Err(mut e) => {
-                e.description = "Error reading extended atom length".to_owned();
-                Err(e)
-            }
+            Err(e) => Err(crate::Error::new(
+                ErrorKind::Io(e),
+                "Error reading extended atom length".to_owned(),
+            )),
         }
     } else if len < 8 {
         Err(crate::Error::new(
@@ -402,10 +412,28 @@ fn parse_head(reader: &mut impl Read) -> crate::Result<Head> {
     }
 }
 
-fn parse_ext_head(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
-    let version = data::read_u8(reader)?;
+/// Attempts to parse a full atom head.
+///
+/// 1 byte version
+/// 3 bytes flags
+fn parse_full_head(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
+    let version = match data::read_u8(reader) {
+        Ok(v) => v,
+        Err(e) => {
+            return Err(crate::Error::new(
+                crate::ErrorKind::Io(e),
+                "Error reading version of full atom head".to_owned(),
+            ));
+        }
+    };
+
     let mut flags = [0u8; 3];
-    reader.read_exact(&mut flags)?;
+    if let Err(e) = reader.read_exact(&mut flags) {
+        return Err(crate::Error::new(
+            crate::ErrorKind::Io(e),
+            "Error reading flags of full atom head".to_owned(),
+        ));
+    };
 
     Ok((version, flags))
 }
@@ -541,40 +569,32 @@ pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Ta
                 }
             }
             TRACK => {
-                if let Some(mdia) = a.take_child(MEDIA) {
-                    if let Some(minf) = mdia.take_child(MEDIA_INFORMATION) {
-                        if let Some(stbl) = minf.take_child(SAMPLE_TABLE) {
-                            if let Some(stsd) = stbl.take_child(SAMPLE_TABLE_SAMPLE_DESCRIPTION) {
-                                if let Some(mp4a) = stsd.take_child(MP4_AUDIO) {
-                                    if let Content::Mp4Audio(i) = mp4a.content {
-                                        mp4a_info = Some(i);
-                                    }
-                                }
-                            }
+                a.take_child(MEDIA)
+                    .and_then(|mdia| mdia.take_child(MEDIA_INFORMATION))
+                    .and_then(|minf| minf.take_child(SAMPLE_TABLE))
+                    .and_then(|stbl| stbl.take_child(SAMPLE_TABLE_SAMPLE_DESCRIPTION))
+                    .and_then(|stsd| stsd.take_child(MP4_AUDIO))
+                    .map(|mp4a| {
+                        if let Content::Mp4Audio(i) = mp4a.content {
+                            mp4a_info = Some(i);
                         }
-                    }
-                }
+                    });
             }
             USER_DATA => {
-                if let Some(meta) = a.take_child(METADATA) {
-                    if let Some(ilst) = meta.take_child(ITEM_LIST) {
-                        if let Content::Atoms(atoms) = ilst.content {
-                            atoms
-                                .into_iter()
-                                .filter(|a| a.ident != FREE)
-                                .filter_map(|a| AtomData::try_from(a).ok())
-                                .for_each(|a| {
-                                    let existing =
-                                        tag_atoms.iter_mut().find(|other| a.ident == other.ident);
+                a.take_child(METADATA).and_then(|meta| meta.take_child(ITEM_LIST)).map(|ilst| {
+                    ilst.content
+                        .into_atoms()
+                        .filter(|a| a.ident != FREE)
+                        .filter_map(|a| AtomData::try_from(a).ok())
+                        .for_each(|a| {
+                            let other = tag_atoms.iter_mut().find(|o| a.ident == o.ident);
 
-                                    match existing {
-                                        Some(other) => other.data.extend(a.data),
-                                        None => tag_atoms.push(a),
-                                    }
-                                });
-                        }
-                    }
-                }
+                            match other {
+                                Some(other) => other.data.extend(a.data),
+                                None => tag_atoms.push(a),
+                            }
+                        });
+                });
             }
             _ => (),
         }
@@ -590,6 +610,7 @@ pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Ta
         info.max_bitrate = i.max_bitrate;
         info.avg_bitrate = i.avg_bitrate;
     }
+
     Ok(Tag::new(ftyp_string, info, tag_atoms))
 }
 

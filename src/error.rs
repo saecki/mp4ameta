@@ -14,9 +14,6 @@ pub enum ErrorKind {
     DescriptorNotFound(u8),
     /// An error kind indicating that an IO error has occurred. Contains the original `io::Error`.
     Io(io::Error),
-    /// An error kind indicating that the filetype read from the ftyp atom was invalid. Contains
-    /// the invalid filetype string.
-    InvalidFiletype(String),
     /// An error kind indicating that the reader does not contain mp4 metadata.
     NoTag,
     /// An error kind indicating that something wasn't found,
