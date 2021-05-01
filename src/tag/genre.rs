@@ -205,7 +205,7 @@ impl Tag {
             for v in self.genres() {
                 string.push_str("    ");
                 string.push_str(v);
-                string.push('n');
+                string.push('\n');
             }
             return Some(string);
         }
