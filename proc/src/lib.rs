@@ -44,38 +44,42 @@ pub fn single_string_value_accessor(input: TokenStream) -> TokenStream {
 
     format!(
         "
-/// ### {0}
+/// ### {hl}
 impl Tag {{
-    /// Returns the {1} (`{2}`).
-    pub fn {3}(&self) -> Option<&str> {{
-        self.string(&{4}).next()
+    /// Returns the {n} (`{ais}`).
+    pub fn {vi}(&self) -> Option<&str> {{
+        self.string(&{ai}).next()
     }}
 
-    /// Consumes and returns the {1} (`{2}`).
-    pub fn take_{3}(&mut self) -> Option<String> {{
-        self.take_string(&{4}).next()
+    /// Removes and returns the {n} (`{ais}`).
+    pub fn take_{vi}(&mut self) -> Option<String> {{
+        self.take_string(&{ai}).next()
     }}
 
-    /// Sets the {1} (`{2}`).
-    pub fn set_{3}(&mut self, {3}: impl Into<String>) {{
-        self.set_data({4}, Data::Utf8({3}.into()));
+    /// Sets the {n} (`{ais}`).
+    pub fn set_{vi}(&mut self, {vi}: impl Into<String>) {{
+        self.set_data({ai}, Data::Utf8({vi}.into()));
     }}
 
-    /// Removes the {1} (`{2}`).
-    pub fn remove_{3}(&mut self) {{
-        self.remove_data(&{4});
+    /// Removes the {n} (`{ais}`).
+    pub fn remove_{vi}(&mut self) {{
+        self.remove_data(&{ai});
     }}
 
-    /// Returns the {1} formatted in an easily readable way.
-    fn format_{3}(&self) -> Option<String> {{
-        match self.{3}() {{
-            Some(s) => Some(format!(\"{1}: {{}}\\n\", s)),
+    /// Returns the {n} formatted in an easily readable way.
+    fn format_{vi}(&self) -> Option<String> {{
+        match self.{vi}() {{
+            Some(s) => Some(format!(\"{n}: {{}}\\n\", s)),
             None => None,
         }}
     }}
 }}
     ",
-        headline, name, atom_ident_string, value_ident, atom_ident,
+        hl = headline,
+        n = name,
+        ais = atom_ident_string,
+        vi = value_ident,
+        ai = atom_ident,
     )
     .parse()
     .expect("Error parsing accessor impl block:")
@@ -97,48 +101,60 @@ pub fn multiple_string_values_accessor(input: TokenStream) -> TokenStream {
 
     format!(
         "
-/// ### {0}
+/// ### {hl}
 impl Tag {{
-    /// Returns all {2} (`{3}`).
-    pub fn {5}(&self) -> impl Iterator<Item=&str> {{
-        self.string(&{6})
+    /// Returns all {np} (`{ais}`).
+    pub fn {vip}(&self) -> impl Iterator<Item=&str> {{
+        self.string(&{ai})
     }}
 
-    /// Returns the first {1} (`{3}`).
-    pub fn {4}(&self) -> Option<&str> {{
-        self.string(&{6}).next()
+    /// Returns the first {n} (`{ais}`).
+    pub fn {vi}(&self) -> Option<&str> {{
+        self.string(&{ai}).next()
     }}
 
-    /// Consumes and returns all {2} (`{3}`).
-    pub fn take_{5}(&mut self) -> impl Iterator<Item=String> + '_ {{
-        self.take_string(&{6})
+    /// Removes and returns all {np} (`{ais}`).
+    pub fn take_{vip}(&mut self) -> impl Iterator<Item=String> + '_ {{
+        self.take_string(&{ai})
     }}
 
-    /// Consumes all and returns the first {1} (`{3}`).
-    pub fn take_{4}(&mut self) -> Option<String> {{
-        self.take_string(&{6}).next()
+    /// Removes all and returns the first {n} (`{ais}`).
+    pub fn take_{vi}(&mut self) -> Option<String> {{
+        self.take_string(&{ai}).next()
     }}
 
-    /// Sets the {1} (`{3}`). This will remove all other {2}.
-    pub fn set_{4}(&mut self, {4}: impl Into<String>) {{
-        self.set_data({6}, Data::Utf8({4}.into()));
+    /// Sets all {np} (`{ais}`). This will remove all other {np}.
+    pub fn set_{vip}(&mut self, {vip}: impl IntoIterator<Item = String>) {{
+        let data = {vip}.into_iter().map(|v| Data::Utf8(v));
+        self.set_all_data({ai}, data);
     }}
 
-    /// Adds an {1} (`{3}`).
-    pub fn add_{4}(&mut self, {4}: impl Into<String>) {{
-        self.add_data({6}, Data::Utf8({4}.into()));
+    /// Sets the {n} (`{ais}`). This will remove all other {np}.
+    pub fn set_{vi}(&mut self, {vi}: impl Into<String>) {{
+        self.set_data({ai}, Data::Utf8({vi}.into()));
+    }}
+    
+    /// Adds all {np} (`{ais}`).
+    pub fn add_{vip}(&mut self, {vip}: impl IntoIterator<Item = String>) {{
+        let data = {vip}.into_iter().map(|v| Data::Utf8(v));
+        self.add_all_data({ai}, data);
     }}
 
-    /// Removes all {2} (`{3}`).
-    pub fn remove_{5}(&mut self) {{
-        self.remove_data(&{6});
+    /// Adds an {n} (`{ais}`).
+    pub fn add_{vi}(&mut self, {vi}: impl Into<String>) {{
+        self.add_data({ai}, Data::Utf8({vi}.into()));
     }}
 
-    /// Returns all {2} formatted in an easily readable way.
-    fn format_{5}(&self) -> Option<String> {{
-        if self.{5}().count() > 1 {{
-            let mut string = String::from(\"{2}:\\n\");
-            for v in self.{5}() {{
+    /// Removes all {np} (`{ais}`).
+    pub fn remove_{vip}(&mut self) {{
+        self.remove_data(&{ai});
+    }}
+
+    /// Returns all {np} formatted in an easily readable way.
+    fn format_{vip}(&self) -> Option<String> {{
+        if self.{vip}().count() > 1 {{
+            let mut string = String::from(\"{np}:\\n\");
+            for v in self.{vip}() {{
                 string.push_str(\"    \");
                 string.push_str(v);
                 string.push('\\n');
@@ -146,14 +162,20 @@ impl Tag {{
             return Some(string);
         }}
 
-        match self.{4}() {{
-            Some(s) => Some(format!(\"{1}: {{}}\\n\", s)),
+        match self.{vi}() {{
+            Some(s) => Some(format!(\"{n}: {{}}\\n\", s)),
             None => None,
         }}
     }}
 }}
     ",
-        headline, name, name_plural, atom_ident_string, value_ident, value_ident_plural, atom_ident,
+        hl = headline,
+        n = name,
+        np = name_plural,
+        ais = atom_ident_string,
+        vi = value_ident,
+        vip = value_ident_plural,
+        ai = atom_ident,
     )
     .parse()
     .expect("Error parsing accessor impl block:")
@@ -165,11 +187,11 @@ pub fn flag_value_accessor(input: TokenStream) -> TokenStream {
 
     format!(
         "
-/// ### {0}
+/// ### {hl}
 impl Tag {{
-    /// Returns the {1} flag (`{2}`).
-    pub fn {3}(&self) -> bool {{
-        let vec = match self.data(&{4}).next() {{
+    /// Returns the {n} flag (`{ais}`).
+    pub fn {vi}(&self) -> bool {{
+        let vec = match self.data(&{ai}).next() {{
             Some(Data::Reserved(v)) => v,
             Some(Data::BeSigned(v)) => v,
             _ => return false,
@@ -178,18 +200,22 @@ impl Tag {{
         vec.get(0).map(|&v| v == 1).unwrap_or(false)
     }}
 
-    /// Sets the {1} flag to true (`{2}`).
-    pub fn set_{3}(&mut self) {{
-        self.set_data({4}, Data::BeSigned(vec![1u8]));
+    /// Sets the {n} flag to true (`{ais}`).
+    pub fn set_{vi}(&mut self) {{
+        self.set_data({ai}, Data::BeSigned(vec![1u8]));
     }}
 
-    /// Removes the {1} flag (`{2}`).
-    pub fn remove_{3}(&mut self) {{
-        self.remove_data(&{4})
+    /// Removes the {n} flag (`{ais}`).
+    pub fn remove_{vi}(&mut self) {{
+        self.remove_data(&{ai})
     }}
 }}
     ",
-        headline, name, atom_ident_string, value_ident, atom_ident,
+        hl = headline,
+        n = name,
+        ais = atom_ident_string,
+        vi = value_ident,
+        ai = atom_ident,
     )
     .parse()
     .expect("Error parsing accessor impl block:")
@@ -201,11 +227,11 @@ pub fn u16_value_accessor(input: TokenStream) -> TokenStream {
 
     format!(
         "
-/// ### {0}
+/// ### {hl}
 impl Tag {{
-    /// Returns the {1} (`{2}`)
-    pub fn {3}(&self) -> Option<u16> {{
-        let vec = match self.data(&{4}).next()? {{
+    /// Returns the {n} (`{ais}`)
+    pub fn {vi}(&self) -> Option<u16> {{
+        let vec = match self.data(&{ai}).next()? {{
             Data::Reserved(v) => v,
             Data::BeSigned(v) => v,
             _ => return None,
@@ -214,19 +240,23 @@ impl Tag {{
         be_int!(vec, 0, u16)
     }}
 
-    /// Sets the {1} (`{2}`)
-    pub fn set_{3}(&mut self, {3}: u16) {{
-        let vec: Vec<u8> = {3}.to_be_bytes().to_vec();
-        self.set_data({4}, Data::BeSigned(vec));
+    /// Sets the {n} (`{ais}`)
+    pub fn set_{vi}(&mut self, {vi}: u16) {{
+        let vec: Vec<u8> = {vi}.to_be_bytes().to_vec();
+        self.set_data({ai}, Data::BeSigned(vec));
     }}
 
-    /// Removes the {1} (`{2}`).
-    pub fn remove_{3}(&mut self) {{
-        self.remove_data(&{4});
+    /// Removes the {n} (`{ais}`).
+    pub fn remove_{vi}(&mut self) {{
+        self.remove_data(&{ai});
     }}
 }}
     ",
-        headline, name, atom_ident_string, value_ident, atom_ident,
+        hl = headline,
+        n = name,
+        ais = atom_ident_string,
+        vi = value_ident,
+        ai = atom_ident,
     )
     .parse()
     .expect("Error parsing accessor impl block:")
@@ -238,11 +268,11 @@ pub fn u32_value_accessor(input: TokenStream) -> TokenStream {
 
     format!(
         "
-/// ### {0}
+/// ### {hl}
 impl Tag {{
-    /// Returns the {1} (`{2}`)
-    pub fn {3}(&self) -> Option<u32> {{
-        let vec = match self.data(&{4}).next()? {{
+    /// Returns the {n} (`{ais}`)
+    pub fn {vi}(&self) -> Option<u32> {{
+        let vec = match self.data(&{ai}).next()? {{
             Data::Reserved(v) => v,
             Data::BeSigned(v) => v,
             _ => return None,
@@ -251,19 +281,23 @@ impl Tag {{
         be_int!(vec, 0, u32)
     }}
 
-    /// Sets the {1} (`{2}`)
-    pub fn set_{3}(&mut self, {3}: u32) {{
-        let vec: Vec<u8> = {3}.to_be_bytes().to_vec();
-        self.set_data({4}, Data::BeSigned(vec));
+    /// Sets the {n} (`{ais}`)
+    pub fn set_{vi}(&mut self, {vi}: u32) {{
+        let vec: Vec<u8> = {vi}.to_be_bytes().to_vec();
+        self.set_data({ai}, Data::BeSigned(vec));
     }}
 
-    /// Removes the {1} (`{2}`).
-    pub fn remove_{3}(&mut self) {{
-        self.remove_data(&{4});
+    /// Removes the {n} (`{ais}`).
+    pub fn remove_{vi}(&mut self) {{
+        self.remove_data(&{ai});
     }}
 }}
     ",
-        headline, name, atom_ident_string, value_ident, atom_ident,
+        hl = headline,
+        n = name,
+        ais = atom_ident_string,
+        vi = value_ident,
+        ai = atom_ident,
     )
     .parse()
     .expect("Error parsing accessor impl block:")

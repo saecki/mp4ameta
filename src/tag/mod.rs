@@ -4,14 +4,14 @@ use std::fs::{File, OpenOptions};
 use std::io::{BufReader, Read, Seek, Write};
 use std::path::Path;
 
+pub use genre::*;
+pub use readonly::*;
+pub use tuple::*;
+
 use crate::ident::idents_match;
 use crate::{
     atom, be_int, ident, AdvisoryRating, AtomData, AudioInfo, Data, DataIdent, Ident, MediaType,
 };
-
-pub use genre::*;
-pub use readonly::*;
-pub use tuple::*;
 
 mod genre;
 mod readonly;
@@ -21,11 +21,11 @@ mod tuple;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Tag {
     /// The `ftyp` atom.
-    pub ftyp: String,
+    ftyp: String,
     /// Readonly audio information
-    pub info: AudioInfo,
+    info: AudioInfo,
     /// A vector containing metadata atoms
-    pub atoms: Vec<AtomData>,
+    atoms: Vec<AtomData>,
 }
 
 impl fmt::Display for Tag {
@@ -203,6 +203,11 @@ impl Tag {
         let mut file = File::create(path)?;
         self.dump_to(&mut file)
     }
+
+    /// Returns wheter this tag contains no metadata atoms.
+    pub fn is_empty(&self) -> bool {
+        self.atoms.is_empty()
+    }
 }
 
 // ## Individual string values
@@ -258,35 +263,40 @@ impl Tag {
         self.image(&ident::ARTWORK).next()
     }
 
-    /// Consumes and returns all artwork images of type [`Data::Jpeg`], [`Data::Png`] or
+    /// Removes and returns all artwork images of type [`Data::Jpeg`], [`Data::Png`] or
     /// [`Data::Bmp`] (`covr`).
     pub fn take_artworks(&mut self) -> impl Iterator<Item = Data> + '_ {
         self.take_image(&ident::ARTWORK)
     }
 
-    /// Consumes all and returns the first artwork image of type [`Data::Jpeg`], [`Data::Png`] or
+    /// Removes all and returns the first artwork image of type [`Data::Jpeg`], [`Data::Png`] or
     /// [`Data::Bmp`] (`covr`).
     pub fn take_artwork(&mut self) -> Option<Data> {
         self.take_image(&ident::ARTWORK).next()
     }
 
-    /// Sets the artwork image data of type [`Data::Jpeg`], [`Data::Png`] or [`Data::Bmp`] (`covr`).
-    /// This will remove all other artworks.
+    /// Sets the artwork image data (`covr`). This will remove all other artworks.
     pub fn set_artwork(&mut self, image: Data) {
-        if image.is_image() {
-            self.set_data(ident::ARTWORK, image);
-        }
+        self.set_data(ident::ARTWORK, image);
     }
 
-    /// Adds artwork image data of type [`Data::Jpeg`], [`Data::Png`] or [`Data::Bmp`] (`covr`).
+    /// Sets all artwork image data (`covr`). This will remove all other artworks.
+    pub fn set_artworks(&mut self, images: impl IntoIterator<Item = Data>) {
+        self.set_all_data(ident::ARTWORK, images);
+    }
+
+    /// Adds artwork image data (`covr`).
     pub fn add_artwork(&mut self, image: Data) {
-        if image.is_image() {
-            self.add_data(ident::ARTWORK, image);
-        }
+        self.add_data(ident::ARTWORK, image);
+    }
+
+    /// Adds artwork image data (`covr`).
+    pub fn add_artworks(&mut self, images: impl IntoIterator<Item = Data>) {
+        self.add_all_data(ident::ARTWORK, images);
     }
 
     /// Removes all artworks (`covr`).
-    pub fn remove_artwork(&mut self) {
+    pub fn remove_artworks(&mut self) {
         self.remove_data(&ident::ARTWORK);
     }
 
@@ -418,7 +428,7 @@ impl Tag {
         self.data_mut(ident).filter_map(Data::bytes_mut)
     }
 
-    /// Consumes all byte data corresponding to the identifier and returns it.
+    /// Removes the atom corresponding to the identifier and returns all of it's byte data.
     ///
     /// # Example
     /// ```
@@ -474,7 +484,7 @@ impl Tag {
         self.data_mut(ident).filter_map(Data::string_mut)
     }
 
-    /// Consumes all strings corresponding to the identifier and returns them.
+    /// Removes the atom corresponding to the identifier and returns all of it's strings.
     ///
     /// # Example
     /// ```
@@ -535,7 +545,8 @@ impl Tag {
         self.data_mut(ident).filter_map(Data::image_mut)
     }
 
-    /// Consumes all images corresponding to the identifier and returns them.
+    /// Removes the atom corresponding to the identifier and returns all of it's image data of type
+    /// [Data::Jpeg], [`Data::Png`] or [`Data::Bmp`].
     ///
     /// # Example
     /// ```
@@ -571,7 +582,10 @@ impl Tag {
     /// };
     /// ```
     pub fn data<'a>(&'a self, ident: &'a impl Ident) -> impl Iterator<Item = &Data> {
-        self.atoms.iter().filter(move |a| idents_match(&a.ident, ident)).flat_map(|a| a.data.iter())
+        match self.atoms.iter().find(|a| idents_match(&a.ident, ident)) {
+            Some(a) => a.data.iter(),
+            None => [].iter(),
+        }
     }
 
     /// Returns all mutable data references corresponding to the identifier.
@@ -590,13 +604,13 @@ impl Tag {
     /// assert_eq!(tag.string(&test).next().unwrap(), "data1");
     /// ```
     pub fn data_mut<'a>(&'a mut self, ident: &'a impl Ident) -> impl Iterator<Item = &mut Data> {
-        self.atoms
-            .iter_mut()
-            .filter(move |a| idents_match(&a.ident, ident))
-            .flat_map(|a| a.data.iter_mut())
+        match self.atoms.iter_mut().find(|a| idents_match(&a.ident, ident)) {
+            Some(a) => a.data.iter_mut(),
+            None => [].iter_mut(),
+        }
     }
 
-    /// Consumes all data corresponding to the identifier and returns it.
+    /// Removes the atom corresponding to the identifier and returns all of it's data.
     ///
     /// # Example
     /// ```
@@ -613,23 +627,21 @@ impl Tag {
     /// assert_eq!(tag.string(&test).next(), None);
     /// ```
     pub fn take_data(&mut self, ident: &impl Ident) -> impl Iterator<Item = Data> {
-        let mut data = Vec::new();
-
         let mut i = 0;
         while i < self.atoms.len() {
             if idents_match(&self.atoms[i].ident, ident) {
                 let removed = self.atoms.remove(i);
-                data.extend(removed.data);
-            } else {
-                i += 1;
+                return removed.data.into_iter();
             }
+
+            i += 1;
         }
 
-        data.into_iter()
+        Vec::new().into_iter()
     }
 
-    /// Removes all other atoms, corresponding to the identifier, and adds a new atom containing the
-    /// provided data.
+    /// If an atom corresponding to the identifier exists, it's data will be replaced by the new
+    /// data, otherwise a new atom containing the data will be created.
     ///
     /// # Example
     /// ```
@@ -651,7 +663,45 @@ impl Tag {
         }
     }
 
-    /// Adds a new atom, corresponding to the identifier, containing the provided data.
+    /// If an atom corresponding to the identifier exists, it's data will be replaced by the new
+    /// data, otherwise a new atom containing the data will be created.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, Fourcc};
+    ///
+    /// let mut tag = Tag::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// let data = vec![
+    ///     Data::Utf8("data1".into()),
+    ///     Data::Utf8("data2".into()),
+    /// ];
+    /// tag.set_all_data(test, data);
+    ///
+    /// let mut strings = tag.string(&test);
+    /// assert_eq!(strings.next(), Some("data1"));
+    /// assert_eq!(strings.next(), Some("data2"));
+    /// assert_eq!(strings.next(), None);
+    /// ```
+    pub fn set_all_data(
+        &mut self,
+        ident: (impl Ident + Into<DataIdent>),
+        data: impl IntoIterator<Item = Data>,
+    ) {
+        match self.atoms.iter_mut().find(|a| idents_match(&a.ident, &ident)) {
+            Some(a) => {
+                a.data.clear();
+                a.data.extend(data);
+            }
+            None => {
+                self.atoms.push(AtomData::new(ident.into(), data.into_iter().collect()));
+            }
+        }
+    }
+
+    /// If an atom corresponding to the identifier exists, the new data will be added to it,
+    /// otherwise a new atom containing the data will be created.
     ///
     /// # Example
     /// ```
@@ -662,6 +712,7 @@ impl Tag {
     ///
     /// tag.add_data(test, Data::Utf8("data1".into()));
     /// tag.add_data(test, Data::Utf8("data2".into()));
+    ///
     /// let mut strings = tag.string(&test);
     /// assert_eq!(strings.next(), Some("data1"));
     /// assert_eq!(strings.next(), Some("data2"));
@@ -674,7 +725,39 @@ impl Tag {
         }
     }
 
-    /// Removes the data corresponding to the identifier.
+    /// If an atom corresponding to the identifier exists, the new data will be added to it,
+    /// otherwise a new atom containing the data will be created.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, Fourcc};
+    ///
+    /// let mut tag = Tag::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// let data = vec![
+    ///     Data::Utf8("data1".into()),
+    ///     Data::Utf8("data2".into()),
+    /// ];
+    /// tag.add_all_data(test, data);
+    ///
+    /// let mut strings = tag.string(&test);
+    /// assert_eq!(strings.next(), Some("data1"));
+    /// assert_eq!(strings.next(), Some("data2"));
+    /// assert_eq!(strings.next(), None)
+    /// ```
+    pub fn add_all_data(
+        &mut self,
+        ident: (impl Ident + Into<DataIdent>),
+        data: impl IntoIterator<Item = Data>,
+    ) {
+        match self.atoms.iter_mut().find(|a| idents_match(&a.ident, &ident)) {
+            Some(a) => a.data.extend(data),
+            None => self.atoms.push(AtomData::new(ident.into(), data.into_iter().collect())),
+        }
+    }
+
+    /// Removes all data corresponding to the identifier.
     ///
     /// # Example
     /// ```

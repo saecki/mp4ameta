@@ -1,10 +1,9 @@
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::time::Duration;
+
 use mp4ameta::{
     AdvisoryRating, ChannelConfig, Data, Fourcc, MediaType, SampleRate, Tag, STANDARD_GENRES,
-};
-use std::{
-    fs,
-    path::{Path, PathBuf},
-    time::Duration,
 };
 use walkdir::WalkDir;
 
@@ -250,22 +249,22 @@ fn sample_files() {
         Tag::default().write_to_path(&path).unwrap();
         println!("reading empty tag");
         let tag = Tag::read_from_path(&path).unwrap();
-        assert!(&tag.atoms.is_empty());
-        assert_eq!(&tag.info, &t.info);
+        assert!(tag.is_empty());
+        assert_eq!(tag.audio_info(), t.audio_info());
 
         println!("writing sample tag 1");
         get_tag_1().write_to_path(&path).unwrap();
         println!("reading sample tag 1");
         let tag = Tag::read_from_path(&path).unwrap();
         assert_tag_1(&tag);
-        assert_eq!(&tag.info, &t.info);
+        assert_eq!(tag.audio_info(), t.audio_info());
 
         println!("writing sample tag 2");
         get_tag_2().write_to_path(&path).unwrap();
         println!("reading sample tag 2");
         let tag = Tag::read_from_path(&path).unwrap();
         assert_tag_2(&tag);
-        assert_eq!(&tag.info, &t.info);
+        assert_eq!(tag.audio_info(), t.audio_info());
         println!();
     });
 }
@@ -352,7 +351,7 @@ fn write_empty() {
 
     println!("reading...");
     let tag = Tag::read_from_path("target/write_empty.m4a").unwrap();
-    assert!(tag.atoms.is_empty());
+    assert!(tag.is_empty());
     assert_readonly(&tag);
 }
 
@@ -430,17 +429,16 @@ fn multiple_values() {
 
 #[test]
 fn genre_handling() {
-    let (code, name) = (5, STANDARD_GENRES[4]);
-
     let mut tag = Tag::default();
     assert_eq!(tag.genre(), None);
     assert_eq!(tag.standard_genre(), None);
     assert_eq!(tag.custom_genre(), None);
 
-    tag.set_genre(name);
-    assert_eq!(tag.genre(), Some(name));
-    assert_eq!(tag.standard_genre(), Some(code));
-    assert_eq!(tag.custom_genre(), None);
+    let standard_name = STANDARD_GENRES[38];
+    tag.set_genre(standard_name);
+    assert_eq!(tag.genre(), Some(standard_name));
+    assert_eq!(tag.standard_genre(), None);
+    assert_eq!(tag.custom_genre(), Some(standard_name));
 
     tag.set_genre("CUSTOM GENRE");
     assert_eq!(tag.genre(), Some("CUSTOM GENRE"));

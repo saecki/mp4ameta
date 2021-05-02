@@ -105,18 +105,26 @@ impl Tag {
 
     /// Sets the standard genre (`gnre`). This will remove all other standard genres.
     pub fn set_standard_genre(&mut self, genre_code: u16) {
-        if genre_code > 0 {
-            let vec: Vec<u8> = genre_code.to_be_bytes().to_vec();
-            self.set_data(atom::STANDARD_GENRE, Data::Reserved(vec));
-        }
+        let vec: Vec<u8> = genre_code.to_be_bytes().to_vec();
+        self.set_data(atom::STANDARD_GENRE, Data::Reserved(vec));
+    }
+
+    /// Sets all standard genres (`gnre`). This will remove all other standard genres.
+    pub fn set_standard_genres(&mut self, genre_codes: impl IntoIterator<Item = u16>) {
+        let data = genre_codes.into_iter().map(|c| Data::Reserved(c.to_be_bytes().to_vec()));
+        self.set_all_data(atom::STANDARD_GENRE, data);
     }
 
     /// Adds a standard genre (`gnre`).
     pub fn add_standard_genre(&mut self, genre_code: u16) {
-        if genre_code > 0 {
-            let vec: Vec<u8> = genre_code.to_be_bytes().to_vec();
-            self.add_data(atom::STANDARD_GENRE, Data::Reserved(vec))
-        }
+        let vec: Vec<u8> = genre_code.to_be_bytes().to_vec();
+        self.add_data(atom::STANDARD_GENRE, Data::Reserved(vec))
+    }
+
+    /// Adds all standard genres (`gnre`).
+    pub fn add_standard_genres(&mut self, genre_codes: impl IntoIterator<Item = u16>) {
+        let data = genre_codes.into_iter().map(|c| Data::Reserved(c.to_be_bytes().to_vec()));
+        self.add_all_data(atom::STANDARD_GENRE, data)
     }
 
     /// Removes all standard genres (`gnre`).
@@ -144,7 +152,7 @@ impl Tag {
         self.custom_genre()
     }
 
-    /// Consumes all custom genres (`©gen`) and returns all genres, first standard genres (`gnre`)
+    /// Removes all custom genres (`©gen`) and returns all genres, first standard genres (`gnre`)
     /// then custom ones (`©gen`).
     pub fn take_genres(&mut self) -> impl Iterator<Item = String> + '_ {
         self.standard_genres()
@@ -155,7 +163,7 @@ impl Tag {
             .chain(self.take_custom_genres())
     }
 
-    /// Consumes all custom genres (`©gen`) and returns the first genre (`gnre` or `©gen`).
+    /// Removes all custom genres (`©gen`) and returns the first genre (`gnre` or `©gen`).
     pub fn take_genre(&mut self) -> Option<String> {
         if let Some(g) = self.standard_genre().and_then(genre) {
             return Some(g.to_owned());
@@ -164,32 +172,21 @@ impl Tag {
         self.take_custom_genre()
     }
 
-    /// Sets the standard genre (`gnre`) if it matches a predefined value otherwise a custom genre
-    /// (`©gen`). This will remove all other standard or custom genres.
+    /// Sets the custom genre (`©gen`). This will remove all other standard or custom genres.
     pub fn set_genre(&mut self, genre: impl Into<String>) {
-        let gen = genre.into();
-
-        match genre_code(&gen) {
-            Some(c) => {
-                self.set_standard_genre(c);
-                self.remove_custom_genres();
-            }
-            None => {
-                self.set_custom_genre(gen);
-                self.remove_standard_genres();
-            }
-        }
+        self.set_custom_genre(genre.into());
+        self.remove_standard_genres();
     }
 
-    /// Adds a standard genre (`gnre`) if it matches a predefined value otherwise a custom genre
-    /// (`©gen`).
-    pub fn add_genre(&mut self, genre: impl Into<String>) {
-        let gen = genre.into();
+    /// Sets the custom genre (`©gen`). This will remove all other standard or custom genres.
+    pub fn set_genres(&mut self, genres: impl IntoIterator<Item = String>) {
+        self.set_custom_genres(genres);
+        self.remove_standard_genres();
+    }
 
-        match genre_code(&gen) {
-            Some(c) => self.add_standard_genre(c),
-            None => self.add_custom_genre(gen),
-        }
+    /// Adds a custom genre (`©gen`).
+    pub fn add_genre(&mut self, genre: impl Into<String>) {
+        self.add_custom_genre(genre.into());
     }
 
     /// Removes the genre (`gnre` or `©gen`).
@@ -221,16 +218,6 @@ fn genre(code: u16) -> Option<&'static str> {
     let c = code as usize;
     if c > 0 && c <= STANDARD_GENRES.len() {
         return Some(&STANDARD_GENRES[c - 1]);
-    }
-
-    None
-}
-
-fn genre_code(genre: &str) -> Option<u16> {
-    for (i, &g) in STANDARD_GENRES.iter().enumerate() {
-        if g == genre {
-            return Some(i as u16 + 1);
-        };
     }
 
     None

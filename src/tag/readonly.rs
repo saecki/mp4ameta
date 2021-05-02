@@ -1,9 +1,14 @@
 use std::time::Duration;
 
-use crate::{ChannelConfig, SampleRate, Tag};
+use crate::{AudioInfo, ChannelConfig, SampleRate, Tag};
 
 /// ### Audio information
 impl Tag {
+    /// Returns a reference of the audio information.
+    pub fn audio_info(&self) -> &AudioInfo {
+        &self.info
+    }
+
     /// Returns the duration in seconds.
     pub fn duration(&self) -> Option<Duration> {
         self.info.duration
