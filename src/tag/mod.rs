@@ -203,11 +203,6 @@ impl Tag {
         let mut file = File::create(path)?;
         self.dump_to(&mut file)
     }
-
-    /// Returns wheter this tag contains no metadata atoms.
-    pub fn is_empty(&self) -> bool {
-        self.atoms.is_empty()
-    }
 }
 
 // ## Individual string values
@@ -773,5 +768,40 @@ impl Tag {
     /// ```
     pub fn remove_data(&mut self, ident: &impl Ident) {
         self.atoms.retain(|a| !idents_match(&a.ident, ident));
+    }
+
+    /// Retains only the data matching the predicate.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, Fourcc};
+    ///
+    /// let mut tag = Tag::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// tag.add_data(test, Data::Reserved(vec![5u8; 4]));
+    /// tag.add_data(test, Data::Reserved(vec![6u8; 16]));
+    ///
+    /// let mut bytes = tag.bytes(&test);
+    /// assert_eq!(bytes.next(), Some(&vec![5u8; 4]));
+    /// assert_eq!(bytes.next(), Some(&vec![6u8; 16]));
+    /// assert_eq!(bytes.next(), None);
+    /// drop(bytes);
+    ///
+    /// tag.retain_data(&test, |d| d.len() < 10);
+    ///
+    /// let mut bytes = tag.bytes(&test);
+    /// assert_eq!(bytes.next(), Some(&vec![5u8; 4]));
+    /// assert_eq!(bytes.next(), None);
+    /// ```
+    pub fn retain_data(&mut self, ident: &impl Ident, predicate: impl Fn(&Data) -> bool) {
+        self.atoms.iter_mut().find(|a| idents_match(&a.ident, ident)).map(|a| {
+            a.data.retain(|d| predicate(d));
+        });
+    }
+
+    /// Returns wheter this tag contains no metadata atoms.
+    pub fn is_empty(&self) -> bool {
+        self.atoms.is_empty()
     }
 }
