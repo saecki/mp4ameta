@@ -1,6 +1,8 @@
 use std::fmt;
 use std::io::{self, Read, Seek, SeekFrom, Write};
 
+use crate::{Img, ImgFmt, OwnedImg};
+
 // [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) codes
 /// Reserved for use where no type needs to be indicated.
 pub(crate) const RESERVED: u32 = 0;
@@ -115,6 +117,16 @@ impl fmt::Debug for Data {
     }
 }
 
+impl From<OwnedImg> for Data {
+    fn from(image: OwnedImg) -> Self {
+        match image.fmt {
+            ImgFmt::Bmp => Self::Bmp(image.data),
+            ImgFmt::Jpeg => Self::Jpeg(image.data),
+            ImgFmt::Png => Self::Png(image.data),
+        }
+    }
+}
+
 impl Data {
     /// Returns the length in bytes.
     pub fn len(&self) -> u64 {
@@ -205,7 +217,7 @@ impl Data {
 
     /// Consumes `self` and returns a byte vec if `self` is of type [`Self::Reserved`] or
     /// [`Self::BeSigned`].
-    pub fn take_bytes(self) -> Option<Vec<u8>> {
+    pub fn into_bytes(self) -> Option<Vec<u8>> {
         match self {
             Self::Reserved(v) => Some(v),
             Self::BeSigned(v) => Some(v),
@@ -234,7 +246,7 @@ impl Data {
 
     /// Consumes `self` and returns a string if `self` is either of type [`Self::Utf8`] or
     /// [`Self::Utf16`].
-    pub fn take_string(self) -> Option<String> {
+    pub fn into_string(self) -> Option<String> {
         match self {
             Self::Utf8(s) => Some(s),
             Self::Utf16(s) => Some(s),
@@ -244,68 +256,53 @@ impl Data {
 
     /// Returns a data reference if `self` is of type [`Self::Jpeg`], [`Self::Png`] or
     /// [`Self::Bmp`].
-    pub const fn image(&self) -> Option<&Data> {
+    pub fn image(&self) -> Option<Img<&[u8]>> {
         match self {
-            d if d.is_jpeg() => Some(d),
-            d if d.is_png() => Some(d),
-            d if d.is_bmp() => Some(d),
+            Self::Jpeg(v) => Some(Img::new(ImgFmt::Jpeg, v)),
+            Self::Png(v) => Some(Img::new(ImgFmt::Png, v)),
+            Self::Bmp(v) => Some(Img::new(ImgFmt::Bmp, v)),
             _ => None,
         }
     }
 
     /// Returns a data reference if `self` is of type [`Self::Jpeg`], [`Self::Png`] or
     /// [`Self::Bmp`].
-    pub fn image_mut(&mut self) -> Option<&mut Data> {
+    pub fn image_mut(&mut self) -> Option<Img<&mut Vec<u8>>> {
         match self {
-            d if d.is_jpeg() => Some(d),
-            d if d.is_png() => Some(d),
-            d if d.is_bmp() => Some(d),
+            Self::Jpeg(v) => Some(Img::new(ImgFmt::Jpeg, v)),
+            Self::Png(v) => Some(Img::new(ImgFmt::Png, v)),
+            Self::Bmp(v) => Some(Img::new(ImgFmt::Bmp, v)),
             _ => None,
         }
     }
 
     /// Consumes `self` and returns data if `self` is of type [`Self::Jpeg`], [`Self::Png`] or
     /// [`Self::Bmp`].
-    pub fn take_image(self) -> Option<Data> {
+    pub fn into_image(self) -> Option<OwnedImg> {
         match self {
-            d if d.is_jpeg() => Some(d),
-            d if d.is_png() => Some(d),
-            d if d.is_bmp() => Some(d),
+            Self::Jpeg(v) => Some(Img::new(ImgFmt::Jpeg, v)),
+            Self::Png(v) => Some(Img::new(ImgFmt::Png, v)),
+            Self::Bmp(v) => Some(Img::new(ImgFmt::Bmp, v)),
             _ => None,
         }
     }
 
     /// Returns a byte vec reference if `self` is of type [`Self::Jpeg`], [`Self::Png`] or
     /// [`Self::Bmp`].
-    pub const fn image_data(&self) -> Option<&Vec<u8>> {
-        match self {
-            Self::Jpeg(v) => Some(v),
-            Self::Png(v) => Some(v),
-            Self::Bmp(v) => Some(v),
-            _ => None,
-        }
+    pub fn image_data(&self) -> Option<&[u8]> {
+        self.image().map(|i| i.data)
     }
 
     /// Returns a mutable byte vec reference if `self` is of type [`Self::Jpeg`], [`Self::Png`] or
     /// [`Self::Bmp`].
     pub fn image_data_mut(&mut self) -> Option<&mut Vec<u8>> {
-        match self {
-            Self::Jpeg(v) => Some(v),
-            Self::Png(v) => Some(v),
-            Self::Bmp(v) => Some(v),
-            _ => None,
-        }
+        self.image_mut().map(|i| i.data)
     }
 
     /// Consumes `self` and returns a byte vec if `self` is of type [`Self::Jpeg`], [`Self::Png`]
     /// or [`Self::Bmp`].
-    pub fn take_image_data(self) -> Option<Vec<u8>> {
-        match self {
-            Self::Jpeg(v) => Some(v),
-            Self::Png(v) => Some(v),
-            Self::Bmp(v) => Some(v),
-            _ => None,
-        }
+    pub fn into_image_data(self) -> Option<Vec<u8>> {
+        self.into_image().map(|i| i.data)
     }
 
     /// Returns a byte vec reference if `self` is of type [`Self::Reserved`].

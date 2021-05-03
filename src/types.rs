@@ -354,3 +354,48 @@ pub struct AudioInfo {
     /// The average bitrate of the track.
     pub avg_bitrate: Option<u32>,
 }
+
+/// An alias for an image containing a byte vec.
+pub type OwnedImg = Img<Vec<u8>>;
+
+/// A struct representing an image.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Img<T> {
+    /// The image format.
+    pub fmt: ImgFmt,
+    /// The image data.
+    pub data: T,
+}
+
+impl<T> Img<T> {
+    /// Creates a new image.
+    pub const fn new(image_type: ImgFmt, data: T) -> Self {
+        Self { fmt: image_type, data }
+    }
+
+    /// Creates a new image with the bmp format.
+    pub const fn bmp(data: T) -> Self {
+        Self::new(ImgFmt::Bmp, data)
+    }
+
+    /// Creates a new image with the jpeg format.
+    pub const fn jpeg(data: T) -> Self {
+        Self::new(ImgFmt::Jpeg, data)
+    }
+
+    /// Creates a new image with the png format.
+    pub const fn png(data: T) -> Self {
+        Self::new(ImgFmt::Png, data)
+    }
+}
+
+/// An enum representing image formats.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ImgFmt {
+    /// Bmp.
+    Bmp,
+    /// Jpeg.
+    Jpeg,
+    /// Png.
+    Png,
+}

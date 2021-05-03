@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use mp4ameta::{
-    AdvisoryRating, ChannelConfig, Data, Fourcc, MediaType, SampleRate, Tag, STANDARD_GENRES,
+    AdvisoryRating, ChannelConfig, Data, Fourcc, Img, MediaType, SampleRate, Tag, STANDARD_GENRES,
 };
 use walkdir::WalkDir;
 
@@ -61,7 +61,7 @@ fn get_tag_1() -> Tag {
     tag.set_title("TEST TITLE");
     tag.set_track(7, 13);
     tag.set_year("2013");
-    tag.set_artwork(Data::Png(fs::read("files/artwork.png").unwrap()));
+    tag.set_artwork(Img::png(fs::read("files/artwork.png").unwrap()));
     tag.set_isrc("TEST ISRC");
     tag.set_lyricist("TEST LYRICIST");
     tag
@@ -91,7 +91,7 @@ fn get_tag_2() -> Tag {
     tag.set_title("NEW TITLE");
     tag.set_track(3, 7);
     tag.set_year("1998");
-    tag.set_artwork(Data::Jpeg(b"NEW ARTWORK".to_vec()));
+    tag.set_artwork(Img::jpeg(b"NEW ARTWORK".to_vec()));
     tag.set_isrc("NEW ISRC");
     tag.set_lyricist("NEW LYRICIST");
     tag
@@ -124,7 +124,7 @@ fn assert_tag_1(tag: &Tag) {
     assert_eq!(tag.track_number(), Some(7));
     assert_eq!(tag.total_tracks(), Some(13));
     assert_eq!(tag.year(), Some("2013"));
-    assert_eq!(tag.artwork(), Some(&Data::Png(fs::read("files/artwork.png").unwrap())));
+    assert_eq!(tag.artwork(), Some(Img::png(fs::read("files/artwork.png").unwrap().as_slice())));
     assert_eq!(tag.isrc(), Some("TEST ISRC"));
     assert_eq!(tag.lyricist(), Some("TEST LYRICIST"));
 }
@@ -156,7 +156,7 @@ fn assert_tag_2(tag: &Tag) {
     assert_eq!(tag.track_number(), Some(3));
     assert_eq!(tag.total_tracks(), Some(7));
     assert_eq!(tag.year(), Some("1998"));
-    assert_eq!(tag.artwork(), Some(&Data::Jpeg(b"NEW ARTWORK".to_vec())));
+    assert_eq!(tag.artwork(), Some(Img::jpeg(&b"NEW ARTWORK"[..])));
     assert_eq!(tag.isrc(), Some("NEW ISRC"));
     assert_eq!(tag.lyricist(), Some("NEW LYRICIST"));
 }
@@ -201,7 +201,7 @@ fn assert_tag_3(tag: &Tag) {
     assert_eq!(tag.track_number(), Some(7));
     assert_eq!(tag.total_tracks(), Some(13));
     assert_eq!(tag.year(), Some("2013"));
-    assert_eq!(tag.artwork(), Some(&Data::Png(fs::read("files/artwork.png").unwrap())));
+    assert_eq!(tag.artwork(), Some(Img::png(fs::read("files/artwork.png").unwrap().as_slice())));
     assert_eq!(tag.isrc(), Some("TEST ISRC"));
 
     let mut lyricists = tag.lyricists();
@@ -578,7 +578,7 @@ fn tag_destructuring() {
     tag.set_lyrics("TEST LYRICS");
     tag.set_title("TEST TITLE");
     tag.set_year("2013");
-    tag.set_artwork(Data::Png(b"TEST ARTWORK".to_vec()));
+    tag.set_artwork(Img::png(b"TEST ARTWORK".to_vec()));
 
     assert_eq!(tag.take_album(), Some("TEST ALBUM".to_string()));
     assert_eq!(tag.take_album_artist(), Some("TEST ALBUM ARTIST".to_string()));
@@ -595,7 +595,7 @@ fn tag_destructuring() {
     assert_eq!(tag.take_lyrics(), Some("TEST LYRICS".to_string()));
     assert_eq!(tag.take_title(), Some("TEST TITLE".to_string()));
     assert_eq!(tag.take_year(), Some("2013".to_string()));
-    assert_eq!(tag.take_artwork(), Some(Data::Png(b"TEST ARTWORK".to_vec())));
+    assert_eq!(tag.take_artwork(), Some(Img::png(b"TEST ARTWORK".to_vec())));
 
     assert_eq!(tag.album(), None);
     assert_eq!(tag.album_artist(), None);

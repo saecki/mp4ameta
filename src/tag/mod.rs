@@ -8,10 +8,11 @@ pub use genre::*;
 pub use readonly::*;
 pub use tuple::*;
 
-use crate::ident::idents_match;
 use crate::{
-    atom, be_int, ident, AdvisoryRating, AtomData, AudioInfo, Data, DataIdent, Ident, MediaType,
+    atom, be_int, ident, AdvisoryRating, AtomData, AudioInfo, Data, DataIdent, Ident, ImgFmt,
+    MediaType, OwnedImg,
 };
+use crate::{ident::idents_match, Img};
 
 mod genre;
 mod readonly;
@@ -248,46 +249,46 @@ mp4ameta_proc::u32_value_accessor!("tv_season", "tvsn");
 /// ### Artwork
 impl Tag {
     /// Returns all artwork images of type [`Data::Jpeg`], [`Data::Png`] or [`Data::Bmp`] (`covr`).
-    pub fn artworks(&self) -> impl Iterator<Item = &Data> {
+    pub fn artworks(&self) -> impl Iterator<Item = Img<&[u8]>> {
         self.image(&ident::ARTWORK)
     }
 
     /// Returns the first artwork image of type [`Data::Jpeg`], [`Data::Png`] or [`Data::Bmp`]
     /// (`covr`).
-    pub fn artwork(&self) -> Option<&Data> {
+    pub fn artwork(&self) -> Option<Img<&[u8]>> {
         self.image(&ident::ARTWORK).next()
     }
 
     /// Removes and returns all artwork images of type [`Data::Jpeg`], [`Data::Png`] or
     /// [`Data::Bmp`] (`covr`).
-    pub fn take_artworks(&mut self) -> impl Iterator<Item = Data> + '_ {
+    pub fn take_artworks(&mut self) -> impl Iterator<Item = OwnedImg> + '_ {
         self.take_image(&ident::ARTWORK)
     }
 
     /// Removes all and returns the first artwork image of type [`Data::Jpeg`], [`Data::Png`] or
     /// [`Data::Bmp`] (`covr`).
-    pub fn take_artwork(&mut self) -> Option<Data> {
+    pub fn take_artwork(&mut self) -> Option<OwnedImg> {
         self.take_image(&ident::ARTWORK).next()
     }
 
     /// Sets the artwork image data (`covr`). This will remove all other artworks.
-    pub fn set_artwork(&mut self, image: Data) {
-        self.set_data(ident::ARTWORK, image);
+    pub fn set_artwork(&mut self, image: OwnedImg) {
+        self.set_data(ident::ARTWORK, image.into());
     }
 
     /// Sets all artwork image data (`covr`). This will remove all other artworks.
-    pub fn set_artworks(&mut self, images: impl IntoIterator<Item = Data>) {
-        self.set_all_data(ident::ARTWORK, images);
+    pub fn set_artworks(&mut self, images: impl IntoIterator<Item = OwnedImg>) {
+        self.set_all_data(ident::ARTWORK, images.into_iter().map(Img::into));
     }
 
     /// Adds artwork image data (`covr`).
-    pub fn add_artwork(&mut self, image: Data) {
-        self.add_data(ident::ARTWORK, image);
+    pub fn add_artwork(&mut self, image: OwnedImg) {
+        self.add_data(ident::ARTWORK, image.into());
     }
 
     /// Adds artwork image data (`covr`).
-    pub fn add_artworks(&mut self, images: impl IntoIterator<Item = Data>) {
-        self.add_all_data(ident::ARTWORK, images);
+    pub fn add_artworks(&mut self, images: impl IntoIterator<Item = OwnedImg>) {
+        self.add_all_data(ident::ARTWORK, images.into_iter().map(Img::into));
     }
 
     /// Removes all artworks (`covr`).
@@ -297,23 +298,23 @@ impl Tag {
 
     /// Returns information about all artworks formatted in an easily readable way.
     fn format_artworks(&self) -> Option<String> {
-        let format_artwork = |a: &Data| {
+        let format_artwork = |i: Img<&[u8]>| {
             let mut string = String::new();
-            match a {
-                Data::Png(_) => string.push_str("png"),
-                Data::Jpeg(_) => string.push_str("jpeg"),
-                _ => unreachable!(),
+            match i.fmt {
+                ImgFmt::Png => string.push_str("png"),
+                ImgFmt::Jpeg => string.push_str("jpeg"),
+                ImgFmt::Bmp => string.push_str("bmp"),
             }
 
-            let len = a.image_data().unwrap().len();
+            let len = i.data.len();
 
             if len < 1024 {
                 string.push_str(&format!(" {}", len));
-            } else if len < 1024usize.pow(2) {
+            } else if len < 1024 * 1024 {
                 let size = len / 1024;
                 string.push_str(&format!(" {}k", size));
             } else {
-                let size = len / 1024usize.pow(2);
+                let size = len / (1024 * 1024);
                 string.push_str(&format!(" {}M", size));
             }
 
@@ -440,7 +441,7 @@ impl Tag {
         &'a mut self,
         ident: &'a impl Ident,
     ) -> impl Iterator<Item = Vec<u8>> + '_ {
-        self.take_data(ident).filter_map(Data::take_bytes)
+        self.take_data(ident).filter_map(Data::into_bytes)
     }
 
     /// Returns all string references corresponding to the identifier.
@@ -493,7 +494,7 @@ impl Tag {
     /// assert_eq!(tag.string(&test).next(), None);
     /// ```
     pub fn take_string<'a>(&'a mut self, ident: &'a impl Ident) -> impl Iterator<Item = String> {
-        self.take_data(ident).filter_map(Data::take_string)
+        self.take_data(ident).filter_map(Data::into_string)
     }
 
     /// Returns all image data references of type [Data::Jpeg], [`Data::Png`] or [`Data::Bmp`]
@@ -507,12 +508,10 @@ impl Tag {
     /// let test = Fourcc(*b"test");
     ///
     /// tag.set_data(test, Data::Jpeg(b"<the image data>".to_vec()));
-    /// match tag.image(&test).next().unwrap() {
-    ///     Data::Jpeg(v) => assert_eq!(*v, b"<the image data>"),
-    ///     _ => panic!("data does not match"),
-    /// };
+    /// let img = tag.image(&test).next().unwrap();
+    /// assert_eq!(img.data, b"<the image data>");
     /// ```
-    pub fn image<'a>(&'a self, ident: &'a impl Ident) -> impl Iterator<Item = &Data> {
+    pub fn image<'a>(&'a self, ident: &'a impl Ident) -> impl Iterator<Item = Img<&[u8]>> {
         self.data(ident).filter_map(Data::image)
     }
 
@@ -527,16 +526,16 @@ impl Tag {
     /// let test = Fourcc(*b"test");
     ///
     /// tag.set_data(test, Data::Jpeg(b"<the image data>".to_vec()));
-    /// match tag.image_mut(&test).next().unwrap() {
-    ///     Data::Jpeg(v) => v.push(49),
-    ///     _ => panic!("data type does match"),
-    /// }
-    /// match tag.image(&test).next().unwrap() {
-    ///     Data::Jpeg(v) => assert_eq!(*v, b"<the image data>1"),
-    ///     _ => panic!("data does not match"),
-    /// };
+    /// let img = tag.image_mut(&test).next().unwrap();
+    /// img.data.push(49);
+    ///
+    /// let img = tag.image(&test).next().unwrap();
+    /// assert_eq!(img.data, b"<the image data>1");
     /// ```
-    pub fn image_mut<'a>(&'a mut self, ident: &'a impl Ident) -> impl Iterator<Item = &mut Data> {
+    pub fn image_mut<'a>(
+        &'a mut self,
+        ident: &'a impl Ident,
+    ) -> impl Iterator<Item = Img<&mut Vec<u8>>> {
         self.data_mut(ident).filter_map(Data::image_mut)
     }
 
@@ -551,14 +550,11 @@ impl Tag {
     /// let test = Fourcc(*b"test");
     ///
     /// tag.set_data(test, Data::Png(b"<the image data>".to_vec()));
-    /// match tag.take_data(&test).next().unwrap() {
-    ///     Data::Png(s) =>  assert_eq!(s, b"<the image data>".to_vec()),
-    ///     _ => panic!("data does not match"),
-    /// };
-    /// assert_eq!(tag.string(&test).next(), None);
+    /// let img = tag.take_image(&test).next().unwrap();
+    /// assert_eq!(img.data, b"<the image data>".to_vec());
     /// ```
-    pub fn take_image(&mut self, ident: &impl Ident) -> impl Iterator<Item = Data> {
-        self.take_data(ident).filter_map(Data::take_image)
+    pub fn take_image(&mut self, ident: &impl Ident) -> impl Iterator<Item = OwnedImg> {
+        self.take_data(ident).filter_map(Data::into_image)
     }
 
     /// Returns all data references corresponding to the identifier.

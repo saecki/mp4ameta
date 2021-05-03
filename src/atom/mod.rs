@@ -46,8 +46,8 @@ impl TryFrom<Atom<'_>> for AtomData {
                         data.push(d);
                     }
                 }
-                MEAN => mean = atom.content.take_data().and_then(Data::take_string),
-                NAME => name = atom.content.take_data().and_then(Data::take_string),
+                MEAN => mean = atom.content.take_data().and_then(Data::into_string),
+                NAME => name = atom.content.take_data().and_then(Data::into_string),
                 _ => continue,
             }
         }
