@@ -791,9 +791,14 @@ impl Tag {
     /// assert_eq!(bytes.next(), None);
     /// ```
     pub fn retain_data(&mut self, ident: &impl Ident, predicate: impl Fn(&Data) -> bool) {
-        self.atoms.iter_mut().find(|a| idents_match(&a.ident, ident)).map(|a| {
-            a.data.retain(|d| predicate(d));
-        });
+        let pos = self.atoms.iter().position(|a| idents_match(&a.ident, ident));
+
+        if let Some(i) = pos {
+            self.atoms[i].data.retain(predicate);
+            if self.atoms[i].data.is_empty() {
+                self.atoms.remove(i);
+            }
+        }
     }
 
     /// Returns wheter this tag contains no metadata atoms.
