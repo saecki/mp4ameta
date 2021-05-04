@@ -197,7 +197,7 @@ impl Data {
     }
 
     /// Returns a byte vec reference if `self` is of type [`Self::Reserved`] or [`Self::BeSigned`].
-    pub const fn bytes(&self) -> Option<&Vec<u8>> {
+    pub fn bytes(&self) -> Option<&[u8]> {
         match self {
             Self::Reserved(v) => Some(v),
             Self::BeSigned(v) => Some(v),

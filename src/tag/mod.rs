@@ -400,7 +400,7 @@ impl Tag {
     /// tag.set_data(test, Data::BeSigned(b"data".to_vec()));
     /// assert_eq!(tag.bytes(&test).next().unwrap(), b"data");
     /// ```
-    pub fn bytes<'a>(&'a self, ident: &'a impl Ident) -> impl Iterator<Item = &Vec<u8>> {
+    pub fn bytes<'a>(&'a self, ident: &'a impl Ident) -> impl Iterator<Item = &[u8]> {
         self.data(ident).filter_map(Data::bytes)
     }
 
@@ -766,6 +766,90 @@ impl Tag {
         self.atoms.retain(|a| !idents_match(&a.ident, ident));
     }
 
+    /// Retains only the bytes matching the predicate.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, Fourcc};
+    ///
+    /// let mut tag = Tag::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// tag.add_data(test, Data::BeSigned(vec![4u8; 12]));
+    /// tag.add_data(test, Data::Reserved(vec![6u8; 16]));
+    ///
+    /// let mut bytes = tag.bytes(&test);
+    /// assert_eq!(bytes.next(), Some(&[4u8; 12][..]));
+    /// assert_eq!(bytes.next(), Some(&[6u8; 16][..]));
+    /// assert_eq!(bytes.next(), None);
+    /// drop(bytes);
+    ///
+    /// tag.retain_bytes(&test, |b| b[2..4] == [4u8, 4u8]);
+    ///
+    /// let mut bytes = tag.bytes(&test);
+    /// assert_eq!(bytes.next(), Some(&[4u8; 12][..]));
+    /// assert_eq!(bytes.next(), None);
+    /// ```
+    pub fn retain_bytes(&mut self, ident: &impl Ident, predicate: impl Fn(&[u8]) -> bool) {
+        self.retain_data(ident, |d| d.bytes().map_or(false, |b| predicate(b)))
+    }
+
+    /// Retains only the strings matching the predicate.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, Fourcc, Img, ImgFmt};
+    ///
+    /// let mut tag = Tag::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// tag.add_data(test, Data::Utf8("string1".into()));
+    /// tag.add_data(test, Data::Utf8("string2".into()));
+    ///
+    /// let mut strings = tag.string(&test);
+    /// assert_eq!(strings.next(), Some("string1"));
+    /// assert_eq!(strings.next(), Some("string2"));
+    /// assert_eq!(strings.next(), None);
+    /// drop(strings);
+    ///
+    /// tag.retain_string(&test, |s| s.ends_with("1"));
+    ///
+    /// let mut strings = tag.string(&test);
+    /// assert_eq!(strings.next(), Some("string1"));
+    /// assert_eq!(strings.next(), None);
+    /// ```
+    pub fn retain_string(&mut self, ident: &impl Ident, predicate: impl Fn(&str) -> bool) {
+        self.retain_data(ident, |d| d.string().map_or(false, |s| predicate(s)))
+    }
+
+    /// Retains only the images matching the predicate.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, Fourcc, Img, ImgFmt};
+    ///
+    /// let mut tag = Tag::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// tag.add_data(test, Data::Png(vec![5u8; 4]));
+    /// tag.add_data(test, Data::Jpeg(vec![6u8; 16]));
+    ///
+    /// let mut images = tag.image(&test);
+    /// assert_eq!(images.next(), Some(Img::new(ImgFmt::Png, &[5u8; 4][..])));
+    /// assert_eq!(images.next(), Some(Img::new(ImgFmt::Jpeg, &[6u8; 16][..])));
+    /// assert_eq!(images.next(), None);
+    /// drop(images);
+    ///
+    /// tag.retain_image(&test, |d| d.fmt == ImgFmt::Jpeg);
+    ///
+    /// let mut images = tag.image(&test);
+    /// assert_eq!(images.next(), Some(Img::new(ImgFmt::Jpeg, &[6u8; 16][..])));
+    /// assert_eq!(images.next(), None);
+    /// ```
+    pub fn retain_image(&mut self, ident: &impl Ident, predicate: impl Fn(Img<&[u8]>) -> bool) {
+        self.retain_data(ident, |d| d.image().map_or(false, |i| predicate(i)))
+    }
+
     /// Retains only the data matching the predicate.
     ///
     /// # Example
@@ -775,20 +859,20 @@ impl Tag {
     /// let mut tag = Tag::default();
     /// let test = Fourcc(*b"test");
     ///
-    /// tag.add_data(test, Data::Reserved(vec![5u8; 4]));
+    /// tag.add_data(test, Data::Utf8("short".into()));
     /// tag.add_data(test, Data::Reserved(vec![6u8; 16]));
     ///
-    /// let mut bytes = tag.bytes(&test);
-    /// assert_eq!(bytes.next(), Some(&vec![5u8; 4]));
-    /// assert_eq!(bytes.next(), Some(&vec![6u8; 16]));
-    /// assert_eq!(bytes.next(), None);
-    /// drop(bytes);
+    /// let mut data = tag.data(&test);
+    /// assert_eq!(data.next(), Some(&Data::Utf8("short".into())));
+    /// assert_eq!(data.next(), Some(&Data::Reserved(vec![6u8; 16])));
+    /// assert_eq!(data.next(), None);
+    /// drop(data);
     ///
     /// tag.retain_data(&test, |d| d.len() < 10);
     ///
-    /// let mut bytes = tag.bytes(&test);
-    /// assert_eq!(bytes.next(), Some(&vec![5u8; 4]));
-    /// assert_eq!(bytes.next(), None);
+    /// let mut data = tag.data(&test);
+    /// assert_eq!(data.next(), Some(&Data::Utf8("short".into())));
+    /// assert_eq!(data.next(), None);
     /// ```
     pub fn retain_data(&mut self, ident: &impl Ident, predicate: impl Fn(&Data) -> bool) {
         let pos = self.atoms.iter().position(|a| idents_match(&a.ident, ident));
@@ -801,7 +885,40 @@ impl Tag {
         }
     }
 
+    /// Clears all data from the tag.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, Fourcc};
+    ///
+    /// let mut tag = Tag::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// assert!(tag.is_empty());
+    /// tag.set_data(test, Data::Utf8("data".into()));
+    /// assert!(!tag.is_empty());
+    /// tag.clear();
+    /// assert!(tag.is_empty());
+    pub fn clear(&mut self) {
+        self.atoms.clear();
+    }
+
     /// Returns wheter this tag contains no metadata atoms.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, Fourcc};
+    ///
+    /// let mut tag = Tag::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// assert!(tag.is_empty());
+    /// tag.set_data(test, Data::Utf8("data".into()));
+    /// assert!(!tag.is_empty());
+    /// tag.clear();
+    /// assert!(tag.is_empty());
+    /// ```
+    /// use mp4ameta::{Tag, Data, Fourcc};
     pub fn is_empty(&self) -> bool {
         self.atoms.is_empty()
     }
