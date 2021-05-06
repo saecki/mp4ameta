@@ -569,19 +569,23 @@ pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Ta
                 }
             }
             TRACK => {
-                a.take_child(MEDIA)
-                    .and_then(|mdia| mdia.take_child(MEDIA_INFORMATION))
-                    .and_then(|minf| minf.take_child(SAMPLE_TABLE))
-                    .and_then(|stbl| stbl.take_child(SAMPLE_TABLE_SAMPLE_DESCRIPTION))
-                    .and_then(|stsd| stsd.take_child(MP4_AUDIO))
-                    .map(|mp4a| {
-                        if let Content::Mp4Audio(i) = mp4a.content {
-                            mp4a_info = Some(i);
-                        }
-                    });
+                let mdia = a.take_child(MEDIA);
+                let minf = mdia.and_then(|a| a.take_child(MEDIA_INFORMATION));
+                let stbl = minf.and_then(|a| a.take_child(SAMPLE_TABLE));
+                let stsd = stbl.and_then(|a| a.take_child(SAMPLE_TABLE_SAMPLE_DESCRIPTION));
+                let mp4a = stsd.and_then(|a| a.take_child(MP4_AUDIO));
+
+                if let Some(mp4a) = mp4a {
+                    if let Content::Mp4Audio(i) = mp4a.content {
+                        mp4a_info = Some(i);
+                    }
+                }
             }
             USER_DATA => {
-                a.take_child(METADATA).and_then(|meta| meta.take_child(ITEM_LIST)).map(|ilst| {
+                let meta = a.take_child(METADATA);
+                let ilst = meta.and_then(|a| a.take_child(ITEM_LIST));
+
+                if let Some(ilst) = ilst {
                     ilst.content
                         .into_atoms()
                         .filter(|a| a.ident != FREE)
@@ -594,7 +598,7 @@ pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Ta
                                 None => tag_atoms.push(a),
                             }
                         });
-                });
+                }
             }
             _ => (),
         }

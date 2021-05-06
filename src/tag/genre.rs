@@ -140,6 +140,7 @@ impl Tag {
 impl Tag {
     /// Returns all genres, first the standard genres (`gnre`) then custom ones (`©gen`).
     pub fn genres(&self) -> impl Iterator<Item = &str> + '_ {
+        #[allow(clippy::redundant_closure)]
         self.standard_genres().filter_map(|c| genre(c)).chain(self.custom_genres())
     }
 
