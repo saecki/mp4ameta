@@ -39,7 +39,7 @@ fn read_dir(path: &str, fun: impl Fn(&Path, &Tag)) {
 
 fn get_tag_1() -> Tag {
     let mut tag = Tag::default();
-    tag.set_advisory_rating(AdvisoryRating::Explicit(4));
+    tag.set_advisory_rating(AdvisoryRating::Explicit);
     tag.set_album("TEST ALBUM");
     tag.set_album_artist("TEST ALBUM ARTIST");
     tag.set_artist("TEST ARTIST");
@@ -98,7 +98,7 @@ fn get_tag_2() -> Tag {
 }
 
 fn assert_tag_1(tag: &Tag) {
-    assert_eq!(tag.advisory_rating(), Some(AdvisoryRating::Explicit(4)));
+    assert_eq!(tag.advisory_rating(), Some(AdvisoryRating::Explicit));
     assert_eq!(tag.album(), Some("TEST ALBUM"));
     assert_eq!(tag.album_artist(), Some("TEST ALBUM ARTIST"));
     assert_eq!(tag.artist(), Some("TEST ARTIST"));
@@ -162,7 +162,7 @@ fn assert_tag_2(tag: &Tag) {
 }
 
 fn assert_tag_3(tag: &Tag) {
-    assert_eq!(tag.advisory_rating(), Some(AdvisoryRating::Explicit(4)));
+    assert_eq!(tag.advisory_rating(), Some(AdvisoryRating::Explicit));
     assert_eq!(tag.album(), Some("TEST ALBUM"));
     assert_eq!(tag.album_artist(), Some("TEST ALBUM ARTIST"));
 

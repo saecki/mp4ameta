@@ -39,7 +39,7 @@
 //! tag.set_data(isrc_ident, Data::Utf8("isrc".to_owned()));
 //! tag.write_to_path("music.m4a").unwrap();
 //! ```
-#![warn(missing_docs)]
+#![deny(missing_docs, warnings)]
 
 pub use crate::atom::{ident, Data, DataIdent, Fourcc, FreeformIdent, Ident};
 pub use crate::error::{Error, ErrorKind, Result};

@@ -225,11 +225,11 @@ impl Tag {
 }
 
 fn number(vec: &[u8]) -> Option<u16> {
-    be_int!(vec, 2, u16).and_then(|dn| if dn == 0 { None } else { Some(dn) })
+    be_int!(vec, 2, u16).and_then(|n| if n == 0 { None } else { Some(n) })
 }
 
 fn total(vec: &[u8]) -> Option<u16> {
-    be_int!(vec, 4, u16).and_then(|dn| if dn == 0 { None } else { Some(dn) })
+    be_int!(vec, 4, u16).and_then(|n| if n == 0 { None } else { Some(n) })
 }
 
 fn set_number(vec: &mut Vec<u8>, number: u16) {

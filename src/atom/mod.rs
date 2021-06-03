@@ -6,17 +6,16 @@ use std::ops::{Deref, DerefMut};
 
 use crate::{AudioInfo, ErrorKind, Tag};
 
-pub use data::*;
-pub use ident::*;
-
 use content::*;
 use info::*;
 use template::*;
 
-/// A module for working with identifiers.
-pub mod ident;
+pub use data::*;
+pub use ident::*;
 
 pub mod data;
+/// A module for working with identifiers.
+pub mod ident;
 
 mod content;
 mod info;

@@ -27,6 +27,8 @@ const BOOKLET: u8 = 11;
 const CLEAN: u8 = 2;
 /// An advisory rating code stored in the `rtng` atom.
 const INOFFENSIVE: u8 = 0;
+/// An advisory rating code stored in the `rtng` atom.
+const EXPLICIT: u8 = 4;
 
 // channnel configuration indices
 /// Mono
@@ -94,8 +96,8 @@ pub enum MediaType {
 }
 
 impl MediaType {
-    /// Returns the integer value corresponding to the media type.
-    pub fn value(&self) -> u8 {
+    /// Returns the media type code.
+    pub(crate) fn code(&self) -> u8 {
         match self {
             Self::Movie => MOVIE,
             Self::Normal => NORMAL,
@@ -154,16 +156,16 @@ pub enum AdvisoryRating {
     Inoffensive,
     /// An advisory rating indicated by any other value than 0 or 2 in the `rtng` atom, containing
     /// the value.
-    Explicit(u8),
+    Explicit,
 }
 
 impl AdvisoryRating {
-    /// Returns the integer value corresponding to the rating.
-    pub fn value(&self) -> u8 {
+    /// Returns the advisory rating code.
+    pub(crate) fn code(&self) -> u8 {
         match self {
             Self::Clean => CLEAN,
             Self::Inoffensive => INOFFENSIVE,
-            Self::Explicit(r) => *r,
+            Self::Explicit => EXPLICIT,
         }
     }
 }
@@ -173,7 +175,7 @@ impl From<u8> for AdvisoryRating {
         match rating {
             CLEAN => Self::Clean,
             INOFFENSIVE => Self::Inoffensive,
-            _ => Self::Explicit(rating),
+            _ => Self::Explicit,
         }
     }
 }
@@ -183,7 +185,7 @@ impl fmt::Display for AdvisoryRating {
         match self {
             Self::Clean => write!(f, "Clean"),
             Self::Inoffensive => write!(f, "Inoffensive"),
-            Self::Explicit(r) => write!(f, "Explicit {}", r),
+            Self::Explicit => write!(f, "Explicit"),
         }
     }
 }
@@ -207,21 +209,6 @@ pub enum ChannelConfig {
     SevenOne,
 }
 
-impl ChannelConfig {
-    /// Returns the integer value corresponding to the channel config.
-    pub fn value(&self) -> u8 {
-        match self {
-            Self::Mono => MONO,
-            Self::Stereo => STEREO,
-            Self::Three => THREE,
-            Self::Four => FOUR,
-            Self::Five => FIVE,
-            Self::FiveOne => FIVE_ONE,
-            Self::SevenOne => SEVEN_ONE,
-        }
-    }
-}
-
 impl TryFrom<u8> for ChannelConfig {
     type Error = crate::Error;
 
@@ -238,6 +225,21 @@ impl TryFrom<u8> for ChannelConfig {
                 crate::ErrorKind::UnknownChannelConfig(value),
                 "Unknown channel config".to_owned(),
             )),
+        }
+    }
+}
+
+impl ChannelConfig {
+    /// Returns channel count
+    pub const fn channel_count(&self) -> u8 {
+        match self {
+            Self::Mono => 1,
+            Self::Stereo => 2,
+            Self::Three => 3,
+            Self::Four => 4,
+            Self::Five => 5,
+            Self::FiveOne => 6,
+            Self::SevenOne => 8,
         }
     }
 }
@@ -359,7 +361,7 @@ pub struct AudioInfo {
 pub type ImgRef<'a> = Img<&'a [u8]>;
 /// An alias for a mutable image reference.
 pub type ImgMut<'a> = Img<&'a mut Vec<u8>>;
-/// An alias for an image containing a byte vec.
+/// An alias for an owned image buffer.
 pub type ImgBuf = Img<Vec<u8>>;
 
 /// A struct representing an image.
@@ -402,4 +404,21 @@ pub enum ImgFmt {
     Jpeg,
     /// Png.
     Png,
+}
+
+impl ImgFmt {
+    /// Returns true if `self` is of type [`Self::Bmp`] false otherwise.
+    pub fn is_bmp(&self) -> bool {
+        matches!(self, Self::Bmp)
+    }
+
+    /// Returns true if `self` is of type [`Self::Jpeg`] false otherwise.
+    pub fn is_jpeg(&self) -> bool {
+        matches!(self, Self::Jpeg)
+    }
+
+    /// Returns true if `self` is of type [`Self::Png`] false otherwise.
+    pub fn is_png(&self) -> bool {
+        matches!(self, Self::Png)
+    }
 }

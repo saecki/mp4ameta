@@ -141,12 +141,12 @@ impl Tag {
     /// Returns all genres, first the standard genres (`gnre`) then custom ones (`©gen`).
     pub fn genres(&self) -> impl Iterator<Item = &str> + '_ {
         #[allow(clippy::redundant_closure)]
-        self.standard_genres().filter_map(|c| genre(c)).chain(self.custom_genres())
+        self.standard_genres().filter_map(|c| stanard_genre(c)).chain(self.custom_genres())
     }
 
     /// Returns the first genre (`gnre` or `©gen`).
     pub fn genre(&self) -> Option<&str> {
-        if let Some(g) = self.standard_genre().and_then(genre) {
+        if let Some(g) = self.standard_genre().and_then(stanard_genre) {
             return Some(g);
         }
 
@@ -157,7 +157,7 @@ impl Tag {
     /// then custom ones (`©gen`).
     pub fn take_genres(&mut self) -> impl Iterator<Item = String> + '_ {
         self.standard_genres()
-            .filter_map(genre)
+            .filter_map(stanard_genre)
             .map(str::to_owned)
             .collect::<Vec<String>>()
             .into_iter()
@@ -166,7 +166,7 @@ impl Tag {
 
     /// Removes all custom genres (`©gen`) and returns the first genre (`gnre` or `©gen`).
     pub fn take_genre(&mut self) -> Option<String> {
-        if let Some(g) = self.standard_genre().and_then(genre) {
+        if let Some(g) = self.standard_genre().and_then(stanard_genre) {
             return Some(g.to_owned());
         }
 
@@ -212,7 +212,7 @@ impl Tag {
     }
 }
 
-fn genre(code: u16) -> Option<&'static str> {
+fn stanard_genre(code: u16) -> Option<&'static str> {
     let c = code as usize;
     if c > 0 && c <= STANDARD_GENRES.len() {
         return Some(&STANDARD_GENRES[c - 1]);

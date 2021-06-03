@@ -1,7 +1,7 @@
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 
-/// !!NOT AN ACTUAL IDENTIFIER!! Internally used as a wildcard.
+/// **!!NOT AN ACTUAL IDENTIFIER!!** Internally used as a wildcard.
 pub(crate) const WILDCARD: Fourcc = Fourcc([255, 255, 255, 255]);
 
 /// (`ftyp`) Identifier of an atom information about the filetype.

@@ -5,16 +5,14 @@ use std::io::{BufReader, Read, Seek, Write};
 use std::path::Path;
 use std::rc::Rc;
 
+use crate::{
+    atom, be_int, ident, AdvisoryRating, AtomData, AudioInfo, Data, DataIdent, Ident, Img, ImgBuf,
+    ImgFmt, ImgMut, ImgRef, MediaType,
+};
+
 pub use genre::*;
 pub use readonly::*;
 pub use tuple::*;
-
-use crate::Img;
-use crate::ImgMut;
-use crate::{
-    atom, be_int, ident, AdvisoryRating, AtomData, AudioInfo, Data, DataIdent, Ident, ImgBuf,
-    ImgFmt, ImgRef, MediaType,
-};
 
 mod genre;
 mod readonly;
@@ -271,7 +269,7 @@ impl Tag {
     }
 
     /// Sets the artwork image data (`covr`). This will remove all other artworks.
-    pub fn set_artwork(&mut self, image: ImgBuf) {
+    pub fn set_artwork(&mut self, image: Img<impl Into<Vec<u8>>>) {
         self.set_data(ident::ARTWORK, image.into());
     }
 
@@ -281,7 +279,7 @@ impl Tag {
     }
 
     /// Adds artwork image data (`covr`).
-    pub fn add_artwork(&mut self, image: ImgBuf) {
+    pub fn add_artwork(&mut self, image: Img<impl Into<Vec<u8>>>) {
         self.add_data(ident::ARTWORK, image.into());
     }
 
@@ -352,7 +350,7 @@ impl Tag {
 
     /// Sets the media type (`stik`).
     pub fn set_media_type(&mut self, media_type: MediaType) {
-        self.set_data(ident::MEDIA_TYPE, Data::Reserved(vec![media_type.value()]));
+        self.set_data(ident::MEDIA_TYPE, Data::Reserved(vec![media_type.code()]));
     }
 
     /// Removes the media type (`stik`).
@@ -376,7 +374,7 @@ impl Tag {
 
     /// Sets the advisory rating (`rtng`).
     pub fn set_advisory_rating(&mut self, rating: AdvisoryRating) {
-        self.set_data(ident::ADVISORY_RATING, Data::Reserved(vec![rating.value()]));
+        self.set_data(ident::ADVISORY_RATING, Data::Reserved(vec![rating.code()]));
     }
 
     /// Removes the advisory rating (`rtng`).
@@ -387,7 +385,7 @@ impl Tag {
 
 /// ## Data accessors
 impl Tag {
-    /// Returns all byte data references corresponding to the identifier.
+    /// Returns references to all byte data corresponding to the identifier.
     ///
     /// # Example
     /// ```
@@ -403,7 +401,7 @@ impl Tag {
         self.data_of(ident).filter_map(Data::bytes)
     }
 
-    /// Returns all mutable string references corresponding to the identifier.
+    /// Returns mutable references to all byte data corresponding to the identifier.
     ///
     /// # Example
     /// ```
@@ -443,7 +441,7 @@ impl Tag {
         self.take_data_of(ident).filter_map(Data::into_bytes)
     }
 
-    /// Returns all string references corresponding to the identifier.
+    /// Returns references to all strings corresponding to the identifier.
     ///
     /// # Example
     /// ```
@@ -499,7 +497,7 @@ impl Tag {
         self.take_data_of(ident).filter_map(Data::into_string)
     }
 
-    /// Returns all image references corresponding to the identifier.
+    /// Returns references to all images corresponding to the identifier.
     ///
     /// # Example
     /// ```
@@ -516,7 +514,7 @@ impl Tag {
         self.data_of(ident).filter_map(Data::image)
     }
 
-    /// Returns all mutable image references corresponding to the identifier.
+    /// Returns mutable references to all images corresponding to the identifier.
     ///
     /// # Example
     /// ```
@@ -556,7 +554,7 @@ impl Tag {
         self.take_data_of(ident).filter_map(Data::into_image)
     }
 
-    /// Returns all data references corresponding to the identifier.
+    /// Returns references to all data corresponding to the identifier.
     ///
     /// # Example
     /// ```
@@ -578,7 +576,7 @@ impl Tag {
         }
     }
 
-    /// Returns all mutable data references corresponding to the identifier.
+    /// Returns mutable references to all data corresponding to the identifier.
     ///
     /// # Example
     /// ```
@@ -630,56 +628,67 @@ impl Tag {
         Vec::new().into_iter()
     }
 
+    /// Returns an iterator over references to all byte data.
     /// TODO
     pub fn bytes(&self) -> impl Iterator<Item = (&DataIdent, &[u8])> {
         self.data().filter_map(|(i, d)| Some((i, d.bytes()?)))
     }
 
+    /// Returns an iterator over mutable references to all byte data.
     /// TODO
     pub fn bytes_mut(&mut self) -> impl Iterator<Item = (&DataIdent, &mut Vec<u8>)> {
         self.data_mut().filter_map(|(i, d)| Some((i, d.bytes_mut()?)))
     }
 
+    /// Consumes `self` and returns an iterator over all byte data.
     /// TODO
     pub fn take_bytes(self) -> impl Iterator<Item = (Rc<DataIdent>, Vec<u8>)> {
         self.take_data().filter_map(|(i, d)| Some((i, d.into_bytes()?)))
     }
 
+    /// Returns an iterator over references to all strings.
     /// TODO
     pub fn strings(&self) -> impl Iterator<Item = (&DataIdent, &str)> {
         self.data().filter_map(|(i, d)| Some((i, d.string()?)))
     }
 
+    /// Returns an iterator over mutable references to all strings.
     /// TODO
     pub fn strings_mut(&mut self) -> impl Iterator<Item = (&DataIdent, &mut String)> {
         self.data_mut().filter_map(|(i, d)| Some((i, d.string_mut()?)))
     }
 
+    /// Consumes `self` and returns an iterator over all strings.
     /// TODO
     pub fn take_strings(self) -> impl Iterator<Item = (Rc<DataIdent>, String)> {
         self.take_data().filter_map(|(i, d)| Some((i, d.into_string()?)))
     }
 
+    /// Returns an iterator over references to all images.
     /// TODO
     pub fn images(&self) -> impl Iterator<Item = (&DataIdent, ImgRef)> {
         self.data().filter_map(|(i, d)| Some((i, d.image()?)))
     }
 
+    /// Returns an iterator over mutable references to all images.
     /// TODO
     pub fn images_mut(&mut self) -> impl Iterator<Item = (&DataIdent, ImgMut)> {
         self.data_mut().filter_map(|(i, d)| Some((i, d.image_mut()?)))
     }
 
+    /// Consumes `self` and returns an iterator over all images.
     /// TODO
     pub fn take_images(self) -> impl Iterator<Item = (Rc<DataIdent>, ImgBuf)> {
         self.take_data().filter_map(|(i, d)| Some((i, d.into_image()?)))
     }
 
+    /// Returns an iterator over references to all data.
     /// TODO
     pub fn data(&self) -> impl Iterator<Item = (&DataIdent, &Data)> {
         self.atoms.iter().flat_map(|a| a.data.iter().map(move |d| (&a.ident, d)))
     }
 
+    /// Returns an iterator over mutable references to all data.
     /// TODO
     pub fn data_mut(&mut self) -> impl Iterator<Item = (&DataIdent, &mut Data)> {
         self.atoms.iter_mut().flat_map(|a| {
@@ -689,6 +698,7 @@ impl Tag {
         })
     }
 
+    /// Consumes `self` and returns an iterator over all data.
     /// TODO
     pub fn take_data(self) -> impl Iterator<Item = (Rc<DataIdent>, Data)> {
         self.atoms.into_iter().flat_map(move |a| {
@@ -698,16 +708,19 @@ impl Tag {
         })
     }
 
+    /// Removes only byte data corresponding to the identifier. Other data will remain unaffected.
     /// TODO
     pub fn remove_bytes_of(&mut self, ident: &impl Ident) {
         self.retain_data_of(ident, |d| !d.is_bytes());
     }
 
+    /// Removes only strings corresponding to the identifier. Other data will remain unaffected.
     /// TODO
     pub fn remove_strings_of(&mut self, ident: &impl Ident) {
         self.retain_data_of(ident, |d| !d.is_string());
     }
 
+    /// Removes only images corresponding to the identifier. Other data will remain unaffected.
     /// TODO
     pub fn remove_images_of(&mut self, ident: &impl Ident) {
         self.retain_data_of(ident, |d| !d.is_image());
@@ -854,17 +867,98 @@ impl Tag {
         }
     }
 
-    /// TODO
+    /// Retains only the byte data matching the predicate. Other data will remain unaffected.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, Fourcc};
+    ///
+    /// let mut tag = Tag::default();
+    /// let tst1 = Fourcc(*b"tst1");
+    /// let tst2 = Fourcc(*b"tst2");
+    ///
+    /// tag.add_data(tst1, Data::Reserved(b"data1".to_vec()));
+    /// tag.add_data(tst2, Data::Png(b"data2".to_vec()));
+    /// tag.add_data(tst2, Data::BeSigned(b"data3".to_vec()));
+    ///
+    /// let mut data = tag.data().map(|(i, d)| d);
+    /// assert_eq!(data.next(), Some(&Data::Reserved(b"data1".to_vec())));
+    /// assert_eq!(data.next(), Some(&Data::Png(b"data2".to_vec())));
+    /// assert_eq!(data.next(), Some(&Data::BeSigned(b"data3".to_vec())));
+    /// assert_eq!(data.next(), None);
+    /// drop(data);
+    ///
+    /// tag.retain_bytes(|i, d| &tst1 == i);
+    ///
+    /// let mut data = tag.data().map(|(i, d)| d);
+    /// assert_eq!(data.next(), Some(&Data::Reserved(b"data1".to_vec())));
+    /// assert_eq!(data.next(), Some(&Data::Png(b"data2".to_vec())));
+    /// assert_eq!(data.next(), None);
+    /// ```
     pub fn retain_bytes(&mut self, predicate: impl Fn(&DataIdent, &[u8]) -> bool) {
         self.retain_data(|i, d| d.bytes().map_or(true, |s| predicate(i, s)));
     }
 
-    /// TODO
+    /// Retains only the strings matching the predicate. Other data will remain unaffected.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, Fourcc};
+    ///
+    /// let mut tag = Tag::default();
+    /// let tst1 = Fourcc(*b"tst1");
+    /// let tst2 = Fourcc(*b"tst2");
+    ///
+    /// tag.add_data(tst1, Data::Utf8("data1".into()));
+    /// tag.add_data(tst2, Data::Png(b"data2".to_vec()));
+    /// tag.add_data(tst2, Data::Utf8("data3".into()));
+    ///
+    /// let mut data = tag.data().map(|(i, d)| d);
+    /// assert_eq!(data.next(), Some(&Data::Utf8("data1".into())));
+    /// assert_eq!(data.next(), Some(&Data::Png(b"data2".to_vec())));
+    /// assert_eq!(data.next(), Some(&Data::Utf8("data3".into())));
+    /// assert_eq!(data.next(), None);
+    /// drop(data);
+    ///
+    /// tag.retain_strings(|i, d| &tst1 == i);
+    ///
+    /// let mut data = tag.data().map(|(i, d)| d);
+    /// assert_eq!(data.next(), Some(&Data::Utf8("data1".into())));
+    /// assert_eq!(data.next(), Some(&Data::Png(b"data2".to_vec())));
+    /// assert_eq!(data.next(), None);
+    /// ```
     pub fn retain_strings(&mut self, predicate: impl Fn(&DataIdent, &str) -> bool) {
         self.retain_data(|i, d| d.string().map_or(true, |s| predicate(i, s)));
     }
 
-    /// TODO
+    /// Retains only the images matching the predicate. Other data will remain unaffected.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, Fourcc};
+    ///
+    /// let mut tag = Tag::default();
+    /// let tst1 = Fourcc(*b"tst1");
+    /// let tst2 = Fourcc(*b"tst2");
+    ///
+    /// tag.add_data(tst1, Data::Jpeg(b"data1".to_vec()));
+    /// tag.add_data(tst2, Data::Png(b"data2".to_vec()));
+    /// tag.add_data(tst2, Data::Utf8("data3".into()));
+    ///
+    /// let mut data = tag.data().map(|(i, d)| d);
+    /// assert_eq!(data.next(), Some(&Data::Jpeg(b"data1".to_vec())));
+    /// assert_eq!(data.next(), Some(&Data::Png(b"data2".to_vec())));
+    /// assert_eq!(data.next(), Some(&Data::Utf8("data3".into())));
+    /// assert_eq!(data.next(), None);
+    /// drop(data);
+    ///
+    /// tag.retain_images(|i, d| &tst1 == i);
+    ///
+    /// let mut data = tag.data().map(|(i, d)| d);
+    /// assert_eq!(data.next(), Some(&Data::Jpeg(b"data1".to_vec())));
+    /// assert_eq!(data.next(), Some(&Data::Utf8("data3".into())));
+    /// assert_eq!(data.next(), None);
+    /// ```
     pub fn retain_images(&mut self, predicate: impl Fn(&DataIdent, ImgRef) -> bool) {
         self.retain_data(|i, d| d.image().map_or(true, |s| predicate(i, s)));
     }
@@ -880,22 +974,19 @@ impl Tag {
     /// let tst2 = Fourcc(*b"tst2");
     ///
     /// tag.add_data(tst1, Data::Utf8("data1".into()));
-    /// tag.add_data(tst1, Data::Utf8("data2".into()));
-    /// tag.add_data(tst2, Data::Utf8("data3".into()));
-    /// tag.add_data(tst2, Data::Utf8("data4".into()));
+    /// tag.add_data(tst2, Data::Utf8("data2".into()));
     ///
     /// let mut data = tag.data().map(|(i, d)| d);
     /// assert_eq!(data.next(), Some(&Data::Utf8("data1".into())));
     /// assert_eq!(data.next(), Some(&Data::Utf8("data2".into())));
-    /// assert_eq!(data.next(), Some(&Data::Utf8("data3".into())));
-    /// assert_eq!(data.next(), Some(&Data::Utf8("data4".into())));
+    /// assert_eq!(data.next(), None);
     /// drop(data);
     ///
     /// tag.retain_data(|i, d| &tst1 != i);
     ///
     /// let mut data = tag.data().map(|(i, d)| d);
-    /// assert_eq!(data.next(), Some(&Data::Utf8("data1".into())));
     /// assert_eq!(data.next(), Some(&Data::Utf8("data2".into())));
+    /// assert_eq!(data.next(), None);
     /// ```
     pub fn retain_data(&mut self, predicate: impl Fn(&DataIdent, &Data) -> bool) {
         let mut i = 0;
@@ -904,9 +995,9 @@ impl Tag {
             let mut j = 0;
             while j < a.data.len() {
                 if predicate(&a.ident, &a.data[j]) {
-                    a.data.remove(j);
-                } else {
                     j += 1;
+                } else {
+                    a.data.remove(j);
                 }
             }
 
@@ -918,7 +1009,7 @@ impl Tag {
         }
     }
 
-    /// Clears all data from the tag.
+    /// Removes all metadata atoms of the tag.
     ///
     /// # Example
     /// ```
@@ -1053,7 +1144,7 @@ impl Tag {
         }
     }
 
-    /// Returns wheter this tag contains no metadata atoms.
+    /// Returns true if this tag contains any metadata atoms, false otherwise.
     ///
     /// # Example
     /// ```
