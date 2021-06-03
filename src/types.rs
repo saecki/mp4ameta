@@ -355,8 +355,12 @@ pub struct AudioInfo {
     pub avg_bitrate: Option<u32>,
 }
 
+/// An alias for an image reference.
+pub type ImgRef<'a> = Img<&'a [u8]>;
+/// An alias for a mutable image reference.
+pub type ImgMut<'a> = Img<&'a mut Vec<u8>>;
 /// An alias for an image containing a byte vec.
-pub type OwnedImg = Img<Vec<u8>>;
+pub type ImgBuf = Img<Vec<u8>>;
 
 /// A struct representing an image.
 #[derive(Clone, Debug, Eq, PartialEq)]

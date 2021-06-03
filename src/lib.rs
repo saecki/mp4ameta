@@ -19,7 +19,7 @@
 //! let mut tag = Tag::read_from_path("music.m4a").unwrap();
 //! let artist_ident = Fourcc(*b"\xa9ART");
 //!
-//! let artist = tag.string(&artist_ident).next().unwrap();
+//! let artist = tag.strings_of(&artist_ident).next().unwrap();
 //! println!("{}", artist);
 //!
 //! tag.set_data(artist_ident, Data::Utf8("artist".to_owned()));
@@ -33,7 +33,7 @@
 //! let mut tag = Tag::read_from_path("music.m4a").unwrap();
 //! let isrc_ident = FreeformIdent::new("com.apple.iTunes", "ISRC");
 //!
-//! let isrc = tag.string(&isrc_ident).next().unwrap();
+//! let isrc = tag.strings_of(&isrc_ident).next().unwrap();
 //! println!("{}", isrc);
 //!
 //! tag.set_data(isrc_ident, Data::Utf8("isrc".to_owned()));
@@ -41,10 +41,12 @@
 //! ```
 #![warn(missing_docs)]
 
-pub use crate::atom::{ident, AtomData, Data, DataIdent, Fourcc, FreeformIdent, Ident};
+pub use crate::atom::{ident, Data, DataIdent, Fourcc, FreeformIdent, Ident};
 pub use crate::error::{Error, ErrorKind, Result};
 pub use crate::tag::{Tag, STANDARD_GENRES};
 pub use crate::types::*;
+
+pub(crate) use crate::atom::AtomData;
 
 mod atom;
 mod error;

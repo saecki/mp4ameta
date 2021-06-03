@@ -89,7 +89,7 @@ pub const STANDARD_GENRES: [&str; 80] = [
 impl Tag {
     /// Returns all standard genres (`gnre`).
     pub fn standard_genres(&self) -> impl Iterator<Item = u16> + '_ {
-        self.bytes(&atom::STANDARD_GENRE).filter_map(|v| {
+        self.bytes_of(&atom::STANDARD_GENRE).filter_map(|v| {
             if v.len() < 2 {
                 None
             } else {
@@ -129,7 +129,7 @@ impl Tag {
 
     /// Removes all standard genres (`gnre`).
     pub fn remove_standard_genres(&mut self) {
-        self.remove_data(&atom::STANDARD_GENRE);
+        self.remove_data_of(&atom::STANDARD_GENRE);
     }
 }
 

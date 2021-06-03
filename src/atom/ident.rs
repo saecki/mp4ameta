@@ -152,7 +152,7 @@ pub const ISRC: FreeformIdent = FreeformIdent::new(APPLE_ITUNES_MEAN, "ISRC");
 pub const LYRICIST: FreeformIdent = FreeformIdent::new(APPLE_ITUNES_MEAN, "LYRICIST");
 
 /// A trait providing information about an identifier.
-pub trait Ident {
+pub trait Ident: PartialEq<DataIdent> {
     /// Returns a 4 byte atom identifier.
     fn fourcc(&self) -> Option<Fourcc>;
     /// Returns a freeform identifier.
@@ -180,6 +180,15 @@ impl Deref for Fourcc {
 impl DerefMut for Fourcc {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+impl PartialEq<DataIdent> for Fourcc {
+    fn eq(&self, other: &DataIdent) -> bool {
+        match other {
+            DataIdent::Fourcc(f) => self == f,
+            DataIdent::Freeform { .. } => false,
+        }
     }
 }
 
@@ -212,6 +221,15 @@ pub struct FreeformIdent<'a> {
     pub mean: &'a str,
     /// The name string used to identify the freeform atom.
     pub name: &'a str,
+}
+
+impl PartialEq<DataIdent> for FreeformIdent<'_> {
+    fn eq(&self, other: &DataIdent) -> bool {
+        match other {
+            DataIdent::Fourcc(_) => false,
+            DataIdent::Freeform { mean, name } => self.mean == mean && self.name == name,
+        }
+    }
 }
 
 impl Ident for FreeformIdent<'_> {

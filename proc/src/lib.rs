@@ -48,12 +48,12 @@ pub fn single_string_value_accessor(input: TokenStream) -> TokenStream {
 impl Tag {{
     /// Returns the {n} (`{ais}`).
     pub fn {vi}(&self) -> Option<&str> {{
-        self.string(&{ai}).next()
+        self.strings_of(&{ai}).next()
     }}
 
     /// Removes and returns the {n} (`{ais}`).
     pub fn take_{vi}(&mut self) -> Option<String> {{
-        self.take_string(&{ai}).next()
+        self.take_strings_of(&{ai}).next()
     }}
 
     /// Sets the {n} (`{ais}`).
@@ -63,7 +63,7 @@ impl Tag {{
 
     /// Removes the {n} (`{ais}`).
     pub fn remove_{vi}(&mut self) {{
-        self.remove_data(&{ai});
+        self.remove_data_of(&{ai});
     }}
 
     /// Returns the {n} formatted in an easily readable way.
@@ -105,22 +105,22 @@ pub fn multiple_string_values_accessor(input: TokenStream) -> TokenStream {
 impl Tag {{
     /// Returns all {np} (`{ais}`).
     pub fn {vip}(&self) -> impl Iterator<Item=&str> {{
-        self.string(&{ai})
+        self.strings_of(&{ai})
     }}
 
     /// Returns the first {n} (`{ais}`).
     pub fn {vi}(&self) -> Option<&str> {{
-        self.string(&{ai}).next()
+        self.strings_of(&{ai}).next()
     }}
 
     /// Removes and returns all {np} (`{ais}`).
     pub fn take_{vip}(&mut self) -> impl Iterator<Item=String> + '_ {{
-        self.take_string(&{ai})
+        self.take_strings_of(&{ai})
     }}
 
     /// Removes all and returns the first {n} (`{ais}`).
     pub fn take_{vi}(&mut self) -> Option<String> {{
-        self.take_string(&{ai}).next()
+        self.take_strings_of(&{ai}).next()
     }}
 
     /// Sets all {np} (`{ais}`). This will remove all other {np}.
@@ -147,7 +147,7 @@ impl Tag {{
 
     /// Removes all {np} (`{ais}`).
     pub fn remove_{vip}(&mut self) {{
-        self.remove_data(&{ai});
+        self.remove_data_of(&{ai});
     }}
 
     /// Returns all {np} formatted in an easily readable way.
@@ -191,12 +191,10 @@ pub fn flag_value_accessor(input: TokenStream) -> TokenStream {
 impl Tag {{
     /// Returns the {n} flag (`{ais}`).
     pub fn {vi}(&self) -> bool {{
-        let vec = match self.data(&{ai}).next() {{
-            Some(Data::Reserved(v)) => v,
-            Some(Data::BeSigned(v)) => v,
-            _ => return false,
+        let vec = match self.bytes_of(&{ai}).next() {{
+            Some(v) => v,
+            None => return false,
         }};
-
         vec.get(0).map(|&v| v == 1).unwrap_or(false)
     }}
 
@@ -207,7 +205,7 @@ impl Tag {{
 
     /// Removes the {n} flag (`{ais}`).
     pub fn remove_{vi}(&mut self) {{
-        self.remove_data(&{ai})
+        self.remove_data_of(&{ai})
     }}
 }}
     ",
@@ -231,12 +229,7 @@ pub fn u16_value_accessor(input: TokenStream) -> TokenStream {
 impl Tag {{
     /// Returns the {n} (`{ais}`)
     pub fn {vi}(&self) -> Option<u16> {{
-        let vec = match self.data(&{ai}).next()? {{
-            Data::Reserved(v) => v,
-            Data::BeSigned(v) => v,
-            _ => return None,
-        }};
-
+        let vec = self.bytes_of(&{ai}).next()?;
         be_int!(vec, 0, u16)
     }}
 
@@ -248,7 +241,7 @@ impl Tag {{
 
     /// Removes the {n} (`{ais}`).
     pub fn remove_{vi}(&mut self) {{
-        self.remove_data(&{ai});
+        self.remove_data_of(&{ai});
     }}
 }}
     ",
@@ -272,12 +265,7 @@ pub fn u32_value_accessor(input: TokenStream) -> TokenStream {
 impl Tag {{
     /// Returns the {n} (`{ais}`)
     pub fn {vi}(&self) -> Option<u32> {{
-        let vec = match self.data(&{ai}).next()? {{
-            Data::Reserved(v) => v,
-            Data::BeSigned(v) => v,
-            _ => return None,
-        }};
-
+        let vec = self.bytes_of(&{ai}).next()?;
         be_int!(vec, 0, u32)
     }}
 
@@ -289,7 +277,7 @@ impl Tag {{
 
     /// Removes the {n} (`{ais}`).
     pub fn remove_{vi}(&mut self) {{
-        self.remove_data(&{ai});
+        self.remove_data_of(&{ai});
     }}
 }}
     ",

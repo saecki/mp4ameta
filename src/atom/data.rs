@@ -1,7 +1,7 @@
 use std::fmt;
 use std::io::{self, Read, Seek, SeekFrom, Write};
 
-use crate::{Img, ImgFmt, OwnedImg};
+use crate::{Img, ImgBuf, ImgFmt, ImgMut, ImgRef};
 
 // [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) codes
 /// Reserved for use where no type needs to be indicated.
@@ -117,8 +117,8 @@ impl fmt::Debug for Data {
     }
 }
 
-impl From<OwnedImg> for Data {
-    fn from(image: OwnedImg) -> Self {
+impl From<ImgBuf> for Data {
+    fn from(image: ImgBuf) -> Self {
         match image.fmt {
             ImgFmt::Bmp => Self::Bmp(image.data),
             ImgFmt::Jpeg => Self::Jpeg(image.data),
@@ -256,7 +256,7 @@ impl Data {
 
     /// Returns a data reference if `self` is of type [`Self::Jpeg`], [`Self::Png`] or
     /// [`Self::Bmp`].
-    pub fn image(&self) -> Option<Img<&[u8]>> {
+    pub fn image(&self) -> Option<ImgRef> {
         match self {
             Self::Jpeg(v) => Some(Img::new(ImgFmt::Jpeg, v)),
             Self::Png(v) => Some(Img::new(ImgFmt::Png, v)),
@@ -267,7 +267,7 @@ impl Data {
 
     /// Returns a data reference if `self` is of type [`Self::Jpeg`], [`Self::Png`] or
     /// [`Self::Bmp`].
-    pub fn image_mut(&mut self) -> Option<Img<&mut Vec<u8>>> {
+    pub fn image_mut(&mut self) -> Option<ImgMut> {
         match self {
             Self::Jpeg(v) => Some(Img::new(ImgFmt::Jpeg, v)),
             Self::Png(v) => Some(Img::new(ImgFmt::Png, v)),
@@ -278,7 +278,7 @@ impl Data {
 
     /// Consumes `self` and returns data if `self` is of type [`Self::Jpeg`], [`Self::Png`] or
     /// [`Self::Bmp`].
-    pub fn into_image(self) -> Option<OwnedImg> {
+    pub fn into_image(self) -> Option<ImgBuf> {
         match self {
             Self::Jpeg(v) => Some(Img::new(ImgFmt::Jpeg, v)),
             Self::Png(v) => Some(Img::new(ImgFmt::Png, v)),
