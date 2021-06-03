@@ -593,7 +593,7 @@ impl Tag {
     /// }
     /// assert_eq!(tag.strings_of(&test).next().unwrap(), "data1");
     /// ```
-    pub fn data_mut_of<'a>(&'a mut self, ident: &'a impl Ident) -> impl Iterator<Item = &mut Data> {
+    pub fn data_mut_of(&mut self, ident: &impl Ident) -> impl Iterator<Item = &mut Data> {
         match self.atoms.iter_mut().find(|a| ident == &a.ident) {
             Some(a) => a.data.iter_mut(),
             None => [].iter_mut(),
@@ -681,7 +681,7 @@ impl Tag {
     }
 
     /// TODO
-    pub fn data_mut<'b>(&'b mut self) -> impl Iterator<Item = (&'b DataIdent, &'b mut Data)> {
+    pub fn data_mut(&mut self) -> impl Iterator<Item = (&DataIdent, &mut Data)> {
         self.atoms.iter_mut().flat_map(|a| {
             let ident = &a.ident;
             let data = &mut a.data;
@@ -690,7 +690,7 @@ impl Tag {
     }
 
     /// TODO
-    pub fn take_data<'a>(self) -> impl Iterator<Item = (Rc<DataIdent>, Data)> {
+    pub fn take_data(self) -> impl Iterator<Item = (Rc<DataIdent>, Data)> {
         self.atoms.into_iter().flat_map(move |a| {
             let ident = Rc::new(a.ident);
             let data = a.data;
@@ -950,7 +950,7 @@ impl Tag {
     /// assert_eq!(tag.strings_of(&test).next().unwrap(), "data");
     /// ```
     pub fn set_data(&mut self, ident: (impl Ident + Into<DataIdent>), data: Data) {
-        match self.atoms.iter_mut().find(|a| &ident == &a.ident) {
+        match self.atoms.iter_mut().find(|a| ident == a.ident) {
             Some(a) => {
                 a.data.clear();
                 a.data.push(data);
@@ -985,7 +985,7 @@ impl Tag {
         ident: (impl Ident + Into<DataIdent>),
         data: impl IntoIterator<Item = Data>,
     ) {
-        match self.atoms.iter_mut().find(|a| &ident == &a.ident) {
+        match self.atoms.iter_mut().find(|a| ident == a.ident) {
             Some(a) => {
                 a.data.clear();
                 a.data.extend(data);
@@ -1015,7 +1015,7 @@ impl Tag {
     /// assert_eq!(strings.next(), None)
     /// ```
     pub fn add_data(&mut self, ident: (impl Ident + Into<DataIdent>), data: Data) {
-        match self.atoms.iter_mut().find(|a| &ident == &a.ident) {
+        match self.atoms.iter_mut().find(|a| ident == a.ident) {
             Some(a) => a.data.push(data),
             None => self.atoms.push(AtomData::new(ident.into(), vec![data])),
         }
@@ -1047,7 +1047,7 @@ impl Tag {
         ident: (impl Ident + Into<DataIdent>),
         data: impl IntoIterator<Item = Data>,
     ) {
-        match self.atoms.iter_mut().find(|a| &ident == &a.ident) {
+        match self.atoms.iter_mut().find(|a| ident == a.ident) {
             Some(a) => a.data.extend(data),
             None => self.atoms.push(AtomData::new(ident.into(), data.into_iter().collect())),
         }

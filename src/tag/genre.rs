@@ -208,10 +208,7 @@ impl Tag {
             return Some(string);
         }
 
-        match self.genre() {
-            Some(s) => Some(format!("genre: {}\n", s)),
-            None => None,
-        }
+        self.genre().map(|s| format!("genre: {}\n", s))
     }
 }
 
