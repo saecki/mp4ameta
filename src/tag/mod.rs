@@ -431,7 +431,7 @@ impl Tag {
     /// let test = Fourcc(*b"test");
     ///
     /// tag.set_data(test, Data::Reserved(b"data".to_vec()));
-    /// assert_eq!(tag.take_bytes_of(&test).next(), Some(b"data".to_vec()));
+    /// assert_eq!(tag.take_bytes_of(&test).next().unwrap(), b"data");
     /// assert_eq!(tag.bytes_of(&test).next(), None);
     /// ```
     pub fn take_bytes_of<'a>(
@@ -466,9 +466,9 @@ impl Tag {
     /// let mut tag = Tag::default();
     /// let test = Fourcc(*b"test");
     ///
-    /// tag.set_data(test, Data::Utf8("data".into()));
+    /// tag.set_data(test, Data::Utf8("string".into()));
     /// tag.strings_mut_of(&test).next().unwrap().push('1');
-    /// assert_eq!(tag.strings_of(&test).next().unwrap(), "data1");
+    /// assert_eq!(tag.strings_of(&test).next().unwrap(), "string1");
     /// ```
     pub fn strings_mut_of<'a>(
         &'a mut self,
@@ -486,8 +486,8 @@ impl Tag {
     /// let mut tag = Tag::default();
     /// let test = Fourcc(*b"test");
     ///
-    /// tag.set_data(test, Data::Utf8("data".into()));
-    /// assert_eq!(tag.take_strings_of(&test).next(), Some("data".into()));
+    /// tag.set_data(test, Data::Utf8("string".into()));
+    /// assert_eq!(tag.take_strings_of(&test).next().unwrap(), "string");
     /// assert_eq!(tag.strings_of(&test).next(), None);
     /// ```
     pub fn take_strings_of<'a>(
@@ -506,9 +506,9 @@ impl Tag {
     /// let mut tag = Tag::default();
     /// let test = Fourcc(*b"test");
     ///
-    /// tag.set_data(test, Data::Jpeg(b"<the image data>".to_vec()));
+    /// tag.set_data(test, Data::Jpeg(b"image".to_vec()));
     /// let img = tag.images_of(&test).next().unwrap();
-    /// assert_eq!(img.data, b"<the image data>");
+    /// assert_eq!(img.data, b"image");
     /// ```
     pub fn images_of<'a>(&'a self, ident: &'a impl Ident) -> impl Iterator<Item = ImgRef> {
         self.data_of(ident).filter_map(Data::image)
@@ -523,12 +523,12 @@ impl Tag {
     /// let mut tag = Tag::default();
     /// let test = Fourcc(*b"test");
     ///
-    /// tag.set_data(test, Data::Jpeg(b"<the image data>".to_vec()));
+    /// tag.set_data(test, Data::Jpeg(b"image".to_vec()));
     /// let img = tag.images_mut_of(&test).next().unwrap();
-    /// img.data.push(49);
+    /// img.data.push('1' as u8);
     ///
     /// let img = tag.images_of(&test).next().unwrap();
-    /// assert_eq!(img.data, b"<the image data>1");
+    /// assert_eq!(img.data, b"image1");
     /// ```
     pub fn images_mut_of<'a>(
         &'a mut self,
@@ -541,14 +541,14 @@ impl Tag {
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Tag, Data, Fourcc};
+    /// use mp4ameta::{Tag, Data, Fourcc, Img};
     ///
     /// let mut tag = Tag::default();
     /// let test = Fourcc(*b"test");
     ///
-    /// tag.set_data(test, Data::Png(b"<the image data>".to_vec()));
-    /// let img = tag.take_images_of(&test).next().unwrap();
-    /// assert_eq!(img.data, b"<the image data>".to_vec());
+    /// tag.set_data(test, Data::Png(b"image".to_vec()));
+    /// assert_eq!(tag.take_images_of(&test).next().unwrap(), Img::png(b"image".to_vec()));
+    /// assert_eq!(tag.images_of(&test).next(), None);
     /// ```
     pub fn take_images_of(&mut self, ident: &impl Ident) -> impl Iterator<Item = ImgBuf> {
         self.take_data_of(ident).filter_map(Data::into_image)
@@ -564,10 +564,7 @@ impl Tag {
     /// let test = Fourcc(*b"test");
     ///
     /// tag.set_data(test, Data::Utf8("data".into()));
-    /// match tag.data_of(&test).next().unwrap() {
-    ///     Data::Utf8(s) =>  assert_eq!(s, "data"),
-    ///     _ => panic!("data does not match"),
-    /// };
+    /// assert_eq!(tag.data_of(&test).next().unwrap().string(), Some("data"));
     /// ```
     pub fn data_of<'a>(&'a self, ident: &'a impl Ident) -> impl Iterator<Item = &Data> {
         match self.atoms.iter().find(|a| ident == &a.ident) {
@@ -586,9 +583,8 @@ impl Tag {
     /// let test = Fourcc(*b"test");
     ///
     /// tag.set_data(test, Data::Utf8("data".into()));
-    /// if let Data::Utf8(s) = tag.data_mut_of(&test).next().unwrap() {
-    ///     s.push('1');
-    /// }
+    /// let data = tag.data_mut_of(&test).next().unwrap();
+    /// data.string_mut().unwrap().push('1');
     /// assert_eq!(tag.strings_of(&test).next().unwrap(), "data1");
     /// ```
     pub fn data_mut_of(&mut self, ident: &impl Ident) -> impl Iterator<Item = &mut Data> {
@@ -608,11 +604,8 @@ impl Tag {
     /// let test = Fourcc(*b"test");
     ///
     /// tag.set_data(test, Data::Utf8("data".into()));
-    /// match tag.take_data_of(&test).next().unwrap() {
-    ///     Data::Utf8(s) =>  assert_eq!(s, "data".to_string()),
-    ///     _ => panic!("data does not match"),
-    /// };
-    /// assert_eq!(tag.strings_of(&test).next(), None);
+    /// assert_eq!(tag.take_data_of(&test).next().unwrap(), Data::Utf8("data".into()));
+    /// assert_eq!(tag.data_of(&test).next(), None);
     /// ```
     pub fn take_data_of(&mut self, ident: &impl Ident) -> impl Iterator<Item = Data> {
         let mut i = 0;
@@ -629,67 +622,255 @@ impl Tag {
     }
 
     /// Returns an iterator over references to all byte data.
-    /// TODO
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, DataIdent, Fourcc};
+    ///
+    /// let mut tag = Tag::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// tag.add_data(test, Data::Reserved(b"data1".to_vec()));
+    /// tag.add_data(test, Data::Utf8("string".into()));
+    /// tag.add_data(test, Data::BeSigned(b"data2".to_vec()));
+    ///
+    /// let test = DataIdent::Fourcc(test);
+    /// let mut bytes = tag.bytes();
+    /// assert_eq!(bytes.next().unwrap(), (&test, &b"data1"[..]));
+    /// assert_eq!(bytes.next().unwrap(), (&test, &b"data2"[..]));
+    /// assert_eq!(bytes.next(), None);
+    /// ```
     pub fn bytes(&self) -> impl Iterator<Item = (&DataIdent, &[u8])> {
         self.data().filter_map(|(i, d)| Some((i, d.bytes()?)))
     }
 
     /// Returns an iterator over mutable references to all byte data.
-    /// TODO
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, DataIdent, Fourcc};
+    ///
+    /// let mut tag = Tag::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// tag.add_data(test, Data::Reserved(b"data".to_vec()));
+    /// tag.add_data(test, Data::Utf8("string".into()));
+    ///
+    /// let (ident, data) = tag.bytes_mut().next().unwrap();
+    /// data.push('1' as u8);
+    ///
+    /// let test = DataIdent::Fourcc(test);
+    /// let mut bytes = tag.bytes();
+    /// assert_eq!(bytes.next().unwrap(), (&test, &b"data1"[..]));
+    /// assert_eq!(bytes.next(), None);
+    /// ```
     pub fn bytes_mut(&mut self) -> impl Iterator<Item = (&DataIdent, &mut Vec<u8>)> {
         self.data_mut().filter_map(|(i, d)| Some((i, d.bytes_mut()?)))
     }
 
     /// Consumes `self` and returns an iterator over all byte data.
-    /// TODO
+    ///
+    /// # Example
+    /// ```
+    /// use std::rc::Rc;
+    /// use mp4ameta::{Tag, Data, DataIdent, Fourcc};
+    ///
+    /// let mut tag = Tag::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// tag.add_data(test, Data::Reserved(b"data".to_vec()));
+    /// tag.add_data(test, Data::Utf8("string".into()));
+    ///
+    /// let test = DataIdent::Fourcc(test);
+    /// let (ident, data) = tag.take_bytes().next().unwrap();
+    /// assert_eq!(ident.as_ref(), &test);
+    /// assert_eq!(data, b"data".to_vec());
+    /// ```
     pub fn take_bytes(self) -> impl Iterator<Item = (Rc<DataIdent>, Vec<u8>)> {
         self.take_data().filter_map(|(i, d)| Some((i, d.into_bytes()?)))
     }
 
     /// Returns an iterator over references to all strings.
-    /// TODO
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, DataIdent, Fourcc};
+    ///
+    /// let mut tag = Tag::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// tag.add_data(test, Data::Utf8("string1".into()));
+    /// tag.add_data(test, Data::Reserved(b"data".to_vec()));
+    /// tag.add_data(test, Data::Utf16("string2".into()));
+    ///
+    /// let test = DataIdent::Fourcc(test);
+    /// let mut strings = tag.strings();
+    /// assert_eq!(strings.next().unwrap(), (&test, "string1"));
+    /// assert_eq!(strings.next().unwrap(), (&test, "string2"));
+    /// assert_eq!(strings.next(), None);
+    /// ```
     pub fn strings(&self) -> impl Iterator<Item = (&DataIdent, &str)> {
         self.data().filter_map(|(i, d)| Some((i, d.string()?)))
     }
 
     /// Returns an iterator over mutable references to all strings.
-    /// TODO
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, DataIdent, Fourcc};
+    ///
+    /// let mut tag = Tag::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// tag.add_data(test, Data::Reserved(b"data".to_vec()));
+    /// tag.add_data(test, Data::Utf8("string".into()));
+    ///
+    /// let (ident, data) = tag.strings_mut().next().unwrap();
+    /// data.push('1');
+    ///
+    /// let test = DataIdent::Fourcc(test);
+    /// let mut strings = tag.strings();
+    /// assert_eq!(strings.next().unwrap(), (&test, "string1"));
+    /// assert_eq!(strings.next(), None);
+    /// ```
     pub fn strings_mut(&mut self) -> impl Iterator<Item = (&DataIdent, &mut String)> {
         self.data_mut().filter_map(|(i, d)| Some((i, d.string_mut()?)))
     }
 
     /// Consumes `self` and returns an iterator over all strings.
-    /// TODO
+    ///
+    /// # Example
+    /// ```
+    /// use std::rc::Rc;
+    /// use mp4ameta::{Tag, Data, DataIdent, Fourcc};
+    ///
+    /// let mut tag = Tag::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// tag.add_data(test, Data::Reserved(b"data".to_vec()));
+    /// tag.add_data(test, Data::Utf8("string".into()));
+    ///
+    /// let test = DataIdent::Fourcc(test);
+    /// let (ident, data) = tag.take_strings().next().unwrap();
+    /// assert_eq!(ident.as_ref(), &test);
+    /// assert_eq!(data, "string".to_string());
+    /// ```
     pub fn take_strings(self) -> impl Iterator<Item = (Rc<DataIdent>, String)> {
         self.take_data().filter_map(|(i, d)| Some((i, d.into_string()?)))
     }
 
     /// Returns an iterator over references to all images.
-    /// TODO
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, DataIdent, Fourcc, Img};
+    ///
+    /// let mut tag = Tag::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// tag.add_data(test, Data::Png(b"image1".to_vec()));
+    /// tag.add_data(test, Data::Utf8("string".into()));
+    /// tag.add_data(test, Data::Jpeg(b"image2".to_vec()));
+    ///
+    /// let test = DataIdent::Fourcc(test);
+    /// let mut images = tag.images();
+    /// assert_eq!(images.next().unwrap(), (&test, Img::png(&b"image1"[..])));
+    /// assert_eq!(images.next().unwrap(), (&test, Img::jpeg(&b"image2"[..])));
+    /// assert_eq!(images.next(), None);
+    /// ```
     pub fn images(&self) -> impl Iterator<Item = (&DataIdent, ImgRef)> {
         self.data().filter_map(|(i, d)| Some((i, d.image()?)))
     }
 
     /// Returns an iterator over mutable references to all images.
-    /// TODO
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, DataIdent, Fourcc, Img};
+    ///
+    /// let mut tag = Tag::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// tag.add_data(test, Data::Bmp(b"data".to_vec()));
+    /// tag.add_data(test, Data::Utf8("string".into()));
+    ///
+    /// let (ident, image) = tag.images_mut().next().unwrap();
+    /// image.data.push('1' as u8);
+    ///
+    /// let test = DataIdent::Fourcc(test);
+    /// let mut images = tag.images();
+    /// assert_eq!(images.next().unwrap(), (&test, Img::bmp(&b"data1"[..])));
+    /// assert_eq!(images.next(), None);
+    /// ```
     pub fn images_mut(&mut self) -> impl Iterator<Item = (&DataIdent, ImgMut)> {
         self.data_mut().filter_map(|(i, d)| Some((i, d.image_mut()?)))
     }
 
     /// Consumes `self` and returns an iterator over all images.
-    /// TODO
+    ///
+    /// # Example
+    /// ```
+    /// use std::rc::Rc;
+    /// use mp4ameta::{Tag, Data, DataIdent, Fourcc, Img};
+    ///
+    /// let mut tag = Tag::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// tag.add_data(test, Data::Jpeg(b"data".to_vec()));
+    /// tag.add_data(test, Data::Utf8("string".into()));
+    ///
+    /// let test = DataIdent::Fourcc(test);
+    /// let (ident, image) = tag.take_images().next().unwrap();
+    /// assert_eq!(ident.as_ref(), &test);
+    /// assert_eq!(image, Img::jpeg(b"data".to_vec()));
+    /// ```
     pub fn take_images(self) -> impl Iterator<Item = (Rc<DataIdent>, ImgBuf)> {
         self.take_data().filter_map(|(i, d)| Some((i, d.into_image()?)))
     }
 
     /// Returns an iterator over references to all data.
-    /// TODO
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, DataIdent, Fourcc};
+    ///
+    /// let mut tag = Tag::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// tag.add_data(test, Data::Reserved(b"data".to_vec()));
+    /// tag.add_data(test, Data::Utf8("string".into()));
+    /// tag.add_data(test, Data::Png(b"image".to_vec()));
+    ///
+    /// let test = DataIdent::Fourcc(test);
+    /// let mut data = tag.data();
+    /// assert_eq!(data.next().unwrap(), (&test, &Data::Reserved(b"data".to_vec())));
+    /// assert_eq!(data.next().unwrap(), (&test, &Data::Utf8("string".into())));
+    /// assert_eq!(data.next().unwrap(), (&test, &Data::Png(b"image".to_vec())));
+    /// assert_eq!(data.next(), None);
+    /// ```
     pub fn data(&self) -> impl Iterator<Item = (&DataIdent, &Data)> {
         self.atoms.iter().flat_map(|a| a.data.iter().map(move |d| (&a.ident, d)))
     }
 
     /// Returns an iterator over mutable references to all data.
-    /// TODO
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, DataIdent, Fourcc};
+    ///
+    /// let mut tag = Tag::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// tag.add_data(test, Data::Utf8("string".into()));
+    ///
+    /// let (ident, data) = tag.data_mut().next().unwrap();
+    /// data.string_mut().unwrap().push('1');
+    ///
+    /// let test = DataIdent::Fourcc(test);
+    /// let mut strings = tag.strings();
+    /// assert_eq!(strings.next().unwrap(), (&test, "string1"));
+    /// assert_eq!(strings.next(), None);
+    /// ```
     pub fn data_mut(&mut self) -> impl Iterator<Item = (&DataIdent, &mut Data)> {
         self.atoms.iter_mut().flat_map(|a| {
             let ident = &a.ident;
@@ -699,7 +880,22 @@ impl Tag {
     }
 
     /// Consumes `self` and returns an iterator over all data.
-    /// TODO
+    ///
+    /// # Example
+    /// ```
+    /// use std::rc::Rc;
+    /// use mp4ameta::{Tag, Data, DataIdent, Fourcc, Img};
+    ///
+    /// let mut tag = Tag::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// tag.add_data(test, Data::Jpeg(b"data".to_vec()));
+    ///
+    /// let test = DataIdent::Fourcc(test);
+    /// let (ident, image) = tag.take_data().next().unwrap();
+    /// assert_eq!(ident.as_ref(), &test);
+    /// assert_eq!(image, Data::Jpeg(b"data".to_vec()));
+    /// ```
     pub fn take_data(self) -> impl Iterator<Item = (Rc<DataIdent>, Data)> {
         self.atoms.into_iter().flat_map(move |a| {
             let ident = Rc::new(a.ident);
@@ -708,20 +904,89 @@ impl Tag {
         })
     }
 
-    /// Removes only byte data corresponding to the identifier. Other data will remain unaffected.
-    /// TODO
+    /// Removes all byte data corresponding to the identifier. Other data will remain unaffected.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, Fourcc};
+    ///
+    /// let mut tag = Tag::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// tag.add_data(test, Data::Utf8("string".into()));
+    /// tag.add_data(test, Data::BeSigned("data".into()));
+    ///
+    /// let mut data = tag.data_of(&test);
+    /// assert_eq!(data.next(), Some(&Data::Utf8("string".into())));
+    /// assert_eq!(data.next(), Some(&Data::BeSigned(b"data".to_vec())));
+    /// assert_eq!(data.next(), None);
+    /// drop(data);
+    ///
+    /// tag.remove_bytes_of(&test);
+    ///
+    ///
+    /// let mut data = tag.data_of(&test);
+    /// assert_eq!(data.next(), Some(&Data::Utf8("string".into())));
+    /// assert_eq!(data.next(), None);
+    /// ```
     pub fn remove_bytes_of(&mut self, ident: &impl Ident) {
         self.retain_data_of(ident, |d| !d.is_bytes());
     }
 
-    /// Removes only strings corresponding to the identifier. Other data will remain unaffected.
-    /// TODO
+    /// Removes all strings corresponding to the identifier. Other data will remain unaffected.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, Fourcc};
+    ///
+    /// let mut tag = Tag::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// tag.add_data(test, Data::Utf8("string".into()));
+    /// tag.add_data(test, Data::Bmp("image".into()));
+    ///
+    /// let mut data = tag.data_of(&test);
+    /// assert_eq!(data.next(), Some(&Data::Utf8("string".into())));
+    /// assert_eq!(data.next(), Some(&Data::Bmp(b"image".to_vec())));
+    /// assert_eq!(data.next(), None);
+    /// drop(data);
+    ///
+    /// tag.remove_strings_of(&test);
+    ///
+    ///
+    /// let mut data = tag.data_of(&test);
+    /// assert_eq!(data.next(), Some(&Data::Bmp(b"image".to_vec())));
+    /// assert_eq!(data.next(), None);
+    /// ```
     pub fn remove_strings_of(&mut self, ident: &impl Ident) {
         self.retain_data_of(ident, |d| !d.is_string());
     }
 
-    /// Removes only images corresponding to the identifier. Other data will remain unaffected.
-    /// TODO
+    /// Removes all images corresponding to the identifier. Other data will remain unaffected.
+    ///
+    /// # Example
+    /// ```
+    /// use mp4ameta::{Tag, Data, Fourcc};
+    ///
+    /// let mut tag = Tag::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// tag.add_data(test, Data::Utf8("string".into()));
+    /// tag.add_data(test, Data::Bmp("image".into()));
+    ///
+    /// let mut data = tag.data_of(&test);
+    /// assert_eq!(data.next(), Some(&Data::Utf8("string".into())));
+    /// assert_eq!(data.next(), Some(&Data::Bmp(b"image".to_vec())));
+    /// assert_eq!(data.next(), None);
+    /// drop(data);
+    ///
+    /// tag.remove_images_of(&test);
+    ///
+    ///
+    /// let mut data = tag.data_of(&test);
+    /// assert_eq!(data.next(), Some(&Data::Utf8("string".into())));
+    /// assert_eq!(data.next(), None);
+    /// ```
     pub fn remove_images_of(&mut self, ident: &impl Ident) {
         self.retain_data_of(ident, |d| !d.is_image());
     }

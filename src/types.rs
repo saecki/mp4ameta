@@ -375,8 +375,8 @@ pub struct Img<T> {
 
 impl<T> Img<T> {
     /// Creates a new image.
-    pub const fn new(image_type: ImgFmt, data: T) -> Self {
-        Self { fmt: image_type, data }
+    pub const fn new(fmt: ImgFmt, data: T) -> Self {
+        Self { fmt, data }
     }
 
     /// Creates a new image with the bmp format.
