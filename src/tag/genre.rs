@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::{atom, Data, Tag};
 
 /// A list of standard genre codes and values found in the `gnre` atom. The codes are equivalent to
@@ -197,18 +199,16 @@ impl Tag {
     }
 
     /// Returns all genres formatted in an easily readable way.
-    pub(crate) fn format_genres(&self) -> Option<String> {
+    pub(crate) fn format_genres(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.genres().count() > 1 {
-            let mut string = String::from("genres:\n");
+            write!(f, "genres:\n")?;
             for v in self.genres() {
-                string.push_str("    ");
-                string.push_str(v);
-                string.push('\n');
+                write!(f, "    {}\n", v)?;
             }
-            return Some(string);
+        } else if let Some(s) = self.genre() {
+            write!(f, "genre: {}\n", s)?;
         }
-
-        self.genre().map(|s| format!("genre: {}\n", s))
+        Ok(())
     }
 }
 

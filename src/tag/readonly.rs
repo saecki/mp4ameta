@@ -1,3 +1,4 @@
+use std::fmt;
 use std::time::Duration;
 
 use crate::{AudioInfo, ChannelConfig, SampleRate, Tag};
@@ -15,8 +16,11 @@ impl Tag {
     }
 
     /// Returns the duration formatted in an easily readable way.
-    pub(crate) fn format_duration(&self) -> Option<String> {
-        let duration = self.duration()?;
+    pub(crate) fn format_duration(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let duration = match self.duration() {
+            Some(d) => d,
+            None => return Ok(()),
+        };
         let total_seconds = duration.as_secs();
         let nanos = duration.subsec_nanos();
         let micros = nanos / 1_000;
@@ -26,12 +30,12 @@ impl Tag {
         let hours = total_seconds / 60 / 60;
 
         match (hours, minutes, seconds, millis, micros, nanos) {
-            (0, 0, 0, 0, 0, n) => Some(format!("duration: {}ns\n", n)),
-            (0, 0, 0, 0, u, _) => Some(format!("duration: {}µs\n", u)),
-            (0, 0, 0, m, _, _) => Some(format!("duration: {}ms\n", m)),
-            (0, 0, s, _, _, _) => Some(format!("duration: {}s\n", s)),
-            (0, m, s, _, _, _) => Some(format!("duration: {}:{:02}\n", m, s)),
-            (h, m, s, _, _, _) => Some(format!("duration: {}:{:02}:{:02}\n", h, m, s)),
+            (0, 0, 0, 0, 0, n) => write!(f, "duration: {}ns\n", n),
+            (0, 0, 0, 0, u, _) => write!(f, "duration: {}µs\n", u),
+            (0, 0, 0, m, _, _) => write!(f, "duration: {}ms\n", m),
+            (0, 0, s, _, _, _) => write!(f, "duration: {}s\n", s),
+            (0, m, s, _, _, _) => write!(f, "duration: {}:{:02}\n", m, s),
+            (h, m, s, _, _, _) => write!(f, "duration: {}:{:02}:{:02}\n", h, m, s),
         }
     }
 

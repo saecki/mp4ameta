@@ -31,136 +31,83 @@ pub struct Tag {
 
 impl fmt::Display for Tag {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut string = String::new();
-
-        if let Some(s) = self.format_album_artists() {
-            string.push_str(&s);
-        }
-        if let Some(s) = self.format_artists() {
-            string.push_str(&s);
-        }
-        if let Some(s) = self.format_composers() {
-            string.push_str(&s);
-        }
-        if let Some(s) = self.format_album() {
-            string.push_str(&s);
-        }
-        if let Some(s) = self.format_title() {
-            string.push_str(&s);
-        }
-        if let Some(s) = self.format_genres() {
-            string.push_str(&s);
-        }
-        if let Some(s) = self.format_year() {
-            string.push_str(&s);
-        }
-        if let Some(s) = self.format_track() {
-            string.push_str(&s);
-        }
-        if let Some(s) = self.format_disc() {
-            string.push_str(&s);
-        }
-        if let Some(s) = self.format_artworks() {
-            string.push_str(&s);
-        }
+        self.format_album_artists(f)?;
+        self.format_artists(f)?;
+        self.format_composers(f)?;
+        self.format_lyricists(f)?;
+        self.format_album(f)?;
+        self.format_title(f)?;
+        self.format_genres(f)?;
+        self.format_year(f)?;
+        self.format_track(f)?;
+        self.format_disc(f)?;
+        self.format_artworks(f)?;
         if let Some(r) = self.advisory_rating() {
-            string.push_str(&format!("advisory rating: {}\n", r));
+            write!(f, "advisory rating: {}\n", r)?;
         }
         if let Some(m) = self.media_type() {
-            string.push_str(&format!("media type: {}\n", m));
+            write!(f, "media type: {}\n", m)?;
         }
-        if let Some(s) = self.format_groupings() {
-            string.push_str(&s);
-        }
-        if let Some(s) = self.format_descriptions() {
-            string.push_str(&s);
-        }
-        if let Some(s) = self.format_comments() {
-            string.push_str(&s);
-        }
-        if let Some(s) = self.format_categories() {
-            string.push_str(&s);
-        }
-        if let Some(s) = self.format_keywords() {
-            string.push_str(&s);
-        }
-        if let Some(s) = self.format_copyright() {
-            string.push_str(&s);
-        }
-        if let Some(s) = self.format_encoder() {
-            string.push_str(&s);
-        }
-        if let Some(s) = self.format_tv_show_name() {
-            string.push_str(&s);
-        }
-        if let Some(s) = self.format_tv_network_name() {
-            string.push_str(&s);
-        }
-        if let Some(s) = self.format_tv_episode_name() {
-            string.push_str(&s);
-        }
+        self.format_groupings(f)?;
+        self.format_descriptions(f)?;
+        self.format_comments(f)?;
+        self.format_categories(f)?;
+        self.format_keywords(f)?;
+        self.format_copyright(f)?;
+        self.format_encoder(f)?;
+        self.format_tv_show_name(f)?;
+        self.format_tv_network_name(f)?;
+        self.format_tv_episode_name(f)?;
         if let Some(e) = self.tv_episode() {
-            string.push_str(&format!("tv episode: {}\n", e));
+            write!(f, "tv episode: {}\n", e)?;
         }
         if let Some(s) = self.tv_season() {
-            string.push_str(&format!("tv season: {}\n", s));
+            write!(f, "tv season: {}\n", s)?;
         }
         if let Some(i) = self.bpm() {
-            string.push_str(&format!("bpm: {}\n", i));
+            write!(f, "bpm: {}\n", i)?;
         }
-        if let Some(s) = self.format_movement() {
-            string.push_str(&s);
-        }
-        if let Some(s) = self.format_work() {
-            string.push_str(&s);
-        }
+        self.format_movement(f)?;
+        self.format_work(f)?;
         if let Some(i) = self.movement_count() {
-            string.push_str(&format!("movement count: {}\n", i));
+            write!(f, "movement count: {}\n", i)?;
         }
         if let Some(i) = self.movement_index() {
-            string.push_str(&format!("movement index: {}\n", i));
+            write!(f, "movement index: {}\n", i)?;
         }
-        if let Some(s) = self.format_duration() {
-            string.push_str(&s);
-        }
+        self.format_duration(f)?;
         if let Some(c) = self.channel_config() {
-            string.push_str(&format!("channel config: {}\n", c));
+            write!(f, "channel config: {}\n", c)?;
         }
         if let Some(s) = self.sample_rate() {
-            string.push_str(&format!("sample rate: {}\n", s));
+            write!(f, "sample rate: {}\n", s)?;
         }
         if let Some(a) = self.avg_bitrate() {
-            string.push_str(&format!("average bitrate: {}kbps\n", a / 1024));
+            write!(f, "average bitrate: {}kbps\n", a / 1024)?;
         }
         if let Some(m) = self.max_bitrate() {
-            string.push_str(&format!("maximum bitrate: {}kbps\n", m / 1024));
+            write!(f, "maximum bitrate: {}kbps\n", m / 1024)?;
         }
         if self.show_movement() {
-            string.push_str("show movement\n");
+            write!(f, "show movement\n")?;
         }
         if self.gapless_playback() {
-            string.push_str("gapless playback\n");
+            write!(f, "gapless playback\n")?;
         }
         if self.compilation() {
-            string.push_str("compilation\n");
+            write!(f, "compilation\n")?;
         }
-        if let Some(s) = self.format_lyrics() {
-            string.push_str(&s);
-        }
+        self.format_isrc(f)?;
+        self.format_lyrics(f)?;
         for a in self.atoms.iter() {
             if let DataIdent::Freeform { .. } = &a.ident {
-                string.push_str(&format!("{}:\n", a.ident));
-                a.data.iter().filter_map(|a| a.string()).for_each(|s| {
-                    string.push_str(s);
-                    string.push('\n');
-                });
+                write!(f, "{}:\n", a.ident)?;
+                for d in a.data.iter() {
+                    write!(f, "{:?}\n", d)?;
+                }
             }
         }
-        string.push_str("filetype: ");
-        string.push_str(self.filetype());
-        string.push('\n');
-
-        write!(f, "{}", string)
+        write!(f, "filetype: {}\n", self.filetype())
     }
 }
 
@@ -294,44 +241,39 @@ impl Tag {
     }
 
     /// Returns information about all artworks formatted in an easily readable way.
-    fn format_artworks(&self) -> Option<String> {
-        let format_artwork = |i: ImgRef| {
-            let mut string = String::new();
+    fn format_artworks(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fn format_artwork(f: &mut fmt::Formatter, i: ImgRef) -> fmt::Result {
             match i.fmt {
-                ImgFmt::Png => string.push_str("png"),
-                ImgFmt::Jpeg => string.push_str("jpeg"),
-                ImgFmt::Bmp => string.push_str("bmp"),
-            }
+                ImgFmt::Png => write!(f, "png")?,
+                ImgFmt::Jpeg => write!(f, "jpeg")?,
+                ImgFmt::Bmp => write!(f, "bmp")?,
+            };
 
             let len = i.data.len();
 
             if len < 1024 {
-                string.push_str(&format!(" {}", len));
+                write!(f, " {}\n", len)?;
             } else if len < 1024 * 1024 {
                 let size = len / 1024;
-                string.push_str(&format!(" {}k", size));
+                write!(f, " {}k\n", size)?;
             } else {
                 let size = len / (1024 * 1024);
-                string.push_str(&format!(" {}M", size));
+                write!(f, " {}M\n", size)?;
             }
-
-            string.push('\n');
-
-            string
-        };
-
-        if self.artworks().count() > 1 {
-            let mut string = String::from("artworks:\n");
-            for a in self.artworks() {
-                string.push_str("    ");
-                string.push_str(&format_artwork(a));
-            }
-
-            return Some(string);
+            Ok(())
         }
 
-        let a = self.artwork()?;
-        Some(format!("artwork: {}", format_artwork(a)))
+        if self.artworks().count() > 1 {
+            write!(f, "artworks:\n")?;
+            for a in self.artworks() {
+                write!(f, "    ")?;
+                format_artwork(f, a)?;
+            }
+        } else if let Some(a) = self.artwork() {
+            write!(f, "artwork: ")?;
+            format_artwork(f, a)?;
+        }
+        Ok(())
     }
 }
 

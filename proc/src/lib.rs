@@ -67,10 +67,10 @@ impl Tag {{
     }}
 
     /// Returns the {n} formatted in an easily readable way.
-    fn format_{vi}(&self) -> Option<String> {{
+    fn format_{vi}(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {{
         match self.{vi}() {{
-            Some(s) => Some(format!(\"{n}: {{}}\\n\", s)),
-            None => None,
+            Some(s) => write!(f, \"{n}: {{}}\\n\", s),
+            None => Ok(()),
         }}
     }}
 }}
@@ -133,7 +133,7 @@ impl Tag {{
     pub fn set_{vi}(&mut self, {vi}: impl Into<String>) {{
         self.set_data({ai}, Data::Utf8({vi}.into()));
     }}
-    
+
     /// Adds all {np} (`{ais}`).
     pub fn add_{vip}(&mut self, {vip}: impl IntoIterator<Item = String>) {{
         let data = {vip}.into_iter().map(|v| Data::Utf8(v));
@@ -151,21 +151,16 @@ impl Tag {{
     }}
 
     /// Returns all {np} formatted in an easily readable way.
-    fn format_{vip}(&self) -> Option<String> {{
+    fn format_{vip}(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {{
         if self.{vip}().count() > 1 {{
-            let mut string = String::from(\"{np}:\\n\");
-            for v in self.{vip}() {{
-                string.push_str(\"    \");
-                string.push_str(v);
-                string.push('\\n');
+            write!(f, \"{np}:\\n\")?;
+            for s in self.{vip}() {{
+                write!(f, \"    {{}}\\n\", s)?;
             }}
-            return Some(string);
+        }} else if let Some(s) = self.{vi}() {{
+            write!(f, \"{n}: {{}}\\n\", s)?;
         }}
-
-        match self.{vi}() {{
-            Some(s) => Some(format!(\"{n}: {{}}\\n\", s)),
-            None => None,
-        }}
+        Ok(())
     }}
 }}
     ",

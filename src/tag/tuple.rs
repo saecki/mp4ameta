@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::{atom, be_int, set_be_int, Data, Tag};
 
 /// ### Track
@@ -86,12 +88,12 @@ impl Tag {
     }
 
     /// Returns the track numer and total number of tracks formatted in an easily readable way.
-    pub(crate) fn format_track(&self) -> Option<String> {
+    pub(crate) fn format_track(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.track() {
-            (Some(d), Some(t)) => Some(format!("track: {} of {}\n", d, t)),
-            (Some(d), None) => Some(format!("track: {}\n", d)),
-            (None, Some(t)) => Some(format!("track: ? of {}\n", t)),
-            (None, None) => None,
+            (Some(d), Some(t)) => write!(f, "track: {} of {}\n", d, t),
+            (Some(d), None) => write!(f, "track: {}\n", d),
+            (None, Some(t)) => write!(f, "track: ? of {}\n", t),
+            (None, None) => Ok(()),
         }
     }
 }
@@ -182,12 +184,12 @@ impl Tag {
     }
 
     /// Returns the disc numer and total number of discs formatted in an easily readable way.
-    pub(crate) fn format_disc(&self) -> Option<String> {
+    pub(crate) fn format_disc(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.disc() {
-            (Some(d), Some(t)) => Some(format!("disc: {} of {}\n", d, t)),
-            (Some(d), None) => Some(format!("disc: {}\n", d)),
-            (None, Some(t)) => Some(format!("disc: ? of {}\n", t)),
-            (None, None) => None,
+            (Some(d), Some(t)) => write!(f, "disc: {} of {}\n", d, t),
+            (Some(d), None) => write!(f, "disc: {}\n", d),
+            (None, Some(t)) => write!(f, "disc: ? of {}\n", t),
+            (None, None) => Ok(()),
         }
     }
 }
