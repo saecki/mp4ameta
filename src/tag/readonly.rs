@@ -30,12 +30,12 @@ impl Tag {
         let hours = total_seconds / 60 / 60;
 
         match (hours, minutes, seconds, millis, micros, nanos) {
-            (0, 0, 0, 0, 0, n) => write!(f, "duration: {}ns\n", n),
-            (0, 0, 0, 0, u, _) => write!(f, "duration: {}µs\n", u),
-            (0, 0, 0, m, _, _) => write!(f, "duration: {}ms\n", m),
-            (0, 0, s, _, _, _) => write!(f, "duration: {}s\n", s),
-            (0, m, s, _, _, _) => write!(f, "duration: {}:{:02}\n", m, s),
-            (h, m, s, _, _, _) => write!(f, "duration: {}:{:02}:{:02}\n", h, m, s),
+            (0, 0, 0, 0, 0, n) => writeln!(f, "duration: {}ns", n),
+            (0, 0, 0, 0, u, _) => writeln!(f, "duration: {}µs", u),
+            (0, 0, 0, m, _, _) => writeln!(f, "duration: {}ms", m),
+            (0, 0, s, _, _, _) => writeln!(f, "duration: {}s", s),
+            (0, m, s, _, _, _) => writeln!(f, "duration: {}:{:02}", m, s),
+            (h, m, s, _, _, _) => writeln!(f, "duration: {}:{:02}:{:02}", h, m, s),
         }
     }
 

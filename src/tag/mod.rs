@@ -43,10 +43,10 @@ impl fmt::Display for Tag {
         self.format_disc(f)?;
         self.format_artworks(f)?;
         if let Some(r) = self.advisory_rating() {
-            write!(f, "advisory rating: {}\n", r)?;
+            writeln!(f, "advisory rating: {}", r)?;
         }
         if let Some(m) = self.media_type() {
-            write!(f, "media type: {}\n", m)?;
+            writeln!(f, "media type: {}", m)?;
         }
         self.format_groupings(f)?;
         self.format_descriptions(f)?;
@@ -59,55 +59,55 @@ impl fmt::Display for Tag {
         self.format_tv_network_name(f)?;
         self.format_tv_episode_name(f)?;
         if let Some(e) = self.tv_episode() {
-            write!(f, "tv episode: {}\n", e)?;
+            writeln!(f, "tv episode: {}", e)?;
         }
         if let Some(s) = self.tv_season() {
-            write!(f, "tv season: {}\n", s)?;
+            writeln!(f, "tv season: {}", s)?;
         }
         if let Some(i) = self.bpm() {
-            write!(f, "bpm: {}\n", i)?;
+            writeln!(f, "bpm: {}", i)?;
         }
         self.format_movement(f)?;
         self.format_work(f)?;
         if let Some(i) = self.movement_count() {
-            write!(f, "movement count: {}\n", i)?;
+            writeln!(f, "movement count: {}", i)?;
         }
         if let Some(i) = self.movement_index() {
-            write!(f, "movement index: {}\n", i)?;
+            writeln!(f, "movement index: {}", i)?;
         }
         self.format_duration(f)?;
         if let Some(c) = self.channel_config() {
-            write!(f, "channel config: {}\n", c)?;
+            writeln!(f, "channel config: {}", c)?;
         }
         if let Some(s) = self.sample_rate() {
-            write!(f, "sample rate: {}\n", s)?;
+            writeln!(f, "sample rate: {}", s)?;
         }
         if let Some(a) = self.avg_bitrate() {
-            write!(f, "average bitrate: {}kbps\n", a / 1024)?;
+            writeln!(f, "average bitrate: {}kbps", a / 1024)?;
         }
         if let Some(m) = self.max_bitrate() {
-            write!(f, "maximum bitrate: {}kbps\n", m / 1024)?;
+            writeln!(f, "maximum bitrate: {}kbps", m / 1024)?;
         }
         if self.show_movement() {
-            write!(f, "show movement\n")?;
+            writeln!(f, "show movement")?;
         }
         if self.gapless_playback() {
-            write!(f, "gapless playback\n")?;
+            writeln!(f, "gapless playback")?;
         }
         if self.compilation() {
-            write!(f, "compilation\n")?;
+            writeln!(f, "compilation")?;
         }
         self.format_isrc(f)?;
         self.format_lyrics(f)?;
         for a in self.atoms.iter() {
             if let DataIdent::Freeform { .. } = &a.ident {
-                write!(f, "{}:\n", a.ident)?;
+                writeln!(f, "{}:", a.ident)?;
                 for d in a.data.iter() {
-                    write!(f, "{:?}\n", d)?;
+                    writeln!(f, "    {:?}", d)?;
                 }
             }
         }
-        write!(f, "filetype: {}\n", self.filetype())
+        writeln!(f, "filetype: {}", self.filetype())
     }
 }
 
@@ -252,19 +252,19 @@ impl Tag {
             let len = i.data.len();
 
             if len < 1024 {
-                write!(f, " {}\n", len)?;
+                writeln!(f, " {}", len)?;
             } else if len < 1024 * 1024 {
                 let size = len / 1024;
-                write!(f, " {}k\n", size)?;
+                writeln!(f, " {}k", size)?;
             } else {
                 let size = len / (1024 * 1024);
-                write!(f, " {}M\n", size)?;
+                writeln!(f, " {}M", size)?;
             }
             Ok(())
         }
 
         if self.artworks().count() > 1 {
-            write!(f, "artworks:\n")?;
+            writeln!(f, "artworks:")?;
             for a in self.artworks() {
                 write!(f, "    ")?;
                 format_artwork(f, a)?;

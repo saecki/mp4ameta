@@ -201,12 +201,12 @@ impl Tag {
     /// Returns all genres formatted in an easily readable way.
     pub(crate) fn format_genres(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if self.genres().count() > 1 {
-            write!(f, "genres:\n")?;
+            writeln!(f, "genres:")?;
             for v in self.genres() {
-                write!(f, "    {}\n", v)?;
+                writeln!(f, "    {}", v)?;
             }
         } else if let Some(s) = self.genre() {
-            write!(f, "genre: {}\n", s)?;
+            writeln!(f, "genre: {}", s)?;
         }
         Ok(())
     }

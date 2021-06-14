@@ -69,7 +69,7 @@ impl Tag {{
     /// Returns the {n} formatted in an easily readable way.
     fn format_{vi}(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {{
         match self.{vi}() {{
-            Some(s) => write!(f, \"{n}: {{}}\\n\", s),
+            Some(s) => writeln!(f, \"{n}: {{}}\", s),
             None => Ok(()),
         }}
     }}
@@ -153,12 +153,12 @@ impl Tag {{
     /// Returns all {np} formatted in an easily readable way.
     fn format_{vip}(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {{
         if self.{vip}().count() > 1 {{
-            write!(f, \"{np}:\\n\")?;
+            writeln!(f, \"{np}:\")?;
             for s in self.{vip}() {{
-                write!(f, \"    {{}}\\n\", s)?;
+                writeln!(f, \"    {{}}\", s)?;
             }}
         }} else if let Some(s) = self.{vi}() {{
-            write!(f, \"{n}: {{}}\\n\", s)?;
+            writeln!(f, \"{n}: {{}}\", s)?;
         }}
         Ok(())
     }}
