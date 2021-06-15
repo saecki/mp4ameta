@@ -13,6 +13,7 @@ use template::*;
 pub use data::*;
 pub use ident::*;
 
+#[macro_use]
 pub mod data;
 /// A module for working with identifiers.
 pub mod ident;

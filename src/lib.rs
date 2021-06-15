@@ -48,6 +48,7 @@ pub use crate::types::*;
 
 pub(crate) use crate::atom::AtomData;
 
+#[macro_use]
 mod atom;
 mod error;
 mod tag;

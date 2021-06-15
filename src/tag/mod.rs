@@ -6,8 +6,8 @@ use std::path::Path;
 use std::rc::Rc;
 
 use crate::{
-    atom, be_int, ident, AdvisoryRating, AtomData, AudioInfo, Data, DataIdent, Ident, Img, ImgBuf,
-    ImgFmt, ImgMut, ImgRef, MediaType,
+    atom, ident, AdvisoryRating, AtomData, AudioInfo, Data, DataIdent, Ident, Img, ImgBuf, ImgFmt,
+    ImgMut, ImgRef, MediaType,
 };
 
 pub use genre::*;

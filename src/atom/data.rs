@@ -502,13 +502,13 @@ pub(crate) fn remaining_stream_len(reader: &mut impl Seek) -> io::Result<u64> {
 ///
 /// # Example
 /// ```
-/// # #[macro_use] extern crate mp4ameta; fn main() {
-/// let bytes = vec![0u8, 0, 0, 0, 0, 0, 1, 3];
+/// # #[macro_use] extern crate mp4ameta;
+/// # fn main() {
+/// let bytes = vec![0x00, 0x00, 0x00, 0x00, 0x2D, 0x34, 0xD0, 0x5E];
 /// let int = be_int!(bytes, 4, u32);
-/// assert_eq!(int, Some(259u32));
+/// assert_eq!(int, Some(758435934u32));
 /// # }
 /// ```
-#[macro_export]
 macro_rules! be_int {
     ($bytes:expr, $index:expr, $type:ty) => {{
         use std::convert::TryFrom;
@@ -541,7 +541,6 @@ macro_rules! be_int {
 /// assert_eq!(bytes[5], 12u8);
 /// # }
 /// ```
-#[macro_export]
 macro_rules! set_be_int {
     ($bytes:expr, $index:expr, $value:expr, $type:ty) => {{
         const SIZE: usize = std::mem::size_of::<$type>();

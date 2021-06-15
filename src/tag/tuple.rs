@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::{atom, be_int, set_be_int, Data, Tag};
+use crate::{atom, Data, Tag};
 
 /// ### Track
 ///
