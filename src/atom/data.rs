@@ -499,16 +499,6 @@ pub(crate) fn remaining_stream_len(reader: &mut impl Seek) -> io::Result<u64> {
 }
 
 /// Attempts to read a big endian integer at the specified index from a byte slice.
-///
-/// # Example
-/// ```
-/// # #[macro_use] extern crate mp4ameta;
-/// # fn main() {
-/// let bytes = vec![0x00, 0x00, 0x00, 0x00, 0x2D, 0x34, 0xD0, 0x5E];
-/// let int = be_int!(bytes, 4, u32);
-/// assert_eq!(int, Some(758435934u32));
-/// # }
-/// ```
 macro_rules! be_int {
     ($bytes:expr, $index:expr, $type:ty) => {{
         use std::convert::TryFrom;
@@ -531,16 +521,6 @@ macro_rules! be_int {
 }
 
 /// Attempts to write a big endian integer at the specified index to a byte vector.
-///
-/// # Example
-/// ```
-/// # #[macro_use] extern crate mp4ameta; fn main() {
-/// let mut bytes = vec![0u8, 0, 0, 0, 0, 0, 0, 0];
-/// set_be_int!(bytes, 4, 524, u16);
-/// assert_eq!(bytes[4], 2u8);
-/// assert_eq!(bytes[5], 12u8);
-/// # }
-/// ```
 macro_rules! set_be_int {
     ($bytes:expr, $index:expr, $value:expr, $type:ty) => {{
         const SIZE: usize = std::mem::size_of::<$type>();
@@ -557,4 +537,22 @@ macro_rules! set_be_int {
             $bytes[bytes_start + i] = be_bytes[i];
         }
     }};
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn be_int() {
+        let bytes = vec![0x00, 0x00, 0x00, 0x00, 0x2D, 0x34, 0xD0, 0x5E];
+        let int = be_int!(bytes, 4, u32);
+        assert_eq!(int, Some(758435934u32));
+    }
+
+    #[test]
+    fn set_be_int() {
+        let mut bytes = vec![0u8, 0, 0, 0, 0, 0, 0, 0];
+        set_be_int!(bytes, 4, 524, u16);
+        assert_eq!(bytes[4], 2u8);
+        assert_eq!(bytes[5], 12u8);
+    }
 }
