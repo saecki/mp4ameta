@@ -1,4 +1,4 @@
-name: CI
+name: Style
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   - cron:  '0 0 * * 1' # weekly
 
 jobs:
-  build:
+  style:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -20,5 +20,7 @@ jobs:
       with:
         profile: minimal
         toolchain: ${{ matrix.toolchain }}
-    - run: cargo test
+        components: clippy, rustfmt
+    - run: cargo fmt -- --check
+    - run: cargo clippy -- -D warnings
 
