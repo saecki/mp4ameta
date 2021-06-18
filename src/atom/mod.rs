@@ -738,11 +738,10 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
     // update existing ilst hierarchy atom lengths
     for a in update_atoms.iter().rev() {
         let new_len = a.len as i64 + len_diff;
+        writer.seek(SeekFrom::Start(a.pos))?;
         if a.short {
-            writer.seek(SeekFrom::Start(a.pos))?;
             writer.write_all(&u32::to_be_bytes(new_len as u32))?;
         } else {
-            writer.seek(SeekFrom::Start(a.pos))?;
             writer.write_all(&u32::to_be_bytes(1))?;
             writer.seek(SeekFrom::Current(4))?;
             writer.write_all(&u64::to_be_bytes(new_len as u64))?;
