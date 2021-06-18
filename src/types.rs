@@ -223,14 +223,14 @@ impl TryFrom<u8> for ChannelConfig {
             SEVEN_ONE => Ok(Self::SevenOne),
             _ => Err(Self::Error::new(
                 crate::ErrorKind::UnknownChannelConfig(value),
-                "Unknown channel config".to_owned(),
+                "Unknown channel config index".to_owned(),
             )),
         }
     }
 }
 
 impl ChannelConfig {
-    /// Returns channel count
+    /// Returns the number of channels.
     pub const fn channel_count(&self) -> u8 {
         match self {
             Self::Mono => 1,
@@ -309,7 +309,7 @@ impl TryFrom<u8> for SampleRate {
             HZ_7350 => Ok(Self::Hz7350),
             _ => Err(Self::Error::new(
                 crate::ErrorKind::UnknownChannelConfig(value),
-                "Unknown channel config".to_owned(),
+                "Unknown sample rate index".to_owned(),
             )),
         }
     }
