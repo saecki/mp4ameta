@@ -9,6 +9,7 @@ categories = ["multimedia::audio", "parsing"]
 keywords = ["mp4", "m4a", "audio", "metadata", "parser"]
 repository = "https://github.com/Saecki/rust-mp4ameta"
 edition = "2018"
+include = ["src", "Cargo.toml", "LICENSE-APACHE", "LICENSE-MIT"]
 
 [dependencies]
 lazy_static = "1.4.0"
