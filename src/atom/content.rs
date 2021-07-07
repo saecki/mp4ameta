@@ -1,4 +1,4 @@
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::io::Write;
 
 use super::*;
 
@@ -11,14 +11,6 @@ pub(super) enum Content<'a> {
     AtomDataRef(&'a [AtomData]),
     /// A value containing raw data.
     RawData(Data),
-    /// A value containing data defined by a
-    /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34)
-    /// code.
-    TypedData(Data),
-    /// A value containing mp4 audio information.
-    Mp4Audio(Mp4aInfo),
-    /// A value containing mp4 audio information.
-    MovieHeader(MvhdInfo),
     /// Empty content.
     Empty,
 }
@@ -41,32 +33,7 @@ impl<'a> Content<'a> {
             Self::Atoms(v) => v.iter().map(|a| a.len()).sum(),
             Self::AtomDataRef(v) => v.iter().map(|a| a.len()).sum(),
             Self::RawData(d) => d.len(),
-            Self::TypedData(d) => 8 + d.len(),
-            Self::Mp4Audio(_) => 0,
-            Self::MovieHeader(_) => 0,
             Self::Empty => 0,
-        }
-    }
-
-    /// Returns an iterator over the children atoms.
-    pub fn into_atoms(self) -> impl Iterator<Item = Atom<'a>> {
-        match self {
-            Self::Atoms(v) => v.into_iter(),
-            _ => Vec::new().into_iter(),
-        }
-    }
-
-    /// Consumes self and returns the first children atom matching the identifier, if present.
-    pub fn take_child(self, ident: Fourcc) -> Option<Atom<'a>> {
-        self.into_atoms().find(|a| a.ident == ident)
-    }
-
-    /// Consumes self and returns data if `self` is of type [`Self::RawData`] or [`Self::TypedData`].
-    pub fn take_data(self) -> Option<Data> {
-        match self {
-            Self::TypedData(d) => Some(d),
-            Self::RawData(d) => Some(d),
-            _ => None,
         }
     }
 
@@ -84,19 +51,6 @@ impl<'a> Content<'a> {
                 }
             }
             Self::RawData(d) => d.write_raw(writer)?,
-            Self::TypedData(d) => d.write_typed(writer)?,
-            Self::Mp4Audio(_) => {
-                return Err(crate::Error::new(
-                    crate::ErrorKind::UnwritableData,
-                    "Mp4 audio information cannot be written".to_owned(),
-                ))
-            }
-            Self::MovieHeader(_) => {
-                return Err(crate::Error::new(
-                    crate::ErrorKind::UnwritableData,
-                    "Movie header information cannot be written".to_owned(),
-                ))
-            }
             Self::Empty => (),
         }
 
@@ -115,14 +69,6 @@ pub(super) enum ContentT {
     /// A template representing typed data that is defined by a
     /// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34)
     /// code prior to the data parsed.
-    TypedData,
-    /// A template representing mp4 audio information.
-    Mp4Audio,
-    /// A template representing movie header information.
-    MovieHeader,
-    /// A template for ignoring all data inside.
-    Ignore,
-    /// Empty content.
     Empty,
 }
 
@@ -141,55 +87,5 @@ impl ContentT {
     /// Creates a new content template of type [`Self::Atoms`] containing the atom template.
     pub fn atom_t(atom: AtomT) -> Self {
         Self::Atoms(vec![atom])
-    }
-
-    /// Attempts to parse corresponding content from the reader.
-    pub fn parse<'a>(
-        &self,
-        reader: &mut (impl Read + Seek),
-        len: u64,
-    ) -> crate::Result<Content<'a>> {
-        Ok(match self {
-            Self::Atoms(v) => Content::Atoms(parse_atoms(reader, v, len)?),
-            Self::RawData(d) => Content::RawData(data::parse_data(reader, *d, len)?),
-            Self::TypedData => {
-                if len >= 8 {
-                    let (version, flags) = parse_full_head(reader)?;
-                    if version != 0 {
-                        return Err(crate::Error::new(
-                            crate::ErrorKind::UnknownVersion(version),
-                            "Error reading data atom (data)".to_owned(),
-                        ));
-                    }
-                    let [b2, b1, b0] = flags;
-                    let datatype = u32::from_be_bytes([0, b2, b1, b0]);
-
-                    // Skipping 4 byte locale indicator
-                    reader.seek(SeekFrom::Current(4))?;
-
-                    Content::TypedData(data::parse_data(reader, datatype, len - 8)?)
-                } else {
-                    return Err(crate::Error::new(
-                        ErrorKind::Parsing,
-                        "Typed data head to short".to_owned(),
-                    ));
-                }
-            }
-            Self::Mp4Audio => Content::Mp4Audio(Mp4aInfo::parse(reader, len)?),
-            Self::MovieHeader => Content::MovieHeader(MvhdInfo::parse(reader, len)?),
-            Self::Ignore => {
-                reader.seek(SeekFrom::Current(len as i64))?;
-                Content::Empty
-            }
-            Self::Empty => {
-                if len != 0 {
-                    return Err(crate::Error::new(
-                        crate::ErrorKind::Parsing,
-                        format!("Expected empty content found content of length: {}", len),
-                    ));
-                }
-                Content::Empty
-            }
-        })
     }
 }
