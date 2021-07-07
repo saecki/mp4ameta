@@ -1,3 +1,30 @@
+//! Relevant structure of an mp4 file
+//!
+//! ftyp
+//! mdat
+//! moov
+//! ├─ mvhd
+//! ├─ trak
+//! │  ├─ tkhd
+//! │  └─ mdia
+//! │     ├─ mdhd
+//! │     └─ minf
+//! │        └─ stbl
+//! │           ├─ stsd
+//! │           │  └─ mp4a
+//! │           ├─ stco
+//! │           └─ co64
+//! └─ udta
+//!    └─ meta
+//!       ├─ hdlr
+//!       └─ ilst
+//!          ├─ **** (any fourcc)
+//!          │  └─ data
+//!          └─ ---- (freeform fourcc)
+//!             ├─ mean
+//!             ├─ name
+//!             └─ data
+
 use std::convert::TryFrom;
 use std::fmt;
 use std::fs::File;
