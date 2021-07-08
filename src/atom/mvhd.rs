@@ -9,9 +9,11 @@ pub struct Mvhd {
     pub duration: Duration,
 }
 
-impl ParseAtom for Mvhd {
+impl TempAtom for Mvhd {
     const FOURCC: Fourcc = MOVIE_HEADER;
+}
 
+impl ParseAtom for Mvhd {
     fn parse_atom(reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Self> {
         let mut mvhd = Self::default();
         let start = reader.seek(SeekFrom::Current(0))?;

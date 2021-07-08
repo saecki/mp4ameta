@@ -22,11 +22,6 @@ impl Default for Content<'_> {
 }
 
 impl<'a> Content<'a> {
-    /// Creates new content of type [`Self::Atoms`] containing the atom.
-    pub fn atom(atom: Atom<'a>) -> Self {
-        Self::Atoms(vec![atom])
-    }
-
     /// Returns the length in bytes.
     pub fn len(&self) -> u64 {
         match self {
@@ -47,7 +42,7 @@ impl<'a> Content<'a> {
             }
             Self::AtomDataRef(v) => {
                 for a in *v {
-                    a.write_to(writer)?;
+                    a.write(writer)?;
                 }
             }
             Self::RawData(d) => d.write_raw(writer)?,

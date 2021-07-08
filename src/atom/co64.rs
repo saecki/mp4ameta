@@ -9,9 +9,11 @@ pub struct Co64 {
     pub offsets: Vec<u64>,
 }
 
-impl ParseAtom for Co64 {
+impl TempAtom for Co64 {
     const FOURCC: Fourcc = SAMPLE_TABLE_CHUNK_OFFSET_64;
+}
 
+impl ParseAtom for Co64 {
     fn parse_atom(reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Self> {
         let (version, _) = parse_full_head(reader)?;
 

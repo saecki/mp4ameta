@@ -1,41 +1,43 @@
 use super::*;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct Ilst(pub Vec<AtomData>);
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Ilst<'a> {
+    Owned(Vec<AtomData>),
+    Borrowed(&'a [AtomData]),
+}
 
-impl Deref for Ilst {
-    type Target = Vec<AtomData>;
+impl Deref for Ilst<'_> {
+    type Target = [AtomData];
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        match self {
+            Self::Owned(a) => &a,
+            Self::Borrowed(a) => a,
+        }
     }
 }
 
-impl DerefMut for Ilst {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl ParseAtom for Ilst {
+impl TempAtom for Ilst<'_> {
     const FOURCC: Fourcc = ITEM_LIST;
+}
 
+impl ParseAtom for Ilst<'_> {
     fn parse_atom(
         reader: &mut (impl std::io::Read + std::io::Seek),
         len: u64,
     ) -> crate::Result<Self> {
-        let mut ilst = Self::default();
+        let mut ilst = Vec::<AtomData>::new();
         let mut parsed_bytes = 0;
 
         while parsed_bytes < len {
             let head = parse_head(reader)?;
 
-            match head.fourcc {
+            match head.fourcc() {
                 FREE => {
                     reader.seek(SeekFrom::Current(head.content_len() as i64))?;
                 }
                 _ => {
-                    let atom = AtomData::parse(reader, head.fourcc, head.content_len())?;
+                    let atom = AtomData::parse(reader, head.fourcc(), head.content_len())?;
                     let other = ilst.iter_mut().find(|o| atom.ident == o.ident);
 
                     match other {
@@ -45,10 +47,34 @@ impl ParseAtom for Ilst {
                 }
             }
 
-            parsed_bytes += head.len;
+            parsed_bytes += head.len();
         }
 
-        Ok(ilst)
+        Ok(Self::Owned(ilst))
+    }
+}
+
+impl WriteAtom for Ilst<'_> {
+    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+        self.write_head(writer)?;
+        for a in self.iter() {
+            a.write(writer)?;
+        }
+        Ok(())
+    }
+
+    fn size(&self) -> Size {
+        let content_len = self.iter().map(|a| a.len()).sum();
+        Size::from(content_len)
+    }
+}
+
+impl Ilst<'_> {
+    pub fn owned(self) -> Option<Vec<AtomData>> {
+        match self {
+            Self::Owned(a) => Some(a),
+            Self::Borrowed(_) => None,
+        }
     }
 }
 
@@ -85,7 +111,7 @@ impl AtomData {
 
     /// Returns whether the inner data atom is empty.
     pub fn is_empty(&self) -> bool {
-        self.data.is_empty()
+        self.data.is_empty() || self.data.iter().all(|d| d.is_empty())
     }
 
     fn parse(reader: &mut (impl Read + Seek), parent: Fourcc, len: u64) -> crate::Result<Self> {
@@ -97,7 +123,7 @@ impl AtomData {
         while parsed_bytes < len {
             let head = parse_head(reader)?;
 
-            match head.fourcc {
+            match head.fourcc() {
                 DATA => {
                     let (version, flags) = parse_full_head(reader)?;
                     if version != 0 {
@@ -141,7 +167,7 @@ impl AtomData {
                 }
             }
 
-            parsed_bytes += head.len;
+            parsed_bytes += head.len();
         }
 
         let ident = match (parent, mean, name) {
@@ -160,7 +186,7 @@ impl AtomData {
     }
 
     /// Attempts to write the atom data to the writer.
-    pub fn write_to(&self, writer: &mut impl Write) -> crate::Result<()> {
+    pub fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
         writer.write_all(&u32::to_be_bytes(self.len() as u32))?;
 
         match &self.ident {
@@ -176,13 +202,13 @@ impl AtomData {
                 writer.write_all(&u32::to_be_bytes(mean_len))?;
                 writer.write_all(MEAN.deref())?;
                 writer.write_all(&[0u8; 4])?;
-                writer.write_all(&mean.as_bytes())?;
+                writer.write_all(mean.as_bytes())?;
 
                 let name_len: u32 = 12 + name.len() as u32;
                 writer.write_all(&u32::to_be_bytes(name_len))?;
                 writer.write_all(NAME.deref())?;
                 writer.write_all(&[0u8; 4])?;
-                writer.write_all(&name.as_bytes())?;
+                writer.write_all(name.as_bytes())?;
             }
         }
 

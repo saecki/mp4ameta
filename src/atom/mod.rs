@@ -34,10 +34,12 @@ use std::ops::{Deref, DerefMut};
 use crate::{AudioInfo, ErrorKind, Tag};
 
 use content::*;
+use head::*;
 use template::*;
 
 use co64::*;
 use ftyp::*;
+use hdlr::*;
 use ilst::*;
 use mdia::*;
 use meta::*;
@@ -61,10 +63,12 @@ pub mod data;
 pub mod ident;
 
 mod content;
+mod head;
 mod template;
 
 mod co64;
 mod ftyp;
+mod hdlr;
 mod ilst;
 mod mdia;
 mod meta;
@@ -142,145 +146,8 @@ impl AtomT {
     }
 }
 
-/// A head specifying the size and type of an atom.
-///
-/// 4 bytes standard length
-/// 4 bytes identifier
-/// 8 bytes optional extended length
-struct Head {
-    /// Whether the head is of standard size (8 bytes) with a 32 bit length or extended (16 bytes)
-    /// with a 64 bit length.
-    short: bool,
-    /// The length including this head.
-    len: u64,
-    /// The identifier.
-    fourcc: Fourcc,
-}
-
-impl Head {
-    const fn new(short: bool, len: u64, ident: Fourcc) -> Self {
-        Self { short, len, fourcc: ident }
-    }
-
-    const fn head_len(&self) -> u64 {
-        match self.short {
-            true => 8,
-            false => 16,
-        }
-    }
-
-    const fn content_len(&self) -> u64 {
-        match self.short {
-            true => self.len - 8,
-            false => self.len - 16,
-        }
-    }
-}
-
-/// Attempts to parse the atom's head containing a 32 bit unsigned integer determining the size of
-/// the atom in bytes and the following 4 byte identifier from the reader. If the 32 len is set to
-/// 1 an extended 64 bit length is read.
-fn parse_head(reader: &mut impl Read) -> crate::Result<Head> {
-    let len = match data::read_u32(reader) {
-        Ok(l) => l as u64,
-        Err(e) => {
-            return Err(crate::Error::new(
-                ErrorKind::Io(e),
-                "Error reading atom length".to_owned(),
-            ));
-        }
-    };
-    let mut ident = Fourcc([0u8; 4]);
-    if let Err(e) = reader.read_exact(&mut *ident) {
-        return Err(crate::Error::new(
-            ErrorKind::Io(e),
-            "Error reading atom identifier".to_owned(),
-        ));
-    }
-
-    if len == 1 {
-        match data::read_u64(reader) {
-            Ok(l) => Ok(Head::new(false, l, ident)),
-            Err(e) => Err(crate::Error::new(
-                ErrorKind::Io(e),
-                "Error reading extended atom length".to_owned(),
-            )),
-        }
-    } else if len < 8 {
-        Err(crate::Error::new(
-            crate::ErrorKind::Parsing,
-            format!("Read length of '{}' which is less than 8 bytes: {}", ident, len),
-        ))
-    } else {
-        Ok(Head::new(true, len, ident))
-    }
-}
-
-/// Attempts to parse a full atom head.
-///
-/// 1 byte version
-/// 3 bytes flags
-fn parse_full_head(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
-    let version = match data::read_u8(reader) {
-        Ok(v) => v,
-        Err(e) => {
-            return Err(crate::Error::new(
-                crate::ErrorKind::Io(e),
-                "Error reading version of full atom head".to_owned(),
-            ));
-        }
-    };
-
-    let mut flags = [0u8; 3];
-    if let Err(e) = reader.read_exact(&mut flags) {
-        return Err(crate::Error::new(
-            crate::ErrorKind::Io(e),
-            "Error reading flags of full atom head".to_owned(),
-        ));
-    };
-
-    Ok((version, flags))
-}
-
-/// A struct storing the position and size of an atom.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-struct AtomBounds {
-    pos: u64,
-    short: bool,
-    len: u64,
-    ident: Fourcc,
-}
-
-impl AtomBounds {
-    fn new(pos: u64, short: bool, len: u64, ident: Fourcc) -> Self {
-        Self { pos, short, len, ident }
-    }
-
-    const fn head_len(&self) -> u64 {
-        match self.short {
-            true => 8,
-            false => 16,
-        }
-    }
-
-    const fn content_len(&self) -> u64 {
-        match self.short {
-            true => self.len - 8,
-            false => self.len - 16,
-        }
-    }
-
-    const fn content_pos(&self) -> u64 {
-        self.pos + self.head_len()
-    }
-
-    const fn end(&self) -> u64 {
-        self.pos + self.len
-    }
-}
-
 /// A struct a hierarchy of atom bounds.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct FoundAtom {
     bounds: AtomBounds,
     atoms: Vec<FoundAtom>,
@@ -318,10 +185,10 @@ fn find_atoms(
     while pos < len {
         let head = parse_head(reader)?;
 
-        match atoms.iter().find(|a| a.ident == head.fourcc) {
+        match atoms.iter().find(|a| a.ident == head.fourcc()) {
             Some(a) => {
                 let atom_pos = reader.seek(SeekFrom::Current(0))? - head.head_len();
-                let bounds = AtomBounds::new(atom_pos, head.short, head.len, head.fourcc);
+                let bounds = AtomBounds::new(atom_pos, head);
 
                 match &a.content {
                     ContentT::Atoms(c) if !c.is_empty() => {
@@ -333,7 +200,7 @@ fn find_atoms(
                             Err(e) => {
                                 return Err(crate::Error::new(
                                     e.kind,
-                                    format!("Error finding {}: {}", head.fourcc, e.description),
+                                    format!("Error finding {}: {}", head.fourcc(), e.description),
                                 ));
                             }
                         }
@@ -349,15 +216,17 @@ fn find_atoms(
             }
         }
 
-        pos += head.len;
+        pos += head.len();
     }
 
     Ok(found_atoms)
 }
 
-trait ParseAtom: Sized {
+trait TempAtom: Sized {
     const FOURCC: Fourcc;
+}
 
+trait ParseAtom: TempAtom {
     fn parse(reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Self> {
         match Self::parse_atom(reader, len) {
             Err(mut e) => {
@@ -369,6 +238,27 @@ trait ParseAtom: Sized {
     }
 
     fn parse_atom(reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Self>;
+}
+
+trait WriteAtom: TempAtom {
+    fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
+        match self.write_atom(writer) {
+            Err(mut e) => {
+                e.description = format!("Error writing {}: {}", Self::FOURCC, e.description);
+                Err(e)
+            }
+            a => a,
+        }
+    }
+
+    fn write_head(&self, writer: &mut impl Write) -> crate::Result<()> {
+        let head = Head::from(self.size(), Self::FOURCC);
+        write_head(writer, head)
+    }
+
+    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()>;
+
+    fn size(&self) -> Size;
 }
 
 /// Attempts to read MPEG-4 audio metadata from the reader.
@@ -387,7 +277,7 @@ pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Ta
 
         let head = parse_head(reader)?;
 
-        match head.fourcc {
+        match head.fourcc() {
             MOVIE => {
                 break Moov::parse(reader, head.content_len())?;
             }
@@ -396,7 +286,7 @@ pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Ta
             }
         }
 
-        parsed_bytes += head.len;
+        parsed_bytes += head.len();
     };
 
     let mvhd = moov.mvhd;
@@ -411,7 +301,8 @@ pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Ta
         .udta
         .and_then(|udta| udta.meta)
         .and_then(|meta| meta.ilst)
-        .map_or(Vec::new(), |ilst| ilst.0);
+        .and_then(|ilst| ilst.owned())
+        .unwrap_or_default();
 
     let mut info = AudioInfo::default();
     if let Some(i) = mvhd {
@@ -436,17 +327,18 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
     let len = data::remaining_stream_len(&mut reader)?;
     let found_atoms = find_atoms(&mut reader, METADATA_WRITE_ATOM_T.deref(), len)?;
 
-    let mdat_pos = found_atoms.iter().find(|a| a.ident == MEDIA_DATA).map(|a| a.pos).unwrap_or(0);
-    let moov = found_atoms.iter().find(|a| a.ident == MOVIE).ok_or_else(|| {
+    let mdat_pos =
+        found_atoms.iter().find(|a| a.fourcc() == MEDIA_DATA).map(|a| a.pos()).unwrap_or(0);
+    let moov = found_atoms.iter().find(|a| a.fourcc() == MOVIE).ok_or_else(|| {
         crate::Error::new(
             crate::ErrorKind::AtomNotFound(MOVIE),
             "Missing necessary data, no movie (moov) atom found".to_owned(),
         )
     })?;
-    let udta = moov.atoms.iter().find(|a| a.ident == USER_DATA);
-    let meta = udta.and_then(|a| a.atoms.iter().find(|a| a.ident == METADATA));
-    let hdlr = meta.and_then(|a| a.atoms.iter().find(|a| a.ident == HANDLER_REFERENCE));
-    let ilst = meta.and_then(|a| a.atoms.iter().find(|a| a.ident == ITEM_LIST));
+    let udta = moov.atoms.iter().find(|a| a.fourcc() == USER_DATA);
+    let meta = udta.and_then(|a| a.atoms.iter().find(|a| a.fourcc() == METADATA));
+    let hdlr = meta.and_then(|a| a.atoms.iter().find(|a| a.fourcc() == HANDLER_REFERENCE));
+    let ilst = meta.and_then(|a| a.atoms.iter().find(|a| a.fourcc() == ITEM_LIST));
 
     let mut update_atoms = Vec::new();
     let mut new_atoms = Vec::new();
@@ -458,9 +350,9 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
         new_atoms.push(template::meta_handler_reference_atom());
     }
     if let Some(ilst) = ilst {
-        new_atoms_start = ilst.pos;
+        new_atoms_start = ilst.pos();
         moved_data_start = ilst.end();
-        len_diff -= ilst.len as i64;
+        len_diff -= ilst.len() as i64;
     }
     new_atoms.push(Atom::new(ITEM_LIST, 0, Content::AtomDataRef(atoms)));
 
@@ -503,18 +395,18 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
     let mut writer = BufWriter::new(file);
 
     // adjusting sample table chunk offsets
-    if mdat_pos > moov.pos {
+    if mdat_pos > moov.pos() {
         let stbl_atoms = moov
             .atoms
             .iter()
-            .filter(|a| a.ident == TRACK)
-            .filter_map(|a| a.atoms.iter().find(|a| a.ident == MEDIA))
-            .filter_map(|a| a.atoms.iter().find(|a| a.ident == MEDIA_INFORMATION))
-            .filter_map(|a| a.atoms.iter().find(|a| a.ident == SAMPLE_TABLE));
+            .filter(|a| a.fourcc() == TRACK)
+            .filter_map(|a| a.atoms.iter().find(|a| a.fourcc() == MEDIA))
+            .filter_map(|a| a.atoms.iter().find(|a| a.fourcc() == MEDIA_INFORMATION))
+            .filter_map(|a| a.atoms.iter().find(|a| a.fourcc() == SAMPLE_TABLE));
 
         for stbl in stbl_atoms {
             for a in stbl.atoms.iter() {
-                match a.ident {
+                match a.fourcc() {
                     SAMPLE_TABLE_CHUNK_OFFSET => {
                         reader.seek(SeekFrom::Start(a.content_pos()))?;
                         let chunk_offset = Stco::parse(&mut reader, a.content_len())?;
@@ -545,14 +437,14 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
 
     // update existing ilst hierarchy atom lengths
     for a in update_atoms.iter().rev() {
-        let new_len = a.len as i64 + len_diff;
-        writer.seek(SeekFrom::Start(a.pos))?;
-        if a.short {
-            writer.write_all(&u32::to_be_bytes(new_len as u32))?;
-        } else {
+        let new_len = a.len() as i64 + len_diff;
+        writer.seek(SeekFrom::Start(a.pos()))?;
+        if a.ext() {
             writer.write_all(&u32::to_be_bytes(1))?;
             writer.seek(SeekFrom::Current(4))?;
             writer.write_all(&u64::to_be_bytes(new_len as u64))?;
+        } else {
+            writer.write_all(&u32::to_be_bytes(new_len as u32))?;
         }
     }
 
@@ -578,22 +470,20 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
 /// Attempts to dump the metadata atoms to the writer. This doesn't include a complete MPEG-4
 /// container hierarchy and won't result in a usable file.
 pub(crate) fn dump_tag_to(writer: &mut impl Write, atoms: &[AtomData]) -> crate::Result<()> {
+    let ftyp = Ftyp("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".to_owned());
     #[rustfmt::skip]
-    let ftyp = Atom::new(FILETYPE, 0, Content::RawData(
-        Data::Utf8("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".to_owned())),
-    );
-    #[rustfmt::skip]
-    let moov = Atom::new(MOVIE, 0, Content::atom(
-        Atom::new(USER_DATA, 0, Content::atom(
-            Atom::new(METADATA, 4, Content::Atoms(vec![
-                template::meta_handler_reference_atom(),
-                Atom::new(ITEM_LIST, 0, Content::AtomDataRef(atoms)),
-            ])),
-        )),
-    ));
+    let moov = Moov {
+        udta: Some(Udta {
+            meta: Some(Meta {
+                hdlr: Some(Hdlr::meta()),
+                ilst: Some(Ilst::Borrowed(atoms)),
+            }),
+        }),
+        ..Default::default()
+    };
 
-    ftyp.write_to(writer)?;
-    moov.write_to(writer)?;
+    ftyp.write(writer)?;
+    moov.write(writer)?;
 
     Ok(())
 }

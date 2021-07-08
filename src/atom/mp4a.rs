@@ -61,9 +61,11 @@ pub struct Mp4a {
 //          1~4 bytes len
 //          1 byte ?
 
-impl ParseAtom for Mp4a {
+impl TempAtom for Mp4a {
     const FOURCC: Fourcc = MP4_AUDIO;
+}
 
+impl ParseAtom for Mp4a {
     fn parse_atom(reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Self> {
         let mut mp4a = Self::default();
 
@@ -72,7 +74,7 @@ impl ParseAtom for Mp4a {
         reader.seek(SeekFrom::Current(28))?;
 
         let head = parse_head(reader)?;
-        if head.fourcc != ELEMENTARY_STREAM_DESCRIPTION {
+        if head.fourcc() != ELEMENTARY_STREAM_DESCRIPTION {
             return Err(crate::Error::new(
                 crate::ErrorKind::AtomNotFound(ELEMENTARY_STREAM_DESCRIPTION),
                 "Missing esds atom".to_owned(),

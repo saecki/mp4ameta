@@ -5,9 +5,11 @@ pub struct Minf {
     pub stbl: Option<Stbl>,
 }
 
-impl ParseAtom for Minf {
+impl TempAtom for Minf {
     const FOURCC: Fourcc = MEDIA_INFORMATION;
+}
 
+impl ParseAtom for Minf {
     fn parse_atom(
         reader: &mut (impl std::io::Read + std::io::Seek),
         len: u64,
@@ -18,14 +20,14 @@ impl ParseAtom for Minf {
         while parsed_bytes < len {
             let head = parse_head(reader)?;
 
-            match head.fourcc {
+            match head.fourcc() {
                 SAMPLE_TABLE => minf.stbl = Some(Stbl::parse(reader, head.content_len())?),
                 _ => {
                     reader.seek(SeekFrom::Current(head.content_len() as i64))?;
                 }
             }
 
-            parsed_bytes += head.len;
+            parsed_bytes += head.len();
         }
 
         Ok(minf)

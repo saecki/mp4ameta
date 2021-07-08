@@ -5,9 +5,11 @@ pub struct Mdia {
     pub minf: Option<Minf>,
 }
 
-impl ParseAtom for Mdia {
+impl TempAtom for Mdia {
     const FOURCC: Fourcc = MEDIA;
+}
 
+impl ParseAtom for Mdia {
     fn parse_atom(
         reader: &mut (impl std::io::Read + std::io::Seek),
         len: u64,
@@ -18,14 +20,14 @@ impl ParseAtom for Mdia {
         while parsed_bytes < len {
             let head = parse_head(reader)?;
 
-            match head.fourcc {
+            match head.fourcc() {
                 MEDIA_INFORMATION => mdia.minf = Some(Minf::parse(reader, head.content_len())?),
                 _ => {
                     reader.seek(SeekFrom::Current(head.content_len() as i64))?;
                 }
             }
 
-            parsed_bytes += head.len;
+            parsed_bytes += head.len();
         }
 
         Ok(mdia)

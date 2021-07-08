@@ -9,9 +9,11 @@ pub struct Stco {
     pub offsets: Vec<u32>,
 }
 
-impl ParseAtom for Stco {
+impl TempAtom for Stco {
     const FOURCC: Fourcc = SAMPLE_TABLE_CHUNK_OFFSET;
+}
 
+impl ParseAtom for Stco {
     fn parse_atom(reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Self> {
         let (version, _) = parse_full_head(reader)?;
 

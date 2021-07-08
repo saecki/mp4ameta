@@ -3,11 +3,15 @@ use super::*;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Stbl {
     pub stsd: Option<Stsd>,
+    pub stco: Option<Stco>,
+    pub co64: Option<Co64>,
+}
+
+impl TempAtom for Stbl {
+    const FOURCC: Fourcc = SAMPLE_TABLE;
 }
 
 impl ParseAtom for Stbl {
-    const FOURCC: Fourcc = SAMPLE_TABLE;
-
     fn parse_atom(
         reader: &mut (impl std::io::Read + std::io::Seek),
         len: u64,
@@ -18,7 +22,7 @@ impl ParseAtom for Stbl {
         while parsed_bytes < len {
             let head = parse_head(reader)?;
 
-            match head.fourcc {
+            match head.fourcc() {
                 SAMPLE_TABLE_SAMPLE_DESCRIPTION => {
                     stbl.stsd = Some(Stsd::parse(reader, head.content_len())?)
                 }
@@ -27,7 +31,7 @@ impl ParseAtom for Stbl {
                 }
             }
 
-            parsed_bytes += head.len;
+            parsed_bytes += head.len();
         }
 
         Ok(stbl)
