@@ -45,7 +45,6 @@ impl WriteAtom for Moov<'_> {
     }
 
     fn size(&self) -> Size {
-        let content_len = self.udta.as_ref().map_or(0, |a| a.len());
-        Size::from(content_len)
+        Size::from(self.udta.len_or_zero())
     }
 }

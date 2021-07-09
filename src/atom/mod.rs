@@ -83,7 +83,7 @@ mod trak;
 mod udta;
 
 /// A template representing a MPEG-4 audio metadata atom.
-#[derive(Clone, Default, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 struct AtomT {
     /// The 4 byte identifier of the atom.
     ident: Fourcc,
@@ -225,6 +225,16 @@ trait WriteAtom: Atom {
     fn size(&self) -> Size;
 }
 
+trait LenOrZero {
+    fn len_or_zero(&self) -> u64;
+}
+
+impl<T: WriteAtom> LenOrZero for Option<T> {
+    fn len_or_zero(&self) -> u64 {
+        self.as_ref().map_or(0, |a| a.len())
+    }
+}
+
 /// Attempts to read MPEG-4 audio metadata from the reader.
 pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
     let Ftyp(ftyp) = Ftyp::parse(reader)?;
@@ -356,7 +366,7 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
     } else if let Some(a) = &new_meta {
         a.len()
     } else {
-        new_hdlr.as_ref().map_or(0, |a| a.len()) + new_ilst.len()
+        new_hdlr.len_or_zero() + new_ilst.len()
     };
     len_diff += new_atom_len as i64;
 
