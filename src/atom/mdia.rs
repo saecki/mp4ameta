@@ -5,7 +5,7 @@ pub struct Mdia {
     pub minf: Option<Minf>,
 }
 
-impl TempAtom for Mdia {
+impl Atom for Mdia {
     const FOURCC: Fourcc = MEDIA;
 }
 

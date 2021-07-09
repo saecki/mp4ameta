@@ -5,7 +5,7 @@ pub struct Trak {
     pub mdia: Option<Mdia>,
 }
 
-impl TempAtom for Trak {
+impl Atom for Trak {
     const FOURCC: Fourcc = TRACK;
 }
 

@@ -9,7 +9,7 @@ pub struct Co64 {
     pub offsets: Vec<u64>,
 }
 
-impl TempAtom for Co64 {
+impl Atom for Co64 {
     const FOURCC: Fourcc = SAMPLE_TABLE_CHUNK_OFFSET_64;
 }
 

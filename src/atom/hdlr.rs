@@ -17,7 +17,7 @@ impl DerefMut for Hdlr {
     }
 }
 
-impl TempAtom for Hdlr {
+impl Atom for Hdlr {
     const FOURCC: Fourcc = HANDLER_REFERENCE;
 }
 

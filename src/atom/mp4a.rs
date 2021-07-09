@@ -61,7 +61,7 @@ pub struct Mp4a {
 //          1~4 bytes len
 //          1 byte ?
 
-impl TempAtom for Mp4a {
+impl Atom for Mp4a {
     const FOURCC: Fourcc = MP4_AUDIO;
 }
 

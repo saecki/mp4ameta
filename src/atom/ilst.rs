@@ -17,7 +17,7 @@ impl Deref for Ilst<'_> {
     }
 }
 
-impl TempAtom for Ilst<'_> {
+impl Atom for Ilst<'_> {
     const FOURCC: Fourcc = ITEM_LIST;
 }
 

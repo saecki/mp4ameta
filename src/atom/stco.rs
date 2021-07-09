@@ -9,7 +9,7 @@ pub struct Stco {
     pub offsets: Vec<u32>,
 }
 
-impl TempAtom for Stco {
+impl Atom for Stco {
     const FOURCC: Fourcc = SAMPLE_TABLE_CHUNK_OFFSET;
 }
 

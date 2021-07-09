@@ -5,7 +5,7 @@ pub struct Stsd {
     pub mp4a: Option<Mp4a>,
 }
 
-impl TempAtom for Stsd {
+impl Atom for Stsd {
     const FOURCC: Fourcc = SAMPLE_TABLE_SAMPLE_DESCRIPTION;
 }
 

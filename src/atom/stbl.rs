@@ -7,7 +7,7 @@ pub struct Stbl {
     pub co64: Option<Co64>,
 }
 
-impl TempAtom for Stbl {
+impl Atom for Stbl {
     const FOURCC: Fourcc = SAMPLE_TABLE;
 }
 

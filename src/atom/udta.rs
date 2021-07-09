@@ -5,7 +5,7 @@ pub struct Udta<'a> {
     pub meta: Option<Meta<'a>>,
 }
 
-impl TempAtom for Udta<'_> {
+impl Atom for Udta<'_> {
     const FOURCC: Fourcc = USER_DATA;
 }
 
@@ -41,7 +41,7 @@ impl WriteAtom for Udta<'_> {
     }
 
     fn size(&self) -> Size {
-        let content_len = self.meta.as_ref().map_or(0, |a| a.size().len());
+        let content_len = self.meta.as_ref().map_or(0, Meta::len);
         Size::from(content_len)
     }
 }

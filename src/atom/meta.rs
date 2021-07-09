@@ -6,7 +6,7 @@ pub struct Meta<'a> {
     pub ilst: Option<Ilst<'a>>,
 }
 
-impl TempAtom for Meta<'_> {
+impl Atom for Meta<'_> {
     const FOURCC: Fourcc = METADATA;
 }
 
@@ -55,8 +55,8 @@ impl WriteAtom for Meta<'_> {
     }
 
     fn size(&self) -> Size {
-        let content_len = self.hdlr.as_ref().map_or(0, |a| a.size().len())
-            + self.ilst.as_ref().map_or(0, |a| a.size().len());
+        let content_len =
+            self.hdlr.as_ref().map_or(0, Hdlr::len) + self.ilst.as_ref().map_or(0, Ilst::len);
         Size::from(content_len + 4)
     }
 }

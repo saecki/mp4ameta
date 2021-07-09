@@ -82,46 +82,6 @@ mod stsd;
 mod trak;
 mod udta;
 
-/// A struct that represents a MPEG-4 audio metadata atom.
-#[derive(Clone, Default, Eq, PartialEq)]
-struct Atom<'a> {
-    /// The 4 byte identifier of the atom.
-    ident: Fourcc,
-    /// The offset in bytes separating the head from the content.
-    offset: u64,
-    /// The content of an atom.
-    content: Content<'a>,
-}
-
-impl fmt::Debug for Atom<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Atom {{ {}, {}, {:#?} }}", self.ident, self.offset, self.content)
-    }
-}
-
-impl<'a> Atom<'a> {
-    /// Creates an atom containing the provided content at a n byte offset.
-    const fn new(ident: Fourcc, offset: u64, content: Content<'a>) -> Self {
-        Self { ident, offset, content }
-    }
-
-    /// Returns the length of the atom in bytes.
-    fn len(&self) -> u64 {
-        8 + self.offset + self.content.len()
-    }
-
-    /// Attempts to write the atom to the writer.
-    fn write_to(&self, writer: &mut impl Write) -> crate::Result<()> {
-        writer.write_all(&u32::to_be_bytes(self.len() as u32))?;
-        writer.write_all(self.ident.deref())?;
-        writer.write_all(&vec![0u8; self.offset as usize])?;
-
-        self.content.write_to(writer)?;
-
-        Ok(())
-    }
-}
-
 /// A template representing a MPEG-4 audio metadata atom.
 #[derive(Clone, Default, Eq, PartialEq)]
 struct AtomT {
@@ -222,11 +182,11 @@ fn find_atoms(
     Ok(found_atoms)
 }
 
-trait TempAtom: Sized {
+trait Atom: Sized {
     const FOURCC: Fourcc;
 }
 
-trait ParseAtom: TempAtom {
+trait ParseAtom: Atom {
     fn parse(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
         match Self::parse_atom(reader, size) {
             Err(mut e) => {
@@ -240,7 +200,7 @@ trait ParseAtom: TempAtom {
     fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self>;
 }
 
-trait WriteAtom: TempAtom {
+trait WriteAtom: Atom {
     fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
         match self.write_atom(writer) {
             Err(mut e) => {
@@ -254,6 +214,10 @@ trait WriteAtom: TempAtom {
     fn write_head(&self, writer: &mut impl Write) -> crate::Result<()> {
         let head = Head::from(self.size(), Self::FOURCC);
         write_head(writer, head)
+    }
+
+    fn len(&self) -> u64 {
+        self.size().len()
     }
 
     fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()>;
@@ -340,21 +304,24 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
     let hdlr = meta.and_then(|a| a.atoms.iter().find(|a| a.fourcc() == HANDLER_REFERENCE));
     let ilst = meta.and_then(|a| a.atoms.iter().find(|a| a.fourcc() == ITEM_LIST));
 
-    let mut update_atoms = Vec::new();
-    let mut new_atoms = Vec::new();
     let mut new_atoms_start = 0;
     let mut moved_data_start = 0;
     let mut len_diff = 0;
 
+    let mut update_atoms = Vec::new();
+    let mut new_udta = None;
+    let mut new_meta = None;
+    let mut new_hdlr = None;
+    let new_ilst = Ilst::Borrowed(atoms);
+
     if hdlr.is_none() {
-        new_atoms.push(template::meta_handler_reference_atom());
+        new_hdlr = Some(Meta::hdlr());
     }
     if let Some(ilst) = ilst {
         new_atoms_start = ilst.pos();
         moved_data_start = ilst.end();
         len_diff -= ilst.len() as i64;
     }
-    new_atoms.push(Atom::new(ITEM_LIST, 0, Content::AtomDataRef(atoms)));
 
     match meta {
         Some(meta) => {
@@ -365,7 +332,7 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
             }
         }
         None => {
-            new_atoms = vec![Atom::new(METADATA, 4, Content::Atoms(new_atoms))];
+            new_meta = Some(Meta { hdlr: new_hdlr.take(), ilst: Some(new_ilst.clone()) });
         }
     }
     match udta {
@@ -377,13 +344,21 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
             }
         }
         None => {
-            new_atoms = vec![Atom::new(USER_DATA, 0, Content::Atoms(new_atoms))];
+            new_udta = Some(Udta { meta: new_meta.take() });
             new_atoms_start = moov.end();
             moved_data_start = moov.end();
         }
     }
-    len_diff += new_atoms.iter().map(|a| a.len()).sum::<u64>() as i64;
     update_atoms.push(moov);
+
+    let new_atom_len = if let Some(a) = &new_udta {
+        a.len()
+    } else if let Some(a) = &new_meta {
+        a.len()
+    } else {
+        new_hdlr.as_ref().map_or(0, |a| a.len()) + new_ilst.len()
+    };
+    len_diff += new_atom_len as i64;
 
     // reading moved data
     let old_file_len = reader.seek(SeekFrom::End(0))?;
@@ -452,11 +427,17 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
     file.set_len((old_file_len as i64 + len_diff) as u64)?;
 
     // write missing ilst hierarchy and metadata
-    if !new_atoms.is_empty() {
-        writer.seek(SeekFrom::Start(new_atoms_start))?;
-        for a in new_atoms.iter() {
-            a.write_to(&mut writer)?;
+    writer.seek(SeekFrom::Start(new_atoms_start))?;
+
+    if let Some(a) = new_udta {
+        a.write(&mut writer)?;
+    } else if let Some(a) = new_meta {
+        a.write(&mut writer)?;
+    } else {
+        if let Some(a) = new_hdlr {
+            a.write(&mut writer)?;
         }
+        new_ilst.write(&mut writer)?;
     }
 
     // writing moved data

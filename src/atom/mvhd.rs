@@ -9,7 +9,7 @@ pub struct Mvhd {
     pub duration: Duration,
 }
 
-impl TempAtom for Mvhd {
+impl Atom for Mvhd {
     const FOURCC: Fourcc = MOVIE_HEADER;
 }
 

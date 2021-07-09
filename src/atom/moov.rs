@@ -7,7 +7,7 @@ pub struct Moov<'a> {
     pub udta: Option<Udta<'a>>,
 }
 
-impl TempAtom for Moov<'_> {
+impl Atom for Moov<'_> {
     const FOURCC: Fourcc = MOVIE;
 }
 
@@ -45,7 +45,7 @@ impl WriteAtom for Moov<'_> {
     }
 
     fn size(&self) -> Size {
-        let content_len = self.udta.as_ref().map_or(0, |a| a.size().len());
+        let content_len = self.udta.as_ref().map_or(0, |a| a.len());
         Size::from(content_len)
     }
 }
