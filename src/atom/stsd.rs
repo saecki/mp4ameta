@@ -10,10 +10,7 @@ impl TempAtom for Stsd {
 }
 
 impl ParseAtom for Stsd {
-    fn parse_atom(
-        reader: &mut (impl std::io::Read + std::io::Seek),
-        len: u64,
-    ) -> crate::Result<Self> {
+    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
         let (version, _) = parse_full_head(reader)?;
 
         if version != 0 {
@@ -28,11 +25,11 @@ impl ParseAtom for Stsd {
         let mut stsd = Self::default();
         let mut parsed_bytes = 8;
 
-        while parsed_bytes < len {
+        while parsed_bytes < size.content_len() {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                MP4_AUDIO => stsd.mp4a = Some(Mp4a::parse(reader, head.content_len())?),
+                MP4_AUDIO => stsd.mp4a = Some(Mp4a::parse(reader, head.size())?),
                 _ => {
                     reader.seek(SeekFrom::Current(head.content_len() as i64))?;
                 }

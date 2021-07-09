@@ -10,18 +10,15 @@ impl TempAtom for Minf {
 }
 
 impl ParseAtom for Minf {
-    fn parse_atom(
-        reader: &mut (impl std::io::Read + std::io::Seek),
-        len: u64,
-    ) -> crate::Result<Self> {
+    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
         let mut minf = Self::default();
         let mut parsed_bytes = 0;
 
-        while parsed_bytes < len {
+        while parsed_bytes < size.content_len() {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                SAMPLE_TABLE => minf.stbl = Some(Stbl::parse(reader, head.content_len())?),
+                SAMPLE_TABLE => minf.stbl = Some(Stbl::parse(reader, head.size())?),
                 _ => {
                     reader.seek(SeekFrom::Current(head.content_len() as i64))?;
                 }

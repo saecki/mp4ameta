@@ -76,6 +76,10 @@ impl Head {
         Self { size, fourcc }
     }
 
+    pub const fn size(&self) -> Size {
+        self.size
+    }
+
     pub const fn fourcc(&self) -> Fourcc {
         self.fourcc
     }

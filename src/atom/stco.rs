@@ -14,13 +14,13 @@ impl TempAtom for Stco {
 }
 
 impl ParseAtom for Stco {
-    fn parse_atom(reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Self> {
+    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
         let (version, _) = parse_full_head(reader)?;
 
         match version {
             0 => {
                 let entries = data::read_u32(reader)?;
-                if 8 + 4 * entries as u64 != len {
+                if 8 + 4 * entries as u64 != size.content_len() {
                     return Err(crate::Error::new(
                         crate::ErrorKind::Parsing,
                         "Sample table chunk offset (stco) offset table size doesn't match atom length".to_owned(),

@@ -22,14 +22,11 @@ impl TempAtom for Ilst<'_> {
 }
 
 impl ParseAtom for Ilst<'_> {
-    fn parse_atom(
-        reader: &mut (impl std::io::Read + std::io::Seek),
-        len: u64,
-    ) -> crate::Result<Self> {
+    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
         let mut ilst = Vec::<AtomData>::new();
         let mut parsed_bytes = 0;
 
-        while parsed_bytes < len {
+        while parsed_bytes < size.content_len() {
             let head = parse_head(reader)?;
 
             match head.fourcc() {

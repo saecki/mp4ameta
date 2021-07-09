@@ -12,17 +12,17 @@ impl TempAtom for Moov<'_> {
 }
 
 impl ParseAtom for Moov<'_> {
-    fn parse_atom(reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Self> {
+    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
         let mut moov = Self::default();
         let mut parsed_bytes = 0;
 
-        while parsed_bytes < len {
+        while parsed_bytes < size.content_len() {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                MOVIE_HEADER => moov.mvhd = Some(Mvhd::parse(reader, head.content_len())?),
-                TRACK => moov.trak.push(Trak::parse(reader, head.content_len())?),
-                USER_DATA => moov.udta = Some(Udta::parse(reader, head.content_len())?),
+                MOVIE_HEADER => moov.mvhd = Some(Mvhd::parse(reader, head.size())?),
+                TRACK => moov.trak.push(Trak::parse(reader, head.size())?),
+                USER_DATA => moov.udta = Some(Udta::parse(reader, head.size())?),
                 _ => {
                     reader.seek(SeekFrom::Current(head.content_len() as i64))?;
                 }

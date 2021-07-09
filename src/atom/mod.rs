@@ -227,8 +227,8 @@ trait TempAtom: Sized {
 }
 
 trait ParseAtom: TempAtom {
-    fn parse(reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Self> {
-        match Self::parse_atom(reader, len) {
+    fn parse(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
+        match Self::parse_atom(reader, size) {
             Err(mut e) => {
                 e.description = format!("Error parsing {}: {}", Self::FOURCC, e.description);
                 Err(e)
@@ -237,7 +237,7 @@ trait ParseAtom: TempAtom {
         }
     }
 
-    fn parse_atom(reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Self>;
+    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self>;
 }
 
 trait WriteAtom: TempAtom {
@@ -279,7 +279,7 @@ pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Ta
 
         match head.fourcc() {
             MOVIE => {
-                break Moov::parse(reader, head.content_len())?;
+                break Moov::parse(reader, head.size())?;
             }
             _ => {
                 reader.seek(SeekFrom::Current(head.content_len() as i64))?;
@@ -409,7 +409,7 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
                 match a.fourcc() {
                     SAMPLE_TABLE_CHUNK_OFFSET => {
                         reader.seek(SeekFrom::Start(a.content_pos()))?;
-                        let chunk_offset = Stco::parse(&mut reader, a.content_len())?;
+                        let chunk_offset = Stco::parse(&mut reader, a.size())?;
 
                         writer.seek(SeekFrom::Start(chunk_offset.table_pos))?;
                         for co in chunk_offset.offsets.iter() {
@@ -420,7 +420,7 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
                     }
                     SAMPLE_TABLE_CHUNK_OFFSET_64 => {
                         reader.seek(SeekFrom::Start(a.content_pos()))?;
-                        let chunk_offset = Co64::parse(&mut reader, a.content_len())?;
+                        let chunk_offset = Co64::parse(&mut reader, a.size())?;
 
                         writer.seek(SeekFrom::Start(chunk_offset.table_pos))?;
                         for co in chunk_offset.offsets.iter() {
@@ -475,7 +475,7 @@ pub(crate) fn dump_tag_to(writer: &mut impl Write, atoms: &[AtomData]) -> crate:
     let moov = Moov {
         udta: Some(Udta {
             meta: Some(Meta {
-                hdlr: Some(Hdlr::meta()),
+                hdlr: Some(Meta::hdlr()),
                 ilst: Some(Ilst::Borrowed(atoms)),
             }),
         }),

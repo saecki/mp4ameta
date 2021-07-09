@@ -14,7 +14,7 @@ impl TempAtom for Mvhd {
 }
 
 impl ParseAtom for Mvhd {
-    fn parse_atom(reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Self> {
+    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
         let mut mvhd = Self::default();
         let start = reader.seek(SeekFrom::Current(0))?;
 
@@ -58,7 +58,7 @@ impl ParseAtom for Mvhd {
             }
         }
 
-        data::seek_to_end(reader, start, len)?;
+        data::seek_to_end(reader, start, size.content_len())?;
 
         Ok(mvhd)
     }

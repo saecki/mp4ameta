@@ -66,7 +66,7 @@ impl TempAtom for Mp4a {
 }
 
 impl ParseAtom for Mp4a {
-    fn parse_atom(reader: &mut (impl Read + Seek), len: u64) -> crate::Result<Self> {
+    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
         let mut mp4a = Self::default();
 
         let start = reader.seek(SeekFrom::Current(0))?;
@@ -83,7 +83,7 @@ impl ParseAtom for Mp4a {
 
         parse_esds(reader, &mut mp4a, head.content_len())?;
 
-        data::seek_to_end(reader, start, len)?;
+        data::seek_to_end(reader, start, size.content_len())?;
 
         Ok(mp4a)
     }
