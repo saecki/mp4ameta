@@ -23,7 +23,7 @@ impl Atom for Hdlr {
 
 impl ParseAtom for Hdlr {
     fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
-        Ok(Self(data::read_u8_vec(reader, size.content_len())?))
+        Ok(Self(reader.read_u8_vec(size.content_len())?))
     }
 }
 

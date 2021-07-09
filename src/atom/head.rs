@@ -89,7 +89,7 @@ impl Head {
 /// the atom in bytes and the following 4 byte identifier from the reader. If the 32 len is set to
 /// 1 an extended 64 bit length is read.
 pub fn parse_head(reader: &mut impl Read) -> crate::Result<Head> {
-    let len = match data::read_u32(reader) {
+    let len = match reader.read_u32() {
         Ok(l) => l as u64,
         Err(e) => {
             return Err(crate::Error::new(
@@ -107,7 +107,7 @@ pub fn parse_head(reader: &mut impl Read) -> crate::Result<Head> {
     }
 
     if len == 1 {
-        match data::read_u64(reader) {
+        match reader.read_u64() {
             Ok(l) => Ok(Head::new(true, l, ident)),
             Err(e) => Err(crate::Error::new(
                 ErrorKind::Io(e),
@@ -141,7 +141,7 @@ pub fn write_head(writer: &mut impl Write, head: Head) -> crate::Result<()> {
 /// 1 byte version
 /// 3 bytes flags
 pub fn parse_full_head(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
-    let version = match data::read_u8(reader) {
+    let version = match reader.read_u8() {
         Ok(v) => v,
         Err(e) => {
             return Err(crate::Error::new(

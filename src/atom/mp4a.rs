@@ -172,8 +172,8 @@ fn parse_es_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> 
 /// └──decoder specific descriptor
 fn parse_dc_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> crate::Result<()> {
     reader.seek(SeekFrom::Current(5))?;
-    info.max_bitrate = Some(data::read_u32(reader)?);
-    info.avg_bitrate = Some(data::read_u32(reader)?);
+    info.max_bitrate = Some(reader.read_u32()?);
+    info.avg_bitrate = Some(reader.read_u32()?);
 
     let mut parsed_bytes = 13;
     while parsed_bytes < len {
@@ -201,7 +201,7 @@ fn parse_dc_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> 
 /// 4 bits channel config
 /// 3 bits ?
 fn parse_ds_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> crate::Result<()> {
-    let num = data::read_u16(reader)?;
+    let num = reader.read_u16()?;
 
     let freq_index = ((num >> 7) & 0x0F) as u8;
     info.sample_rate = SampleRate::try_from(freq_index).ok();
@@ -214,12 +214,12 @@ fn parse_ds_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> 
 }
 
 fn parse_desc_head(reader: &mut impl Read) -> crate::Result<(u8, u64, u64)> {
-    let tag = data::read_u8(reader)?;
+    let tag = reader.read_u8()?;
 
     let mut head_len = 1;
     let mut len = 0;
     while head_len < 5 {
-        let b = data::read_u8(reader)?;
+        let b = reader.read_u8()?;
         len = (len << 7) | (b & 0x7F) as u64;
         head_len += 1;
         if b & 0x80 == 0 {

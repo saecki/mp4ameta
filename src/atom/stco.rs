@@ -19,7 +19,7 @@ impl ParseAtom for Stco {
 
         match version {
             0 => {
-                let entries = data::read_u32(reader)?;
+                let entries = reader.read_u32()?;
                 if 8 + 4 * entries as u64 != size.content_len() {
                     return Err(crate::Error::new(
                         crate::ErrorKind::Parsing,
@@ -30,7 +30,7 @@ impl ParseAtom for Stco {
                 let table_pos = reader.seek(SeekFrom::Current(0))?;
                 let mut offsets = Vec::with_capacity(entries as usize);
                 for _ in 0..entries {
-                    let offset = data::read_u32(reader)?;
+                    let offset = reader.read_u32()?;
                     offsets.push(offset);
                 }
 

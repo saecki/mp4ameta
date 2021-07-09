@@ -10,7 +10,7 @@ impl Ftyp {
             return Err(crate::Error::new(ErrorKind::NoTag, "No filetype atom found.".to_owned()));
         }
 
-        let ftyp = read_utf8(reader, head.content_len())?;
+        let ftyp = reader.read_utf8(head.content_len())?;
 
         Ok(Ftyp(ftyp))
     }

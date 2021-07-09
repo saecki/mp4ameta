@@ -30,8 +30,8 @@ impl ParseAtom for Mvhd {
                 // 4 bytes duration
                 // ...
                 reader.seek(SeekFrom::Current(8))?;
-                let timescale = data::read_u32(reader)? as u64;
-                let duration = data::read_u32(reader)? as u64;
+                let timescale = reader.read_u32()? as u64;
+                let duration = reader.read_u32()? as u64;
 
                 mvhd.duration = Duration::from_nanos(duration * 1_000_000_000 / timescale);
             }
@@ -45,8 +45,8 @@ impl ParseAtom for Mvhd {
                 // 8 bytes duration
                 // ...
                 reader.seek(SeekFrom::Current(16))?;
-                let timescale = read_u32(reader)? as u64;
-                let duration = read_u64(reader)?;
+                let timescale = reader.read_u32()? as u64;
+                let duration = reader.read_u64()?;
 
                 mvhd.duration = Duration::from_nanos(duration * 1_000_000_000 / timescale);
             }

@@ -32,6 +32,7 @@ use std::ops::{Deref, DerefMut};
 
 use crate::{AudioInfo, ErrorKind, Tag};
 
+use data::*;
 use head::*;
 
 use co64::*;
@@ -51,11 +52,11 @@ use stsd::*;
 use trak::*;
 use udta::*;
 
-pub use data::*;
+pub use data::Data;
 pub use ident::*;
 
 #[macro_use]
-pub mod data;
+mod data;
 /// A module for working with identifiers.
 pub mod ident;
 
@@ -207,7 +208,7 @@ impl AtomData {
                     // Skipping 4 byte locale indicator
                     reader.seek(SeekFrom::Current(4))?;
 
-                    data.push(data::parse_data(reader, datatype, head.content_len() - 8)?);
+                    data.push(Data::parse(reader, datatype, head.content_len() - 8)?);
                 }
                 MEAN => {
                     let (version, _) = parse_full_head(reader)?;
@@ -218,7 +219,7 @@ impl AtomData {
                         ));
                     }
 
-                    mean = Some(data::read_utf8(reader, head.content_len() - 4)?);
+                    mean = Some(reader.read_utf8(head.content_len() - 4)?);
                 }
                 NAME => {
                     let (version, _) = parse_full_head(reader)?;
@@ -229,7 +230,7 @@ impl AtomData {
                         ));
                     }
 
-                    name = Some(data::read_utf8(reader, head.content_len() - 4)?);
+                    name = Some(reader.read_utf8(head.content_len() - 4)?);
                 }
                 _ => {
                     reader.seek(SeekFrom::Current(head.content_len() as i64))?;
