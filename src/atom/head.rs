@@ -2,9 +2,11 @@ use super::*;
 
 /// A struct storing size of an atom and whether it is extended.
 ///
+/// ```md
 /// 4 bytes standard length
 /// 4 bytes identifier
 /// 8 bytes optional extended length
+/// ```
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Size {
     /// Whether the head is of standard size (8 bytes) with a 32 bit length or extended (16 bytes)
@@ -49,9 +51,11 @@ impl Size {
 
 /// A head specifying the size and type of an atom.
 ///
+/// ```md
 /// 4 bytes standard length
 /// 4 bytes identifier
 /// 8 bytes optional extended length
+/// ```
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Head {
     size: Size,
@@ -88,6 +92,12 @@ impl Head {
 /// Attempts to parse the atom's head containing a 32 bit unsigned integer determining the size of
 /// the atom in bytes and the following 4 byte identifier from the reader. If the 32 len is set to
 /// 1 an extended 64 bit length is read.
+///
+/// ```md
+/// 4 bytes standard length
+/// 4 bytes identifier
+/// 8 bytes optional extended length
+/// ```
 pub fn parse_head(reader: &mut impl Read) -> crate::Result<Head> {
     let len = match reader.read_u32() {
         Ok(l) => l as u64,
@@ -138,8 +148,10 @@ pub fn write_head(writer: &mut impl Write, head: Head) -> crate::Result<()> {
 
 /// Attempts to parse a full atom head.
 ///
+/// ```md
 /// 1 byte version
 /// 3 bytes flags
+/// ```
 pub fn parse_full_head(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
     let version = match reader.read_u8() {
         Ok(v) => v,

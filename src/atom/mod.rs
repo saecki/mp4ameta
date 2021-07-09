@@ -1,5 +1,6 @@
 //! Relevant structure of an mp4 file
 //!
+//! ```md
 //! ftyp
 //! mdat
 //! moov
@@ -24,6 +25,7 @@
 //!             ├─ mean
 //!             ├─ name
 //!             └─ data
+//! ```
 
 use std::convert::TryFrom;
 use std::fs::File;

@@ -1,4 +1,6 @@
 //! mp4a atom
+//!
+//! ```md
 //! 4 bytes ?
 //! 2 bytes ?
 //! 2 bytes data reference index
@@ -41,6 +43,7 @@
 //!          1 byte tag (0x06)
 //!          1~4 bytes len
 //!          1 byte ?
+//! ```
 
 use std::cmp::min;
 
@@ -91,6 +94,8 @@ impl ParseAtom for Mp4a {
 }
 
 /// esds atom
+///
+/// ```md
 /// 4 bytes len
 /// 4 bytes ident
 /// 1 byte version
@@ -103,6 +108,7 @@ impl ParseAtom for Mp4a {
 ///    │  └──decoder specific descriptor
 ///    │
 ///    └──sl config descriptor
+/// ```
 fn parse_esds(reader: &mut (impl Read + Seek), info: &mut Mp4a, size: Size) -> crate::Result<()> {
     let (version, _) = parse_full_head(reader)?;
 
@@ -129,6 +135,7 @@ fn parse_esds(reader: &mut (impl Read + Seek), info: &mut Mp4a, size: Size) -> c
 
 /// elementary stream descriptor
 ///
+/// ```md
 /// 1 byte tag (0x03)
 /// 1~4 bytes len
 /// 2 bytes id
@@ -139,6 +146,7 @@ fn parse_esds(reader: &mut (impl Read + Seek), info: &mut Mp4a, size: Size) -> c
 /// │  └──decoder specific descriptor
 /// │
 /// └──sl config descriptor
+/// ```
 fn parse_es_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> crate::Result<()> {
     reader.seek(SeekFrom::Current(3))?;
 
@@ -161,6 +169,7 @@ fn parse_es_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> 
 
 /// decoder config descriptor
 ///
+/// ```md
 /// 1 byte tag (0x04)
 /// 1~4 bytes len
 /// 1 byte object type indication
@@ -170,6 +179,7 @@ fn parse_es_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> 
 /// 4 bytes average bitrate
 /// │
 /// └──decoder specific descriptor
+/// ```
 fn parse_dc_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> crate::Result<()> {
     reader.seek(SeekFrom::Current(5))?;
     info.max_bitrate = Some(reader.read_u32()?);
@@ -194,12 +204,14 @@ fn parse_dc_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> 
 
 /// decoder specific descriptor
 ///
+/// ```md
 /// 1 byte tag (0x05)
 /// 1~4 bytes len
 /// 5 bits profile
 /// 4 bits frequency index
 /// 4 bits channel config
 /// 3 bits ?
+/// ```
 fn parse_ds_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> crate::Result<()> {
     let num = reader.read_u16()?;
 
