@@ -28,7 +28,7 @@ fn metadata_write_atom_t() -> [AtomT; 2] {
                     AtomT::new(HANDLER_REFERENCE, 0, ContentT::RawData(data::RESERVED)),
                     AtomT::new(ITEM_LIST, 0, ContentT::atoms_t()),
                 ]))
-            ))
+            )),
         ])),
     ]
 }
