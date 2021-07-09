@@ -26,21 +26,19 @@
 //!             └─ data
 
 use std::convert::TryFrom;
-use std::fmt;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use std::ops::{Deref, DerefMut};
 
 use crate::{AudioInfo, ErrorKind, Tag};
 
-use content::*;
 use head::*;
-use template::*;
 
 use co64::*;
 use ftyp::*;
 use hdlr::*;
 use ilst::*;
+use mdat::*;
 use mdia::*;
 use meta::*;
 use minf::*;
@@ -61,14 +59,13 @@ pub mod data;
 /// A module for working with identifiers.
 pub mod ident;
 
-mod content;
 mod head;
-mod template;
 
 mod co64;
 mod ftyp;
 mod hdlr;
 mod ilst;
+mod mdat;
 mod mdia;
 mod meta;
 mod minf;
@@ -80,6 +77,75 @@ mod stco;
 mod stsd;
 mod trak;
 mod udta;
+
+trait Atom: Sized {
+    const FOURCC: Fourcc;
+}
+
+trait ParseAtom: Atom {
+    fn parse(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
+        match Self::parse_atom(reader, size) {
+            Err(mut e) => {
+                e.description = format!("Error parsing {}: {}", Self::FOURCC, e.description);
+                Err(e)
+            }
+            a => a,
+        }
+    }
+
+    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self>;
+}
+
+trait FindAtom: Atom {
+    type Bounds;
+
+    fn find(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
+        match Self::find_atom(reader, size) {
+            Err(mut e) => {
+                e.description = format!("Error parsing {}: {}", Self::FOURCC, e.description);
+                Err(e)
+            }
+            a => a,
+        }
+    }
+
+    fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds>;
+}
+
+trait WriteAtom: Atom {
+    fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
+        match self.write_atom(writer) {
+            Err(mut e) => {
+                e.description = format!("Error writing {}: {}", Self::FOURCC, e.description);
+                Err(e)
+            }
+            a => a,
+        }
+    }
+
+    fn write_head(&self, writer: &mut impl Write) -> crate::Result<()> {
+        let head = Head::from(self.size(), Self::FOURCC);
+        write_head(writer, head)
+    }
+
+    fn len(&self) -> u64 {
+        self.size().len()
+    }
+
+    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()>;
+
+    fn size(&self) -> Size;
+}
+
+trait LenOrZero {
+    fn len_or_zero(&self) -> u64;
+}
+
+impl<T: WriteAtom> LenOrZero for Option<T> {
+    fn len_or_zero(&self) -> u64 {
+        self.as_ref().map_or(0, |a| a.len())
+    }
+}
 
 /// A struct representing data that is associated with an atom identifier.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -226,159 +292,6 @@ impl AtomData {
     }
 }
 
-/// A template representing a MPEG-4 audio metadata atom.
-#[derive(Clone, Eq, PartialEq)]
-struct AtomT {
-    /// The 4 byte identifier of the atom.
-    ident: Fourcc,
-    /// The offset in bytes separating the head from the content.
-    offset: u64,
-    /// The content template of an atom template.
-    content: ContentT,
-}
-
-impl fmt::Debug for AtomT {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "AtomT {{ {}, {}, {:#?} }}", self.ident, self.offset, self.content)
-    }
-}
-
-impl AtomT {
-    /// Creates an atom template containing the provided content at a n byte offset.
-    const fn new(ident: Fourcc, offset: u64, content: ContentT) -> Self {
-        Self { ident, offset, content }
-    }
-}
-
-/// A struct a hierarchy of atom bounds.
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct FoundAtom {
-    bounds: AtomBounds,
-    atoms: Vec<FoundAtom>,
-}
-
-impl Deref for FoundAtom {
-    type Target = AtomBounds;
-
-    fn deref(&self) -> &Self::Target {
-        &self.bounds
-    }
-}
-
-impl DerefMut for FoundAtom {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.bounds
-    }
-}
-
-impl FoundAtom {
-    const fn new(bounds: AtomBounds, atoms: Vec<FoundAtom>) -> Self {
-        FoundAtom { bounds, atoms }
-    }
-}
-
-/// Finds out the position and size of any atoms matching the template hierarchy.
-fn find_atoms(
-    reader: &mut (impl Read + Seek),
-    atoms: &[AtomT],
-    len: u64,
-) -> crate::Result<Vec<FoundAtom>> {
-    let mut found_atoms = Vec::new();
-    let mut pos = 0;
-
-    while pos < len {
-        let head = parse_head(reader)?;
-
-        match atoms.iter().find(|a| a.ident == head.fourcc()) {
-            Some(a) => {
-                let atom_pos = reader.seek(SeekFrom::Current(0))? - head.head_len();
-                let bounds = AtomBounds::new(atom_pos, head);
-
-                match &a.content {
-                    ContentT::Atoms(c) if !c.is_empty() => {
-                        if a.offset != 0 {
-                            reader.seek(SeekFrom::Current(a.offset as i64))?;
-                        }
-                        match find_atoms(reader, c, head.content_len() - a.offset) {
-                            Ok(a) => found_atoms.push(FoundAtom::new(bounds, a)),
-                            Err(e) => {
-                                return Err(crate::Error::new(
-                                    e.kind,
-                                    format!("Error finding {}: {}", head.fourcc(), e.description),
-                                ));
-                            }
-                        }
-                    }
-                    _ => {
-                        reader.seek(SeekFrom::Current(head.content_len() as i64))?;
-                        found_atoms.push(FoundAtom::new(bounds, Vec::new()));
-                    }
-                }
-            }
-            None => {
-                reader.seek(SeekFrom::Current(head.content_len() as i64))?;
-            }
-        }
-
-        pos += head.len();
-    }
-
-    Ok(found_atoms)
-}
-
-trait Atom: Sized {
-    const FOURCC: Fourcc;
-}
-
-trait ParseAtom: Atom {
-    fn parse(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
-        match Self::parse_atom(reader, size) {
-            Err(mut e) => {
-                e.description = format!("Error parsing {}: {}", Self::FOURCC, e.description);
-                Err(e)
-            }
-            a => a,
-        }
-    }
-
-    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self>;
-}
-
-trait WriteAtom: Atom {
-    fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
-        match self.write_atom(writer) {
-            Err(mut e) => {
-                e.description = format!("Error writing {}: {}", Self::FOURCC, e.description);
-                Err(e)
-            }
-            a => a,
-        }
-    }
-
-    fn write_head(&self, writer: &mut impl Write) -> crate::Result<()> {
-        let head = Head::from(self.size(), Self::FOURCC);
-        write_head(writer, head)
-    }
-
-    fn len(&self) -> u64 {
-        self.size().len()
-    }
-
-    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()>;
-
-    fn size(&self) -> Size;
-}
-
-trait LenOrZero {
-    fn len_or_zero(&self) -> u64;
-}
-
-impl<T: WriteAtom> LenOrZero for Option<T> {
-    fn len_or_zero(&self) -> u64 {
-        self.as_ref().map_or(0, |a| a.len())
-    }
-}
-
 /// Attempts to read MPEG-4 audio metadata from the reader.
 pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
     let Ftyp(ftyp) = Ftyp::parse(reader)?;
@@ -439,24 +352,40 @@ pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Ta
 /// Attempts to write the metadata atoms to the file inside the item list atom.
 pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()> {
     let mut reader = BufReader::new(file);
+    let reader = &mut reader;
 
-    Ftyp::parse(&mut reader)?;
+    Ftyp::parse(reader)?;
 
-    let len = data::remaining_stream_len(&mut reader)?;
-    let found_atoms = find_atoms(&mut reader, METADATA_WRITE_ATOM_T.deref(), len)?;
+    let len = data::remaining_stream_len(reader)?;
+    let mut moov = None;
+    let mut mdat = None;
+    let mut parsed_bytes = 0;
 
-    let mdat_pos =
-        found_atoms.iter().find(|a| a.fourcc() == MEDIA_DATA).map(|a| a.pos()).unwrap_or(0);
-    let moov = found_atoms.iter().find(|a| a.fourcc() == MOVIE).ok_or_else(|| {
+    while parsed_bytes < len {
+        let head = parse_head(reader)?;
+
+        match head.fourcc() {
+            MOVIE => moov = Some(Moov::find(reader, head.size())?),
+            MEDIA_DATA => mdat = Some(Mdat::find(reader, head.size())?),
+            _ => {
+                reader.seek(SeekFrom::Current(head.content_len() as i64))?;
+            }
+        }
+
+        parsed_bytes += head.len();
+    }
+
+    let mdat_pos = mdat.map_or(0, |a| a.pos());
+    let moov = moov.ok_or_else(|| {
         crate::Error::new(
             crate::ErrorKind::AtomNotFound(MOVIE),
             "Missing necessary data, no movie (moov) atom found".to_owned(),
         )
     })?;
-    let udta = moov.atoms.iter().find(|a| a.fourcc() == USER_DATA);
-    let meta = udta.and_then(|a| a.atoms.iter().find(|a| a.fourcc() == METADATA));
-    let hdlr = meta.and_then(|a| a.atoms.iter().find(|a| a.fourcc() == HANDLER_REFERENCE));
-    let ilst = meta.and_then(|a| a.atoms.iter().find(|a| a.fourcc() == ITEM_LIST));
+    let udta = &moov.udta;
+    let meta = udta.as_ref().and_then(|a| a.meta.as_ref());
+    let hdlr = meta.as_ref().and_then(|a| a.hdlr.as_ref());
+    let ilst = meta.as_ref().and_then(|a| a.ilst.as_ref());
 
     let mut new_atoms_start = 0;
     let mut moved_data_start = 0;
@@ -479,7 +408,7 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
 
     match meta {
         Some(meta) => {
-            update_atoms.push(meta);
+            update_atoms.push(&meta.bounds);
             if ilst.is_none() {
                 new_atoms_start = meta.end();
                 moved_data_start = meta.end();
@@ -491,7 +420,7 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
     }
     match udta {
         Some(udta) => {
-            update_atoms.push(udta);
+            update_atoms.push(&udta.bounds);
             if meta.is_none() {
                 new_atoms_start = udta.end();
                 moved_data_start = udta.end();
@@ -503,7 +432,7 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
             moved_data_start = moov.end();
         }
     }
-    update_atoms.push(moov);
+    update_atoms.push(&moov.bounds);
 
     let new_atom_len = if let Some(a) = &new_udta {
         a.len()
@@ -525,41 +454,32 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
 
     // adjusting sample table chunk offsets
     if mdat_pos > moov.pos() {
-        let stbl_atoms = moov
-            .atoms
-            .iter()
-            .filter(|a| a.fourcc() == TRACK)
-            .filter_map(|a| a.atoms.iter().find(|a| a.fourcc() == MEDIA))
-            .filter_map(|a| a.atoms.iter().find(|a| a.fourcc() == MEDIA_INFORMATION))
-            .filter_map(|a| a.atoms.iter().find(|a| a.fourcc() == SAMPLE_TABLE));
+        let stbl_atoms = moov.trak.iter().filter_map(|a| {
+            a.mdia.as_ref().and_then(|a| a.minf.as_ref()).and_then(|a| a.stbl.as_ref())
+        });
 
         for stbl in stbl_atoms {
-            for a in stbl.atoms.iter() {
-                match a.fourcc() {
-                    SAMPLE_TABLE_CHUNK_OFFSET => {
-                        reader.seek(SeekFrom::Start(a.content_pos()))?;
-                        let chunk_offset = Stco::parse(&mut reader, a.size())?;
+            if let Some(a) = &stbl.stco {
+                reader.seek(SeekFrom::Start(a.content_pos()))?;
+                let chunk_offset = Stco::parse(reader, a.size())?;
 
-                        writer.seek(SeekFrom::Start(chunk_offset.table_pos))?;
-                        for co in chunk_offset.offsets.iter() {
-                            let new_offset = (*co as i64 + len_diff) as u32;
-                            writer.write_all(&u32::to_be_bytes(new_offset))?;
-                        }
-                        writer.flush()?;
-                    }
-                    SAMPLE_TABLE_CHUNK_OFFSET_64 => {
-                        reader.seek(SeekFrom::Start(a.content_pos()))?;
-                        let chunk_offset = Co64::parse(&mut reader, a.size())?;
-
-                        writer.seek(SeekFrom::Start(chunk_offset.table_pos))?;
-                        for co in chunk_offset.offsets.iter() {
-                            let new_offset = (*co as i64 + len_diff) as u64;
-                            writer.write_all(&u64::to_be_bytes(new_offset))?;
-                        }
-                        writer.flush()?;
-                    }
-                    _ => (),
+                writer.seek(SeekFrom::Start(chunk_offset.table_pos))?;
+                for co in chunk_offset.offsets.iter() {
+                    let new_offset = (*co as i64 + len_diff) as u32;
+                    writer.write_all(&u32::to_be_bytes(new_offset))?;
                 }
+                writer.flush()?;
+            }
+            if let Some(a) = &stbl.co64 {
+                reader.seek(SeekFrom::Start(a.content_pos()))?;
+                let chunk_offset = Co64::parse(reader, a.size())?;
+
+                writer.seek(SeekFrom::Start(chunk_offset.table_pos))?;
+                for co in chunk_offset.offsets.iter() {
+                    let new_offset = (*co as i64 + len_diff) as u64;
+                    writer.write_all(&u64::to_be_bytes(new_offset))?;
+                }
+                writer.flush()?;
             }
         }
     }

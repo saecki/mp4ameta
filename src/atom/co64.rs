@@ -43,3 +43,25 @@ impl ParseAtom for Co64 {
         }
     }
 }
+
+pub struct Co64Bounds {
+    pub bounds: AtomBounds,
+}
+
+impl Deref for Co64Bounds {
+    type Target = AtomBounds;
+
+    fn deref(&self) -> &Self::Target {
+        &self.bounds
+    }
+}
+
+impl FindAtom for Co64 {
+    type Bounds = Co64Bounds;
+
+    fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
+        let bounds = find_bounds(reader, size)?;
+        seek_to_end(reader, &bounds)?;
+        Ok(Self::Bounds { bounds })
+    }
+}

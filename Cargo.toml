@@ -12,7 +12,6 @@ edition = "2018"
 include = ["src", "Cargo.toml", "LICENSE-APACHE", "LICENSE-MIT"]
 
 [dependencies]
-lazy_static = "1.4.0"
 mp4ameta_proc = { path = "proc", version = "0.6.0" }
 
 [dev-dependencies]

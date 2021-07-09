@@ -74,3 +74,25 @@ impl Ilst<'_> {
         }
     }
 }
+
+pub struct IlstBounds {
+    pub bounds: AtomBounds,
+}
+
+impl Deref for IlstBounds {
+    type Target = AtomBounds;
+
+    fn deref(&self) -> &Self::Target {
+        &self.bounds
+    }
+}
+
+impl FindAtom for Ilst<'_> {
+    type Bounds = IlstBounds;
+
+    fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
+        let bounds = find_bounds(reader, size)?;
+        seek_to_end(reader, &bounds)?;
+        Ok(Self::Bounds { bounds })
+    }
+}

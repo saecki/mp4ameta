@@ -168,28 +168,27 @@ pub fn write_full_head(writer: &mut impl Write, version: u8, flags: [u8; 3]) -> 
     Ok(())
 }
 
-/// A struct storing the position and size of an atom.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AtomBounds {
     pos: u64,
-    head: Head,
+    size: Size,
 }
 
 impl Deref for AtomBounds {
-    type Target = Head;
+    type Target = Size;
 
     fn deref(&self) -> &Self::Target {
-        &self.head
+        &self.size
     }
 }
 
 impl AtomBounds {
-    pub const fn new(pos: u64, head: Head) -> Self {
-        Self { pos, head }
-    }
-
     pub const fn pos(&self) -> u64 {
         self.pos
+    }
+
+    pub const fn size(&self) -> Size {
+        self.size
     }
 
     pub fn content_pos(&self) -> u64 {
@@ -199,4 +198,16 @@ impl AtomBounds {
     pub fn end(&self) -> u64 {
         self.pos + self.len()
     }
+}
+
+pub fn find_bounds(reader: &mut impl Seek, size: Size) -> crate::Result<AtomBounds> {
+    let pos = reader.seek(SeekFrom::Current(0))? - size.head_len();
+    Ok(AtomBounds { pos, size })
+}
+
+pub fn seek_to_end(reader: &mut impl Seek, bounds: &AtomBounds) -> crate::Result<()> {
+    let current = reader.seek(SeekFrom::Current(0))?;
+    let diff = bounds.end() - current;
+    reader.seek(SeekFrom::Current(diff as i64))?;
+    Ok(())
 }

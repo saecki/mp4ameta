@@ -38,3 +38,25 @@ impl WriteAtom for Hdlr {
         Size::from(self.0.len() as u64)
     }
 }
+
+pub struct HdlrBounds {
+    pub bounds: AtomBounds,
+}
+
+impl Deref for HdlrBounds {
+    type Target = AtomBounds;
+
+    fn deref(&self) -> &Self::Target {
+        &self.bounds
+    }
+}
+
+impl FindAtom for Hdlr {
+    type Bounds = HdlrBounds;
+
+    fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
+        let bounds = find_bounds(reader, size)?;
+        seek_to_end(reader, &bounds)?;
+        Ok(Self::Bounds { bounds })
+    }
+}

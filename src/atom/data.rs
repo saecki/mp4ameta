@@ -498,13 +498,6 @@ pub(crate) fn remaining_stream_len(reader: &mut impl Seek) -> io::Result<u64> {
     Ok(len)
 }
 
-pub(crate) fn seek_to_end(reader: &mut impl Seek, start: u64, len: u64) -> crate::Result<()> {
-    let current = reader.seek(SeekFrom::Current(0))?;
-    let diff = current - start;
-    reader.seek(SeekFrom::Current(len as i64 - diff as i64))?;
-    Ok(())
-}
-
 /// Attempts to read a big endian integer at the specified index from a byte slice.
 macro_rules! be_int {
     ($bytes:expr, $index:expr, $type:ty) => {{

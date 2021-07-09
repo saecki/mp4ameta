@@ -73,3 +73,53 @@ impl Meta<'_> {
         ])
     }
 }
+
+pub struct MetaBounds {
+    pub bounds: AtomBounds,
+    pub hdlr: Option<HdlrBounds>,
+    pub ilst: Option<IlstBounds>,
+}
+
+impl Deref for MetaBounds {
+    type Target = AtomBounds;
+
+    fn deref(&self) -> &Self::Target {
+        &self.bounds
+    }
+}
+
+impl FindAtom for Meta<'_> {
+    type Bounds = MetaBounds;
+
+    fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
+        let bounds = find_bounds(reader, size)?;
+        let (version, _) = parse_full_head(reader)?;
+
+        if version != 0 {
+            return Err(crate::Error::new(
+                ErrorKind::UnknownVersion(version),
+                "Unknown metadata (meta) version".to_owned(),
+            ));
+        }
+
+        let mut hdlr = None;
+        let mut ilst = None;
+        let mut parsed_bytes = 4;
+
+        while parsed_bytes < size.content_len() {
+            let head = parse_head(reader)?;
+
+            match head.fourcc() {
+                HANDLER_REFERENCE => hdlr = Some(Hdlr::find(reader, head.size())?),
+                ITEM_LIST => ilst = Some(Ilst::find(reader, head.size())?),
+                _ => {
+                    reader.seek(SeekFrom::Current(head.content_len() as i64))?;
+                }
+            }
+
+            parsed_bytes += head.len();
+        }
+
+        Ok(Self::Bounds { bounds, hdlr, ilst })
+    }
+}

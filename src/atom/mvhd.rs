@@ -15,8 +15,8 @@ impl Atom for Mvhd {
 
 impl ParseAtom for Mvhd {
     fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
+        let bounds = find_bounds(reader, size)?;
         let mut mvhd = Self::default();
-        let start = reader.seek(SeekFrom::Current(0))?;
 
         let (version, _) = parse_full_head(reader)?;
         match version {
@@ -58,7 +58,7 @@ impl ParseAtom for Mvhd {
             }
         }
 
-        data::seek_to_end(reader, start, size.content_len())?;
+        seek_to_end(reader, &bounds)?;
 
         Ok(mvhd)
     }
