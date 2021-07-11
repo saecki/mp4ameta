@@ -202,6 +202,14 @@ impl Tag {{
     pub fn remove_{vi}(&mut self) {{
         self.remove_data_of(&{ai})
     }}
+
+    /// Returns the {n} formatted in an easily readable way.
+    fn format_{vi}(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {{
+        match self.{vi}() {{
+            true => writeln!(f, \"{n}\"),
+            false => Ok(()),
+        }}
+    }}
 }}
     ",
         hl = headline,
@@ -238,6 +246,14 @@ impl Tag {{
     pub fn remove_{vi}(&mut self) {{
         self.remove_data_of(&{ai});
     }}
+
+    /// Returns the {n} formatted in an easily readable way.
+    fn format_{vi}(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {{
+        match self.{vi}() {{
+            Some(s) => writeln!(f, \"{n}: {{}}\", s),
+            None => Ok(()),
+        }}
+    }}
 }}
     ",
         hl = headline,
@@ -273,6 +289,14 @@ impl Tag {{
     /// Removes the {n} (`{ais}`).
     pub fn remove_{vi}(&mut self) {{
         self.remove_data_of(&{ai});
+    }}
+
+    /// Returns the {n} formatted in an easily readable way.
+    fn format_{vi}(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {{
+        match self.{vi}() {{
+            Some(s) => writeln!(f, \"{n}: {{}}\", s),
+            None => Ok(()),
+        }}
     }}
 }}
     ",

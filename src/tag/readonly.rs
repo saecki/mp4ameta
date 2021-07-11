@@ -44,9 +44,23 @@ impl Tag {
         self.info.channel_config
     }
 
+    pub(crate) fn format_channel_config(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.channel_config() {
+            Some(c) => writeln!(f, "channel config: {}", c),
+            None => Ok(()),
+        }
+    }
+
     /// Returns the channel configuration.
     pub fn sample_rate(&self) -> Option<SampleRate> {
         self.info.sample_rate
+    }
+
+    pub(crate) fn format_sample_rate(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.sample_rate() {
+            Some(c) => writeln!(f, "sample rate: {}", c),
+            None => Ok(()),
+        }
     }
 
     /// Returns the average bitrate.
@@ -54,9 +68,23 @@ impl Tag {
         self.info.avg_bitrate
     }
 
+    pub(crate) fn format_avg_bitrate(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.avg_bitrate() {
+            Some(c) => writeln!(f, "average bitrate: {}kbps", c / 1024),
+            None => Ok(()),
+        }
+    }
+
     /// Returns the maximum bitrate.
     pub fn max_bitrate(&self) -> Option<u32> {
         self.info.max_bitrate
+    }
+
+    pub(crate) fn format_max_bitrate(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.max_bitrate() {
+            Some(c) => writeln!(f, "maximum bitrate: {}kbps", c / 1024),
+            None => Ok(()),
+        }
     }
 }
 

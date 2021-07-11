@@ -42,12 +42,8 @@ impl fmt::Display for Tag {
         self.format_track(f)?;
         self.format_disc(f)?;
         self.format_artworks(f)?;
-        if let Some(r) = self.advisory_rating() {
-            writeln!(f, "advisory rating: {}", r)?;
-        }
-        if let Some(m) = self.media_type() {
-            writeln!(f, "media type: {}", m)?;
-        }
+        self.format_advisory_rating(f)?;
+        self.format_media_type(f)?;
         self.format_groupings(f)?;
         self.format_descriptions(f)?;
         self.format_comments(f)?;
@@ -58,45 +54,21 @@ impl fmt::Display for Tag {
         self.format_tv_show_name(f)?;
         self.format_tv_network_name(f)?;
         self.format_tv_episode_name(f)?;
-        if let Some(e) = self.tv_episode() {
-            writeln!(f, "tv episode: {}", e)?;
-        }
-        if let Some(s) = self.tv_season() {
-            writeln!(f, "tv season: {}", s)?;
-        }
-        if let Some(i) = self.bpm() {
-            writeln!(f, "bpm: {}", i)?;
-        }
+        self.format_tv_episode(f)?;
+        self.format_tv_season(f)?;
+        self.format_bpm(f)?;
         self.format_movement(f)?;
         self.format_work(f)?;
-        if let Some(i) = self.movement_count() {
-            writeln!(f, "movement count: {}", i)?;
-        }
-        if let Some(i) = self.movement_index() {
-            writeln!(f, "movement index: {}", i)?;
-        }
+        self.format_movement_count(f)?;
+        self.format_movement_index(f)?;
         self.format_duration(f)?;
-        if let Some(c) = self.channel_config() {
-            writeln!(f, "channel config: {}", c)?;
-        }
-        if let Some(s) = self.sample_rate() {
-            writeln!(f, "sample rate: {}", s)?;
-        }
-        if let Some(a) = self.avg_bitrate() {
-            writeln!(f, "average bitrate: {}kbps", a / 1024)?;
-        }
-        if let Some(m) = self.max_bitrate() {
-            writeln!(f, "maximum bitrate: {}kbps", m / 1024)?;
-        }
-        if self.show_movement() {
-            writeln!(f, "show movement")?;
-        }
-        if self.gapless_playback() {
-            writeln!(f, "gapless playback")?;
-        }
-        if self.compilation() {
-            writeln!(f, "compilation")?;
-        }
+        self.format_channel_config(f)?;
+        self.format_sample_rate(f)?;
+        self.format_avg_bitrate(f)?;
+        self.format_max_bitrate(f)?;
+        self.format_show_movement(f)?;
+        self.format_gapless_playback(f)?;
+        self.format_compilation(f)?;
         self.format_isrc(f)?;
         self.format_lyrics(f)?;
         for a in self.atoms.iter() {
@@ -299,6 +271,13 @@ impl Tag {
     pub fn remove_media_type(&mut self) {
         self.remove_data_of(&ident::MEDIA_TYPE);
     }
+
+    fn format_media_type(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.media_type() {
+            Some(m) => writeln!(f, "media type: {}", m),
+            None => Ok(()),
+        }
+    }
 }
 
 /// ### Advisory rating
@@ -322,6 +301,13 @@ impl Tag {
     /// Removes the advisory rating (`rtng`).
     pub fn remove_advisory_rating(&mut self) {
         self.remove_data_of(&ident::ADVISORY_RATING);
+    }
+
+    fn format_advisory_rating(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.advisory_rating() {
+            Some(r) => writeln!(f, "advisory rating: {}", r),
+            None => Ok(()),
+        }
     }
 }
 
