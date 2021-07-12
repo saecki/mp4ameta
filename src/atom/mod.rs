@@ -244,7 +244,7 @@ impl AtomData {
 
         let ident = match (parent, mean, name) {
             (FREEFORM, Some(mean), Some(name)) => DataIdent::Freeform { mean, name },
-            (ident, _, _) => DataIdent::Fourcc(ident),
+            (fourcc, _, _) => DataIdent::Fourcc(fourcc),
         };
 
         if data.is_empty() {
