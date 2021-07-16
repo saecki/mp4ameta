@@ -42,7 +42,7 @@ use mp4ameta::{Data, FreeformIdent, Tag};
 let mut tag = Tag::read_from_path("music.m4a").unwrap();
 let isrc_ident = FreeformIdent::new("com.apple.iTunes", "ISRC");
 
-let isrc = tag.string(&isrc_ident).next().unwrap();
+let isrc = tag.string_of(&isrc_ident).next().unwrap();
 println!("{}", isrc);
 
 tag.set_data(isrc_ident, Data::Utf8("isrc".to_owned()));
