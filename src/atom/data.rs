@@ -1,7 +1,8 @@
 use std::fmt;
-use std::io::{self, Read, Seek, SeekFrom, Write};
 
 use crate::{Img, ImgBuf, ImgFmt, ImgMut, ImgRef};
+
+use super::*;
 
 // [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) codes
 /// Reserved for use where no type needs to be indicated.
@@ -101,7 +102,7 @@ pub enum Data {
     BeSigned(Vec<u8>),
     /// A value containing bmp byte data inside a `Vec<u8>`.
     Bmp(Vec<u8>),
-    /// A value containing the unknown data type code and the data
+    /// A value containing an unknown data type code and data.
     Unknown {
         /// The data type code.
         code: u32,
@@ -137,9 +138,90 @@ impl<T: Into<Vec<u8>>> From<Img<T>> for Data {
     }
 }
 
+impl Atom for Data {
+    const FOURCC: Fourcc = DATA;
+}
+
+impl ParseAtom for Data {
+    /// Parses data based on [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
+    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Data> {
+        let (version, flags) = parse_full_head(reader)?;
+        if version != 0 {
+            return Err(crate::Error::new(
+                crate::ErrorKind::UnknownVersion(version),
+                "Error reading data atom (data)".to_owned(),
+            ));
+        }
+        let [b2, b1, b0] = flags;
+        let datatype = u32::from_be_bytes([0, b2, b1, b0]);
+
+        // Skipping 4 byte locale indicator
+        reader.seek(SeekFrom::Current(4))?;
+
+        let data_len = size.content_len() - 8;
+
+        Ok(match datatype {
+            RESERVED => Data::Reserved(reader.read_u8_vec(data_len)?),
+            UTF8 => Data::Utf8(reader.read_utf8(data_len)?),
+            UTF16 => Data::Utf16(reader.read_utf16(data_len)?),
+            JPEG => Data::Jpeg(reader.read_u8_vec(data_len)?),
+            PNG => Data::Png(reader.read_u8_vec(data_len)?),
+            BE_SIGNED => Data::BeSigned(reader.read_u8_vec(data_len)?),
+            BMP => Data::Bmp(reader.read_u8_vec(data_len)?),
+            _ => {
+                // TODO: maybe log warning
+                Data::Unknown { code: datatype, data: reader.read_u8_vec(data_len)? }
+            }
+        })
+    }
+}
+
+impl WriteAtom for Data {
+    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+        self.write_head(writer)?;
+
+        let datatype = match self {
+            Self::Reserved(_) => RESERVED,
+            Self::Utf8(_) => UTF8,
+            Self::Utf16(_) => UTF16,
+            Self::Jpeg(_) => JPEG,
+            Self::Png(_) => PNG,
+            Self::BeSigned(_) => BE_SIGNED,
+            Self::Bmp(_) => BMP,
+            Self::Unknown { code, .. } => *code,
+        };
+
+        writer.write_all(&datatype.to_be_bytes())?;
+        // Writing 4 byte locale indicator
+        writer.write_all(&[0u8; 4])?;
+
+        match self {
+            Self::Reserved(v) => writer.write_all(v)?,
+            Self::Utf8(s) => writer.write_all(s.as_bytes())?,
+            Self::Utf16(s) => {
+                for c in s.encode_utf16() {
+                    writer.write_all(&c.to_be_bytes())?;
+                }
+            }
+            Self::Jpeg(v) => writer.write_all(v)?,
+            Self::Png(v) => writer.write_all(v)?,
+            Self::BeSigned(v) => writer.write_all(v)?,
+            Self::Bmp(v) => writer.write_all(v)?,
+            Self::Unknown { data, .. } => writer.write_all(data)?,
+        }
+
+        Ok(())
+    }
+
+    fn size(&self) -> Size {
+        let content_len = 8 + self.data_len();
+        Size::from(content_len)
+    }
+}
+
 impl Data {
-    /// Returns the length of the raw data in bytes.
-    pub fn len(&self) -> u64 {
+    /// Returns the length of the raw data (without version, datatype and locale header) in bytes.
+    pub fn data_len(&self) -> u64 {
         (match self {
             Self::Reserved(v) => v.len(),
             Self::Utf8(s) => s.len(),
@@ -154,7 +236,7 @@ impl Data {
 
     /// Returns true if the data is of length 0, false otherwise.
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.data_len() == 0
     }
 
     /// Returns true if `self` is of type [`Self::Reserved`] or [`Self::BeSigned`], false otherwise.
@@ -371,203 +453,5 @@ impl Data {
             Self::Bmp(v) => Some(v),
             _ => None,
         }
-    }
-
-    /// Attempts to write type header followed by the data to the writer.
-    pub(crate) fn write_typed(&self, writer: &mut impl Write) -> crate::Result<()> {
-        let datatype = match self {
-            Self::Reserved(_) => RESERVED,
-            Self::Utf8(_) => UTF8,
-            Self::Utf16(_) => UTF16,
-            Self::Jpeg(_) => JPEG,
-            Self::Png(_) => PNG,
-            Self::BeSigned(_) => BE_SIGNED,
-            Self::Bmp(_) => BMP,
-            Self::Unknown { code, .. } => *code,
-        };
-
-        writer.write_all(&datatype.to_be_bytes())?;
-        // Writing 4 byte locale indicator
-        writer.write_all(&[0u8; 4])?;
-
-        self.write_raw(writer)?;
-
-        Ok(())
-    }
-
-    /// Attempts to write the raw data to the writer.
-    pub(crate) fn write_raw(&self, writer: &mut impl Write) -> crate::Result<()> {
-        match self {
-            Self::Reserved(v) => {
-                writer.write_all(v)?;
-            }
-            Self::Utf8(s) => {
-                writer.write_all(s.as_bytes())?;
-            }
-            Self::Utf16(s) => {
-                for c in s.encode_utf16() {
-                    writer.write_all(&c.to_be_bytes())?;
-                }
-            }
-            Self::Jpeg(v) => {
-                writer.write_all(v)?;
-            }
-            Self::Png(v) => {
-                writer.write_all(v)?;
-            }
-            Self::BeSigned(v) => {
-                writer.write_all(v)?;
-            }
-            Self::Bmp(v) => {
-                writer.write_all(v)?;
-            }
-            Self::Unknown { data, .. } => {
-                writer.write_all(data)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Parses data based on [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
-    pub(crate) fn parse(reader: &mut impl Read, datatype: u32, len: u64) -> crate::Result<Data> {
-        Ok(match datatype {
-            RESERVED => Data::Reserved(reader.read_u8_vec(len)?),
-            UTF8 => Data::Utf8(reader.read_utf8(len)?),
-            UTF16 => Data::Utf16(reader.read_utf16(len)?),
-            JPEG => Data::Jpeg(reader.read_u8_vec(len)?),
-            PNG => Data::Png(reader.read_u8_vec(len)?),
-            BE_SIGNED => Data::BeSigned(reader.read_u8_vec(len)?),
-            BMP => Data::Bmp(reader.read_u8_vec(len)?),
-            _ => Data::Unknown { code: datatype, data: reader.read_u8_vec(len)? },
-        })
-    }
-}
-
-pub trait ReadData: Read {
-    /// Attempts to read an unsigned 8 bit integer from the reader.
-    fn read_u8(&mut self) -> io::Result<u8> {
-        let mut buf = [0u8];
-        self.read_exact(&mut buf)?;
-        Ok(buf[0])
-    }
-
-    /// Attempts to read an unsigned 16 bit big endian integer from the reader.
-    fn read_u16(&mut self) -> io::Result<u16> {
-        let mut buf = [0u8; 2];
-        self.read_exact(&mut buf)?;
-        Ok(u16::from_be_bytes(buf))
-    }
-
-    /// Attempts to read an unsigned 32 bit big endian integer from the reader.
-    fn read_u32(&mut self) -> io::Result<u32> {
-        let mut buf = [0u8; 4];
-        self.read_exact(&mut buf)?;
-        Ok(u32::from_be_bytes(buf))
-    }
-
-    /// Attempts to read an unsigned 64 bit big endian integer from the reader.
-    fn read_u64(&mut self) -> io::Result<u64> {
-        let mut buf = [0u8; 8];
-        self.read_exact(&mut buf)?;
-        Ok(u64::from_be_bytes(buf))
-    }
-
-    /// Attempts to read 8 bit unsigned integers from the reader to a vector of size length.
-    fn read_u8_vec(&mut self, len: u64) -> io::Result<Vec<u8>> {
-        let mut buf = vec![0u8; len as usize];
-        self.read_exact(&mut buf)?;
-        Ok(buf)
-    }
-
-    /// Attempts to read a utf-8 string from the reader.
-    fn read_utf8(&mut self, len: u64) -> crate::Result<String> {
-        let data = self.read_u8_vec(len)?;
-
-        Ok(String::from_utf8(data)?)
-    }
-
-    /// Attempts to read a utf-16 string from the reader.
-    fn read_utf16(&mut self, len: u64) -> crate::Result<String> {
-        let mut buf = vec![0u8; len as usize];
-
-        self.read_exact(&mut buf)?;
-
-        let data: Vec<u16> =
-            buf.chunks_exact(2).map(|c| u16::from_be_bytes([c[0], c[1]])).collect();
-
-        Ok(String::from_utf16(&data)?)
-    }
-}
-
-impl<T: Read> ReadData for T {}
-
-/// Attempts to read the remaining stream length and returns to the starting position.
-pub fn remaining_stream_len(reader: &mut impl Seek) -> io::Result<u64> {
-    let current_pos = reader.seek(SeekFrom::Current(0))?;
-    let complete_len = reader.seek(SeekFrom::End(0))?;
-    let len = complete_len - current_pos;
-
-    reader.seek(SeekFrom::Start(current_pos))?;
-
-    Ok(len)
-}
-
-/// Attempts to read a big endian integer at the specified index from a byte slice.
-macro_rules! be_int {
-    ($bytes:expr, $index:expr, $type:ty) => {{
-        use std::convert::TryFrom;
-
-        const SIZE: usize = std::mem::size_of::<$type>();
-        let bytes_start = ($index);
-        let bytes_end = ($index) + SIZE;
-
-        if $bytes.len() < bytes_end {
-            None
-        } else {
-            let be_bytes = <[u8; SIZE]>::try_from(&$bytes[bytes_start..bytes_end]);
-
-            match be_bytes {
-                Ok(b) => Some(<$type>::from_be_bytes(b)),
-                Err(_) => None,
-            }
-        }
-    }};
-}
-
-/// Attempts to write a big endian integer at the specified index to a byte vector.
-macro_rules! set_be_int {
-    ($bytes:expr, $index:expr, $value:expr, $type:ty) => {{
-        const SIZE: usize = std::mem::size_of::<$type>();
-        let bytes_start = ($index);
-        let bytes_end = ($index) + SIZE;
-
-        let be_bytes = <$type>::to_be_bytes($value);
-
-        if $bytes.len() < bytes_end {
-            $bytes.resize(bytes_end, 0);
-        }
-
-        for i in 0..SIZE {
-            $bytes[bytes_start + i] = be_bytes[i];
-        }
-    }};
-}
-
-#[cfg(test)]
-mod test {
-    #[test]
-    fn be_int() {
-        let bytes = vec![0x00, 0x00, 0x00, 0x00, 0x2D, 0x34, 0xD0, 0x5E];
-        let int = be_int!(bytes, 4, u32);
-        assert_eq!(int, Some(758435934u32));
-    }
-
-    #[test]
-    fn set_be_int() {
-        let mut bytes = vec![0u8, 0, 0, 0, 0, 0, 0, 0];
-        set_be_int!(bytes, 4, 524, u16);
-        assert_eq!(bytes[4], 2u8);
-        assert_eq!(bytes[5], 12u8);
     }
 }

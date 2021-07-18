@@ -34,8 +34,8 @@ use std::ops::{Deref, DerefMut};
 
 use crate::{AudioInfo, ErrorKind, Tag};
 
-use data::*;
 use head::*;
+use util::*;
 
 use co64::*;
 use ftyp::*;
@@ -56,21 +56,24 @@ use udta::*;
 
 pub use data::Data;
 pub use ident::*;
+pub use metaitem::MetaItem;
 
-#[macro_use]
-mod data;
 /// A module for working with identifiers.
 pub mod ident;
 
+#[macro_use]
+mod util;
 mod head;
 
 mod co64;
+mod data;
 mod ftyp;
 mod hdlr;
 mod ilst;
 mod mdat;
 mod mdia;
 mod meta;
+mod metaitem;
 mod minf;
 mod moov;
 mod mp4a;
@@ -150,156 +153,11 @@ impl<T: WriteAtom> LenOrZero for Option<T> {
     }
 }
 
-/// A struct representing data that is associated with an atom identifier.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct AtomData {
-    /// The identifier of the atom.
-    pub ident: DataIdent,
-    /// The data contained in the atom.
-    pub data: Vec<Data>,
-}
-
-impl AtomData {
-    /// Creates atom data with the identifier and data.
-    pub const fn new(ident: DataIdent, data: Vec<Data>) -> Self {
-        Self { ident, data }
-    }
-
-    /// Returns the external length of the atom in bytes.
-    pub fn len(&self) -> u64 {
-        let parent_len = 8;
-        let data_len: u64 = self.data.iter().map(|d| 16 + d.len()).sum();
-
-        match &self.ident {
-            DataIdent::Fourcc(_) => parent_len + data_len,
-            DataIdent::Freeform { mean, name } => {
-                let mean_len = 12 + mean.len() as u64;
-                let name_len = 12 + name.len() as u64;
-
-                parent_len + mean_len + name_len + data_len
-            }
-        }
-    }
-
-    /// Returns whether the inner data atom is empty.
-    pub fn is_empty(&self) -> bool {
-        self.data.is_empty() || self.data.iter().all(|d| d.is_empty())
-    }
-
-    fn parse(reader: &mut (impl Read + Seek), parent: Fourcc, len: u64) -> crate::Result<Self> {
-        let mut data = Vec::new();
-        let mut mean: Option<String> = None;
-        let mut name: Option<String> = None;
-        let mut parsed_bytes = 0;
-
-        while parsed_bytes < len {
-            let head = parse_head(reader)?;
-
-            match head.fourcc() {
-                DATA => {
-                    let (version, flags) = parse_full_head(reader)?;
-                    if version != 0 {
-                        return Err(crate::Error::new(
-                            crate::ErrorKind::UnknownVersion(version),
-                            "Error reading data atom (data)".to_owned(),
-                        ));
-                    }
-                    let [b2, b1, b0] = flags;
-                    let datatype = u32::from_be_bytes([0, b2, b1, b0]);
-
-                    // Skipping 4 byte locale indicator
-                    reader.seek(SeekFrom::Current(4))?;
-
-                    data.push(Data::parse(reader, datatype, head.content_len() - 8)?);
-                }
-                MEAN => {
-                    let (version, _) = parse_full_head(reader)?;
-                    if version != 0 {
-                        return Err(crate::Error::new(
-                            crate::ErrorKind::UnknownVersion(version),
-                            "Error reading data atom (data)".to_owned(),
-                        ));
-                    }
-
-                    mean = Some(reader.read_utf8(head.content_len() - 4)?);
-                }
-                NAME => {
-                    let (version, _) = parse_full_head(reader)?;
-                    if version != 0 {
-                        return Err(crate::Error::new(
-                            crate::ErrorKind::UnknownVersion(version),
-                            "Error reading data atom (data)".to_owned(),
-                        ));
-                    }
-
-                    name = Some(reader.read_utf8(head.content_len() - 4)?);
-                }
-                _ => {
-                    reader.seek(SeekFrom::Current(head.content_len() as i64))?;
-                }
-            }
-
-            parsed_bytes += head.len();
-        }
-
-        let ident = match (parent, mean, name) {
-            (FREEFORM, Some(mean), Some(name)) => DataIdent::Freeform { mean, name },
-            (fourcc, _, _) => DataIdent::Fourcc(fourcc),
-        };
-
-        if data.is_empty() {
-            return Err(crate::Error::new(
-                crate::ErrorKind::AtomNotFound(DATA),
-                format!("Error constructing atom data '{}', missing data atom", parent),
-            ));
-        }
-
-        Ok(AtomData { ident, data })
-    }
-
-    /// Attempts to write the atom data to the writer.
-    pub fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
-        writer.write_all(&u32::to_be_bytes(self.len() as u32))?;
-
-        match &self.ident {
-            DataIdent::Fourcc(ident) => writer.write_all(ident.deref())?,
-            _ => {
-                let (mean, name) = match &self.ident {
-                    DataIdent::Freeform { mean, name } => (mean.as_str(), name.as_str()),
-                    DataIdent::Fourcc(_) => unreachable!(),
-                };
-                writer.write_all(FREEFORM.deref())?;
-
-                let mean_len: u32 = 12 + mean.len() as u32;
-                writer.write_all(&u32::to_be_bytes(mean_len))?;
-                writer.write_all(MEAN.deref())?;
-                writer.write_all(&[0u8; 4])?;
-                writer.write_all(mean.as_bytes())?;
-
-                let name_len: u32 = 12 + name.len() as u32;
-                writer.write_all(&u32::to_be_bytes(name_len))?;
-                writer.write_all(NAME.deref())?;
-                writer.write_all(&[0u8; 4])?;
-                writer.write_all(name.as_bytes())?;
-            }
-        }
-
-        for d in self.data.iter() {
-            let data_len: u32 = 16 + d.len() as u32;
-            writer.write_all(&u32::to_be_bytes(data_len))?;
-            writer.write_all(DATA.deref())?;
-            d.write_typed(writer)?;
-        }
-
-        Ok(())
-    }
-}
-
 /// Attempts to read MPEG-4 audio metadata from the reader.
 pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
     let Ftyp(ftyp) = Ftyp::parse(reader)?;
 
-    let len = data::remaining_stream_len(reader)?;
+    let len = reader.remaining_stream_len()?;
     let mut parsed_bytes = 0;
     let moov = loop {
         if parsed_bytes >= len {
@@ -353,13 +211,13 @@ pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Ta
 }
 
 /// Attempts to write the metadata atoms to the file inside the item list atom.
-pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()> {
+pub(crate) fn write_tag_to(file: &File, atoms: &[MetaItem]) -> crate::Result<()> {
     let mut reader = BufReader::new(file);
     let reader = &mut reader;
 
     Ftyp::parse(reader)?;
 
-    let len = data::remaining_stream_len(reader)?;
+    let len = reader.remaining_stream_len()?;
     let mut moov = None;
     let mut mdat = None;
     let mut parsed_bytes = 0;
@@ -527,7 +385,7 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[AtomData]) -> crate::Result<()>
 
 /// Attempts to dump the metadata atoms to the writer. This doesn't include a complete MPEG-4
 /// container hierarchy and won't result in a usable file.
-pub(crate) fn dump_tag_to(writer: &mut impl Write, atoms: &[AtomData]) -> crate::Result<()> {
+pub(crate) fn dump_tag_to(writer: &mut impl Write, atoms: &[MetaItem]) -> crate::Result<()> {
     let ftyp = Ftyp("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".to_owned());
     #[rustfmt::skip]
     let moov = Moov {

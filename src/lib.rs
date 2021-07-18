@@ -67,7 +67,7 @@ pub use crate::error::{Error, ErrorKind, Result};
 pub use crate::tag::{Tag, STANDARD_GENRES};
 pub use crate::types::*;
 
-pub(crate) use crate::atom::AtomData;
+pub(crate) use crate::atom::MetaItem;
 
 #[macro_use]
 mod atom;

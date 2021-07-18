@@ -6,8 +6,8 @@ use std::path::Path;
 use std::rc::Rc;
 
 use crate::{
-    atom, ident, AdvisoryRating, AtomData, AudioInfo, Data, DataIdent, Ident, Img, ImgBuf, ImgFmt,
-    ImgMut, ImgRef, MediaType,
+    atom, ident, AdvisoryRating, AudioInfo, Data, DataIdent, Ident, Img, ImgBuf, ImgFmt, ImgMut,
+    ImgRef, MediaType, MetaItem,
 };
 
 pub use genre::*;
@@ -25,8 +25,8 @@ pub struct Tag {
     ftyp: String,
     /// Readonly audio information
     info: AudioInfo,
-    /// A vector containing metadata atoms
-    atoms: Vec<AtomData>,
+    /// A vector containing metadata item atoms
+    atoms: Vec<MetaItem>,
 }
 
 impl fmt::Display for Tag {
@@ -85,7 +85,7 @@ impl fmt::Display for Tag {
 
 impl Tag {
     /// Creates a new MPEG-4 audio tag containing the atom.
-    pub const fn new(ftyp: String, info: AudioInfo, atoms: Vec<AtomData>) -> Self {
+    pub const fn new(ftyp: String, info: AudioInfo, atoms: Vec<MetaItem>) -> Self {
         Self { ftyp, info, atoms }
     }
 
@@ -1043,7 +1043,7 @@ impl Tag {
     /// assert_eq!(data.next(), None);
     /// drop(data);
     ///
-    /// tag.retain_data_of(&test, |d| d.len() < 10);
+    /// tag.retain_data_of(&test, |d| d.data_len() < 10);
     ///
     /// let mut data = tag.data_of(&test);
     /// assert_eq!(data.next(), Some(&Data::Utf8("short".into())));
@@ -1221,7 +1221,7 @@ impl Tag {
     }
 
     /// If an atom corresponding to the identifier exists, it's data will be replaced by the new
-    /// data, otherwise a new atom containing the data will be created.
+    /// data, otherwise a new metadata item atom containing the data will be created.
     ///
     /// # Example
     /// ```
@@ -1239,12 +1239,12 @@ impl Tag {
                 a.data.clear();
                 a.data.push(data);
             }
-            None => self.atoms.push(AtomData::new(ident.into(), vec![data])),
+            None => self.atoms.push(MetaItem::new(ident.into(), vec![data])),
         }
     }
 
     /// If an atom corresponding to the identifier exists, it's data will be replaced by the new
-    /// data, otherwise a new atom containing the data will be created.
+    /// data, otherwise a new metadata item atom containing the data will be created.
     ///
     /// # Example
     /// ```
@@ -1275,7 +1275,7 @@ impl Tag {
                 a.data.extend(data);
             }
             None => {
-                self.atoms.push(AtomData::new(ident.into(), data.into_iter().collect()));
+                self.atoms.push(MetaItem::new(ident.into(), data.into_iter().collect()));
             }
         }
     }
@@ -1301,12 +1301,12 @@ impl Tag {
     pub fn add_data(&mut self, ident: (impl Ident + Into<DataIdent>), data: Data) {
         match self.atoms.iter_mut().find(|a| ident == a.ident) {
             Some(a) => a.data.push(data),
-            None => self.atoms.push(AtomData::new(ident.into(), vec![data])),
+            None => self.atoms.push(MetaItem::new(ident.into(), vec![data])),
         }
     }
 
     /// If an atom corresponding to the identifier exists, the new data will be added to it,
-    /// otherwise a new atom containing the data will be created.
+    /// otherwise a new metadata item atom containing the data will be created.
     ///
     /// # Example
     /// ```
@@ -1333,7 +1333,7 @@ impl Tag {
     ) {
         match self.atoms.iter_mut().find(|a| ident == a.ident) {
             Some(a) => a.data.extend(data),
-            None => self.atoms.push(AtomData::new(ident.into(), data.into_iter().collect())),
+            None => self.atoms.push(MetaItem::new(ident.into(), data.into_iter().collect())),
         }
     }
 
