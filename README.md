@@ -28,7 +28,7 @@ use mp4ameta::{Data, Fourcc, Tag};
 let mut tag = Tag::read_from_path("music.m4a").unwrap();
 let artist_ident = Fourcc(*b"\xa9ART");
 
-let artist = tag.string(&artist_ident).next().unwrap();
+let artist = tag.strings_of(&artist_ident).next().unwrap();
 println!("{}", artist);
 
 tag.set_data(artist_ident, Data::Utf8("artist".to_owned()));
@@ -42,7 +42,7 @@ use mp4ameta::{Data, FreeformIdent, Tag};
 let mut tag = Tag::read_from_path("music.m4a").unwrap();
 let isrc_ident = FreeformIdent::new("com.apple.iTunes", "ISRC");
 
-let isrc = tag.string_of(&isrc_ident).next().unwrap();
+let isrc = tag.strings_of(&isrc_ident).next().unwrap();
 println!("{}", isrc);
 
 tag.set_data(isrc_ident, Data::Utf8("isrc".to_owned()));
