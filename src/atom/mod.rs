@@ -37,6 +37,7 @@ use crate::{AudioInfo, ErrorKind, Tag};
 use head::*;
 use util::*;
 
+use chap::*;
 use co64::*;
 use ftyp::*;
 use hdlr::*;
@@ -51,7 +52,9 @@ use mvhd::*;
 use stbl::*;
 use stco::*;
 use stsd::*;
+use tkhd::*;
 use trak::*;
+use tref::*;
 use udta::*;
 
 pub use data::Data;
@@ -65,6 +68,7 @@ pub mod ident;
 mod util;
 mod head;
 
+mod chap;
 mod co64;
 mod data;
 mod ftyp;
@@ -81,7 +85,9 @@ mod mvhd;
 mod stbl;
 mod stco;
 mod stsd;
+mod tkhd;
 mod trak;
+mod tref;
 mod udta;
 
 trait Atom: Sized {
@@ -154,7 +160,7 @@ impl<T: WriteAtom> LenOrZero for Option<T> {
 }
 
 /// Attempts to read MPEG-4 audio metadata from the reader.
-pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
+pub(crate) fn read_tag(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
     let Ftyp(ftyp) = Ftyp::parse(reader)?;
 
     let len = reader.remaining_stream_len()?;
@@ -181,19 +187,35 @@ pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Ta
         parsed_bytes += head.len();
     };
 
+    for chap in moov.trak.iter().filter_map(|a| a.tref.as_ref().and_then(|a| a.chap.as_ref())) {
+        for c_id in chap.chapter_ids.iter() {
+            let _chapter_track = moov
+                .trak
+                .iter()
+                .find(|a| a.tkhd.as_ref().map_or(false, |a| a.id == *c_id))
+                .ok_or_else(|| {
+                    crate::Error::new(
+                        ErrorKind::TrackNotFound(*c_id),
+                        "Referenced track not found".into(),
+                    )
+                })?;
+            // TODO read chapter
+        }
+    }
+
     let mvhd = moov.mvhd;
     let mp4a = moov.trak.into_iter().find_map(|trak| {
         trak.mdia
-            .and_then(|mdia| mdia.minf)
-            .and_then(|minf| minf.stbl)
-            .and_then(|stbl| stbl.stsd)
-            .and_then(|stsd| stsd.mp4a)
+            .and_then(|a| a.minf)
+            .and_then(|a| a.stbl)
+            .and_then(|a| a.stsd)
+            .and_then(|a| a.mp4a)
     });
     let ilst = moov
         .udta
-        .and_then(|udta| udta.meta)
-        .and_then(|meta| meta.ilst)
-        .and_then(|ilst| ilst.owned())
+        .and_then(|a| a.meta)
+        .and_then(|a| a.ilst)
+        .and_then(|a| a.owned())
         .unwrap_or_default();
 
     let mut info = AudioInfo::default();
@@ -211,7 +233,7 @@ pub(crate) fn read_tag_from(reader: &mut (impl Read + Seek)) -> crate::Result<Ta
 }
 
 /// Attempts to write the metadata atoms to the file inside the item list atom.
-pub(crate) fn write_tag_to(file: &File, atoms: &[MetaItem]) -> crate::Result<()> {
+pub(crate) fn write_tag(file: &File, atoms: &[MetaItem]) -> crate::Result<()> {
     let mut reader = BufReader::new(file);
     let reader = &mut reader;
 
@@ -385,7 +407,7 @@ pub(crate) fn write_tag_to(file: &File, atoms: &[MetaItem]) -> crate::Result<()>
 
 /// Attempts to dump the metadata atoms to the writer. This doesn't include a complete MPEG-4
 /// container hierarchy and won't result in a usable file.
-pub(crate) fn dump_tag_to(writer: &mut impl Write, atoms: &[MetaItem]) -> crate::Result<()> {
+pub(crate) fn dump_tag(writer: &mut impl Write, atoms: &[MetaItem]) -> crate::Result<()> {
     let ftyp = Ftyp("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".to_owned());
     #[rustfmt::skip]
     let moov = Moov {

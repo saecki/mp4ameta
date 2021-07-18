@@ -1,5 +1,6 @@
 use super::*;
 
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Mdat;
 
 impl Atom for Mdat {

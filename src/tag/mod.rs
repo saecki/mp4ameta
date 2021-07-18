@@ -91,7 +91,7 @@ impl Tag {
 
     /// Attempts to read a MPEG-4 audio tag from the reader.
     pub fn read_from(reader: &mut (impl Read + Seek)) -> crate::Result<Self> {
-        atom::read_tag_from(reader)
+        atom::read_tag(reader)
     }
 
     /// Attempts to read a MPEG-4 audio tag from the file at the indicated path.
@@ -103,7 +103,7 @@ impl Tag {
     /// Attempts to write the MPEG-4 audio tag to the writer. This will overwrite any metadata
     /// previously present on the file.
     pub fn write_to(&self, file: &File) -> crate::Result<()> {
-        atom::write_tag_to(file, &self.atoms)
+        atom::write_tag(file, &self.atoms)
     }
 
     /// Attempts to write the MPEG-4 audio tag to the path. This will overwrite any metadata
@@ -115,7 +115,7 @@ impl Tag {
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.
     pub fn dump_to(&self, writer: &mut impl Write) -> crate::Result<()> {
-        atom::dump_tag_to(writer, &self.atoms)
+        atom::dump_tag(writer, &self.atoms)
     }
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.

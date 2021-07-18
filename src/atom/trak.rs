@@ -2,6 +2,8 @@ use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Trak {
+    pub tkhd: Option<Tkhd>,
+    pub tref: Option<Tref>,
     pub mdia: Option<Mdia>,
 }
 
@@ -18,6 +20,8 @@ impl ParseAtom for Trak {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
+                TRACK_HEADER => trak.tkhd = Some(Tkhd::parse(reader, head.size())?),
+                TRACK_REFERENCE => trak.tref = Some(Tref::parse(reader, head.size())?),
                 MEDIA => trak.mdia = Some(Mdia::parse(reader, head.size())?),
                 _ => {
                     reader.seek(SeekFrom::Current(head.content_len() as i64))?;

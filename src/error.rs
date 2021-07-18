@@ -18,6 +18,8 @@ pub enum ErrorKind {
     NoTag,
     /// An error kind indicating that something wasn't found,
     Parsing,
+    /// An error kind indicating that a track could not be found. Contains the tracks id.
+    TrackNotFound(u32),
     /// An error kind indicating that the channel configuration index is unknown. Contains the
     /// unknown channel configuration index.
     UnknownChannelConfig(u8),

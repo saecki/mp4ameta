@@ -14,6 +14,12 @@ pub(crate) const MOVIE: Fourcc = Fourcc(*b"moov");
 pub(crate) const MOVIE_HEADER: Fourcc = Fourcc(*b"mvhd");
 /// (`trak`) Identifier of an atom containing information about a single track.
 pub(crate) const TRACK: Fourcc = Fourcc(*b"trak");
+/// (`tkhd`)
+pub(crate) const TRACK_HEADER: Fourcc = Fourcc(*b"tkhd");
+/// (`tref`)
+pub(crate) const TRACK_REFERENCE: Fourcc = Fourcc(*b"tref");
+/// (`chap`)
+pub(crate) const CHAPTER: Fourcc = Fourcc(*b"chap");
 /// (`mdia`) Identifier of an atom containing information about a tracks media type and data.
 pub(crate) const MEDIA: Fourcc = Fourcc(*b"mdia");
 /// (`minf`)
