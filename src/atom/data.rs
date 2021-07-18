@@ -101,6 +101,13 @@ pub enum Data {
     BeSigned(Vec<u8>),
     /// A value containing bmp byte data inside a `Vec<u8>`.
     Bmp(Vec<u8>),
+    /// A value containing the unknown data type code and the data
+    Unknown {
+        /// The data type code.
+        code: u32,
+        /// The data.
+        data: Vec<u8>,
+    },
 }
 
 impl fmt::Debug for Data {
@@ -113,6 +120,9 @@ impl fmt::Debug for Data {
             Self::Png(_) => write!(f, "Data::Png"),
             Self::BeSigned(d) => write!(f, "Data::BeSigned({:?})", d),
             Self::Bmp(_) => write!(f, "Data::Bmp"),
+            Self::Unknown { code, data } => {
+                f.debug_struct("Data::Unknown").field("code", code).field("data", data).finish()
+            }
         }
     }
 }
@@ -138,6 +148,7 @@ impl Data {
             Self::Png(v) => v.len(),
             Self::BeSigned(v) => v.len(),
             Self::Bmp(v) => v.len(),
+            Self::Unknown { data, .. } => data.len(),
         }) as u64
     }
 
@@ -372,6 +383,7 @@ impl Data {
             Self::Png(_) => PNG,
             Self::BeSigned(_) => BE_SIGNED,
             Self::Bmp(_) => BMP,
+            Self::Unknown { code, .. } => *code,
         };
 
         writer.write_all(&datatype.to_be_bytes())?;
@@ -409,6 +421,9 @@ impl Data {
             Self::Bmp(v) => {
                 writer.write_all(v)?;
             }
+            Self::Unknown { data, .. } => {
+                writer.write_all(data)?;
+            }
         }
 
         Ok(())
@@ -424,12 +439,7 @@ impl Data {
             PNG => Data::Png(reader.read_u8_vec(len)?),
             BE_SIGNED => Data::BeSigned(reader.read_u8_vec(len)?),
             BMP => Data::Bmp(reader.read_u8_vec(len)?),
-            _ => {
-                return Err(crate::Error::new(
-                    crate::ErrorKind::UnknownDataType(datatype),
-                    "Unknown datatype code".to_owned(),
-                ));
-            }
+            _ => Data::Unknown { code: datatype, data: reader.read_u8_vec(len)? },
         })
     }
 }
