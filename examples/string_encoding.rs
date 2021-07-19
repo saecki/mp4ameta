@@ -6,7 +6,7 @@ fn main() {
 
     tag.data_mut().for_each(|(_, d)| {
         if let Data::Utf16(s) = d {
-            let value = std::mem::replace(s, String::new());
+            let value = std::mem::take(s);
             *d = Data::Utf8(value);
         }
     });

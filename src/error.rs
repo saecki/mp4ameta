@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::{error, fmt, io, string};
 
 use crate::Fourcc;
@@ -26,6 +27,9 @@ pub enum ErrorKind {
     /// An error kind indicating that the datatype integer describing the typed data is unknown.
     /// Contains the unknown datatype.
     UnknownMediaType(u8),
+    /// An error kind indicating that the sample rate index is unknown. Contains the unknown sample
+    /// rate index.
+    UnknownSampleRate(u8),
     /// An error kind indicating that version byte is unknown.  Contains the unknown version.
     UnknownVersion(u8),
     /// An error kind indicating that a string decoding error has occurred. Contains the invalid
@@ -42,13 +46,13 @@ pub struct Error {
     /// The kind of error that occurred.
     pub kind: ErrorKind,
     /// A human readable string describing the error.
-    pub description: String,
+    pub description: Cow<'static, str>,
 }
 
 impl Error {
     /// Creates a new `Error` using the error kind and description.
-    pub fn new(kind: ErrorKind, description: String) -> Error {
-        Error { kind, description }
+    pub fn new(kind: ErrorKind, description: impl Into<Cow<'static, str>>) -> Error {
+        Error { kind, description: description.into() }
     }
 }
 
@@ -63,25 +67,20 @@ impl error::Error for Error {
 
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Error {
-        Error { description: format!("IO error: {}", err), kind: ErrorKind::Io(err) }
+        let description = format!("IO error: {}", err);
+        Error::new(ErrorKind::Io(err), description)
     }
 }
 
 impl From<string::FromUtf8Error> for Error {
     fn from(err: string::FromUtf8Error) -> Error {
-        Error {
-            kind: ErrorKind::Utf8StringDecoding(err),
-            description: "Data is not valid utf-8.".to_owned(),
-        }
+        Error::new(ErrorKind::Utf8StringDecoding(err), "Data is not valid utf-8.")
     }
 }
 
 impl From<string::FromUtf16Error> for Error {
     fn from(err: string::FromUtf16Error) -> Error {
-        Error {
-            kind: ErrorKind::Utf16StringDecoding(err),
-            description: "Data is not valid utf-16.".to_owned(),
-        }
+        Error::new(ErrorKind::Utf16StringDecoding(err), "Data is not valid utf-16.")
     }
 }
 

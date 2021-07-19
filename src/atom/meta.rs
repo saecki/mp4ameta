@@ -17,7 +17,7 @@ impl ParseAtom for Meta<'_> {
         if version != 0 {
             return Err(crate::Error::new(
                 ErrorKind::UnknownVersion(version),
-                "Unknown metadata (meta) version".to_owned(),
+                "Unknown metadata (meta) version",
             ));
         }
 
@@ -98,7 +98,7 @@ impl FindAtom for Meta<'_> {
         if version != 0 {
             return Err(crate::Error::new(
                 ErrorKind::UnknownVersion(version),
-                "Unknown metadata (meta) version".to_owned(),
+                "Unknown metadata (meta) version",
             ));
         }
 

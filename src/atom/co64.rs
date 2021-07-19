@@ -23,7 +23,7 @@ impl ParseAtom for Co64 {
                 if 8 + 8 * entries as u64 != size.content_len() {
                     return Err(crate::Error::new(
                         crate::ErrorKind::Parsing,
-                        "Sample table chunk offset 64 (co64) offset table size doesn't match atom length".to_owned(),
+                        "Sample table chunk offset 64 (co64) offset table size doesn't match atom length",
                     ));
                 }
 
@@ -38,7 +38,7 @@ impl ParseAtom for Co64 {
             }
             _ => Err(crate::Error::new(
                 crate::ErrorKind::UnknownVersion(version),
-                "Unknown 64bit sample table chunk offset (co64) version".to_owned(),
+                "Unknown 64bit sample table chunk offset (co64) version",
             )),
         }
     }

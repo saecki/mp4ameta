@@ -27,7 +27,7 @@ impl MetaItem {
     /// Returns the external length of the atom in bytes.
     pub fn len(&self) -> u64 {
         let parent_len = 8;
-        let data_len: u64 = self.data.iter().map(|d| d.size().len()).sum();
+        let data_len: u64 = self.data.iter().map(Data::len).sum();
 
         match &self.ident {
             DataIdent::Fourcc(_) => parent_len + data_len,
@@ -61,7 +61,7 @@ impl MetaItem {
                     if version != 0 {
                         return Err(crate::Error::new(
                             crate::ErrorKind::UnknownVersion(version),
-                            "Error reading data atom (data)".to_owned(),
+                            "Error reading data atom (data)",
                         ));
                     }
 
@@ -72,7 +72,7 @@ impl MetaItem {
                     if version != 0 {
                         return Err(crate::Error::new(
                             crate::ErrorKind::UnknownVersion(version),
-                            "Error reading data atom (data)".to_owned(),
+                            "Error reading data atom (data)",
                         ));
                     }
 

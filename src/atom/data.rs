@@ -149,7 +149,7 @@ impl ParseAtom for Data {
         if version != 0 {
             return Err(crate::Error::new(
                 crate::ErrorKind::UnknownVersion(version),
-                "Error reading data atom (data)".to_owned(),
+                "Unknown data atom (data) version",
             ));
         }
         let [b2, b1, b0] = flags;

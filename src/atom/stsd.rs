@@ -16,7 +16,7 @@ impl ParseAtom for Stsd {
         if version != 0 {
             return Err(crate::Error::new(
                 ErrorKind::UnknownVersion(version),
-                "Unknown sample table sample description (stsd) version".to_owned(),
+                "Unknown sample table sample description (stsd) version",
             ));
         }
 

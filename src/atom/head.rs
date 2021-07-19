@@ -102,27 +102,20 @@ pub fn parse_head(reader: &mut impl Read) -> crate::Result<Head> {
     let len = match reader.read_u32() {
         Ok(l) => l as u64,
         Err(e) => {
-            return Err(crate::Error::new(
-                ErrorKind::Io(e),
-                "Error reading atom length".to_owned(),
-            ));
+            return Err(crate::Error::new(ErrorKind::Io(e), "Error reading atom length"));
         }
     };
     let mut ident = Fourcc([0; 4]);
     if let Err(e) = reader.read_exact(&mut *ident) {
-        return Err(crate::Error::new(
-            ErrorKind::Io(e),
-            "Error reading atom identifier".to_owned(),
-        ));
+        return Err(crate::Error::new(ErrorKind::Io(e), "Error reading atom identifier"));
     }
 
     if len == 1 {
         match reader.read_u64() {
             Ok(l) => Ok(Head::new(true, l, ident)),
-            Err(e) => Err(crate::Error::new(
-                ErrorKind::Io(e),
-                "Error reading extended atom length".to_owned(),
-            )),
+            Err(e) => {
+                Err(crate::Error::new(ErrorKind::Io(e), "Error reading extended atom length"))
+            }
         }
     } else if len < 8 {
         Err(crate::Error::new(
@@ -158,7 +151,7 @@ pub fn parse_full_head(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
         Err(e) => {
             return Err(crate::Error::new(
                 crate::ErrorKind::Io(e),
-                "Error reading version of full atom head".to_owned(),
+                "Error reading version of full atom head",
             ));
         }
     };
@@ -167,7 +160,7 @@ pub fn parse_full_head(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
     if let Err(e) = reader.read_exact(&mut flags) {
         return Err(crate::Error::new(
             crate::ErrorKind::Io(e),
-            "Error reading flags of full atom head".to_owned(),
+            "Error reading flags of full atom head",
         ));
     };
 

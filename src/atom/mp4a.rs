@@ -81,7 +81,7 @@ impl ParseAtom for Mp4a {
         if head.fourcc() != ELEMENTARY_STREAM_DESCRIPTION {
             return Err(crate::Error::new(
                 crate::ErrorKind::AtomNotFound(ELEMENTARY_STREAM_DESCRIPTION),
-                "Missing esds atom".to_owned(),
+                "Missing esds atom",
             ));
         }
 
@@ -115,7 +115,7 @@ fn parse_esds(reader: &mut (impl Read + Seek), info: &mut Mp4a, size: Size) -> c
     if version != 0 {
         return Err(crate::Error::new(
             crate::ErrorKind::UnknownVersion(version),
-            "Unknown MPEG-4 audio (mp4a) version".to_owned(),
+            "Unknown MPEG-4 audio (mp4a) version",
         ));
     }
 
@@ -123,7 +123,7 @@ fn parse_esds(reader: &mut (impl Read + Seek), info: &mut Mp4a, size: Size) -> c
     if tag != ELEMENTARY_STREAM_DESCRIPTOR {
         return Err(crate::Error::new(
             crate::ErrorKind::DescriptorNotFound(ELEMENTARY_STREAM_DESCRIPTOR),
-            "Missing elementary stream descriptor".to_owned(),
+            "Missing elementary stream descriptor",
         ));
     }
 

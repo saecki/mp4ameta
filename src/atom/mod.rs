@@ -98,7 +98,9 @@ trait ParseAtom: Atom {
     fn parse(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
         match Self::parse_atom(reader, size) {
             Err(mut e) => {
-                e.description = format!("Error parsing {}: {}", Self::FOURCC, e.description);
+                let mut d = e.description.into_owned();
+                insert_str(&mut d, "Error parsing", Self::FOURCC);
+                e.description = d.into();
                 Err(e)
             }
             a => a,
@@ -114,7 +116,9 @@ trait FindAtom: Atom {
     fn find(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
         match Self::find_atom(reader, size) {
             Err(mut e) => {
-                e.description = format!("Error parsing {}: {}", Self::FOURCC, e.description);
+                let mut d = e.description.into_owned();
+                insert_str(&mut d, "Error finding", Self::FOURCC);
+                e.description = d.into();
                 Err(e)
             }
             a => a,
@@ -128,7 +132,9 @@ trait WriteAtom: Atom {
     fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
         match self.write_atom(writer) {
             Err(mut e) => {
-                e.description = format!("Error writing {}: {}", Self::FOURCC, e.description);
+                let mut d = e.description.into_owned();
+                insert_str(&mut d, "Error writing", Self::FOURCC);
+                e.description = d.into();
                 Err(e)
             }
             a => a,
@@ -147,6 +153,15 @@ trait WriteAtom: Atom {
     fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()>;
 
     fn size(&self) -> Size;
+}
+
+fn insert_str(description: &mut String, msg: &str, fourcc: Fourcc) {
+    description.reserve(msg.len() + 6);
+    description.insert_str(0, ": ");
+    fourcc.iter().for_each(|c| {
+        description.insert(0, char::from(*c));
+    });
+    description.insert_str(0, msg);
 }
 
 trait LenOrZero {
@@ -169,7 +184,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
         if parsed_bytes >= len {
             return Err(crate::Error::new(
                 ErrorKind::AtomNotFound(MOVIE),
-                "Missing necessary data, no movie (moov) atom found".to_owned(),
+                "Missing necessary data, no movie (moov) atom found",
             ));
         }
 
@@ -194,10 +209,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
                 .iter()
                 .find(|a| a.tkhd.as_ref().map_or(false, |a| a.id == *c_id))
                 .ok_or_else(|| {
-                    crate::Error::new(
-                        ErrorKind::TrackNotFound(*c_id),
-                        "Referenced track not found".into(),
-                    )
+                    crate::Error::new(ErrorKind::TrackNotFound(*c_id), "Referenced track not found")
                 })?;
             // TODO read chapter
         }
@@ -262,7 +274,7 @@ pub(crate) fn write_tag(file: &File, atoms: &[MetaItem]) -> crate::Result<()> {
     let moov = moov.ok_or_else(|| {
         crate::Error::new(
             crate::ErrorKind::AtomNotFound(MOVIE),
-            "Missing necessary data, no movie (moov) atom found".to_owned(),
+            "Missing necessary data, no movie (moov) atom found",
         )
     })?;
     let udta = &moov.udta;

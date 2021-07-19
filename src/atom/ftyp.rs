@@ -7,7 +7,7 @@ impl Ftyp {
     pub fn parse(reader: &mut (impl Read + Seek)) -> crate::Result<Self> {
         let head = parse_head(reader)?;
         if head.fourcc() != FILETYPE {
-            return Err(crate::Error::new(ErrorKind::NoTag, "No filetype atom found.".to_owned()));
+            return Err(crate::Error::new(ErrorKind::NoTag, "No filetype atom found."));
         }
 
         let ftyp = reader.read_utf8(head.content_len())?;

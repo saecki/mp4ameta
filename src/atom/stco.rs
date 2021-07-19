@@ -23,7 +23,7 @@ impl ParseAtom for Stco {
                 if 8 + 4 * entries as u64 != size.content_len() {
                     return Err(crate::Error::new(
                         crate::ErrorKind::Parsing,
-                        "Sample table chunk offset (stco) offset table size doesn't match atom length".to_owned(),
+                        "Sample table chunk offset (stco) offset table size doesn't match atom length",
                     ));
                 }
 
@@ -38,7 +38,7 @@ impl ParseAtom for Stco {
             }
             _ => Err(crate::Error::new(
                 crate::ErrorKind::UnknownVersion(version),
-                "Unknown sample table chunk offset (stco) version".to_owned(),
+                "Unknown sample table chunk offset (stco) version",
             )),
         }
     }

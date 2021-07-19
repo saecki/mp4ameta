@@ -124,10 +124,7 @@ impl TryFrom<u8> for MediaType {
             SHORT_FILM => Ok(Self::ShortFilm),
             TV_SHOW => Ok(Self::TvShow),
             BOOKLET => Ok(Self::Booklet),
-            _ => Err(Self::Error::new(
-                ErrorKind::UnknownMediaType(value),
-                "Unknown media type".to_owned(),
-            )),
+            _ => Err(Self::Error::new(ErrorKind::UnknownMediaType(value), "Unknown media type")),
         }
     }
 }
@@ -223,7 +220,7 @@ impl TryFrom<u8> for ChannelConfig {
             SEVEN_ONE => Ok(Self::SevenOne),
             _ => Err(Self::Error::new(
                 crate::ErrorKind::UnknownChannelConfig(value),
-                "Unknown channel config index".to_owned(),
+                "Unknown channel config index",
             )),
         }
     }
@@ -308,8 +305,8 @@ impl TryFrom<u8> for SampleRate {
             HZ_8000 => Ok(Self::Hz8000),
             HZ_7350 => Ok(Self::Hz7350),
             _ => Err(Self::Error::new(
-                crate::ErrorKind::UnknownChannelConfig(value),
-                "Unknown sample rate index".to_owned(),
+                crate::ErrorKind::UnknownSampleRate(value),
+                "Unknown sample rate index",
             )),
         }
     }
