@@ -48,7 +48,8 @@ const BE_I16: u32 = 66;
 #[allow(unused)]
 const BE_I32: u32 = 67;
 /// A block of data representing a two dimensional (2D) point with 32-bit big-endian floating point
-/// x and y coordinates. It has the structure:<br/> `{ BE_F32 x; BE_F32 y; }`
+/// x and y coordinates. It has the structure:<br/>
+/// `{ BE_F32 x; BE_F32 y; }`
 #[allow(unused)]
 const BE_POINT_F32: u32 = 70;
 /// A block of data representing 2D dimensions with 32-bit big-endian floating point width and
@@ -163,7 +164,7 @@ impl ParseAtom for Data {
         Ok(match datatype {
             RESERVED => Data::Reserved(reader.read_u8_vec(data_len)?),
             UTF8 => Data::Utf8(reader.read_utf8(data_len)?),
-            UTF16 => Data::Utf16(reader.read_utf16(data_len)?),
+            UTF16 => Data::Utf16(reader.read_be_utf16(data_len)?),
             JPEG => Data::Jpeg(reader.read_u8_vec(data_len)?),
             PNG => Data::Png(reader.read_u8_vec(data_len)?),
             BE_SIGNED => Data::BeSigned(reader.read_u8_vec(data_len)?),

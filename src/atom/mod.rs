@@ -32,7 +32,7 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use std::ops::{Deref, DerefMut};
 
-use crate::{AudioInfo, ErrorKind, Tag};
+use crate::{AudioInfo, Chapter, ErrorKind, Tag};
 
 use head::*;
 use util::*;
@@ -202,16 +202,34 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
         parsed_bytes += head.len();
     };
 
+    let mut chapters = Vec::new();
     for chap in moov.trak.iter().filter_map(|a| a.tref.as_ref().and_then(|a| a.chap.as_ref())) {
         for c_id in chap.chapter_ids.iter() {
-            let _chapter_track = moov
+            let chapter_track = moov
                 .trak
                 .iter()
                 .find(|a| a.tkhd.as_ref().map_or(false, |a| a.id == *c_id))
                 .ok_or_else(|| {
                     crate::Error::new(ErrorKind::TrackNotFound(*c_id), "Referenced track not found")
                 })?;
-            // TODO read chapter
+
+            let stbl = chapter_track
+                .mdia
+                .as_ref()
+                .and_then(|a| a.minf.as_ref())
+                .and_then(|a| a.stbl.as_ref());
+
+            if let Some(stco) = stbl.and_then(|a| a.stco.as_ref()) {
+                chapters.reserve(stco.offsets.len());
+                for o in stco.offsets.iter() {
+                    chapters.push(read_chapter(reader, *o as u64)?);
+                }
+            } else if let Some(co64) = stbl.and_then(|a| a.co64.as_ref()) {
+                chapters.reserve(co64.offsets.len());
+                for o in co64.offsets.iter() {
+                    chapters.push(read_chapter(reader, *o)?);
+                }
+            }
         }
     }
 
@@ -241,7 +259,25 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
         info.avg_bitrate = i.avg_bitrate;
     }
 
-    Ok(Tag::new(ftyp, info, ilst))
+    Ok(Tag::new(ftyp, info, ilst, chapters))
+}
+
+fn read_chapter(reader: &mut (impl Read + Seek), offset: u64) -> crate::Result<Chapter> {
+    reader.seek(SeekFrom::Start(offset))?;
+    let len = reader.read_be_u16()?;
+    let c = reader.read_be_u16()?;
+
+    // check BOM (byte order mark) for encoding
+    let title = match c {
+        0xfeff => reader.read_be_utf16(len as u64 - 2)?,
+        0xfffe => reader.read_le_utf16(len as u64 - 2)?,
+        _ => {
+            reader.seek(SeekFrom::Current(-2))?;
+            reader.read_utf8(len as u64)?
+        }
+    };
+
+    Ok(Chapter { title })
 }
 
 /// Attempts to write the metadata atoms to the file inside the item list atom.

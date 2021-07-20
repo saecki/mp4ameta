@@ -9,21 +9,21 @@ pub trait ReadUtil: Read {
     }
 
     /// Attempts to read an unsigned 16 bit big endian integer from the reader.
-    fn read_u16(&mut self) -> io::Result<u16> {
+    fn read_be_u16(&mut self) -> io::Result<u16> {
         let mut buf = [0; 2];
         self.read_exact(&mut buf)?;
         Ok(u16::from_be_bytes(buf))
     }
 
     /// Attempts to read an unsigned 32 bit big endian integer from the reader.
-    fn read_u32(&mut self) -> io::Result<u32> {
+    fn read_be_u32(&mut self) -> io::Result<u32> {
         let mut buf = [0; 4];
         self.read_exact(&mut buf)?;
         Ok(u32::from_be_bytes(buf))
     }
 
     /// Attempts to read an unsigned 64 bit big endian integer from the reader.
-    fn read_u64(&mut self) -> io::Result<u64> {
+    fn read_be_u64(&mut self) -> io::Result<u64> {
         let mut buf = [0; 8];
         self.read_exact(&mut buf)?;
         Ok(u64::from_be_bytes(buf))
@@ -43,14 +43,26 @@ pub trait ReadUtil: Read {
         Ok(String::from_utf8(data)?)
     }
 
-    /// Attempts to read a utf-16 string from the reader.
-    fn read_utf16(&mut self, len: u64) -> crate::Result<String> {
+    /// Attempts to read a big endian utf-16 string from the reader.
+    fn read_be_utf16(&mut self, len: u64) -> crate::Result<String> {
         let mut buf = vec![0; len as usize];
 
         self.read_exact(&mut buf)?;
 
         let data: Vec<u16> =
             buf.chunks_exact(2).map(|c| u16::from_be_bytes([c[0], c[1]])).collect();
+
+        Ok(String::from_utf16(&data)?)
+    }
+
+    /// Attempts to read a little endian utf-16 string from the reader.
+    fn read_le_utf16(&mut self, len: u64) -> crate::Result<String> {
+        let mut buf = vec![0; len as usize];
+
+        self.read_exact(&mut buf)?;
+
+        let data: Vec<u16> =
+            buf.chunks_exact(2).map(|c| u16::from_le_bytes([c[0], c[1]])).collect();
 
         Ok(String::from_utf16(&data)?)
     }

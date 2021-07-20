@@ -28,7 +28,7 @@ impl ParseAtom for Tkhd {
                 // 4 bytes track id
                 // ...
                 reader.seek(SeekFrom::Current(8))?;
-                tkhd.id = reader.read_u32()?;
+                tkhd.id = reader.read_be_u32()?;
             }
             1 => {
                 // # Version 1
@@ -40,7 +40,7 @@ impl ParseAtom for Tkhd {
                 // ...
                 reader.seek(SeekFrom::Current(16))?;
 
-                tkhd.id = reader.read_u32()?;
+                tkhd.id = reader.read_be_u32()?;
             }
             v => {
                 return Err(crate::Error::new(
@@ -51,8 +51,6 @@ impl ParseAtom for Tkhd {
         }
 
         seek_to_end(reader, &bounds)?;
-
-        println!("track id: {}", tkhd.id);
 
         Ok(tkhd)
     }

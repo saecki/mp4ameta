@@ -419,3 +419,10 @@ impl ImgFmt {
         matches!(self, Self::Png)
     }
 }
+
+/// A struct representing a chapter.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Chapter {
+    /// The title of the chapter.
+    pub title: String,
+}

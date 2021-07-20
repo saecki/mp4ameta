@@ -99,7 +99,7 @@ impl Head {
 /// 8 bytes optional extended length
 /// ```
 pub fn parse_head(reader: &mut impl Read) -> crate::Result<Head> {
-    let len = match reader.read_u32() {
+    let len = match reader.read_be_u32() {
         Ok(l) => l as u64,
         Err(e) => {
             return Err(crate::Error::new(ErrorKind::Io(e), "Error reading atom length"));
@@ -111,7 +111,7 @@ pub fn parse_head(reader: &mut impl Read) -> crate::Result<Head> {
     }
 
     if len == 1 {
-        match reader.read_u64() {
+        match reader.read_be_u64() {
             Ok(l) => Ok(Head::new(true, l, ident)),
             Err(e) => {
                 Err(crate::Error::new(ErrorKind::Io(e), "Error reading extended atom length"))

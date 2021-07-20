@@ -15,7 +15,7 @@ impl ParseAtom for Chap {
         let mut chapter_ids = Vec::with_capacity(count);
 
         for _ in 0..count {
-            chapter_ids.push(reader.read_u32()?);
+            chapter_ids.push(reader.read_be_u32()?);
         }
 
         Ok(Self { chapter_ids })

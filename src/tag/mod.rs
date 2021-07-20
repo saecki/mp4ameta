@@ -6,8 +6,8 @@ use std::path::Path;
 use std::rc::Rc;
 
 use crate::{
-    atom, ident, AdvisoryRating, AudioInfo, Data, DataIdent, Ident, Img, ImgBuf, ImgFmt, ImgMut,
-    ImgRef, MediaType, MetaItem,
+    atom, ident, AdvisoryRating, AudioInfo, Chapter, Data, DataIdent, Ident, Img, ImgBuf, ImgFmt,
+    ImgMut, ImgRef, MediaType, MetaItem,
 };
 
 pub use genre::*;
@@ -27,6 +27,8 @@ pub struct Tag {
     info: AudioInfo,
     /// A vector containing metadata item atoms
     atoms: Vec<MetaItem>,
+    /// A vector containing chapters
+    chapters: Vec<Chapter>,
 }
 
 impl fmt::Display for Tag {
@@ -85,8 +87,13 @@ impl fmt::Display for Tag {
 
 impl Tag {
     /// Creates a new MPEG-4 audio tag containing the atom.
-    pub const fn new(ftyp: String, info: AudioInfo, atoms: Vec<MetaItem>) -> Self {
-        Self { ftyp, info, atoms }
+    pub const fn new(
+        ftyp: String,
+        info: AudioInfo,
+        atoms: Vec<MetaItem>,
+        chapters: Vec<Chapter>,
+    ) -> Self {
+        Self { ftyp, info, atoms, chapters }
     }
 
     /// Attempts to read a MPEG-4 audio tag from the reader.
@@ -308,6 +315,14 @@ impl Tag {
             Some(r) => writeln!(f, "advisory rating: {}", r),
             None => Ok(()),
         }
+    }
+}
+
+/// ### Chapters
+impl Tag {
+    /// Returns all chapters.
+    pub fn chapters(&self) -> impl Iterator<Item = &Chapter> {
+        self.chapters.iter()
     }
 }
 

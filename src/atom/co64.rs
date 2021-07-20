@@ -19,7 +19,7 @@ impl ParseAtom for Co64 {
 
         match version {
             0 => {
-                let entries = reader.read_u32()?;
+                let entries = reader.read_be_u32()?;
                 if 8 + 8 * entries as u64 != size.content_len() {
                     return Err(crate::Error::new(
                         crate::ErrorKind::Parsing,
@@ -30,7 +30,7 @@ impl ParseAtom for Co64 {
                 let table_pos = reader.seek(SeekFrom::Current(0))?;
                 let mut offsets = Vec::with_capacity(entries as usize);
                 for _ in 0..entries {
-                    let offset = reader.read_u64()?;
+                    let offset = reader.read_be_u64()?;
                     offsets.push(offset);
                 }
 
