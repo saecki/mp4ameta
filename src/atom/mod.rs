@@ -189,16 +189,11 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
         }
 
         let head = parse_head(reader)?;
-
-        match head.fourcc() {
-            MOVIE => {
-                break Moov::parse(reader, head.size())?;
-            }
-            _ => {
-                reader.seek(SeekFrom::Current(head.content_len() as i64))?;
-            }
+        if head.fourcc() == MOVIE {
+            break Moov::parse(reader, head.size())?;
         }
 
+        reader.seek(SeekFrom::Current(head.content_len() as i64))?;
         parsed_bytes += head.len();
     };
 
