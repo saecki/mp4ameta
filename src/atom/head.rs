@@ -9,10 +9,7 @@ use super::*;
 /// ```
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Size {
-    /// Whether the head is of standard size (8 bytes) with a 32 bit length or extended (16 bytes)
-    /// with a 64 bit length.
     ext: bool,
-    /// The length including this head.
     len: u64,
 }
 
@@ -26,14 +23,18 @@ impl Size {
         Self { ext, len }
     }
 
+    /// Whether the head is of standard size (8 bytes) with a 32 bit length or extended (16 bytes)
+    /// with a 64 bit length.
     pub const fn ext(&self) -> bool {
         self.ext
     }
 
+    /// The length including the atom's head.
     pub const fn len(&self) -> u64 {
         self.len
     }
 
+    /// The length of the atom's head.
     pub const fn head_len(&self) -> u64 {
         match self.ext {
             true => 16,
@@ -41,6 +42,7 @@ impl Size {
         }
     }
 
+    /// The length excluding the atom's head.
     pub const fn content_len(&self) -> u64 {
         match self.ext {
             true => self.len - 16,
