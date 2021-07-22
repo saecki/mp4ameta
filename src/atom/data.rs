@@ -198,12 +198,8 @@ impl WriteAtom for Data {
 
         match self {
             Self::Reserved(v) => writer.write_all(v)?,
-            Self::Utf8(s) => writer.write_all(s.as_bytes())?,
-            Self::Utf16(s) => {
-                for c in s.encode_utf16() {
-                    writer.write_all(&c.to_be_bytes())?;
-                }
-            }
+            Self::Utf8(s) => writer.write_utf8(s)?,
+            Self::Utf16(s) => writer.write_be_utf16(s)?,
             Self::Jpeg(v) => writer.write_all(v)?,
             Self::Png(v) => writer.write_all(v)?,
             Self::BeSigned(v) => writer.write_all(v)?,

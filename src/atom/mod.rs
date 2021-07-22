@@ -260,15 +260,19 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
 fn read_chapter(reader: &mut (impl Read + Seek), offset: u64) -> crate::Result<Chapter> {
     reader.seek(SeekFrom::Start(offset))?;
     let len = reader.read_be_u16()?;
-    let c = reader.read_be_u16()?;
+    let bom = reader.read_be_u16()?;
 
     // check BOM (byte order mark) for encoding
-    let title = match c {
+    let title = match bom {
         0xfeff => reader.read_be_utf16(len as u64 - 2)?,
         0xfffe => reader.read_le_utf16(len as u64 - 2)?,
         _ => {
-            reader.seek(SeekFrom::Current(-2))?;
-            reader.read_utf8(len as u64)?
+            let mut buf = Vec::with_capacity(len as usize);
+            buf.write_be_u16(bom).ok();
+            if len > 2 {
+                reader.read_exact(&mut buf[2..])?
+            }
+            String::from_utf8(buf)?
         }
     };
 
@@ -392,7 +396,7 @@ pub(crate) fn write_tag(file: &File, atoms: &[MetaItem]) -> crate::Result<()> {
                 writer.seek(SeekFrom::Start(chunk_offset.table_pos))?;
                 for co in chunk_offset.offsets.iter() {
                     let new_offset = (*co as i64 + len_diff) as u32;
-                    writer.write_all(&u32::to_be_bytes(new_offset))?;
+                    writer.write_be_u32(new_offset)?;
                 }
                 writer.flush()?;
             }
@@ -403,7 +407,7 @@ pub(crate) fn write_tag(file: &File, atoms: &[MetaItem]) -> crate::Result<()> {
                 writer.seek(SeekFrom::Start(chunk_offset.table_pos))?;
                 for co in chunk_offset.offsets.iter() {
                     let new_offset = (*co as i64 + len_diff) as u64;
-                    writer.write_all(&u64::to_be_bytes(new_offset))?;
+                    writer.write_be_u64(new_offset)?;
                 }
                 writer.flush()?;
             }
@@ -415,11 +419,11 @@ pub(crate) fn write_tag(file: &File, atoms: &[MetaItem]) -> crate::Result<()> {
         let new_len = a.len() as i64 + len_diff;
         writer.seek(SeekFrom::Start(a.pos()))?;
         if a.ext() {
-            writer.write_all(&u32::to_be_bytes(1))?;
+            writer.write_be_u32(1)?;
             writer.seek(SeekFrom::Current(4))?;
-            writer.write_all(&u64::to_be_bytes(new_len as u64))?;
+            writer.write_be_u64(new_len as u64)?;
         } else {
-            writer.write_all(&u32::to_be_bytes(new_len as u32))?;
+            writer.write_be_u32(new_len as u32)?;
         }
     }
 

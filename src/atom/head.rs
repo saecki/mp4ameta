@@ -131,11 +131,11 @@ pub fn parse_head(reader: &mut impl Read) -> crate::Result<Head> {
 
 pub fn write_head(writer: &mut impl Write, head: Head) -> crate::Result<()> {
     if head.ext {
-        writer.write_all(&u32::to_be_bytes(1))?;
+        writer.write_be_u32(1)?;
         writer.write_all(&*head.fourcc)?;
-        writer.write_all(&u64::to_be_bytes(head.len()))?;
+        writer.write_be_u64(head.len())?;
     } else {
-        writer.write_all(&u32::to_be_bytes(head.len() as u32))?;
+        writer.write_be_u32(head.len() as u32)?;
         writer.write_all(&*head.fourcc)?;
     }
     Ok(())

@@ -1,4 +1,4 @@
-use std::io::{self, Read, Seek, SeekFrom};
+use std::io::{self, Read, Seek, SeekFrom, Write};
 
 pub trait ReadUtil: Read {
     /// Attempts to read an unsigned 8 bit integer from the reader.
@@ -84,6 +84,33 @@ pub trait SeekUtil: Seek {
 }
 
 impl<T: Seek> SeekUtil for T {}
+
+pub trait WriteUtil: Write {
+    fn write_be_u16(&mut self, val: u16) -> io::Result<()> {
+        self.write_all(&val.to_be_bytes())
+    }
+
+    fn write_be_u32(&mut self, val: u32) -> io::Result<()> {
+        self.write_all(&val.to_be_bytes())
+    }
+
+    fn write_be_u64(&mut self, val: u64) -> io::Result<()> {
+        self.write_all(&val.to_be_bytes())
+    }
+
+    fn write_utf8(&mut self, string: &str) -> io::Result<()> {
+        self.write_all(string.as_bytes())
+    }
+
+    fn write_be_utf16(&mut self, string: &str) -> io::Result<()> {
+        for c in string.encode_utf16() {
+            self.write_be_u16(c)?;
+        }
+        Ok(())
+    }
+}
+
+impl<T: Write> WriteUtil for T {}
 
 /// Attempts to read a big endian integer at the specified index from a byte slice.
 macro_rules! be_int {

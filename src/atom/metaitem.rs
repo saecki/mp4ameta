@@ -1,4 +1,4 @@
-//! A meta item can either have a plain fourcc as it's identifier:
+//! A metadata item can either have a plain fourcc as it's identifier:
 //! **** (any fourcc)
 //! └─ data
 //!
@@ -19,7 +19,7 @@ pub struct MetaItem {
 }
 
 impl MetaItem {
-    /// Creates a meta item with the identifier and data.
+    /// Creates a metadata item with the identifier and data.
     pub const fn new(ident: DataIdent, data: Vec<Data>) -> Self {
         Self { ident, data }
     }
@@ -45,13 +45,13 @@ impl MetaItem {
         self.data.is_empty() || self.data.iter().all(|d| d.is_empty())
     }
 
-    pub fn parse(reader: &mut (impl Read + Seek), parent: Fourcc, len: u64) -> crate::Result<Self> {
+    pub fn parse(reader: &mut (impl Read + Seek), parent: Head) -> crate::Result<Self> {
         let mut data = Vec::new();
         let mut mean: Option<String> = None;
         let mut name: Option<String> = None;
         let mut parsed_bytes = 0;
 
-        while parsed_bytes < len {
+        while parsed_bytes < parent.content_len() {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
@@ -61,7 +61,7 @@ impl MetaItem {
                     if version != 0 {
                         return Err(crate::Error::new(
                             crate::ErrorKind::UnknownVersion(version),
-                            "Error reading data atom (data)",
+                            "Error reading mean atom (mean)",
                         ));
                     }
 
@@ -72,7 +72,7 @@ impl MetaItem {
                     if version != 0 {
                         return Err(crate::Error::new(
                             crate::ErrorKind::UnknownVersion(version),
-                            "Error reading data atom (data)",
+                            "Error reading name atom (name)",
                         ));
                     }
 
@@ -86,7 +86,7 @@ impl MetaItem {
             parsed_bytes += head.len();
         }
 
-        let ident = match (parent, mean, name) {
+        let ident = match (parent.fourcc(), mean, name) {
             (FREEFORM, Some(mean), Some(name)) => DataIdent::Freeform { mean, name },
             (fourcc, _, _) => DataIdent::Fourcc(fourcc),
         };
@@ -94,16 +94,19 @@ impl MetaItem {
         if data.is_empty() {
             return Err(crate::Error::new(
                 crate::ErrorKind::AtomNotFound(DATA),
-                format!("Error constructing meta item '{}', missing data atom", parent),
+                format!(
+                    "Error constructing metadata item '{}', missing data atom",
+                    parent.fourcc()
+                ),
             ));
         }
 
         Ok(MetaItem { ident, data })
     }
 
-    /// Attempts to write the meta item to the writer.
+    /// Attempts to write the metadata item to the writer.
     pub fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
-        writer.write_all(&u32::to_be_bytes(self.len() as u32))?;
+        writer.write_be_u32(self.len() as u32)?;
 
         match &self.ident {
             DataIdent::Fourcc(ident) => writer.write_all(ident.deref())?,
@@ -115,16 +118,16 @@ impl MetaItem {
                 writer.write_all(FREEFORM.deref())?;
 
                 let mean_len: u32 = 12 + mean.len() as u32;
-                writer.write_all(&u32::to_be_bytes(mean_len))?;
-                writer.write_all(MEAN.deref())?;
+                writer.write_be_u32(mean_len)?;
+                writer.write_all(&*MEAN)?;
                 writer.write_all(&[0; 4])?;
-                writer.write_all(mean.as_bytes())?;
+                writer.write_utf8(mean)?;
 
                 let name_len: u32 = 12 + name.len() as u32;
-                writer.write_all(&u32::to_be_bytes(name_len))?;
-                writer.write_all(NAME.deref())?;
+                writer.write_be_u32(name_len)?;
+                writer.write_all(&*NAME)?;
                 writer.write_all(&[0; 4])?;
-                writer.write_all(name.as_bytes())?;
+                writer.write_utf8(name)?;
             }
         }
 
