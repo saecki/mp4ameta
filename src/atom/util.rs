@@ -1,4 +1,5 @@
 use std::io::{self, Read, Seek, SeekFrom, Write};
+use std::time::Duration;
 
 pub trait ReadUtil: Read {
     /// Attempts to read an unsigned 8 bit integer from the reader.
@@ -111,6 +112,12 @@ pub trait WriteUtil: Write {
 }
 
 impl<T: Write> WriteUtil for T {}
+
+pub fn scaled_duration(timescale: u32, duration: u64) -> Duration {
+    let secs = duration / timescale as u64;
+    let nanos = (duration % timescale as u64) * 1_000_000_000 / timescale as u64;
+    Duration::new(secs, nanos as u32)
+}
 
 /// Attempts to read a big endian integer at the specified index from a byte slice.
 macro_rules! be_int {

@@ -1,5 +1,3 @@
-use std::io::{Read, Seek, SeekFrom};
-
 use super::*;
 
 /// A struct representing of a sample table chunk offset atom (`stco`).
@@ -17,30 +15,29 @@ impl ParseAtom for Stco {
     fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
         let (version, _) = parse_full_head(reader)?;
 
-        match version {
-            0 => {
-                let entries = reader.read_be_u32()?;
-                if 8 + 4 * entries as u64 != size.content_len() {
-                    return Err(crate::Error::new(
-                        crate::ErrorKind::Parsing,
-                        "Sample table chunk offset (stco) offset table size doesn't match atom length",
-                    ));
-                }
-
-                let table_pos = reader.seek(SeekFrom::Current(0))?;
-                let mut offsets = Vec::with_capacity(entries as usize);
-                for _ in 0..entries {
-                    let offset = reader.read_be_u32()?;
-                    offsets.push(offset);
-                }
-
-                Ok(Self { table_pos, offsets })
-            }
-            _ => Err(crate::Error::new(
+        if version != 0 {
+            return Err(crate::Error::new(
                 crate::ErrorKind::UnknownVersion(version),
                 "Unknown sample table chunk offset (stco) version",
-            )),
+            ));
         }
+
+        let entries = reader.read_be_u32()?;
+        if 8 + 4 * entries as u64 != size.content_len() {
+            return Err(crate::Error::new(
+                crate::ErrorKind::Parsing,
+                "Sample table chunk offset (stco) table size doesn't match atom length",
+            ));
+        }
+
+        let table_pos = reader.seek(SeekFrom::Current(0))?;
+        let mut offsets = Vec::with_capacity(entries as usize);
+        for _ in 0..entries {
+            let offset = reader.read_be_u32()?;
+            offsets.push(offset);
+        }
+
+        Ok(Self { table_pos, offsets })
     }
 }
 

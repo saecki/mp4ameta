@@ -245,7 +245,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
 
     let mut info = AudioInfo::default();
     if let Some(i) = mvhd {
-        info.duration = Some(i.duration);
+        info.duration = Some(scaled_duration(i.timescale, i.duration));
     }
     if let Some(i) = mp4a {
         info.channel_config = i.channel_config;
@@ -267,12 +267,8 @@ fn read_chapter(reader: &mut (impl Read + Seek), offset: u64) -> crate::Result<C
         0xfeff => reader.read_be_utf16(len as u64 - 2)?,
         0xfffe => reader.read_le_utf16(len as u64 - 2)?,
         _ => {
-            let mut buf = Vec::with_capacity(len as usize);
-            buf.write_be_u16(bom).ok();
-            if len > 2 {
-                reader.read_exact(&mut buf[2..])?
-            }
-            String::from_utf8(buf)?
+            reader.seek(SeekFrom::Current(-2))?;
+            reader.read_utf8(len as u64)?
         }
     };
 

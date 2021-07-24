@@ -1,12 +1,12 @@
 use std::io::{Read, Seek, SeekFrom};
-use std::time::Duration;
 
 use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Mvhd {
-    /// The duration of the track.
-    pub duration: Duration,
+    pub timescale: u32,
+    /// The duration in timescale units
+    pub duration: u64,
 }
 
 impl Atom for Mvhd {
@@ -25,30 +25,26 @@ impl ParseAtom for Mvhd {
                 // 1 byte version
                 // 3 bytes flags
                 // 4 bytes creation time
-                // 4 bytes motification time
+                // 4 bytes modification time
                 // 4 bytes time scale
                 // 4 bytes duration
                 // ...
                 reader.seek(SeekFrom::Current(8))?;
-                let timescale = reader.read_be_u32()? as u64;
-                let duration = reader.read_be_u32()? as u64;
-
-                mvhd.duration = Duration::from_nanos(duration * 1_000_000_000 / timescale);
+                mvhd.timescale = reader.read_be_u32()?;
+                mvhd.duration = reader.read_be_u32()? as u64;
             }
             1 => {
                 // # Version 1
                 // 1 byte version
                 // 3 bytes flags
                 // 8 bytes creation time
-                // 8 bytes motification time
+                // 8 bytes modification time
                 // 4 bytes time scale
                 // 8 bytes duration
                 // ...
                 reader.seek(SeekFrom::Current(16))?;
-                let timescale = reader.read_be_u32()? as u64;
-                let duration = reader.read_be_u64()?;
-
-                mvhd.duration = Duration::from_nanos(duration * 1_000_000_000 / timescale);
+                mvhd.timescale = reader.read_be_u32()?;
+                mvhd.duration = reader.read_be_u64()?;
             }
             v => {
                 return Err(crate::Error::new(
