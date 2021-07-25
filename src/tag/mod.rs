@@ -4,10 +4,11 @@ use std::fs::{File, OpenOptions};
 use std::io::{BufReader, Read, Seek, Write};
 use std::path::Path;
 use std::rc::Rc;
+use std::time::Duration;
 
 use crate::{
-    atom, ident, AdvisoryRating, AudioInfo, Chapter, Data, DataIdent, Ident, Img, ImgBuf, ImgFmt,
-    ImgMut, ImgRef, MediaType, MetaItem,
+    atom, ident, util, AdvisoryRating, AudioInfo, Chapter, Data, DataIdent, Ident, Img, ImgBuf,
+    ImgFmt, ImgMut, ImgRef, MediaType, MetaItem,
 };
 
 pub use genre::*;
@@ -73,14 +74,7 @@ impl fmt::Display for Tag {
         self.format_compilation(f)?;
         self.format_isrc(f)?;
         self.format_lyrics(f)?;
-        for a in self.atoms.iter() {
-            if let DataIdent::Freeform { .. } = &a.ident {
-                writeln!(f, "{}:", a.ident)?;
-                for d in a.data.iter() {
-                    writeln!(f, "    {:?}", d)?;
-                }
-            }
-        }
+        self.format_chapters(f)?;
         writeln!(f, "filetype: {}", self.filetype())
     }
 }
@@ -323,6 +317,23 @@ impl Tag {
     /// Returns all chapters.
     pub fn chapters(&self) -> impl Iterator<Item = &Chapter> {
         self.chapters.iter()
+    }
+
+    fn format_chapters(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "chapters:")?;
+        for c in self.chapters() {
+            writeln!(f, "    {}", c.title)?;
+            if c.start == Duration::ZERO {
+                f.write_str("      start: 0:00")?;
+            } else {
+                f.write_str("      start: ")?;
+                util::format_duration(f, c.start)?;
+            }
+            f.write_str(", duration: ")?;
+            util::format_duration(f, c.duration)?;
+            writeln!(f)?;
+        }
+        Ok(())
     }
 }
 

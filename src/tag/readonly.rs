@@ -1,7 +1,7 @@
 use std::fmt;
 use std::time::Duration;
 
-use crate::{AudioInfo, ChannelConfig, SampleRate, Tag};
+use crate::{util, AudioInfo, ChannelConfig, SampleRate, Tag};
 
 /// ### Audio information
 impl Tag {
@@ -17,25 +17,13 @@ impl Tag {
 
     /// Returns the duration formatted in an easily readable way.
     pub(crate) fn format_duration(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let duration = match self.duration() {
-            Some(d) => d,
-            None => return Ok(()),
-        };
-        let total_seconds = duration.as_secs();
-        let nanos = duration.subsec_nanos();
-        let micros = nanos / 1_000;
-        let millis = nanos / 1_000_000;
-        let seconds = total_seconds % 60;
-        let minutes = total_seconds / 60 % 60;
-        let hours = total_seconds / 60 / 60;
-
-        match (hours, minutes, seconds, millis, micros, nanos) {
-            (0, 0, 0, 0, 0, n) => writeln!(f, "duration: {}ns", n),
-            (0, 0, 0, 0, u, _) => writeln!(f, "duration: {}µs", u),
-            (0, 0, 0, m, _, _) => writeln!(f, "duration: {}ms", m),
-            (0, 0, s, _, _, _) => writeln!(f, "duration: {}s", s),
-            (0, m, s, _, _, _) => writeln!(f, "duration: {}:{:02}", m, s),
-            (h, m, s, _, _, _) => writeln!(f, "duration: {}:{:02}:{:02}", h, m, s),
+        match self.duration() {
+            Some(d) => {
+                write!(f, "duration: ")?;
+                util::format_duration(f, d)?;
+                writeln!(f)
+            }
+            None => Ok(()),
         }
     }
 
