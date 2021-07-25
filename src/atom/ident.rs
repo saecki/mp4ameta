@@ -30,6 +30,8 @@ pub(crate) const SAMPLE_TABLE: Fourcc = Fourcc(*b"stbl");
 pub(crate) const SAMPLE_TABLE_CHUNK_OFFSET: Fourcc = Fourcc(*b"stco");
 /// (`co64`)
 pub(crate) const SAMPLE_TABLE_CHUNK_OFFSET_64: Fourcc = Fourcc(*b"co64");
+/// (`stts`)
+pub(crate) const SAMPLE_TABLE_TIME_TO_SAMPLE: Fourcc = Fourcc(*b"stts");
 /// (`stsd`)
 pub(crate) const SAMPLE_TABLE_SAMPLE_DESCRIPTION: Fourcc = Fourcc(*b"stsd");
 /// (`mp4a`)

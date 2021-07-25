@@ -107,14 +107,14 @@ pub fn parse_head(reader: &mut impl Read) -> crate::Result<Head> {
             return Err(crate::Error::new(ErrorKind::Io(e), "Error reading atom length"));
         }
     };
-    let mut ident = Fourcc([0; 4]);
-    if let Err(e) = reader.read_exact(&mut *ident) {
+    let mut fourcc = Fourcc::default();
+    if let Err(e) = reader.read_exact(&mut *fourcc) {
         return Err(crate::Error::new(ErrorKind::Io(e), "Error reading atom identifier"));
     }
 
     if len == 1 {
         match reader.read_be_u64() {
-            Ok(l) => Ok(Head::new(true, l, ident)),
+            Ok(l) => Ok(Head::new(true, l, fourcc)),
             Err(e) => {
                 Err(crate::Error::new(ErrorKind::Io(e), "Error reading extended atom length"))
             }
@@ -122,10 +122,10 @@ pub fn parse_head(reader: &mut impl Read) -> crate::Result<Head> {
     } else if len < 8 {
         Err(crate::Error::new(
             crate::ErrorKind::Parsing,
-            format!("Read length of '{}' which is less than 8 bytes: {}", ident, len),
+            format!("Read length of '{}' which is less than 8 bytes: {}", fourcc, len),
         ))
     } else {
-        Ok(Head::new(false, len, ident))
+        Ok(Head::new(false, len, fourcc))
     }
 }
 

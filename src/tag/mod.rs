@@ -25,9 +25,9 @@ pub struct Tag {
     ftyp: String,
     /// Readonly audio information
     info: AudioInfo,
-    /// A vector containing metadata item atoms
+    /// A list of Metadata item atoms.
     atoms: Vec<MetaItem>,
-    /// A vector containing chapters
+    /// A list of chapters.
     chapters: Vec<Chapter>,
 }
 

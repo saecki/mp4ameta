@@ -423,6 +423,17 @@ impl ImgFmt {
 /// A struct representing a chapter.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Chapter {
+    /// The start of the chapter.
+    pub start: Duration,
+    /// The duration of the chapter.
+    pub duration: Duration,
     /// The title of the chapter.
     pub title: String,
+}
+
+impl Chapter {
+    /// Returns the end of the chapter
+    pub fn end(&self) -> Duration {
+        self.start + self.duration
+    }
 }

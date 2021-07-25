@@ -52,6 +52,7 @@ use mvhd::*;
 use stbl::*;
 use stco::*;
 use stsd::*;
+use stts::*;
 use tkhd::*;
 use trak::*;
 use tref::*;
@@ -85,6 +86,7 @@ mod mvhd;
 mod stbl;
 mod stco;
 mod stsd;
+mod stts;
 mod tkhd;
 mod trak;
 mod tref;
@@ -197,6 +199,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
         parsed_bytes += head.len();
     };
 
+    let timescale = moov.mvhd.as_ref().map(|a| a.timescale);
     let mut chapters = Vec::new();
     for chap in moov.trak.iter().filter_map(|a| a.tref.as_ref().and_then(|a| a.chap.as_ref())) {
         for c_id in chap.chapter_ids.iter() {
@@ -213,22 +216,30 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
                 .as_ref()
                 .and_then(|a| a.minf.as_ref())
                 .and_then(|a| a.stbl.as_ref());
+            let stts = stbl.and_then(|a| a.stts.as_ref());
 
             if let Some(stco) = stbl.and_then(|a| a.stco.as_ref()) {
                 chapters.reserve(stco.offsets.len());
-                for o in stco.offsets.iter() {
-                    chapters.push(read_chapter(reader, *o as u64)?);
-                }
+                read_chapters(
+                    reader,
+                    &mut chapters,
+                    timescale.unwrap_or(1000),
+                    stco.offsets.iter().map(|o| *o as u64),
+                    stts.map_or([].iter(), |a| a.items.iter()),
+                )?;
             } else if let Some(co64) = stbl.and_then(|a| a.co64.as_ref()) {
                 chapters.reserve(co64.offsets.len());
-                for o in co64.offsets.iter() {
-                    chapters.push(read_chapter(reader, *o)?);
-                }
+                read_chapters(
+                    reader,
+                    &mut chapters,
+                    timescale.unwrap_or(1000),
+                    co64.offsets.iter().copied(),
+                    stts.map_or([].iter(), |a| a.items.iter()),
+                )?;
             }
         }
     }
 
-    let mvhd = moov.mvhd;
     let mp4a = moov.trak.into_iter().find_map(|trak| {
         trak.mdia
             .and_then(|a| a.minf)
@@ -244,8 +255,8 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
         .unwrap_or_default();
 
     let mut info = AudioInfo::default();
-    if let Some(i) = mvhd {
-        info.duration = Some(scaled_duration(i.timescale, i.duration));
+    if let Some(a) = moov.mvhd {
+        info.duration = Some(scaled_duration(a.timescale, a.duration));
     }
     if let Some(i) = mp4a {
         info.channel_config = i.channel_config;
@@ -257,7 +268,31 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
     Ok(Tag::new(ftyp, info, ilst, chapters))
 }
 
-fn read_chapter(reader: &mut (impl Read + Seek), offset: u64) -> crate::Result<Chapter> {
+fn read_chapters<'a>(
+    reader: &mut (impl Read + Seek),
+    chapters: &mut Vec<Chapter>,
+    timescale: u32,
+    offsets: impl Iterator<Item = u64>,
+    mut durations: impl Iterator<Item = &'a SttsItem>,
+) -> crate::Result<()> {
+    let mut start = 0;
+
+    for o in offsets {
+        let duration = durations.next().map_or(0, |i| i.sample_duration) as u64;
+        let title = read_chapter_title(reader, o)?;
+        chapters.push(Chapter {
+            start: scaled_duration(timescale, start),
+            duration: scaled_duration(timescale, duration),
+            title,
+        });
+
+        start += duration;
+    }
+
+    Ok(())
+}
+
+fn read_chapter_title(reader: &mut (impl Read + Seek), offset: u64) -> crate::Result<String> {
     reader.seek(SeekFrom::Start(offset))?;
     let len = reader.read_be_u16()?;
     let bom = reader.read_be_u16()?;
@@ -272,7 +307,7 @@ fn read_chapter(reader: &mut (impl Read + Seek), offset: u64) -> crate::Result<C
         }
     };
 
-    Ok(Chapter { title })
+    Ok(title)
 }
 
 /// Attempts to write the metadata atoms to the file inside the item list atom.

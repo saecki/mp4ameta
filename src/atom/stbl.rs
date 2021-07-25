@@ -5,6 +5,7 @@ pub struct Stbl {
     pub stsd: Option<Stsd>,
     pub stco: Option<Stco>,
     pub co64: Option<Co64>,
+    pub stts: Option<Stts>,
 }
 
 impl Atom for Stbl {
@@ -25,6 +26,7 @@ impl ParseAtom for Stbl {
                 }
                 SAMPLE_TABLE_CHUNK_OFFSET => stbl.stco = Some(Stco::parse(reader, head.size())?),
                 SAMPLE_TABLE_CHUNK_OFFSET_64 => stbl.co64 = Some(Co64::parse(reader, head.size())?),
+                SAMPLE_TABLE_TIME_TO_SAMPLE => stbl.stts = Some(Stts::parse(reader, head.size())?),
                 _ => {
                     reader.seek(SeekFrom::Current(head.content_len() as i64))?;
                 }
