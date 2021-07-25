@@ -26,6 +26,10 @@ pub(crate) const MEDIA: Fourcc = Fourcc(*b"mdia");
 pub(crate) const MEDIA_INFORMATION: Fourcc = Fourcc(*b"minf");
 /// (`stbl`)
 pub(crate) const SAMPLE_TABLE: Fourcc = Fourcc(*b"stbl");
+/// (`stsz`)
+pub(crate) const SAMPLE_TABLE_SAMPLE_SIZE: Fourcc = Fourcc(*b"stsz");
+/// (`stsc`)
+pub(crate) const SAMPLE_TABLE_SAMPLE_TO_COUNT: Fourcc = Fourcc(*b"stsc");
 /// (`stco`)
 pub(crate) const SAMPLE_TABLE_CHUNK_OFFSET: Fourcc = Fourcc(*b"stco");
 /// (`co64`)

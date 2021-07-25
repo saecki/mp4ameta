@@ -37,6 +37,8 @@ impl ParseAtom for Stco {
             offsets.push(offset);
         }
 
+        println!("stco.offsets: {:#?}", offsets);
+
         Ok(Self { table_pos, offsets })
     }
 }
