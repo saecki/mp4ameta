@@ -190,19 +190,19 @@ impl fmt::Display for AdvisoryRating {
 /// An enum representing the channel configuration of an MPEG-4 audio track.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ChannelConfig {
-    /// Mono
+    /// 1.0, channel: front-center.
     Mono,
-    /// Stereo
+    /// 2.0, channels: front-left, front-right.
     Stereo,
-    /// 3.0
+    /// 3.0, channels: front-center, front-left, front-right.
     Three,
-    /// 4.0
+    /// 4.0, channels: front-center, front-left, front-right, back-center.
     Four,
-    /// 5.0
+    /// 5.0, channels: front-center, front-left, front-right, back-left, back-right.
     Five,
-    /// 5.1
+    /// 5.1, channels: front-center, front-left, front-right, back-left, back-right, LFE-channel.
     FiveOne,
-    /// 7.1
+    /// 7.1, channels: front-center, front-left, front-right, side-left, side-right, back-left, back-right, LFE-channel.
     SevenOne,
 }
 
