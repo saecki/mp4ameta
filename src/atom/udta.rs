@@ -10,7 +10,11 @@ impl Atom for Udta<'_> {
 }
 
 impl ParseAtom for Udta<'_> {
-    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
+    fn parse_atom(
+        reader: &mut (impl Read + Seek),
+        cfg: &ReadConfig,
+        size: Size,
+    ) -> crate::Result<Self> {
         let mut udta = Self::default();
         let mut parsed_bytes = 0;
 
@@ -18,7 +22,7 @@ impl ParseAtom for Udta<'_> {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                METADATA => udta.meta = Some(Meta::parse(reader, head.size())?),
+                METADATA => udta.meta = Some(Meta::parse(reader, cfg, head.size())?),
                 _ => {
                     reader.seek(SeekFrom::Current(head.content_len() as i64))?;
                 }

@@ -421,7 +421,7 @@ impl ImgFmt {
 }
 
 /// A struct representing a chapter.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Chapter {
     /// The start of the chapter.
     pub start: Duration,

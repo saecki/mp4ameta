@@ -14,7 +14,11 @@ impl Atom for Mvhd {
 }
 
 impl ParseAtom for Mvhd {
-    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
+    fn parse_atom(
+        reader: &mut (impl Read + Seek),
+        _cfg: &ReadConfig,
+        size: Size,
+    ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
         let mut mvhd = Self::default();
 

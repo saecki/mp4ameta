@@ -11,7 +11,11 @@ impl Atom for Meta<'_> {
 }
 
 impl ParseAtom for Meta<'_> {
-    fn parse_atom(reader: &'_ mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
+    fn parse_atom(
+        reader: &'_ mut (impl Read + Seek),
+        cfg: &ReadConfig,
+        size: Size,
+    ) -> crate::Result<Self> {
         let (version, _) = parse_full_head(reader)?;
 
         if version != 0 {
@@ -28,7 +32,7 @@ impl ParseAtom for Meta<'_> {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                ITEM_LIST => meta.ilst = Some(Ilst::parse(reader, head.size())?),
+                ITEM_LIST => meta.ilst = Some(Ilst::parse(reader, cfg, head.size())?),
                 _ => {
                     reader.seek(SeekFrom::Current(head.content_len() as i64))?;
                 }

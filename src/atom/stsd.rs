@@ -10,7 +10,11 @@ impl Atom for Stsd {
 }
 
 impl ParseAtom for Stsd {
-    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
+    fn parse_atom(
+        reader: &mut (impl Read + Seek),
+        cfg: &ReadConfig,
+        size: Size,
+    ) -> crate::Result<Self> {
         let (version, _) = parse_full_head(reader)?;
 
         if version != 0 {
@@ -29,7 +33,7 @@ impl ParseAtom for Stsd {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                MP4_AUDIO => stsd.mp4a = Some(Mp4a::parse(reader, head.size())?),
+                MP4_AUDIO => stsd.mp4a = Some(Mp4a::parse(reader, cfg, head.size())?),
                 _ => {
                     reader.seek(SeekFrom::Current(head.content_len() as i64))?;
                 }

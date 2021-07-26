@@ -71,7 +71,11 @@ impl Atom for Mp4a {
 }
 
 impl ParseAtom for Mp4a {
-    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
+    fn parse_atom(
+        reader: &mut (impl Read + Seek),
+        _cfg: &ReadConfig,
+        size: Size,
+    ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
         let mut mp4a = Self::default();
 

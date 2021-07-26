@@ -12,7 +12,11 @@ impl Atom for Stco {
 }
 
 impl ParseAtom for Stco {
-    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
+    fn parse_atom(
+        reader: &mut (impl Read + Seek),
+        _cfg: &ReadConfig,
+        size: Size,
+    ) -> crate::Result<Self> {
         let (version, _) = parse_full_head(reader)?;
 
         if version != 0 {
@@ -36,8 +40,6 @@ impl ParseAtom for Stco {
             let offset = reader.read_be_u32()?;
             offsets.push(offset);
         }
-
-        println!("stco.offsets: {:#?}", offsets);
 
         Ok(Self { table_pos, offsets })
     }

@@ -10,7 +10,11 @@ impl Atom for Mdia {
 }
 
 impl ParseAtom for Mdia {
-    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
+    fn parse_atom(
+        reader: &mut (impl Read + Seek),
+        cfg: &ReadConfig,
+        size: Size,
+    ) -> crate::Result<Self> {
         let mut mdia = Self::default();
         let mut parsed_bytes = 0;
 
@@ -18,7 +22,7 @@ impl ParseAtom for Mdia {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                MEDIA_INFORMATION => mdia.minf = Some(Minf::parse(reader, head.size())?),
+                MEDIA_INFORMATION => mdia.minf = Some(Minf::parse(reader, cfg, head.size())?),
                 _ => {
                     reader.seek(SeekFrom::Current(head.content_len() as i64))?;
                 }

@@ -12,7 +12,11 @@ impl Atom for Stsz {
 }
 
 impl ParseAtom for Stsz {
-    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
+    fn parse_atom(
+        reader: &mut (impl Read + Seek),
+        _cfg: &ReadConfig,
+        size: Size,
+    ) -> crate::Result<Self> {
         let (version, _) = parse_full_head(reader)?;
 
         if version != 0 {
@@ -38,9 +42,28 @@ impl ParseAtom for Stsz {
             sizes.push(offset);
         }
 
-        println!("stsz.sample_size: {}", sample_size);
-        println!("stsz.sizes: {:#?}", sizes);
-
         Ok(Self { table_pos, sample_size, sizes })
+    }
+}
+
+pub struct StszBounds {
+    pub bounds: AtomBounds,
+}
+
+impl Deref for StszBounds {
+    type Target = AtomBounds;
+
+    fn deref(&self) -> &Self::Target {
+        &self.bounds
+    }
+}
+
+impl FindAtom for Stsz {
+    type Bounds = StszBounds;
+
+    fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
+        let bounds = find_bounds(reader, size)?;
+        seek_to_end(reader, &bounds)?;
+        Ok(Self::Bounds { bounds })
     }
 }

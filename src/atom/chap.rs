@@ -10,7 +10,11 @@ impl Atom for Chap {
 }
 
 impl ParseAtom for Chap {
-    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
+    fn parse_atom(
+        reader: &mut (impl Read + Seek),
+        _cfg: &ReadConfig,
+        size: Size,
+    ) -> crate::Result<Self> {
         let count = size.content_len() as usize / 4;
         let mut chapter_ids = Vec::with_capacity(count);
 

@@ -12,7 +12,11 @@ impl Atom for Trak {
 }
 
 impl ParseAtom for Trak {
-    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
+    fn parse_atom(
+        reader: &mut (impl Read + Seek),
+        cfg: &ReadConfig,
+        size: Size,
+    ) -> crate::Result<Self> {
         let mut trak = Self::default();
         let mut parsed_bytes = 0;
 
@@ -20,9 +24,15 @@ impl ParseAtom for Trak {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                TRACK_HEADER => trak.tkhd = Some(Tkhd::parse(reader, head.size())?),
-                TRACK_REFERENCE => trak.tref = Some(Tref::parse(reader, head.size())?),
-                MEDIA => trak.mdia = Some(Mdia::parse(reader, head.size())?),
+                TRACK_HEADER if cfg.read_chapters => {
+                    trak.tkhd = Some(Tkhd::parse(reader, cfg, head.size())?)
+                }
+                TRACK_REFERENCE if cfg.read_chapters => {
+                    trak.tref = Some(Tref::parse(reader, cfg, head.size())?)
+                }
+                MEDIA if cfg.read_chapters || cfg.read_audio_info => {
+                    trak.mdia = Some(Mdia::parse(reader, cfg, head.size())?)
+                }
                 _ => {
                     reader.seek(SeekFrom::Current(head.content_len() as i64))?;
                 }

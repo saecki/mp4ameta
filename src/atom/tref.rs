@@ -10,7 +10,11 @@ impl Atom for Tref {
 }
 
 impl ParseAtom for Tref {
-    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
+    fn parse_atom(
+        reader: &mut (impl Read + Seek),
+        cfg: &ReadConfig,
+        size: Size,
+    ) -> crate::Result<Self> {
         let mut tref = Self::default();
         let mut parsed_bytes = 0;
 
@@ -18,7 +22,7 @@ impl ParseAtom for Tref {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                CHAPTER => tref.chap = Some(Chap::parse(reader, head.size())?),
+                CHAPTER => tref.chap = Some(Chap::parse(reader, cfg, head.size())?),
                 _ => {
                     reader.seek(SeekFrom::Current(head.content_len() as i64))?;
                 }

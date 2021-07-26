@@ -45,7 +45,11 @@ impl MetaItem {
         self.data.is_empty() || self.data.iter().all(|d| d.is_empty())
     }
 
-    pub fn parse(reader: &mut (impl Read + Seek), parent: Head) -> crate::Result<Self> {
+    pub fn parse(
+        reader: &mut (impl Read + Seek),
+        cfg: &ReadConfig,
+        parent: Head,
+    ) -> crate::Result<Self> {
         let mut data = Vec::new();
         let mut mean: Option<String> = None;
         let mut name: Option<String> = None;
@@ -55,7 +59,7 @@ impl MetaItem {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                DATA => data.push(Data::parse(reader, head.size())?),
+                DATA => data.push(Data::parse(reader, cfg, head.size())?),
                 MEAN => {
                     let (version, _) = parse_full_head(reader)?;
                     if version != 0 {

@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use crate::{
     atom, ident, util, AdvisoryRating, AudioInfo, Chapter, Data, DataIdent, Ident, Img, ImgBuf,
-    ImgFmt, ImgMut, ImgRef, MediaType, MetaItem,
+    ImgFmt, ImgMut, ImgRef, MediaType, MetaItem, ReadConfig, WriteConfig,
 };
 
 pub use genre::*;
@@ -91,32 +91,57 @@ impl Tag {
     }
 
     /// Attempts to read a MPEG-4 audio tag from the reader.
+    pub fn read_with(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> crate::Result<Self> {
+        atom::read_tag(reader, cfg)
+    }
+
+    /// Attempts to read a MPEG-4 audio tag from the reader.
     pub fn read_from(reader: &mut (impl Read + Seek)) -> crate::Result<Self> {
-        atom::read_tag(reader)
+        Self::read_with(reader, &ReadConfig::default())
+    }
+
+    /// Attempts to read a MPEG-4 audio tag from the file at the indicated path.
+    pub fn read_with_path(path: impl AsRef<Path>, cfg: &ReadConfig) -> crate::Result<Self> {
+        let mut file = BufReader::new(File::open(path)?);
+        Self::read_with(&mut file, cfg)
     }
 
     /// Attempts to read a MPEG-4 audio tag from the file at the indicated path.
     pub fn read_from_path(path: impl AsRef<Path>) -> crate::Result<Self> {
-        let mut file = BufReader::new(File::open(path)?);
-        Self::read_from(&mut file)
+        Self::read_with_path(path, &ReadConfig::default())
+    }
+
+    /// Attempts to write the MPEG-4 audio tag to the writer.
+    pub fn write_with(&self, file: &File, cfg: &WriteConfig) -> crate::Result<()> {
+        atom::write_tag(file, cfg, &self.atoms)
     }
 
     /// Attempts to write the MPEG-4 audio tag to the writer. This will overwrite any metadata
     /// previously present on the file.
     pub fn write_to(&self, file: &File) -> crate::Result<()> {
-        atom::write_tag(file, &self.atoms)
+        self.write_with(file, &WriteConfig::default())
+    }
+
+    /// Attempts to write the MPEG-4 audio tag to the path.
+    pub fn write_with_path(&self, path: impl AsRef<Path>, cfg: &WriteConfig) -> crate::Result<()> {
+        let file = OpenOptions::new().read(true).write(true).open(path)?;
+        self.write_with(&file, cfg)
     }
 
     /// Attempts to write the MPEG-4 audio tag to the path. This will overwrite any metadata
     /// previously present on the file.
     pub fn write_to_path(&self, path: impl AsRef<Path>) -> crate::Result<()> {
-        let file = OpenOptions::new().read(true).write(true).open(path)?;
-        self.write_to(&file)
+        self.write_with_path(path, &WriteConfig::default())
+    }
+
+    /// Attempts to dump the MPEG-4 audio tag to the writer.
+    pub fn dump_with(&self, writer: &mut impl Write, cfg: &WriteConfig) -> crate::Result<()> {
+        atom::dump_tag(writer, cfg, &self.atoms)
     }
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.
     pub fn dump_to(&self, writer: &mut impl Write) -> crate::Result<()> {
-        atom::dump_tag(writer, &self.atoms)
+        self.dump_with(writer, &WriteConfig::default())
     }
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.
@@ -320,18 +345,20 @@ impl Tag {
     }
 
     fn format_chapters(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "chapters:")?;
-        for c in self.chapters() {
-            writeln!(f, "    {}", c.title)?;
-            if c.start == Duration::ZERO {
-                f.write_str("      start: 0:00")?;
-            } else {
-                f.write_str("      start: ")?;
-                util::format_duration(f, c.start)?;
+        if !self.chapters.is_empty() {
+            writeln!(f, "chapters:")?;
+            for c in self.chapters() {
+                writeln!(f, "    {}", c.title)?;
+                if c.start == Duration::ZERO {
+                    f.write_str("      start: 0:00")?;
+                } else {
+                    f.write_str("      start: ")?;
+                    util::format_duration(f, c.start)?;
+                }
+                f.write_str(", duration: ")?;
+                util::format_duration(f, c.duration)?;
+                writeln!(f)?;
             }
-            f.write_str(", duration: ")?;
-            util::format_duration(f, c.duration)?;
-            writeln!(f)?;
         }
         Ok(())
     }

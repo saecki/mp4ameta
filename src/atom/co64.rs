@@ -14,7 +14,11 @@ impl Atom for Co64 {
 }
 
 impl ParseAtom for Co64 {
-    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
+    fn parse_atom(
+        reader: &mut (impl Read + Seek),
+        _cfg: &ReadConfig,
+        size: Size,
+    ) -> crate::Result<Self> {
         let (version, _) = parse_full_head(reader)?;
 
         match version {

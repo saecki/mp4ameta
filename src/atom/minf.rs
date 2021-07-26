@@ -10,7 +10,11 @@ impl Atom for Minf {
 }
 
 impl ParseAtom for Minf {
-    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
+    fn parse_atom(
+        reader: &mut (impl Read + Seek),
+        cfg: &ReadConfig,
+        size: Size,
+    ) -> crate::Result<Self> {
         let mut minf = Self::default();
         let mut parsed_bytes = 0;
 
@@ -18,7 +22,7 @@ impl ParseAtom for Minf {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                SAMPLE_TABLE => minf.stbl = Some(Stbl::parse(reader, head.size())?),
+                SAMPLE_TABLE => minf.stbl = Some(Stbl::parse(reader, cfg, head.size())?),
                 _ => {
                     reader.seek(SeekFrom::Current(head.content_len() as i64))?;
                 }

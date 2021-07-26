@@ -101,8 +101,8 @@ trait Atom: Sized {
 }
 
 trait ParseAtom: Atom {
-    fn parse(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
-        match Self::parse_atom(reader, size) {
+    fn parse(reader: &mut (impl Read + Seek), cfg: &ReadConfig, size: Size) -> crate::Result<Self> {
+        match Self::parse_atom(reader, cfg, size) {
             Err(mut e) => {
                 let mut d = e.description.into_owned();
                 insert_str(&mut d, "Error parsing", Self::FOURCC);
@@ -113,7 +113,11 @@ trait ParseAtom: Atom {
         }
     }
 
-    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self>;
+    fn parse_atom(
+        reader: &mut (impl Read + Seek),
+        cfg: &ReadConfig,
+        size: Size,
+    ) -> crate::Result<Self>;
 }
 
 trait FindAtom: Atom {
@@ -180,8 +184,32 @@ impl<T: WriteAtom> LenOrZero for Option<T> {
     }
 }
 
+/// A struct that configures parsing behavior.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ReadConfig {
+    /// Wheter item list metadata will be read.
+    pub read_item_list: bool,
+    /// Wheter image data will be read.
+    pub read_image_data: bool,
+    /// Wheter chapter information will be read.
+    pub read_chapters: bool,
+    /// Wheter audio information will be read.
+    pub read_audio_info: bool,
+}
+
+impl Default for ReadConfig {
+    fn default() -> Self {
+        Self {
+            read_item_list: true,
+            read_image_data: true,
+            read_chapters: true,
+            read_audio_info: true,
+        }
+    }
+}
+
 /// Attempts to read MPEG-4 audio metadata from the reader.
-pub(crate) fn read_tag(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
+pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> crate::Result<Tag> {
     let Ftyp(ftyp) = Ftyp::parse(reader)?;
 
     let len = reader.remaining_stream_len()?;
@@ -196,61 +224,13 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
 
         let head = parse_head(reader)?;
         if head.fourcc() == MOVIE {
-            break Moov::parse(reader, head.size())?;
+            break Moov::parse(reader, cfg, head.size())?;
         }
 
         reader.seek(SeekFrom::Current(head.content_len() as i64))?;
         parsed_bytes += head.len();
     };
 
-    let timescale = moov.mvhd.as_ref().map(|a| a.timescale);
-    let mut chapters = Vec::new();
-    for chap in moov.trak.iter().filter_map(|a| a.tref.as_ref().and_then(|a| a.chap.as_ref())) {
-        for c_id in chap.chapter_ids.iter() {
-            let chapter_track = moov
-                .trak
-                .iter()
-                .find(|a| a.tkhd.as_ref().map_or(false, |a| a.id == *c_id))
-                .ok_or_else(|| {
-                    crate::Error::new(ErrorKind::TrackNotFound(*c_id), "Referenced track not found")
-                })?;
-
-            let stbl = chapter_track
-                .mdia
-                .as_ref()
-                .and_then(|a| a.minf.as_ref())
-                .and_then(|a| a.stbl.as_ref());
-            let stts = stbl.and_then(|a| a.stts.as_ref());
-
-            if let Some(stco) = stbl.and_then(|a| a.stco.as_ref()) {
-                chapters.reserve(stco.offsets.len());
-                read_chapters(
-                    reader,
-                    &mut chapters,
-                    timescale.unwrap_or(1000),
-                    stco.offsets.iter().map(|o| *o as u64),
-                    stts.map_or([].iter(), |a| a.items.iter()),
-                )?;
-            } else if let Some(co64) = stbl.and_then(|a| a.co64.as_ref()) {
-                chapters.reserve(co64.offsets.len());
-                read_chapters(
-                    reader,
-                    &mut chapters,
-                    timescale.unwrap_or(1000),
-                    co64.offsets.iter().copied(),
-                    stts.map_or([].iter(), |a| a.items.iter()),
-                )?;
-            }
-        }
-    }
-
-    let mp4a = moov.trak.into_iter().find_map(|trak| {
-        trak.mdia
-            .and_then(|a| a.minf)
-            .and_then(|a| a.stbl)
-            .and_then(|a| a.stsd)
-            .and_then(|a| a.mp4a)
-    });
     let ilst = moov
         .udta
         .and_then(|a| a.meta)
@@ -258,15 +238,70 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek)) -> crate::Result<Tag> {
         .and_then(|a| a.owned())
         .unwrap_or_default();
 
-    let mut info = AudioInfo::default();
-    if let Some(a) = moov.mvhd {
-        info.duration = Some(scaled_duration(a.timescale, a.duration));
+    let mut chapters = Vec::new();
+    if cfg.read_chapters {
+        let timescale = moov.mvhd.as_ref().map(|a| a.timescale);
+        for chap in moov.trak.iter().filter_map(|a| a.tref.as_ref().and_then(|a| a.chap.as_ref())) {
+            for c_id in chap.chapter_ids.iter() {
+                let chapter_track = moov
+                    .trak
+                    .iter()
+                    .find(|a| a.tkhd.as_ref().map_or(false, |a| a.id == *c_id))
+                    .ok_or_else(|| {
+                        crate::Error::new(
+                            ErrorKind::TrackNotFound(*c_id),
+                            "Referenced track not found",
+                        )
+                    })?;
+
+                let stbl = chapter_track
+                    .mdia
+                    .as_ref()
+                    .and_then(|a| a.minf.as_ref())
+                    .and_then(|a| a.stbl.as_ref());
+                let stts = stbl.and_then(|a| a.stts.as_ref());
+
+                if let Some(stco) = stbl.and_then(|a| a.stco.as_ref()) {
+                    chapters.reserve(stco.offsets.len());
+                    read_chapters(
+                        reader,
+                        &mut chapters,
+                        timescale.unwrap_or(1000),
+                        stco.offsets.iter().map(|o| *o as u64),
+                        stts.map_or([].iter(), |a| a.items.iter()),
+                    )?;
+                } else if let Some(co64) = stbl.and_then(|a| a.co64.as_ref()) {
+                    chapters.reserve(co64.offsets.len());
+                    read_chapters(
+                        reader,
+                        &mut chapters,
+                        timescale.unwrap_or(1000),
+                        co64.offsets.iter().copied(),
+                        stts.map_or([].iter(), |a| a.items.iter()),
+                    )?;
+                }
+            }
+        }
     }
-    if let Some(i) = mp4a {
-        info.channel_config = i.channel_config;
-        info.sample_rate = i.sample_rate;
-        info.max_bitrate = i.max_bitrate;
-        info.avg_bitrate = i.avg_bitrate;
+
+    let mut info = AudioInfo::default();
+    if cfg.read_audio_info {
+        let mp4a = moov.trak.into_iter().find_map(|trak| {
+            trak.mdia
+                .and_then(|a| a.minf)
+                .and_then(|a| a.stbl)
+                .and_then(|a| a.stsd)
+                .and_then(|a| a.mp4a)
+        });
+        if let Some(a) = moov.mvhd {
+            info.duration = Some(scaled_duration(a.timescale, a.duration));
+        }
+        if let Some(i) = mp4a {
+            info.channel_config = i.channel_config;
+            info.sample_rate = i.sample_rate;
+            info.max_bitrate = i.max_bitrate;
+            info.avg_bitrate = i.avg_bitrate;
+        }
     }
 
     Ok(Tag::new(ftyp, info, ilst, chapters))
@@ -314,8 +349,23 @@ fn read_chapter_title(reader: &mut (impl Read + Seek), offset: u64) -> crate::Re
     Ok(title)
 }
 
+/// A struct that configures parsing behavior.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct WriteConfig {
+    /// Wheter to overwrite item list metadata.
+    pub write_item_list: bool,
+    /// Wheter to overwrite chapter information.
+    pub write_chapters: bool,
+}
+
+impl Default for WriteConfig {
+    fn default() -> Self {
+        Self { write_item_list: true, write_chapters: true }
+    }
+}
+
 /// Attempts to write the metadata atoms to the file inside the item list atom.
-pub(crate) fn write_tag(file: &File, atoms: &[MetaItem]) -> crate::Result<()> {
+pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, atoms: &[MetaItem]) -> crate::Result<()> {
     let mut reader = BufReader::new(file);
     let reader = &mut reader;
 
@@ -360,53 +410,60 @@ pub(crate) fn write_tag(file: &File, atoms: &[MetaItem]) -> crate::Result<()> {
     let mut new_udta = None;
     let mut new_meta = None;
     let mut new_hdlr = None;
-    let new_ilst = Ilst::Borrowed(atoms);
+    let mut new_ilst = None;
 
-    if hdlr.is_none() {
-        new_hdlr = Some(Meta::hdlr());
-    }
-    if let Some(ilst) = ilst {
-        new_atoms_start = ilst.pos();
-        moved_data_start = ilst.end();
-        len_diff -= ilst.len() as i64;
-    }
+    if cfg.write_item_list {
+        new_ilst = Some(Ilst::Borrowed(atoms));
+        if hdlr.is_none() {
+            new_hdlr = Some(Meta::hdlr());
+        }
+        if let Some(ilst) = ilst {
+            new_atoms_start = ilst.pos();
+            moved_data_start = ilst.end();
+            len_diff -= ilst.len() as i64;
+        }
 
-    match meta {
-        Some(meta) => {
-            update_atoms.push(&meta.bounds);
-            if ilst.is_none() {
-                new_atoms_start = meta.end();
-                moved_data_start = meta.end();
+        match meta {
+            Some(meta) => {
+                update_atoms.push(&meta.bounds);
+                if ilst.is_none() {
+                    new_atoms_start = meta.end();
+                    moved_data_start = meta.end();
+                }
+            }
+            None => {
+                new_meta = Some(Meta { hdlr: new_hdlr.take(), ilst: new_ilst.take() });
             }
         }
-        None => {
-            new_meta = Some(Meta { hdlr: new_hdlr.take(), ilst: Some(new_ilst.clone()) });
-        }
-    }
-    match udta {
-        Some(udta) => {
-            update_atoms.push(&udta.bounds);
-            if meta.is_none() {
-                new_atoms_start = udta.end();
-                moved_data_start = udta.end();
+        match udta {
+            Some(udta) => {
+                update_atoms.push(&udta.bounds);
+                if meta.is_none() {
+                    new_atoms_start = udta.end();
+                    moved_data_start = udta.end();
+                }
+            }
+            None => {
+                new_udta = Some(Udta { meta: new_meta.take() });
+                new_atoms_start = moov.end();
+                moved_data_start = moov.end();
             }
         }
-        None => {
-            new_udta = Some(Udta { meta: new_meta.take() });
-            new_atoms_start = moov.end();
-            moved_data_start = moov.end();
-        }
-    }
-    update_atoms.push(&moov.bounds);
+        update_atoms.push(&moov.bounds);
 
-    let new_atom_len = if let Some(a) = &new_udta {
-        a.len()
-    } else if let Some(a) = &new_meta {
-        a.len()
-    } else {
-        new_hdlr.len_or_zero() + new_ilst.len()
-    };
-    len_diff += new_atom_len as i64;
+        let new_atom_len = if let Some(a) = &new_udta {
+            a.len()
+        } else if let Some(a) = &new_meta {
+            a.len()
+        } else {
+            new_hdlr.len_or_zero() + new_ilst.len_or_zero()
+        };
+        len_diff += new_atom_len as i64;
+    }
+
+    if cfg.write_chapters {
+        // TODO write chapters
+    }
 
     // reading moved data
     let old_file_len = reader.seek(SeekFrom::End(0))?;
@@ -416,17 +473,19 @@ pub(crate) fn write_tag(file: &File, atoms: &[MetaItem]) -> crate::Result<()> {
     reader.read_to_end(&mut moved_data)?;
 
     let mut writer = BufWriter::new(file);
+    let writer = &mut writer;
 
     // adjusting sample table chunk offsets
-    if mdat_pos > moov.pos() {
+    if mdat_pos > moov.pos() && len_diff != 0 {
         let stbl_atoms = moov.trak.iter().filter_map(|a| {
             a.mdia.as_ref().and_then(|a| a.minf.as_ref()).and_then(|a| a.stbl.as_ref())
         });
 
+        let parse_cfg = ReadConfig::default();
         for stbl in stbl_atoms {
             if let Some(a) = &stbl.stco {
                 reader.seek(SeekFrom::Start(a.content_pos()))?;
-                let chunk_offset = Stco::parse(reader, a.size())?;
+                let chunk_offset = Stco::parse(reader, &parse_cfg, a.size())?;
 
                 writer.seek(SeekFrom::Start(chunk_offset.table_pos))?;
                 for co in chunk_offset.offsets.iter() {
@@ -437,7 +496,7 @@ pub(crate) fn write_tag(file: &File, atoms: &[MetaItem]) -> crate::Result<()> {
             }
             if let Some(a) = &stbl.co64 {
                 reader.seek(SeekFrom::Start(a.content_pos()))?;
-                let chunk_offset = Co64::parse(reader, a.size())?;
+                let chunk_offset = Co64::parse(reader, &parse_cfg, a.size())?;
 
                 writer.seek(SeekFrom::Start(chunk_offset.table_pos))?;
                 for co in chunk_offset.offsets.iter() {
@@ -469,14 +528,16 @@ pub(crate) fn write_tag(file: &File, atoms: &[MetaItem]) -> crate::Result<()> {
     writer.seek(SeekFrom::Start(new_atoms_start))?;
 
     if let Some(a) = new_udta {
-        a.write(&mut writer)?;
+        a.write(writer)?;
     } else if let Some(a) = new_meta {
-        a.write(&mut writer)?;
+        a.write(writer)?;
     } else {
         if let Some(a) = new_hdlr {
-            a.write(&mut writer)?;
+            a.write(writer)?;
         }
-        new_ilst.write(&mut writer)?;
+        if let Some(a) = new_ilst {
+            a.write(writer)?;
+        }
     }
 
     // writing moved data
@@ -489,20 +550,27 @@ pub(crate) fn write_tag(file: &File, atoms: &[MetaItem]) -> crate::Result<()> {
 
 /// Attempts to dump the metadata atoms to the writer. This doesn't include a complete MPEG-4
 /// container hierarchy and won't result in a usable file.
-pub(crate) fn dump_tag(writer: &mut impl Write, atoms: &[MetaItem]) -> crate::Result<()> {
+pub(crate) fn dump_tag(
+    writer: &mut impl Write,
+    cfg: &WriteConfig,
+    atoms: &[MetaItem],
+) -> crate::Result<()> {
     let ftyp = Ftyp("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".to_owned());
-    #[rustfmt::skip]
-    let moov = Moov {
-        udta: Some(Udta {
-            meta: Some(Meta {
-                hdlr: Some(Meta::hdlr()),
-                ilst: Some(Ilst::Borrowed(atoms)),
-            }),
-        }),
-        ..Default::default()
-    };
+    let mdat = Mdat::default();
+    let mut moov = Moov::default();
+
+    if cfg.write_item_list {
+        moov.udta = Some(Udta {
+            meta: Some(Meta { hdlr: Some(Meta::hdlr()), ilst: Some(Ilst::Borrowed(atoms)) }),
+        });
+    }
+
+    if cfg.write_chapters {
+        // TODO write chapters
+    }
 
     ftyp.write(writer)?;
+    mdat.write(writer)?;
     moov.write(writer)?;
 
     Ok(())

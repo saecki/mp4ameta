@@ -18,7 +18,11 @@ impl Atom for Stsc {
 }
 
 impl ParseAtom for Stsc {
-    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
+    fn parse_atom(
+        reader: &mut (impl Read + Seek),
+        _cfg: &ReadConfig,
+        size: Size,
+    ) -> crate::Result<Self> {
         let (version, _) = parse_full_head(reader)?;
 
         if version != 0 {
@@ -46,8 +50,28 @@ impl ParseAtom for Stsc {
             });
         }
 
-        println!("stsc.items: {:#?}", items);
-
         Ok(Self { table_pos, items })
+    }
+}
+
+pub struct StscBounds {
+    pub bounds: AtomBounds,
+}
+
+impl Deref for StscBounds {
+    type Target = AtomBounds;
+
+    fn deref(&self) -> &Self::Target {
+        &self.bounds
+    }
+}
+
+impl FindAtom for Stsc {
+    type Bounds = StscBounds;
+
+    fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
+        let bounds = find_bounds(reader, size)?;
+        seek_to_end(reader, &bounds)?;
+        Ok(Self::Bounds { bounds })
     }
 }

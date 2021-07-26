@@ -61,7 +61,9 @@
     unused_extern_crates,
     unused_import_braces
 )]
-pub use crate::atom::{ident, Data, DataIdent, Fourcc, FreeformIdent, Ident};
+pub use crate::atom::{
+    ident, Data, DataIdent, Fourcc, FreeformIdent, Ident, ReadConfig, WriteConfig,
+};
 pub use crate::error::{Error, ErrorKind, Result};
 pub use crate::tag::{Tag, STANDARD_GENRES};
 pub use crate::types::*;

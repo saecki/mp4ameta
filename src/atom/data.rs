@@ -145,7 +145,11 @@ impl Atom for Data {
 
 impl ParseAtom for Data {
     /// Parses data based on [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
-    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Data> {
+    fn parse_atom(
+        reader: &mut (impl Read + Seek),
+        cfg: &ReadConfig,
+        size: Size,
+    ) -> crate::Result<Data> {
         let (version, flags) = parse_full_head(reader)?;
         if version != 0 {
             return Err(crate::Error::new(
@@ -159,19 +163,18 @@ impl ParseAtom for Data {
         // Skipping 4 byte locale indicator
         reader.seek(SeekFrom::Current(4))?;
 
-        let data_len = size.content_len() - 8;
-
+        let len = size.content_len() - 8;
         Ok(match datatype {
-            RESERVED => Data::Reserved(reader.read_u8_vec(data_len)?),
-            UTF8 => Data::Utf8(reader.read_utf8(data_len)?),
-            UTF16 => Data::Utf16(reader.read_be_utf16(data_len)?),
-            JPEG => Data::Jpeg(reader.read_u8_vec(data_len)?),
-            PNG => Data::Png(reader.read_u8_vec(data_len)?),
-            BE_SIGNED => Data::BeSigned(reader.read_u8_vec(data_len)?),
-            BMP => Data::Bmp(reader.read_u8_vec(data_len)?),
+            RESERVED => Data::Reserved(reader.read_u8_vec(len)?),
+            UTF8 => Data::Utf8(reader.read_utf8(len)?),
+            UTF16 => Data::Utf16(reader.read_be_utf16(len)?),
+            JPEG => Data::Jpeg(read_image(reader, cfg.read_image_data, len)?),
+            PNG => Data::Png(read_image(reader, cfg.read_image_data, len)?),
+            BE_SIGNED => Data::BeSigned(reader.read_u8_vec(len)?),
+            BMP => Data::Bmp(read_image(reader, cfg.read_image_data, len)?),
             _ => {
-                // TODO: maybe log warning
-                Data::Unknown { code: datatype, data: reader.read_u8_vec(data_len)? }
+                // TODO: maybe log warning (optional log dependency behind feature flag
+                Data::Unknown { code: datatype, data: reader.read_u8_vec(len)? }
             }
         })
     }
@@ -450,5 +453,14 @@ impl Data {
             Self::Bmp(v) => Some(v),
             _ => None,
         }
+    }
+}
+
+fn read_image(reader: &mut (impl Read + Seek), parse: bool, len: u64) -> crate::Result<Vec<u8>> {
+    if parse {
+        Ok(reader.read_u8_vec(len)?)
+    } else {
+        reader.seek(SeekFrom::Current(len as i64))?;
+        Ok(Vec::new())
     }
 }

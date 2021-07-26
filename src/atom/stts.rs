@@ -17,7 +17,11 @@ impl Atom for Stts {
 }
 
 impl ParseAtom for Stts {
-    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
+    fn parse_atom(
+        reader: &mut (impl Read + Seek),
+        _cfg: &ReadConfig,
+        size: Size,
+    ) -> crate::Result<Self> {
         let (version, _) = parse_full_head(reader)?;
 
         if version != 0 {
@@ -45,5 +49,27 @@ impl ParseAtom for Stts {
         }
 
         Ok(Self { table_pos, items })
+    }
+}
+
+pub struct SttsBounds {
+    pub bounds: AtomBounds,
+}
+
+impl Deref for SttsBounds {
+    type Target = AtomBounds;
+
+    fn deref(&self) -> &Self::Target {
+        &self.bounds
+    }
+}
+
+impl FindAtom for Stts {
+    type Bounds = SttsBounds;
+
+    fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
+        let bounds = find_bounds(reader, size)?;
+        seek_to_end(reader, &bounds)?;
+        Ok(Self::Bounds { bounds })
     }
 }

@@ -22,7 +22,11 @@ impl Atom for Ilst<'_> {
 }
 
 impl ParseAtom for Ilst<'_> {
-    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
+    fn parse_atom(
+        reader: &mut (impl Read + Seek),
+        cfg: &ReadConfig,
+        size: Size,
+    ) -> crate::Result<Self> {
         let mut ilst = Vec::<MetaItem>::new();
         let mut parsed_bytes = 0;
 
@@ -34,7 +38,7 @@ impl ParseAtom for Ilst<'_> {
                     reader.seek(SeekFrom::Current(head.content_len() as i64))?;
                 }
                 _ => {
-                    let atom = MetaItem::parse(reader, head)?;
+                    let atom = MetaItem::parse(reader, cfg, head)?;
                     let other = ilst.iter_mut().find(|o| atom.ident == o.ident);
 
                     match other {
