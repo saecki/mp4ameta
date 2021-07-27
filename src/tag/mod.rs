@@ -81,7 +81,7 @@ impl fmt::Display for Tag {
 
 impl Tag {
     /// Creates a new MPEG-4 audio tag containing the atom.
-    pub const fn new(
+    pub(crate) const fn new(
         ftyp: String,
         info: AudioInfo,
         atoms: Vec<MetaItem>,
@@ -136,7 +136,7 @@ impl Tag {
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.
     pub fn dump_with(&self, writer: &mut impl Write, cfg: &WriteConfig) -> crate::Result<()> {
-        atom::dump_tag(writer, cfg, &self.atoms)
+        atom::dump_tag(writer, cfg, &self.atoms, &self.chapters)
     }
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.
@@ -145,9 +145,14 @@ impl Tag {
     }
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.
-    pub fn dump_to_path(&self, path: impl AsRef<Path>) -> crate::Result<()> {
+    pub fn dump_with_path(&self, path: impl AsRef<Path>, cfg: &WriteConfig) -> crate::Result<()> {
         let mut file = File::create(path)?;
-        self.dump_to(&mut file)
+        self.dump_with(&mut file, cfg)
+    }
+
+    /// Attempts to dump the MPEG-4 audio tag to the writer.
+    pub fn dump_to_path(&self, path: impl AsRef<Path>) -> crate::Result<()> {
+        self.dump_with_path(path, &WriteConfig::default())
     }
 }
 
@@ -342,6 +347,26 @@ impl Tag {
     /// Returns all chapters.
     pub fn chapters(&self) -> impl Iterator<Item = &Chapter> {
         self.chapters.iter()
+    }
+
+    /// Add a chapter.
+    pub fn add_chapter(&mut self, chapter: Chapter) {
+        let pos = self.chapters().position(|c| c.duration < chapter.duration);
+
+        match pos {
+            Some(i) => self.chapters.insert(i + 1, chapter),
+            None => self.chapters.insert(0, chapter),
+        }
+    }
+
+    /// Remove the chapter at position `index`.
+    pub fn remove_chapter(&mut self, index: usize) -> Chapter {
+        self.chapters.remove(index)
+    }
+
+    /// Remove the chapter at position `index`.
+    pub fn retain_chapters(&mut self, predicate: impl Fn(&Chapter) -> bool) {
+        self.chapters.retain(predicate);
     }
 
     fn format_chapters(&self, f: &mut fmt::Formatter) -> fmt::Result {

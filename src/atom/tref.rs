@@ -23,14 +23,27 @@ impl ParseAtom for Tref {
 
             match head.fourcc() {
                 CHAPTER => tref.chap = Some(Chap::parse(reader, cfg, head.size())?),
-                _ => {
-                    reader.seek(SeekFrom::Current(head.content_len() as i64))?;
-                }
+                _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();
         }
 
         Ok(tref)
+    }
+}
+
+impl WriteAtom for Tref {
+    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+        self.write_head(writer)?;
+        if let Some(a) = &self.chap {
+            a.write(writer)?;
+        }
+        Ok(())
+    }
+
+    fn size(&self) -> Size {
+        let content_len = self.chap.len_or_zero();
+        Size::from(content_len)
     }
 }

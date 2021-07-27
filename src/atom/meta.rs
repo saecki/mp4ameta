@@ -33,9 +33,7 @@ impl ParseAtom for Meta<'_> {
 
             match head.fourcc() {
                 ITEM_LIST => meta.ilst = Some(Ilst::parse(reader, cfg, head.size())?),
-                _ => {
-                    reader.seek(SeekFrom::Current(head.content_len() as i64))?;
-                }
+                _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();
@@ -61,20 +59,6 @@ impl WriteAtom for Meta<'_> {
     fn size(&self) -> Size {
         let content_len = self.hdlr.len_or_zero() + self.ilst.len_or_zero();
         Size::from(content_len + 4)
-    }
-}
-
-impl Meta<'_> {
-    pub fn hdlr() -> Hdlr {
-        Hdlr(vec![
-            0x00, 0x00, 0x00, 0x00, // version + flags
-            0x00, 0x00, 0x00, 0x00, // component type
-            0x6d, 0x64, 0x69, 0x72, // component subtype
-            0x61, 0x70, 0x70, 0x6c, // component manufacturer
-            0x00, 0x00, 0x00, 0x00, // component flags
-            0x00, 0x00, 0x00, 0x00, // component flags mask
-            0x00, // component name
-        ])
     }
 }
 
@@ -116,9 +100,7 @@ impl FindAtom for Meta<'_> {
             match head.fourcc() {
                 HANDLER_REFERENCE => hdlr = Some(Hdlr::find(reader, head.size())?),
                 ITEM_LIST => ilst = Some(Ilst::find(reader, head.size())?),
-                _ => {
-                    reader.seek(SeekFrom::Current(head.content_len() as i64))?;
-                }
+                _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();

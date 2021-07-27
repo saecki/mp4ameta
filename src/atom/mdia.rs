@@ -2,6 +2,8 @@ use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Mdia {
+    pub mdhd: Option<Mdhd>,
+    pub hdlr: Option<Hdlr>,
     pub minf: Option<Minf>,
 }
 
@@ -22,16 +24,39 @@ impl ParseAtom for Mdia {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                MEDIA_INFORMATION => mdia.minf = Some(Minf::parse(reader, cfg, head.size())?),
-                _ => {
-                    reader.seek(SeekFrom::Current(head.content_len() as i64))?;
+                MEDIA_HEADER if cfg.read_chapters => {
+                    mdia.mdhd = Some(Mdhd::parse(reader, cfg, head.size())?)
                 }
+                MEDIA_INFORMATION => mdia.minf = Some(Minf::parse(reader, cfg, head.size())?),
+                _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();
         }
 
         Ok(mdia)
+    }
+}
+
+impl WriteAtom for Mdia {
+    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+        self.write_head(writer)?;
+        if let Some(a) = &self.mdhd {
+            a.write(writer)?;
+        }
+        if let Some(a) = &self.hdlr {
+            a.write(writer)?;
+        }
+        if let Some(a) = &self.minf {
+            a.write(writer)?;
+        }
+        Ok(())
+    }
+
+    fn size(&self) -> Size {
+        let content_len =
+            self.mdhd.len_or_zero() + self.hdlr.len_or_zero() + self.minf.len_or_zero();
+        Size::from(content_len)
     }
 }
 
@@ -53,9 +78,7 @@ impl FindAtom for Mdia {
 
             match head.fourcc() {
                 MEDIA_INFORMATION => minf = Some(Minf::find(reader, head.size())?),
-                _ => {
-                    reader.seek(SeekFrom::Current(head.content_len() as i64))?;
-                }
+                _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();

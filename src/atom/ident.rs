@@ -22,6 +22,8 @@ pub(crate) const TRACK_REFERENCE: Fourcc = Fourcc(*b"tref");
 pub(crate) const CHAPTER: Fourcc = Fourcc(*b"chap");
 /// (`mdia`) Identifier of an atom containing information about a tracks media type and data.
 pub(crate) const MEDIA: Fourcc = Fourcc(*b"mdia");
+/// (`mdhd`)
+pub(crate) const MEDIA_HEADER: Fourcc = Fourcc(*b"mdhd");
 /// (`minf`)
 pub(crate) const MEDIA_INFORMATION: Fourcc = Fourcc(*b"minf");
 /// (`stbl`)
@@ -40,6 +42,8 @@ pub(crate) const SAMPLE_TABLE_TIME_TO_SAMPLE: Fourcc = Fourcc(*b"stts");
 pub(crate) const SAMPLE_TABLE_SAMPLE_DESCRIPTION: Fourcc = Fourcc(*b"stsd");
 /// (`mp4a`)
 pub(crate) const MP4_AUDIO: Fourcc = Fourcc(*b"mp4a");
+/// (`text`)
+pub(crate) const TEXT_MEDIA: Fourcc = Fourcc(*b"text");
 /// (`esds`)
 pub(crate) const ELEMENTARY_STREAM_DESCRIPTION: Fourcc = Fourcc(*b"esds");
 /// (`udta`) Identifier of an atom containing user metadata.

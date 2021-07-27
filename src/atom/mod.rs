@@ -9,10 +9,16 @@
 //! │  ├─ tkhd
 //! │  └─ mdia
 //! │     ├─ mdhd
+//! │     ├─ hdlr
 //! │     └─ minf
 //! │        └─ stbl
 //! │           ├─ stsd
-//! │           │  └─ mp4a
+//! │           │  ├─ mp4a
+//! │           │  │  └─ esds
+//! │           │  └─ text
+//! │           ├─ stts
+//! │           ├─ stsc
+//! │           ├─ stsz
 //! │           ├─ stco
 //! │           └─ co64
 //! └─ udta
@@ -35,6 +41,7 @@ use std::ops::{Deref, DerefMut};
 use crate::{AudioInfo, Chapter, ErrorKind, Tag};
 
 use head::*;
+use ident::*;
 use util::*;
 
 use chap::*;
@@ -43,6 +50,7 @@ use ftyp::*;
 use hdlr::*;
 use ilst::*;
 use mdat::*;
+use mdhd::*;
 use mdia::*;
 use meta::*;
 use minf::*;
@@ -55,13 +63,13 @@ use stsc::*;
 use stsd::*;
 use stsz::*;
 use stts::*;
+use text::*;
 use tkhd::*;
 use trak::*;
 use tref::*;
 use udta::*;
 
 pub use data::Data;
-pub use ident::*;
 pub use metaitem::MetaItem;
 
 /// A module for working with identifiers.
@@ -78,6 +86,7 @@ mod ftyp;
 mod hdlr;
 mod ilst;
 mod mdat;
+mod mdhd;
 mod mdia;
 mod meta;
 mod metaitem;
@@ -91,6 +100,7 @@ mod stsc;
 mod stsd;
 mod stsz;
 mod stts;
+mod text;
 mod tkhd;
 mod trak;
 mod tref;
@@ -105,7 +115,7 @@ trait ParseAtom: Atom {
         match Self::parse_atom(reader, cfg, size) {
             Err(mut e) => {
                 let mut d = e.description.into_owned();
-                insert_str(&mut d, "Error parsing", Self::FOURCC);
+                insert_str(&mut d, "Error parsing ", Self::FOURCC);
                 e.description = d.into();
                 Err(e)
             }
@@ -127,7 +137,7 @@ trait FindAtom: Atom {
         match Self::find_atom(reader, size) {
             Err(mut e) => {
                 let mut d = e.description.into_owned();
-                insert_str(&mut d, "Error finding", Self::FOURCC);
+                insert_str(&mut d, "Error finding ", Self::FOURCC);
                 e.description = d.into();
                 Err(e)
             }
@@ -143,7 +153,7 @@ trait WriteAtom: Atom {
         match self.write_atom(writer) {
             Err(mut e) => {
                 let mut d = e.description.into_owned();
-                insert_str(&mut d, "Error writing", Self::FOURCC);
+                insert_str(&mut d, "Error writing ", Self::FOURCC);
                 e.description = d.into();
                 Err(e)
             }
@@ -168,7 +178,7 @@ trait WriteAtom: Atom {
 fn insert_str(description: &mut String, msg: &str, fourcc: Fourcc) {
     description.reserve(msg.len() + 6);
     description.insert_str(0, ": ");
-    fourcc.iter().for_each(|c| {
+    fourcc.iter().rev().for_each(|c| {
         description.insert(0, char::from(*c));
     });
     description.insert_str(0, msg);
@@ -227,7 +237,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
             break Moov::parse(reader, cfg, head.size())?;
         }
 
-        reader.seek(SeekFrom::Current(head.content_len() as i64))?;
+        reader.skip(head.content_len() as i64)?;
         parsed_bytes += head.len();
     };
 
@@ -240,7 +250,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
 
     let mut chapters = Vec::new();
     if cfg.read_chapters {
-        let timescale = moov.mvhd.as_ref().map(|a| a.timescale);
+        let mvhd_timescale = moov.mvhd.as_ref().map(|a| a.timescale);
         for chap in moov.trak.iter().filter_map(|a| a.tref.as_ref().and_then(|a| a.chap.as_ref())) {
             for c_id in chap.chapter_ids.iter() {
                 let chapter_track = moov
@@ -254,19 +264,21 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
                         )
                     })?;
 
-                let stbl = chapter_track
-                    .mdia
-                    .as_ref()
-                    .and_then(|a| a.minf.as_ref())
-                    .and_then(|a| a.stbl.as_ref());
+                let mdia = chapter_track.mdia.as_ref();
+                let stbl = mdia.and_then(|a| a.minf.as_ref()).and_then(|a| a.stbl.as_ref());
                 let stts = stbl.and_then(|a| a.stts.as_ref());
+
+                let timescale = mdia
+                    .and_then(|a| a.mdhd.as_ref().map(|a| a.timescale))
+                    .or(mvhd_timescale)
+                    .unwrap_or(1000);
 
                 if let Some(stco) = stbl.and_then(|a| a.stco.as_ref()) {
                     chapters.reserve(stco.offsets.len());
                     read_chapters(
                         reader,
                         &mut chapters,
-                        timescale.unwrap_or(1000),
+                        timescale,
                         stco.offsets.iter().map(|o| *o as u64),
                         stts.map_or([].iter(), |a| a.items.iter()),
                     )?;
@@ -275,7 +287,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
                     read_chapters(
                         reader,
                         &mut chapters,
-                        timescale.unwrap_or(1000),
+                        timescale,
                         co64.offsets.iter().copied(),
                         stts.map_or([].iter(), |a| a.items.iter()),
                     )?;
@@ -294,7 +306,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
                 .and_then(|a| a.mp4a)
         });
         if let Some(a) = moov.mvhd {
-            info.duration = Some(scaled_duration(a.timescale, a.duration));
+            info.duration = Some(scale_duration(a.timescale, a.duration));
         }
         if let Some(i) = mp4a {
             info.channel_config = i.channel_config;
@@ -320,8 +332,8 @@ fn read_chapters<'a>(
         let duration = durations.next().map_or(0, |i| i.sample_duration) as u64;
         let title = read_chapter_title(reader, o)?;
         chapters.push(Chapter {
-            start: scaled_duration(timescale, start),
-            duration: scaled_duration(timescale, duration),
+            start: scale_duration(timescale, start),
+            duration: scale_duration(timescale, duration),
             title,
         });
 
@@ -341,7 +353,7 @@ fn read_chapter_title(reader: &mut (impl Read + Seek), offset: u64) -> crate::Re
         0xfeff => reader.read_be_utf16(len as u64 - 2)?,
         0xfffe => reader.read_le_utf16(len as u64 - 2)?,
         _ => {
-            reader.seek(SeekFrom::Current(-2))?;
+            reader.skip(-2)?;
             reader.read_utf8(len as u64)?
         }
     };
@@ -382,9 +394,7 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, atoms: &[MetaItem]) -> c
         match head.fourcc() {
             MOVIE => moov = Some(Moov::find(reader, head.size())?),
             MEDIA_DATA => mdat = Some(Mdat::find(reader, head.size())?),
-            _ => {
-                reader.seek(SeekFrom::Current(head.content_len() as i64))?;
-            }
+            _ => reader.skip(head.content_len() as i64)?,
         }
 
         parsed_bytes += head.len();
@@ -415,7 +425,7 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, atoms: &[MetaItem]) -> c
     if cfg.write_item_list {
         new_ilst = Some(Ilst::Borrowed(atoms));
         if hdlr.is_none() {
-            new_hdlr = Some(Meta::hdlr());
+            new_hdlr = Some(Hdlr::meta());
         }
         if let Some(ilst) = ilst {
             new_atoms_start = ilst.pos();
@@ -487,7 +497,7 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, atoms: &[MetaItem]) -> c
                 reader.seek(SeekFrom::Start(a.content_pos()))?;
                 let chunk_offset = Stco::parse(reader, &parse_cfg, a.size())?;
 
-                writer.seek(SeekFrom::Start(chunk_offset.table_pos))?;
+                writer.seek(SeekFrom::Start(a.content_pos() + 8))?;
                 for co in chunk_offset.offsets.iter() {
                     let new_offset = (*co as i64 + len_diff) as u32;
                     writer.write_be_u32(new_offset)?;
@@ -498,7 +508,7 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, atoms: &[MetaItem]) -> c
                 reader.seek(SeekFrom::Start(a.content_pos()))?;
                 let chunk_offset = Co64::parse(reader, &parse_cfg, a.size())?;
 
-                writer.seek(SeekFrom::Start(chunk_offset.table_pos))?;
+                writer.seek(SeekFrom::Start(a.content_pos() + 8))?;
                 for co in chunk_offset.offsets.iter() {
                     let new_offset = (*co as i64 + len_diff) as u64;
                     writer.write_be_u64(new_offset)?;
@@ -514,7 +524,7 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, atoms: &[MetaItem]) -> c
         writer.seek(SeekFrom::Start(a.pos()))?;
         if a.ext() {
             writer.write_be_u32(1)?;
-            writer.seek(SeekFrom::Current(4))?;
+            writer.skip(4)?;
             writer.write_be_u64(new_len as u64)?;
         } else {
             writer.write_be_u32(new_len as u32)?;
@@ -554,19 +564,83 @@ pub(crate) fn dump_tag(
     writer: &mut impl Write,
     cfg: &WriteConfig,
     atoms: &[MetaItem],
+    chapters: &[Chapter],
 ) -> crate::Result<()> {
-    let ftyp = Ftyp("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".to_owned());
-    let mdat = Mdat::default();
-    let mut moov = Moov::default();
+    const TIMESCALE: u32 = 1000;
 
-    if cfg.write_item_list {
+    let duration = chapters.last().map_or(0, |c| unscale_duration(TIMESCALE, c.start + c.duration));
+
+    let ftyp = Ftyp("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".to_owned());
+    let mut mdat = Mdat::default();
+    let mut moov = Moov {
+        mvhd: Some(Mvhd { version: 1, timescale: TIMESCALE, duration, ..Default::default() }),
+        ..Default::default()
+    };
+
+    if cfg.write_item_list && !atoms.is_empty() {
         moov.udta = Some(Udta {
-            meta: Some(Meta { hdlr: Some(Meta::hdlr()), ilst: Some(Ilst::Borrowed(atoms)) }),
+            meta: Some(Meta { hdlr: Some(Hdlr::meta()), ilst: Some(Ilst::Borrowed(atoms)) }),
         });
     }
 
-    if cfg.write_chapters {
-        // TODO write chapters
+    if cfg.write_chapters && !chapters.is_empty() {
+        let mut chunk_offsets = Vec::with_capacity(chapters.len());
+        let mut sample_sizes = Vec::with_capacity(chapters.len());
+        let mut time_to_samples = Vec::with_capacity(chapters.len());
+
+        for (i, c) in chapters.iter().enumerate() {
+            time_to_samples.push(SttsItem {
+                sample_count: i as u32,
+                sample_duration: unscale_duration(TIMESCALE, c.duration) as u32,
+            });
+            sample_sizes.push(c.title.len() as u32 + 2);
+            chunk_offsets.push(ftyp.len() + mdat.len()); // assume that length won't exceed 32 bit after pushing chapter titles
+
+            mdat.data.write_be_u16(c.title.len() as u16).ok();
+            mdat.data.write_utf8(&c.title).ok();
+        }
+
+        // audio track
+        moov.trak.push(Trak {
+            tkhd: Some(Tkhd { id: 1, ..Default::default() }),
+            tref: Some(Tref { chap: Some(Chap { chapter_ids: vec![2] }) }),
+            mdia: Some(Mdia {
+                mdhd: Some(Mdhd {
+                    version: 1,
+                    timescale: TIMESCALE,
+                    duration,
+                    ..Default::default()
+                }),
+                hdlr: Some(Hdlr::mp4a_mdia()),
+                ..Default::default()
+            }),
+        });
+
+        // chapter track
+        moov.trak.push(Trak {
+            tkhd: Some(Tkhd { id: 2, ..Default::default() }),
+            mdia: Some(Mdia {
+                mdhd: Some(Mdhd { version: 1, timescale: TIMESCALE, ..Default::default() }),
+                hdlr: Some(Hdlr::text_mdia()),
+                minf: Some(Minf {
+                    stbl: Some(Stbl {
+                        stsd: Some(Stsd { text: Some(Text::chapter()), ..Default::default() }),
+                        stts: Some(Stts { items: time_to_samples }),
+                        stsc: Some(Stsc {
+                            items: vec![StscItem {
+                                first_chunk: 1,
+                                samples_per_chunk: 1,
+                                sample_description_id: 1,
+                            }],
+                        }),
+                        stsz: Some(Stsz { sample_size: 0, sizes: sample_sizes }),
+                        co64: Some(Co64 { offsets: chunk_offsets }),
+                        ..Default::default()
+                    }),
+                }),
+            }),
+            ..Default::default()
+        });
     }
 
     ftyp.write(writer)?;

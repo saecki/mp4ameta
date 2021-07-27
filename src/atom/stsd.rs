@@ -3,6 +3,7 @@ use super::*;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Stsd {
     pub mp4a: Option<Mp4a>,
+    pub text: Option<Text>,
 }
 
 impl Atom for Stsd {
@@ -24,7 +25,7 @@ impl ParseAtom for Stsd {
             ));
         }
 
-        reader.seek(SeekFrom::Current(4))?;
+        reader.skip(4)?; // number of entries
 
         let mut stsd = Self::default();
         let mut parsed_bytes = 8;
@@ -34,14 +35,30 @@ impl ParseAtom for Stsd {
 
             match head.fourcc() {
                 MP4_AUDIO => stsd.mp4a = Some(Mp4a::parse(reader, cfg, head.size())?),
-                _ => {
-                    reader.seek(SeekFrom::Current(head.content_len() as i64))?;
-                }
+                _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();
         }
 
         Ok(stsd)
+    }
+}
+
+impl WriteAtom for Stsd {
+    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+        self.write_head(writer)?;
+        write_full_head(writer, 0, [0; 3])?;
+
+        writer.write_all(&[0; 4])?; // reserved
+        if let Some(a) = &self.text {
+            a.write(writer)?;
+        }
+        Ok(())
+    }
+
+    fn size(&self) -> Size {
+        let content_len = 8 + self.text.len_or_zero();
+        Size::from(content_len)
     }
 }

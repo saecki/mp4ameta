@@ -23,9 +23,7 @@ impl ParseAtom for Udta<'_> {
 
             match head.fourcc() {
                 METADATA => udta.meta = Some(Meta::parse(reader, cfg, head.size())?),
-                _ => {
-                    reader.seek(SeekFrom::Current(head.content_len() as i64))?;
-                }
+                _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();
@@ -75,9 +73,7 @@ impl FindAtom for Udta<'_> {
 
             match head.fourcc() {
                 METADATA => meta = Some(Meta::find(reader, head.size())?),
-                _ => {
-                    reader.seek(SeekFrom::Current(head.content_len() as i64))?;
-                }
+                _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();

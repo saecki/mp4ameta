@@ -33,9 +33,7 @@ impl ParseAtom for Moov<'_> {
                 USER_DATA if cfg.read_item_list => {
                     moov.udta = Some(Udta::parse(reader, cfg, head.size())?)
                 }
-                _ => {
-                    reader.seek(SeekFrom::Current(head.content_len() as i64))?;
-                }
+                _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();
@@ -48,6 +46,12 @@ impl ParseAtom for Moov<'_> {
 impl WriteAtom for Moov<'_> {
     fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
         self.write_head(writer)?;
+        if let Some(a) = &self.mvhd {
+            a.write(writer)?;
+        }
+        for t in self.trak.iter() {
+            t.write(writer)?;
+        }
         if let Some(a) = &self.udta {
             a.write(writer)?;
         }
@@ -55,7 +59,10 @@ impl WriteAtom for Moov<'_> {
     }
 
     fn size(&self) -> Size {
-        Size::from(self.udta.len_or_zero())
+        let content_len = self.mvhd.len_or_zero()
+            + self.trak.iter().map(Trak::len).sum::<u64>()
+            + self.udta.len_or_zero();
+        Size::from(content_len)
     }
 }
 
@@ -88,9 +95,7 @@ impl FindAtom for Moov<'_> {
             match head.fourcc() {
                 TRACK => moov.trak.push(Trak::find(reader, head.size())?),
                 USER_DATA => moov.udta = Some(Udta::find(reader, head.size())?),
-                _ => {
-                    reader.seek(SeekFrom::Current(head.content_len() as i64))?;
-                }
+                _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();

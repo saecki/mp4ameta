@@ -160,8 +160,7 @@ impl ParseAtom for Data {
         let [b2, b1, b0] = flags;
         let datatype = u32::from_be_bytes([0, b2, b1, b0]);
 
-        // Skipping 4 byte locale indicator
-        reader.seek(SeekFrom::Current(4))?;
+        reader.skip(4)?; // locale indicator
 
         let len = size.content_len() - 8;
         Ok(match datatype {
@@ -460,7 +459,7 @@ fn read_image(reader: &mut (impl Read + Seek), parse: bool, len: u64) -> crate::
     if parse {
         Ok(reader.read_u8_vec(len)?)
     } else {
-        reader.seek(SeekFrom::Current(len as i64))?;
+        reader.skip(len as i64)?;
         Ok(Vec::new())
     }
 }

@@ -2,7 +2,6 @@ use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Stsz {
-    pub table_pos: u64,
     pub sample_size: u32,
     pub sizes: Vec<u32>,
 }
@@ -35,14 +34,33 @@ impl ParseAtom for Stsz {
             ));
         }
 
-        let table_pos = reader.seek(SeekFrom::Current(0))?;
         let mut sizes = Vec::with_capacity(entries as usize);
         for _ in 0..entries {
             let offset = reader.read_be_u32()?;
             sizes.push(offset);
         }
 
-        Ok(Self { table_pos, sample_size, sizes })
+        Ok(Self { sample_size, sizes })
+    }
+}
+
+impl WriteAtom for Stsz {
+    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+        self.write_head(writer)?;
+        write_full_head(writer, 0, [0; 3])?;
+
+        writer.write_be_u32(self.sample_size)?;
+        writer.write_be_u32(self.sizes.len() as u32)?;
+        for s in self.sizes.iter() {
+            writer.write_be_u32(*s)?;
+        }
+
+        Ok(())
+    }
+
+    fn size(&self) -> Size {
+        let content_len = 12 + 4 * self.sizes.len() as u64;
+        Size::from(content_len)
     }
 }
 

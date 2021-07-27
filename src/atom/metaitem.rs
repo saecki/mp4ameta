@@ -40,11 +40,6 @@ impl MetaItem {
         }
     }
 
-    /// Returns whether the inner data atom is empty.
-    pub fn is_empty(&self) -> bool {
-        self.data.is_empty() || self.data.iter().all(|d| d.is_empty())
-    }
-
     pub fn parse(
         reader: &mut (impl Read + Seek),
         cfg: &ReadConfig,
@@ -82,9 +77,7 @@ impl MetaItem {
 
                     name = Some(reader.read_utf8(head.content_len() - 4)?);
                 }
-                _ => {
-                    reader.seek(SeekFrom::Current(head.content_len() as i64))?;
-                }
+                _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();

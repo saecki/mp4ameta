@@ -3,7 +3,8 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use mp4ameta::{
-    AdvisoryRating, ChannelConfig, Data, Fourcc, Img, MediaType, SampleRate, Tag, STANDARD_GENRES,
+    AdvisoryRating, ChannelConfig, Chapter, Data, Fourcc, Img, MediaType, SampleRate, Tag,
+    STANDARD_GENRES,
 };
 use walkdir::WalkDir;
 
@@ -379,6 +380,21 @@ fn dump_2() {
     println!("reading target/dump_2.m4a...");
     let tag = Tag::read_from_path("target/dump_2.m4a").unwrap();
     assert_tag_2(&tag);
+}
+
+#[test]
+fn dump_chapter() {
+    let mut tag = Tag::default();
+    let chapter = Chapter::new(Duration::ZERO, Duration::from_secs_f32(234.324), "Chapter 1");
+    tag.add_chapter(chapter.clone());
+
+    let _ = std::fs::remove_file("target/dump_chapter.m4a");
+    println!("dumping to target/dump_chapter.m4a...");
+    tag.dump_to_path("target/dump_chapter.m4a").unwrap();
+
+    println!("reading target/dump_chapter.m4a...");
+    let tag = Tag::read_from_path("target/dump_chapter.m4a").unwrap();
+    assert_eq!(tag.chapters().next(), Some(&chapter));
 }
 
 #[test]

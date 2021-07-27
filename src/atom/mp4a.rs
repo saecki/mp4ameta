@@ -79,7 +79,7 @@ impl ParseAtom for Mp4a {
         let bounds = find_bounds(reader, size)?;
         let mut mp4a = Self::default();
 
-        reader.seek(SeekFrom::Current(28))?;
+        reader.skip(28)?;
 
         let head = parse_head(reader)?;
         if head.fourcc() != ELEMENTARY_STREAM_DESCRIPTION {
@@ -152,7 +152,7 @@ fn parse_esds(reader: &mut (impl Read + Seek), info: &mut Mp4a, size: Size) -> c
 /// └──sl config descriptor
 /// ```
 fn parse_es_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> crate::Result<()> {
-    reader.seek(SeekFrom::Current(3))?;
+    reader.skip(3)?;
 
     let mut parsed_bytes = 3;
     while parsed_bytes < len {
@@ -160,9 +160,7 @@ fn parse_es_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> 
 
         match tag {
             DECODER_CONFIG_DESCRIPTOR => parse_dc_desc(reader, info, desc_len)?,
-            _ => {
-                reader.seek(SeekFrom::Current(desc_len as i64))?;
-            }
+            _ => reader.skip(desc_len as i64)?,
         }
 
         parsed_bytes += head_len + desc_len;
@@ -185,7 +183,7 @@ fn parse_es_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> 
 /// └──decoder specific descriptor
 /// ```
 fn parse_dc_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> crate::Result<()> {
-    reader.seek(SeekFrom::Current(5))?;
+    reader.skip(5)?;
     info.max_bitrate = Some(reader.read_be_u32()?);
     info.avg_bitrate = Some(reader.read_be_u32()?);
 
@@ -196,7 +194,7 @@ fn parse_dc_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> 
         match tag {
             DECODER_SPECIFIC_DESCRIPTOR => parse_ds_desc(reader, info, desc_len)?,
             _ => {
-                reader.seek(SeekFrom::Current(desc_len as i64))?;
+                reader.skip(desc_len as i64)?;
             }
         }
 
@@ -225,7 +223,7 @@ fn parse_ds_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> 
     let channel_config = ((num >> 3) & 0x0F) as u8;
     info.channel_config = ChannelConfig::try_from(channel_config).ok();
 
-    reader.seek(SeekFrom::Current((len - 2) as i64))?;
+    reader.skip((len - 2) as i64)?;
     Ok(())
 }
 

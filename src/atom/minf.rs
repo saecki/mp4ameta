@@ -23,15 +23,28 @@ impl ParseAtom for Minf {
 
             match head.fourcc() {
                 SAMPLE_TABLE => minf.stbl = Some(Stbl::parse(reader, cfg, head.size())?),
-                _ => {
-                    reader.seek(SeekFrom::Current(head.content_len() as i64))?;
-                }
+                _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();
         }
 
         Ok(minf)
+    }
+}
+
+impl WriteAtom for Minf {
+    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+        self.write_head(writer)?;
+        if let Some(a) = &self.stbl {
+            a.write(writer)?;
+        }
+        Ok(())
+    }
+
+    fn size(&self) -> Size {
+        let content_len = self.stbl.len_or_zero();
+        Size::from(content_len)
     }
 }
 
@@ -53,9 +66,7 @@ impl FindAtom for Minf {
 
             match head.fourcc() {
                 SAMPLE_TABLE => stbl = Some(Stbl::find(reader, head.size())?),
-                _ => {
-                    reader.seek(SeekFrom::Current(head.content_len() as i64))?;
-                }
+                _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();

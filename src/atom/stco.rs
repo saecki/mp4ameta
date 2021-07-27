@@ -3,7 +3,6 @@ use super::*;
 /// A struct representing of a sample table chunk offset atom (`stco`).
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Stco {
-    pub table_pos: u64,
     pub offsets: Vec<u32>,
 }
 
@@ -34,14 +33,32 @@ impl ParseAtom for Stco {
             ));
         }
 
-        let table_pos = reader.seek(SeekFrom::Current(0))?;
         let mut offsets = Vec::with_capacity(entries as usize);
         for _ in 0..entries {
             let offset = reader.read_be_u32()?;
             offsets.push(offset);
         }
 
-        Ok(Self { table_pos, offsets })
+        Ok(Self { offsets })
+    }
+}
+
+impl WriteAtom for Stco {
+    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+        self.write_head(writer)?;
+        write_full_head(writer, 0, [0; 3])?;
+
+        writer.write_be_u32(self.offsets.len() as u32)?;
+        for o in self.offsets.iter() {
+            writer.write_be_u32(*o)?;
+        }
+
+        Ok(())
+    }
+
+    fn size(&self) -> Size {
+        let content_len = 8 + 4 * self.offsets.len() as u64;
+        Size::from(content_len)
     }
 }
 

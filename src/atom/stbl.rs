@@ -39,15 +39,48 @@ impl ParseAtom for Stbl {
                 SAMPLE_TABLE_CHUNK_OFFSET_64 if cfg.read_chapters => {
                     stbl.co64 = Some(Co64::parse(reader, cfg, head.size())?)
                 }
-                _ => {
-                    reader.seek(SeekFrom::Current(head.content_len() as i64))?;
-                }
+                _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();
         }
 
         Ok(stbl)
+    }
+}
+
+impl WriteAtom for Stbl {
+    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+        self.write_head(writer)?;
+        if let Some(a) = &self.stsd {
+            a.write(writer)?;
+        }
+        if let Some(a) = &self.stts {
+            a.write(writer)?;
+        }
+        if let Some(a) = &self.stsc {
+            a.write(writer)?;
+        }
+        if let Some(a) = &self.stsz {
+            a.write(writer)?;
+        }
+        if let Some(a) = &self.stco {
+            a.write(writer)?;
+        }
+        if let Some(a) = &self.co64 {
+            a.write(writer)?;
+        }
+        Ok(())
+    }
+
+    fn size(&self) -> Size {
+        let content_len = self.stsd.len_or_zero()
+            + self.stts.len_or_zero()
+            + self.stsc.len_or_zero()
+            + self.stsz.len_or_zero()
+            + self.stco.len_or_zero()
+            + self.co64.len_or_zero();
+        Size::from(content_len)
     }
 }
 
@@ -78,9 +111,7 @@ impl FindAtom for Stbl {
                 SAMPLE_TABLE_SAMPLE_SIZE => stbl.stsz = Some(Stsz::find(reader, head.size())?),
                 SAMPLE_TABLE_CHUNK_OFFSET => stbl.stco = Some(Stco::find(reader, head.size())?),
                 SAMPLE_TABLE_CHUNK_OFFSET_64 => stbl.co64 = Some(Co64::find(reader, head.size())?),
-                _ => {
-                    reader.seek(SeekFrom::Current(head.content_len() as i64))?;
-                }
+                _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();

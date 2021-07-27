@@ -82,6 +82,11 @@ pub trait SeekUtil: Seek {
 
         Ok(len)
     }
+
+    fn skip(&mut self, offset: i64) -> io::Result<()> {
+        self.seek(SeekFrom::Current(offset))?;
+        Ok(())
+    }
 }
 
 impl<T: Seek> SeekUtil for T {}
@@ -113,10 +118,16 @@ pub trait WriteUtil: Write {
 
 impl<T: Write> WriteUtil for T {}
 
-pub fn scaled_duration(timescale: u32, duration: u64) -> Duration {
+pub fn scale_duration(timescale: u32, duration: u64) -> Duration {
     let secs = duration / timescale as u64;
     let nanos = (duration % timescale as u64) * 1_000_000_000 / timescale as u64;
     Duration::new(secs, nanos as u32)
+}
+
+pub fn unscale_duration(timescale: u32, duration: Duration) -> u64 {
+    let secs = duration.as_secs() * timescale as u64;
+    let nanos = duration.subsec_nanos() as u64 * timescale as u64 / 1_000_000_000;
+    secs + nanos
 }
 
 /// Attempts to read a big endian integer at the specified index from a byte slice.

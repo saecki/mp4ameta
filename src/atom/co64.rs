@@ -1,11 +1,8 @@
-use std::io::{Read, Seek, SeekFrom};
-
 use super::*;
 
 /// A struct representing of a 64bit sample table chunk offset atom (`co64`).
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Co64 {
-    pub table_pos: u64,
     pub offsets: Vec<u64>,
 }
 
@@ -31,20 +28,38 @@ impl ParseAtom for Co64 {
                     ));
                 }
 
-                let table_pos = reader.seek(SeekFrom::Current(0))?;
                 let mut offsets = Vec::with_capacity(entries as usize);
                 for _ in 0..entries {
                     let offset = reader.read_be_u64()?;
                     offsets.push(offset);
                 }
 
-                Ok(Self { table_pos, offsets })
+                Ok(Self { offsets })
             }
             _ => Err(crate::Error::new(
                 crate::ErrorKind::UnknownVersion(version),
                 "Unknown 64bit sample table chunk offset (co64) version",
             )),
         }
+    }
+}
+
+impl WriteAtom for Co64 {
+    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+        self.write_head(writer)?;
+        write_full_head(writer, 0, [0; 3])?;
+
+        writer.write_be_u32(self.offsets.len() as u32)?;
+        for o in self.offsets.iter() {
+            writer.write_be_u64(*o)?;
+        }
+
+        Ok(())
+    }
+
+    fn size(&self) -> Size {
+        let content_len = 8 + 8 * self.offsets.len() as u64;
+        Size::from(content_len)
     }
 }
 

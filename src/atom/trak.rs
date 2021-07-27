@@ -33,15 +33,35 @@ impl ParseAtom for Trak {
                 MEDIA if cfg.read_chapters || cfg.read_audio_info => {
                     trak.mdia = Some(Mdia::parse(reader, cfg, head.size())?)
                 }
-                _ => {
-                    reader.seek(SeekFrom::Current(head.content_len() as i64))?;
-                }
+                _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();
         }
 
         Ok(trak)
+    }
+}
+
+impl WriteAtom for Trak {
+    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+        self.write_head(writer)?;
+        if let Some(a) = &self.tkhd {
+            a.write(writer)?;
+        }
+        if let Some(a) = &self.tref {
+            a.write(writer)?;
+        }
+        if let Some(a) = &self.mdia {
+            a.write(writer)?;
+        }
+        Ok(())
+    }
+
+    fn size(&self) -> Size {
+        let content_len =
+            self.tkhd.len_or_zero() + self.tref.len_or_zero() + self.mdia.len_or_zero();
+        Size::from(content_len)
     }
 }
 
@@ -63,9 +83,7 @@ impl FindAtom for Trak {
 
             match head.fourcc() {
                 MEDIA => mdia = Some(Mdia::find(reader, head.size())?),
-                _ => {
-                    reader.seek(SeekFrom::Current(head.content_len() as i64))?;
-                }
+                _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();

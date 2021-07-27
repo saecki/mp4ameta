@@ -43,6 +43,44 @@ impl WriteAtom for Hdlr {
     }
 }
 
+impl Hdlr {
+    pub fn meta() -> Self {
+        Self(vec![
+            0x00, 0x00, 0x00, 0x00, // version + flags
+            0x00, 0x00, 0x00, 0x00, // component type
+            0x6d, 0x64, 0x69, 0x72, // component subtype
+            0x61, 0x70, 0x70, 0x6c, // component manufacturer
+            0x00, 0x00, 0x00, 0x00, // component flags
+            0x00, 0x00, 0x00, 0x00, // component flags mask
+            0x00, // component name
+        ])
+    }
+
+    pub fn mp4a_mdia() -> Self {
+        Self(vec![
+            0x00, 0x00, 0x00, 0x00, // version + flags
+            0x00, 0x00, 0x00, 0x00, // component type
+            0x73, 0x6f, 0x75, 0x6e, // component subtype
+            0x00, 0x00, 0x00, 0x00, // component manufacturer
+            0x00, 0x00, 0x00, 0x00, // component flags
+            0x00, 0x00, 0x00, 0x00, // component flags mask
+            0x00, // component name
+        ])
+    }
+
+    pub fn text_mdia() -> Self {
+        Self(vec![
+            0x00, 0x00, 0x00, 0x00, // version + flags
+            0x00, 0x00, 0x00, 0x00, // component type
+            0x74, 0x65, 0x78, 0x74, // component subtype
+            0x00, 0x00, 0x00, 0x00, // component manufacturer
+            0x00, 0x00, 0x00, 0x00, // component flags
+            0x00, 0x00, 0x00, 0x00, // component flags mask
+            0x00, // component name
+        ])
+    }
+}
+
 pub struct HdlrBounds {
     pub bounds: AtomBounds,
 }

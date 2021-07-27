@@ -432,6 +432,11 @@ pub struct Chapter {
 }
 
 impl Chapter {
+    /// Creates a new chapter.
+    pub fn new(start: Duration, duration: Duration, title: impl Into<String>) -> Self {
+        Self { start, duration, title: title.into() }
+    }
+
     /// Returns the end of the chapter
     pub fn end(&self) -> Duration {
         self.start + self.duration

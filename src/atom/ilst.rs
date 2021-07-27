@@ -34,9 +34,7 @@ impl ParseAtom for Ilst<'_> {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                FREE => {
-                    reader.seek(SeekFrom::Current(head.content_len() as i64))?;
-                }
+                FREE => reader.skip(head.content_len() as i64)?,
                 _ => {
                     let atom = MetaItem::parse(reader, cfg, head)?;
                     let other = ilst.iter_mut().find(|o| atom.ident == o.ident);
