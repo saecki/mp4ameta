@@ -44,6 +44,7 @@ impl WriteAtom for Text {
 }
 
 impl Text {
+    #[allow(unused)]
     pub fn chapter() -> Self {
         Self(vec![
             // Text Sample Entry

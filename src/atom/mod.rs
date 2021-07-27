@@ -45,6 +45,7 @@ use ident::*;
 use util::*;
 
 use chap::*;
+use chpl::*;
 use co64::*;
 use ftyp::*;
 use hdlr::*;
@@ -80,6 +81,7 @@ mod util;
 mod head;
 
 mod chap;
+mod chpl;
 mod co64;
 mod data;
 mod ftyp;
@@ -224,7 +226,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
 
     let len = reader.remaining_stream_len()?;
     let mut parsed_bytes = 0;
-    let moov = loop {
+    let mut moov = loop {
         if parsed_bytes >= len {
             return Err(crate::Error::new(
                 ErrorKind::AtomNotFound(MOVIE),
@@ -241,16 +243,42 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
         parsed_bytes += head.len();
     };
 
+    let mvhd = moov.mvhd.ok_or_else(|| {
+        crate::Error::new(
+            ErrorKind::AtomNotFound(MOVIE_HEADER),
+            "Missing necessary data, no movie header (mvhd) atom found",
+        )
+    })?;
+
     let ilst = moov
         .udta
-        .and_then(|a| a.meta)
+        .as_mut()
+        .and_then(|a| a.meta.take())
         .and_then(|a| a.ilst)
         .and_then(|a| a.owned())
         .unwrap_or_default();
 
     let mut chapters = Vec::new();
     if cfg.read_chapters {
-        let mvhd_timescale = moov.mvhd.as_ref().map(|a| a.timescale);
+        // chapter list atom
+        if let Some(mut chpl) = moov.udta.and_then(|a| a.chpl).and_then(|a| a.owned()) {
+            chapters.reserve(chpl.len());
+            while !chpl.is_empty() {
+                let c = chpl.remove(0);
+
+                let duration = match chpl.get(0) {
+                    Some(next) => next.start.saturating_sub(c.start),
+                    None => mvhd.duration.saturating_sub(c.start),
+                };
+                chapters.push(Chapter {
+                    start: scale_duration(mvhd.timescale, c.start),
+                    duration: scale_duration(mvhd.timescale, duration),
+                    title: c.title,
+                });
+            }
+        }
+
+        // chapter tracks
         for chap in moov.trak.iter().filter_map(|a| a.tref.as_ref().and_then(|a| a.chap.as_ref())) {
             for c_id in chap.chapter_ids.iter() {
                 let chapter_track = moov
@@ -270,8 +298,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
 
                 let timescale = mdia
                     .and_then(|a| a.mdhd.as_ref().map(|a| a.timescale))
-                    .or(mvhd_timescale)
-                    .unwrap_or(1000);
+                    .unwrap_or(mvhd.timescale);
 
                 if let Some(stco) = stbl.and_then(|a| a.stco.as_ref()) {
                     chapters.reserve(stco.offsets.len());
@@ -305,9 +332,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
                 .and_then(|a| a.stsd)
                 .and_then(|a| a.mp4a)
         });
-        if let Some(a) = moov.mvhd {
-            info.duration = Some(scale_duration(a.timescale, a.duration));
-        }
+        info.duration = Some(scale_duration(mvhd.timescale, mvhd.duration));
         if let Some(i) = mp4a {
             info.channel_config = i.channel_config;
             info.sample_rate = i.sample_rate;
@@ -454,7 +479,7 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, atoms: &[MetaItem]) -> c
                 }
             }
             None => {
-                new_udta = Some(Udta { meta: new_meta.take() });
+                new_udta = Some(Udta { meta: new_meta.take(), ..Default::default() });
                 new_atoms_start = moov.end();
                 moved_data_start = moov.end();
             }
@@ -566,81 +591,35 @@ pub(crate) fn dump_tag(
     atoms: &[MetaItem],
     chapters: &[Chapter],
 ) -> crate::Result<()> {
-    const TIMESCALE: u32 = 1000;
+    const TIMESCALE: u32 = 1_000_000;
 
     let duration = chapters.last().map_or(0, |c| unscale_duration(TIMESCALE, c.start + c.duration));
 
     let ftyp = Ftyp("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".to_owned());
-    let mut mdat = Mdat::default();
+    let mdat = Mdat::default();
     let mut moov = Moov {
         mvhd: Some(Mvhd { version: 1, timescale: TIMESCALE, duration, ..Default::default() }),
+        udta: Some(Udta::default()),
         ..Default::default()
     };
 
     if cfg.write_item_list && !atoms.is_empty() {
-        moov.udta = Some(Udta {
-            meta: Some(Meta { hdlr: Some(Hdlr::meta()), ilst: Some(Ilst::Borrowed(atoms)) }),
-        });
+        let udta = moov.udta.get_or_insert_with(|| Udta::default());
+        udta.meta = Some(Meta { hdlr: Some(Hdlr::meta()), ilst: Some(Ilst::Borrowed(atoms)) });
     }
 
+    let mut _chpl = Vec::new();
     if cfg.write_chapters && !chapters.is_empty() {
-        let mut chunk_offsets = Vec::with_capacity(chapters.len());
-        let mut sample_sizes = Vec::with_capacity(chapters.len());
-        let mut time_to_samples = Vec::with_capacity(chapters.len());
+        let udta = moov.udta.get_or_insert_with(|| Udta::default());
+        _chpl = chapters
+            .iter()
+            .map(|c| BorrowedChplItem {
+                start: unscale_duration(CHPL_TIMESCALE, c.start),
+                title: &c.title,
+            })
+            .collect();
 
-        for (i, c) in chapters.iter().enumerate() {
-            time_to_samples.push(SttsItem {
-                sample_count: i as u32,
-                sample_duration: unscale_duration(TIMESCALE, c.duration) as u32,
-            });
-            sample_sizes.push(c.title.len() as u32 + 2);
-            chunk_offsets.push(ftyp.len() + mdat.len()); // assume that length won't exceed 32 bit after pushing chapter titles
-
-            mdat.data.write_be_u16(c.title.len() as u16).ok();
-            mdat.data.write_utf8(&c.title).ok();
-        }
-
-        // audio track
-        moov.trak.push(Trak {
-            tkhd: Some(Tkhd { id: 1, ..Default::default() }),
-            tref: Some(Tref { chap: Some(Chap { chapter_ids: vec![2] }) }),
-            mdia: Some(Mdia {
-                mdhd: Some(Mdhd {
-                    version: 1,
-                    timescale: TIMESCALE,
-                    duration,
-                    ..Default::default()
-                }),
-                hdlr: Some(Hdlr::mp4a_mdia()),
-                ..Default::default()
-            }),
-        });
-
-        // chapter track
-        moov.trak.push(Trak {
-            tkhd: Some(Tkhd { id: 2, ..Default::default() }),
-            mdia: Some(Mdia {
-                mdhd: Some(Mdhd { version: 1, timescale: TIMESCALE, ..Default::default() }),
-                hdlr: Some(Hdlr::text_mdia()),
-                minf: Some(Minf {
-                    stbl: Some(Stbl {
-                        stsd: Some(Stsd { text: Some(Text::chapter()), ..Default::default() }),
-                        stts: Some(Stts { items: time_to_samples }),
-                        stsc: Some(Stsc {
-                            items: vec![StscItem {
-                                first_chunk: 1,
-                                samples_per_chunk: 1,
-                                sample_description_id: 1,
-                            }],
-                        }),
-                        stsz: Some(Stsz { sample_size: 0, sizes: sample_sizes }),
-                        co64: Some(Co64 { offsets: chunk_offsets }),
-                        ..Default::default()
-                    }),
-                }),
-            }),
-            ..Default::default()
-        });
+        udta.chpl = Some(Chpl::Borrowed(&_chpl));
     }
 
     ftyp.write(writer)?;

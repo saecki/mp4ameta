@@ -56,6 +56,7 @@ impl Hdlr {
         ])
     }
 
+    #[allow(unused)]
     pub fn mp4a_mdia() -> Self {
         Self(vec![
             0x00, 0x00, 0x00, 0x00, // version + flags
@@ -68,6 +69,7 @@ impl Hdlr {
         ])
     }
 
+    #[allow(unused)]
     pub fn text_mdia() -> Self {
         Self(vec![
             0x00, 0x00, 0x00, 0x00, // version + flags

@@ -24,13 +24,11 @@ impl ParseAtom for Moov<'_> {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                MOVIE_HEADER if cfg.read_chapters || cfg.read_audio_info => {
-                    moov.mvhd = Some(Mvhd::parse(reader, cfg, head.size())?)
-                }
+                MOVIE_HEADER => moov.mvhd = Some(Mvhd::parse(reader, cfg, head.size())?),
                 TRACK if cfg.read_chapters || cfg.read_audio_info => {
                     moov.trak.push(Trak::parse(reader, cfg, head.size())?)
                 }
-                USER_DATA if cfg.read_item_list => {
+                USER_DATA if cfg.read_item_list || cfg.read_chapters => {
                     moov.udta = Some(Udta::parse(reader, cfg, head.size())?)
                 }
                 _ => reader.skip(head.content_len() as i64)?,

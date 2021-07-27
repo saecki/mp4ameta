@@ -48,6 +48,8 @@ pub(crate) const TEXT_MEDIA: Fourcc = Fourcc(*b"text");
 pub(crate) const ELEMENTARY_STREAM_DESCRIPTION: Fourcc = Fourcc(*b"esds");
 /// (`udta`) Identifier of an atom containing user metadata.
 pub(crate) const USER_DATA: Fourcc = Fourcc(*b"udta");
+/// (`chpl`)
+pub(crate) const CHAPTER_LIST: Fourcc = Fourcc(*b"chpl");
 /// (`meta`) Identifier of an atom containing a metadata item list.
 pub(crate) const METADATA: Fourcc = Fourcc(*b"meta");
 /// (`hdlr`) Identifier of an atom specifying the handler component that should interpret the medias data.

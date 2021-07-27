@@ -150,14 +150,13 @@ impl ParseAtom for Data {
         cfg: &ReadConfig,
         size: Size,
     ) -> crate::Result<Data> {
-        let (version, flags) = parse_full_head(reader)?;
+        let (version, [b2, b1, b0]) = parse_full_head(reader)?;
         if version != 0 {
             return Err(crate::Error::new(
                 crate::ErrorKind::UnknownVersion(version),
                 "Unknown data atom (data) version",
             ));
         }
-        let [b2, b1, b0] = flags;
         let datatype = u32::from_be_bytes([0, b2, b1, b0]);
 
         reader.skip(4)?; // locale indicator
@@ -195,9 +194,7 @@ impl WriteAtom for Data {
         };
 
         writer.write_all(&datatype.to_be_bytes())?;
-        // Writing 4 byte locale indicator
-        writer.write_all(&[0; 4])?;
-
+        writer.write_all(&[0; 4])?; // locale indicator
         match self {
             Self::Reserved(v) => writer.write_all(v)?,
             Self::Utf8(s) => writer.write_utf8(s)?,

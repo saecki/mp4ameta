@@ -92,6 +92,10 @@ pub trait SeekUtil: Seek {
 impl<T: Seek> SeekUtil for T {}
 
 pub trait WriteUtil: Write {
+    fn write_u8(&mut self, val: u8) -> io::Result<()> {
+        self.write_all(&[val])
+    }
+
     fn write_be_u16(&mut self, val: u16) -> io::Result<()> {
         self.write_all(&val.to_be_bytes())
     }

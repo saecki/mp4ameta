@@ -3,6 +3,7 @@ use super::*;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Udta<'a> {
     pub meta: Option<Meta<'a>>,
+    pub chpl: Option<Chpl<'a>>,
 }
 
 impl Atom for Udta<'_> {
@@ -22,7 +23,12 @@ impl ParseAtom for Udta<'_> {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                METADATA => udta.meta = Some(Meta::parse(reader, cfg, head.size())?),
+                METADATA if cfg.read_item_list => {
+                    udta.meta = Some(Meta::parse(reader, cfg, head.size())?)
+                }
+                CHAPTER_LIST if cfg.read_chapters => {
+                    udta.chpl = Some(Chpl::parse(reader, cfg, head.size())?)
+                }
                 _ => reader.skip(head.content_len() as i64)?,
             }
 
@@ -39,11 +45,15 @@ impl WriteAtom for Udta<'_> {
         if let Some(a) = &self.meta {
             a.write(writer)?;
         }
+        if let Some(a) = &self.chpl {
+            a.write(writer)?;
+        }
         Ok(())
     }
 
     fn size(&self) -> Size {
-        Size::from(self.meta.len_or_zero())
+        let content_len = self.meta.len_or_zero() + self.chpl.len_or_zero();
+        Size::from(content_len)
     }
 }
 
