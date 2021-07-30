@@ -385,7 +385,7 @@ fn dump_2() {
 #[test]
 fn dump_chapter() {
     let mut tag = Tag::default();
-    let chapter = Chapter::new(Duration::ZERO, Duration::new(234, 324_137_000), "Chapter 1");
+    let chapter = Chapter::new(Duration::ZERO, Duration::new(234, 324_000_000), "Chapter 1");
     tag.add_chapter(chapter.clone());
 
     let _ = std::fs::remove_file("target/dump_chapter.m4a");

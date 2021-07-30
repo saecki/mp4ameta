@@ -196,6 +196,24 @@ impl<T: WriteAtom> LenOrZero for Option<T> {
     }
 }
 
+/// A struct representing a timescale (the number of units that pass per second).
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Timescale {
+    /// Use a fixed timescale.
+    Fixed(u32),
+    /// Use the timescale defined in the movie header (mvhd) atom.
+    Mvhd,
+}
+
+impl Timescale {
+    fn or_mvhd(self, mvhd_timescale: u32) -> u32 {
+        match self {
+            Self::Fixed(v) => v,
+            Self::Mvhd => mvhd_timescale,
+        }
+    }
+}
+
 /// A struct that configures parsing behavior.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ReadConfig {
@@ -207,6 +225,16 @@ pub struct ReadConfig {
     pub read_chapters: bool,
     /// Wheter audio information will be read.
     pub read_audio_info: bool,
+
+    /// The timescale that is used to scale time for chapter list (chpl) atoms.
+    ///
+    /// | library          | timescale  |
+    /// |------------------|------------|
+    /// | FFMpeg (default) | 10,000,000 |
+    /// | mp4v2            |      1,000 |
+    /// | mutagen          |       mvhd |
+    ///
+    pub chpl_timescale: Timescale,
 }
 
 impl Default for ReadConfig {
@@ -216,6 +244,7 @@ impl Default for ReadConfig {
             read_image_data: true,
             read_chapters: true,
             read_audio_info: true,
+            chpl_timescale: Timescale::Fixed(DEFAULT_CHPL_TIMESCALE),
         }
     }
 }
@@ -249,6 +278,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
             "Missing necessary data, no movie header (mvhd) atom found",
         )
     })?;
+    let duration = scale_duration(mvhd.timescale, mvhd.duration);
 
     let ilst = moov
         .udta
@@ -262,17 +292,26 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
     if cfg.read_chapters {
         // chapter list atom
         if let Some(mut chpl) = moov.udta.and_then(|a| a.chpl).and_then(|a| a.owned()) {
+            let chpl_timescale = cfg.chpl_timescale.or_mvhd(mvhd.timescale);
+
+            chpl.sort_by_key(|c| c.start);
             chapters.reserve(chpl.len());
             while !chpl.is_empty() {
                 let c = chpl.remove(0);
 
-                let duration = match chpl.get(0) {
-                    Some(next) => next.start.saturating_sub(c.start),
-                    None => mvhd.duration.saturating_sub(c.start),
+                let scaled_duration = match chpl.get(0) {
+                    Some(next) => {
+                        let diff = next.start.saturating_sub(c.start);
+                        scale_duration(chpl_timescale, diff)
+                    }
+                    None => {
+                        let scaled_start = scale_duration(chpl_timescale, c.start);
+                        duration.saturating_sub(scaled_start)
+                    }
                 };
                 chapters.push(Chapter {
-                    start: scale_duration(mvhd.timescale, c.start),
-                    duration: scale_duration(mvhd.timescale, duration),
+                    start: scale_duration(chpl_timescale, c.start),
+                    duration: scaled_duration,
                     title: c.title,
                 });
             }
@@ -393,11 +432,25 @@ pub struct WriteConfig {
     pub write_item_list: bool,
     /// Wheter to overwrite chapter information.
     pub write_chapters: bool,
+
+    /// The timescale that is used to scale time for chapter list (chpl) atoms.
+    ///
+    /// | library          | timescale  |
+    /// |------------------|------------|
+    /// | FFMpeg (default) | 10,000,000 |
+    /// | mp4v2            |      1,000 |
+    /// | mutagen          |       mvhd |
+    ///
+    pub chpl_timescale: Timescale,
 }
 
 impl Default for WriteConfig {
     fn default() -> Self {
-        Self { write_item_list: true, write_chapters: true }
+        Self {
+            write_item_list: true,
+            write_chapters: true,
+            chpl_timescale: Timescale::Fixed(DEFAULT_CHPL_TIMESCALE),
+        }
     }
 }
 
@@ -591,14 +644,15 @@ pub(crate) fn dump_tag(
     atoms: &[MetaItem],
     chapters: &[Chapter],
 ) -> crate::Result<()> {
-    const TIMESCALE: u32 = 1_000_000;
+    const MVHD_TIMESCALE: u32 = 1000;
 
-    let duration = chapters.last().map_or(0, |c| unscale_duration(TIMESCALE, c.start + c.duration));
+    let duration =
+        chapters.last().map_or(0, |c| unscale_duration(MVHD_TIMESCALE, c.start + c.duration));
 
     let ftyp = Ftyp("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".to_owned());
     let mdat = Mdat::default();
     let mut moov = Moov {
-        mvhd: Some(Mvhd { version: 1, timescale: TIMESCALE, duration, ..Default::default() }),
+        mvhd: Some(Mvhd { version: 1, timescale: MVHD_TIMESCALE, duration, ..Default::default() }),
         udta: Some(Udta::default()),
         ..Default::default()
     };
@@ -610,11 +664,14 @@ pub(crate) fn dump_tag(
 
     let mut _chpl = Vec::new();
     if cfg.write_chapters && !chapters.is_empty() {
+        let chpl_timescale = cfg.chpl_timescale.or_mvhd(MVHD_TIMESCALE);
+        println!("chpl_timescale: {}", chpl_timescale);
+
         let udta = moov.udta.get_or_insert_with(Udta::default);
         _chpl = chapters
             .iter()
             .map(|c| BorrowedChplItem {
-                start: unscale_duration(CHPL_TIMESCALE, c.start),
+                start: unscale_duration(chpl_timescale, c.start),
                 title: &c.title,
             })
             .collect();

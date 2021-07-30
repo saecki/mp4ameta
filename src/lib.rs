@@ -62,7 +62,7 @@
     unused_import_braces
 )]
 pub use crate::atom::ident::*;
-pub use crate::atom::{ident, Data, ReadConfig, WriteConfig};
+pub use crate::atom::{ident, Data, ReadConfig, Timescale, WriteConfig};
 pub use crate::error::{Error, ErrorKind, Result};
 pub use crate::tag::{Tag, STANDARD_GENRES};
 pub use crate::types::*;
