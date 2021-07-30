@@ -604,13 +604,13 @@ pub(crate) fn dump_tag(
     };
 
     if cfg.write_item_list && !atoms.is_empty() {
-        let udta = moov.udta.get_or_insert_with(|| Udta::default());
+        let udta = moov.udta.get_or_insert_with(Udta::default);
         udta.meta = Some(Meta { hdlr: Some(Hdlr::meta()), ilst: Some(Ilst::Borrowed(atoms)) });
     }
 
     let mut _chpl = Vec::new();
     if cfg.write_chapters && !chapters.is_empty() {
-        let udta = moov.udta.get_or_insert_with(|| Udta::default());
+        let udta = moov.udta.get_or_insert_with(Udta::default);
         _chpl = chapters
             .iter()
             .map(|c| BorrowedChplItem {
