@@ -82,7 +82,7 @@ impl WriteAtom for Chpl<'_> {
                 for c in v.iter() {
                     writer.write_be_u64(c.start)?;
                     writer.write_u8(c.title.len() as u8)?;
-                    writer.write_utf8(&c.title)?;
+                    writer.write_utf8(c.title)?;
                 }
             }
         }

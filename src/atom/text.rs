@@ -34,7 +34,7 @@ impl ParseAtom for Text {
 impl WriteAtom for Text {
     fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
         self.write_head(writer)?;
-        writer.write_all(&self)?;
+        writer.write_all(self)?;
         Ok(())
     }
 
