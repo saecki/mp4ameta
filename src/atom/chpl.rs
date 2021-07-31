@@ -1,6 +1,6 @@
 use super::*;
 
-pub const DEFAULT_CHPL_TIMESCALE: u32 = 10_000_000;
+pub const DEFAULT_CHPL_TIMESCALE: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(10_000_000) };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Chpl<'a> {

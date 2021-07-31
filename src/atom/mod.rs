@@ -36,6 +36,7 @@
 use std::convert::TryFrom;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
+use std::num::NonZeroU32;
 use std::ops::{Deref, DerefMut};
 
 use crate::{AudioInfo, Chapter, ErrorKind, Tag};
@@ -200,7 +201,7 @@ impl<T: WriteAtom> LenOrZero for Option<T> {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Timescale {
     /// Use a fixed timescale.
-    Fixed(u32),
+    Fixed(NonZeroU32),
     /// Use the timescale defined in the movie header (mvhd) atom.
     Mvhd,
 }
@@ -208,7 +209,7 @@ pub enum Timescale {
 impl Timescale {
     fn or_mvhd(self, mvhd_timescale: u32) -> u32 {
         match self {
-            Self::Fixed(v) => v,
+            Self::Fixed(v) => v.get(),
             Self::Mvhd => mvhd_timescale,
         }
     }

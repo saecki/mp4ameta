@@ -114,19 +114,14 @@ pub fn parse_head(reader: &mut impl Read) -> crate::Result<Head> {
 
     if len == 1 {
         match reader.read_be_u64() {
-            Ok(ext_len) => {
-                if ext_len < 16 {
-                    Err(crate::Error::new(
-                        crate::ErrorKind::Parsing,
-                        format!(
-                            "Read extended length of '{}' which is less than 16 bytes: {}",
-                            fourcc, ext_len
-                        ),
-                    ))
-                } else {
-                    Ok(Head::new(true, ext_len, fourcc))
-                }
-            }
+            Ok(ext_len) if ext_len < 16 => Err(crate::Error::new(
+                crate::ErrorKind::Parsing,
+                format!(
+                    "Read extended length of '{}' which is less than 16 bytes: {}",
+                    fourcc, ext_len
+                ),
+            )),
+            Ok(ext_len) => Ok(Head::new(true, ext_len, fourcc)),
             Err(e) => {
                 Err(crate::Error::new(ErrorKind::Io(e), "Error reading extended atom length"))
             }
