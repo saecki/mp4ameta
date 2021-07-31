@@ -296,19 +296,22 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
 
             chpl.sort_by_key(|c| c.start);
             chapters.reserve(chpl.len());
-            while !chpl.is_empty() {
-                let c = chpl.remove(0);
 
-                let scaled_duration = match chpl.get(0) {
+            let mut iter = chpl.into_iter().peekable();
+            while let Some(c) = iter.next() {
+                let scaled_duration = match iter.peek() {
                     Some(next) => {
+                        // duration until next chapter start
                         let diff = next.start.saturating_sub(c.start);
                         scale_duration(chpl_timescale, diff)
                     }
                     None => {
+                        // remaining duration of movie
                         let scaled_start = scale_duration(chpl_timescale, c.start);
                         duration.saturating_sub(scaled_start)
                     }
                 };
+
                 chapters.push(Chapter {
                     start: scale_duration(chpl_timescale, c.start),
                     duration: scaled_duration,
@@ -320,16 +323,13 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
         // chapter tracks
         for chap in moov.trak.iter().filter_map(|a| a.tref.as_ref().and_then(|a| a.chap.as_ref())) {
             for c_id in chap.chapter_ids.iter() {
-                let chapter_track = moov
-                    .trak
-                    .iter()
-                    .find(|a| a.tkhd.as_ref().map_or(false, |a| a.id == *c_id))
-                    .ok_or_else(|| {
-                        crate::Error::new(
-                            ErrorKind::TrackNotFound(*c_id),
-                            "Referenced track not found",
-                        )
-                    })?;
+                let chapter_track =
+                    moov.trak.iter().find(|a| a.tkhd.as_ref().map_or(false, |a| a.id == *c_id));
+
+                let chapter_track = match chapter_track {
+                    Some(t) => t,
+                    None => continue, // TODO maybe log warning: referenced chapter track not found
+                };
 
                 let mdia = chapter_track.mdia.as_ref();
                 let stbl = mdia.and_then(|a| a.minf.as_ref()).and_then(|a| a.stbl.as_ref());
@@ -362,7 +362,8 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
         }
     }
 
-    let mut info = AudioInfo::default();
+    let mut info = AudioInfo { duration: Some(duration), ..Default::default() };
+
     if cfg.read_audio_info {
         let mp4a = moov.trak.into_iter().find_map(|trak| {
             trak.mdia
@@ -371,7 +372,6 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
                 .and_then(|a| a.stsd)
                 .and_then(|a| a.mp4a)
         });
-        info.duration = Some(scale_duration(mvhd.timescale, mvhd.duration));
         if let Some(i) = mp4a {
             info.channel_config = i.channel_config;
             info.sample_rate = i.sample_rate;

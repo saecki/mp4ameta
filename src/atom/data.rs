@@ -171,7 +171,7 @@ impl ParseAtom for Data {
             BE_SIGNED => Data::BeSigned(reader.read_u8_vec(len)?),
             BMP => Data::Bmp(read_image(reader, cfg.read_image_data, len)?),
             _ => {
-                // TODO: maybe log warning (optional log dependency behind feature flag
+                // TODO: maybe log warning (optional log dependency behind feature flag)
                 Data::Unknown { code: datatype, data: reader.read_u8_vec(len)? }
             }
         })
