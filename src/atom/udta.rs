@@ -2,8 +2,8 @@ use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Udta<'a> {
-    pub meta: Option<Meta<'a>>,
     pub chpl: Option<Chpl<'a>>,
+    pub meta: Option<Meta<'a>>,
 }
 
 impl Atom for Udta<'_> {
@@ -23,11 +23,11 @@ impl ParseAtom for Udta<'_> {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                METADATA if cfg.read_item_list => {
-                    udta.meta = Some(Meta::parse(reader, cfg, head.size())?)
-                }
                 CHAPTER_LIST if cfg.read_chapters => {
                     udta.chpl = Some(Chpl::parse(reader, cfg, head.size())?)
+                }
+                METADATA if cfg.read_item_list => {
+                    udta.meta = Some(Meta::parse(reader, cfg, head.size())?)
                 }
                 _ => reader.skip(head.content_len() as i64)?,
             }
@@ -42,10 +42,10 @@ impl ParseAtom for Udta<'_> {
 impl WriteAtom for Udta<'_> {
     fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
         self.write_head(writer)?;
-        if let Some(a) = &self.meta {
+        if let Some(a) = &self.chpl {
             a.write(writer)?;
         }
-        if let Some(a) = &self.chpl {
+        if let Some(a) = &self.meta {
             a.write(writer)?;
         }
         Ok(())
@@ -57,8 +57,10 @@ impl WriteAtom for Udta<'_> {
     }
 }
 
+#[derive(Default)]
 pub struct UdtaBounds {
     pub bounds: AtomBounds,
+    pub chpl: Option<ChplBounds>,
     pub meta: Option<MetaBounds>,
 }
 
@@ -75,20 +77,21 @@ impl FindAtom for Udta<'_> {
 
     fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
         let bounds = find_bounds(reader, size)?;
-        let mut meta = None;
+        let mut udta = Self::Bounds { bounds, ..Default::default() };
         let mut parsed_bytes = 0;
 
         while parsed_bytes < size.content_len() {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                METADATA => meta = Some(Meta::find(reader, head.size())?),
+                METADATA => udta.meta = Some(Meta::find(reader, head.size())?),
+                CHAPTER_LIST => udta.chpl = Some(Chpl::find(reader, head.size())?),
                 _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();
         }
 
-        Ok(Self::Bounds { bounds, meta })
+        Ok(udta)
     }
 }

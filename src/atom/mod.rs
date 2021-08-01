@@ -250,7 +250,6 @@ impl Default for ReadConfig {
     }
 }
 
-/// Attempts to read MPEG-4 audio metadata from the reader.
 pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> crate::Result<Tag> {
     let Ftyp(ftyp) = Ftyp::parse(reader)?;
 
@@ -455,28 +454,116 @@ impl Default for WriteConfig {
     }
 }
 
-/// Attempts to write the metadata atoms to the file inside the item list atom.
-pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, atoms: &[MetaItem]) -> crate::Result<()> {
+trait LenDiff {
+    fn len_diff(&self) -> i64;
+}
+
+impl<T: WriteAtom> LenDiff for Option<NewAtom<T>> {
+    fn len_diff(&self) -> i64 {
+        self.as_ref().map_or(0, |a| a.len_diff())
+    }
+}
+
+#[derive(Debug)]
+struct NewAtom<T> {
+    old_pos: u64,
+    old_end: u64,
+    atom: T,
+}
+
+impl<T> NewAtom<T> {
+    const fn old_len(&self) -> u64 {
+        self.old_end - self.old_pos
+    }
+}
+
+impl<T: WriteAtom> NewAtom<T> {
+    fn new_len(&self) -> u64 {
+        self.atom.len()
+    }
+
+    fn len_diff(&self) -> i64 {
+        self.new_len() as i64 - self.old_len() as i64
+    }
+}
+
+#[derive(Debug)]
+enum AtomRef<'a> {
+    Udta(&'a Udta<'a>),
+    Chpl(&'a Chpl<'a>),
+    Meta(&'a Meta<'a>),
+    Hdlr(&'a Hdlr),
+    Ilst(&'a Ilst<'a>),
+}
+
+impl AtomRef<'_> {
+    fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
+        match self {
+            AtomRef::Udta(a) => a.write(writer),
+            AtomRef::Chpl(a) => a.write(writer),
+            AtomRef::Meta(a) => a.write(writer),
+            AtomRef::Hdlr(a) => a.write(writer),
+            AtomRef::Ilst(a) => a.write(writer),
+        }
+    }
+
+    fn len(&self) -> u64 {
+        match self {
+            AtomRef::Udta(a) => a.len(),
+            AtomRef::Chpl(a) => a.len(),
+            AtomRef::Meta(a) => a.len(),
+            AtomRef::Hdlr(a) => a.len(),
+            AtomRef::Ilst(a) => a.len(),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct UpdateAtom<'a> {
+    old_bounds: &'a AtomBounds,
+    len_diff: i64,
+}
+
+impl UpdateAtom<'_> {
+    fn new_len(&self) -> u64 {
+        (self.old_bounds.len() as i64 + self.len_diff) as u64
+    }
+}
+
+#[derive(Debug)]
+struct MovedData {
+    new_pos: u64,
+    data: Vec<u8>,
+}
+
+pub(crate) fn write_tag(
+    file: &File,
+    cfg: &WriteConfig,
+    atoms: &[MetaItem],
+    chapters: &[Chapter],
+) -> crate::Result<()> {
     let mut reader = BufReader::new(file);
     let reader = &mut reader;
 
     Ftyp::parse(reader)?;
 
-    let len = reader.remaining_stream_len()?;
     let mut moov = None;
     let mut mdat = None;
-    let mut parsed_bytes = 0;
 
-    while parsed_bytes < len {
-        let head = parse_head(reader)?;
+    {
+        let len = reader.remaining_stream_len()?;
+        let mut parsed_bytes = 0;
+        while parsed_bytes < len {
+            let head = parse_head(reader)?;
 
-        match head.fourcc() {
-            MOVIE => moov = Some(Moov::find(reader, head.size())?),
-            MEDIA_DATA => mdat = Some(Mdat::find(reader, head.size())?),
-            _ => reader.skip(head.content_len() as i64)?,
+            match head.fourcc() {
+                MOVIE => moov = Some(Moov::find(reader, head.size())?),
+                MEDIA_DATA => mdat = Some(Mdat::find(reader, head.size())?),
+                _ => reader.skip(head.content_len() as i64)?,
+            }
+
+            parsed_bytes += head.len();
         }
-
-        parsed_bytes += head.len();
     }
 
     let mdat_pos = mdat.map_or(0, |a| a.pos());
@@ -486,91 +573,213 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, atoms: &[MetaItem]) -> c
             "Missing necessary data, no movie (moov) atom found",
         )
     })?;
+    let mvhd = moov.mvhd.as_ref().ok_or_else(|| {
+        crate::Error::new(
+            crate::ErrorKind::AtomNotFound(MOVIE),
+            "Missing necessary data, no movie header (mvhd) atom found",
+        )
+    })?;
     let udta = &moov.udta;
+    let chpl = udta.as_ref().and_then(|a| a.chpl.as_ref());
     let meta = udta.as_ref().and_then(|a| a.meta.as_ref());
     let hdlr = meta.as_ref().and_then(|a| a.hdlr.as_ref());
     let ilst = meta.as_ref().and_then(|a| a.ilst.as_ref());
 
-    let mut new_atoms_start = 0;
-    let mut moved_data_start = 0;
-    let mut len_diff = 0;
-
     let mut update_atoms = Vec::new();
+    let mut new_atoms = Vec::new();
+
     let mut new_udta = None;
+    let mut new_chpl = None;
+    let mut _chpl = Vec::new();
     let mut new_meta = None;
     let mut new_hdlr = None;
     let mut new_ilst = None;
 
+    // check wich atoms are missing
     if cfg.write_item_list {
-        new_ilst = Some(Ilst::Borrowed(atoms));
         if hdlr.is_none() {
-            new_hdlr = Some(Hdlr::meta());
+            new_hdlr = Some(NewAtom { old_pos: 0, old_end: 0, atom: Hdlr::meta() });
         }
-        if let Some(ilst) = ilst {
-            new_atoms_start = ilst.pos();
-            moved_data_start = ilst.end();
-            len_diff -= ilst.len() as i64;
+        match ilst {
+            Some(ilst) => {
+                new_ilst = Some(NewAtom {
+                    old_pos: ilst.pos(),
+                    old_end: ilst.end(),
+                    atom: Ilst::Borrowed(atoms),
+                });
+            }
+            None => {
+                new_ilst = Some(NewAtom {
+                    old_pos: 0,
+                    old_end: 0,
+                    atom: Ilst::Borrowed(atoms),
+                });
+            }
         }
 
         match meta {
             Some(meta) => {
-                update_atoms.push(&meta.bounds);
+                if hdlr.is_none() {
+                    if let Some(a) = &mut new_hdlr {
+                        a.old_pos = meta.content_pos();
+                        a.old_end = meta.content_pos();
+                    }
+                }
                 if ilst.is_none() {
-                    new_atoms_start = meta.end();
-                    moved_data_start = meta.end();
+                    if let Some(a) = &mut new_ilst {
+                        a.old_pos = meta.end();
+                        a.old_end = meta.end();
+                    }
                 }
-            }
-            None => {
-                new_meta = Some(Meta { hdlr: new_hdlr.take(), ilst: new_ilst.take() });
-            }
-        }
-        match udta {
-            Some(udta) => {
-                update_atoms.push(&udta.bounds);
-                if meta.is_none() {
-                    new_atoms_start = udta.end();
-                    moved_data_start = udta.end();
-                }
-            }
-            None => {
-                new_udta = Some(Udta { meta: new_meta.take(), ..Default::default() });
-                new_atoms_start = moov.end();
-                moved_data_start = moov.end();
-            }
-        }
-        update_atoms.push(&moov.bounds);
 
-        let new_atom_len = if let Some(a) = &new_udta {
-            a.len()
-        } else if let Some(a) = &new_meta {
-            a.len()
-        } else {
-            new_hdlr.len_or_zero() + new_ilst.len_or_zero()
-        };
-        len_diff += new_atom_len as i64;
+                update_atoms.push(UpdateAtom {
+                    old_bounds: &meta.bounds,
+                    len_diff: new_hdlr.len_diff() + new_ilst.len_diff(),
+                });
+            }
+            None => {
+                new_meta = Some(NewAtom {
+                    old_pos: 0,
+                    old_end: 0,
+                    atom: Meta {
+                        hdlr: new_hdlr.take().map(|a| a.atom),
+                        ilst: new_ilst.take().map(|a| a.atom),
+                    },
+                });
+            }
+        }
     }
 
     if cfg.write_chapters {
-        // TODO write chapters
+        let chpl_timescale = cfg.chpl_timescale.or_mvhd(mvhd.timescale);
+        _chpl = chapters
+            .iter()
+            .map(|c| BorrowedChplItem {
+                start: unscale_duration(chpl_timescale, c.start),
+                title: &c.title,
+            })
+            .collect();
+
+        match chpl {
+            Some(chpl) => {
+                new_chpl = Some(NewAtom {
+                    old_pos: chpl.pos(),
+                    old_end: chpl.end(),
+                    atom: Chpl::Borrowed(&_chpl),
+                });
+            }
+            None => {
+                new_chpl = Some(NewAtom {
+                    old_pos: 0,
+                    old_end: 0,
+                    atom: Chpl::Borrowed(&_chpl),
+                });
+            }
+        }
     }
 
-    // reading moved data
-    let old_file_len = reader.seek(SeekFrom::End(0))?;
-    let moved_data_len = old_file_len - moved_data_start;
-    let mut moved_data = Vec::with_capacity(moved_data_len as usize);
-    reader.seek(SeekFrom::Start(moved_data_start))?;
-    reader.read_to_end(&mut moved_data)?;
+    if cfg.write_item_list || cfg.write_chapters {
+        match udta {
+            Some(udta) => {
+                if meta.is_none() {
+                    if let Some(a) = &mut new_meta {
+                        a.old_pos = udta.end();
+                        a.old_end = udta.end();
+                    }
+                }
+                if chpl.is_none() {
+                    if let Some(a) = &mut new_chpl {
+                        a.old_pos = udta.end();
+                        a.old_end = udta.end();
+                    }
+                }
+
+                update_atoms.push(UpdateAtom {
+                    old_bounds: &udta.bounds,
+                    len_diff: new_chpl.len_diff()
+                        + new_meta.len_diff()
+                        + new_hdlr.len_diff()
+                        + new_ilst.len_diff(),
+                });
+            }
+            None => {
+                new_udta = Some(NewAtom {
+                    old_pos: moov.end(),
+                    old_end: moov.end(),
+                    atom: Udta {
+                        chpl: new_chpl.take().map(|a| a.atom),
+                        meta: new_meta.take().map(|a| a.atom),
+                    },
+                });
+            }
+        }
+
+        update_atoms.push(UpdateAtom {
+            old_bounds: &moov.bounds,
+            len_diff: new_udta.len_diff()
+                + new_chpl.len_diff()
+                + new_meta.len_diff()
+                + new_hdlr.len_diff()
+                + new_ilst.len_diff(),
+        });
+    }
+
+    // add new atoms to the list
+    if let Some(a) = &new_udta {
+        new_atoms.push(NewAtom {
+            old_pos: a.old_pos,
+            old_end: a.old_end,
+            atom: AtomRef::Udta(&a.atom),
+        });
+    }
+    if let Some(a) = &new_chpl {
+        new_atoms.push(NewAtom {
+            old_pos: a.old_pos,
+            old_end: a.old_end,
+            atom: AtomRef::Chpl(&a.atom),
+        });
+    }
+    if let Some(a) = &new_meta {
+        new_atoms.push(NewAtom {
+            old_pos: a.old_pos,
+            old_end: a.old_end,
+            atom: AtomRef::Meta(&a.atom),
+        });
+    }
+    if let Some(a) = &new_ilst {
+        new_atoms.push(NewAtom {
+            old_pos: a.old_pos,
+            old_end: a.old_end,
+            atom: AtomRef::Ilst(&a.atom),
+        });
+    }
+    if let Some(a) = &new_hdlr {
+        new_atoms.push(NewAtom {
+            old_pos: a.old_pos,
+            old_end: a.old_pos,
+            atom: AtomRef::Hdlr(&a.atom),
+        });
+    }
+
+    new_atoms.sort_by_key(|a| a.old_pos);
 
     let mut writer = BufWriter::new(file);
     let writer = &mut writer;
 
-    // adjusting sample table chunk offsets
-    if mdat_pos > moov.pos() && len_diff != 0 {
+    let mut mdat_shift: i64 = 0;
+    for a in new_atoms.iter() {
+        if a.old_pos <= mdat_pos {
+            mdat_shift += a.atom.len() as i64 - a.old_len() as i64;
+        }
+    }
+
+    // adjust sample table chunk offsets
+    if mdat_shift != 0 {
         let stbl_atoms = moov.trak.iter().filter_map(|a| {
             a.mdia.as_ref().and_then(|a| a.minf.as_ref()).and_then(|a| a.stbl.as_ref())
         });
-
         let parse_cfg = ReadConfig::default();
+
         for stbl in stbl_atoms {
             if let Some(a) = &stbl.stco {
                 reader.seek(SeekFrom::Start(a.content_pos()))?;
@@ -578,7 +787,7 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, atoms: &[MetaItem]) -> c
 
                 writer.seek(SeekFrom::Start(a.content_pos() + 8))?;
                 for co in chunk_offset.offsets.iter() {
-                    let new_offset = (*co as i64 + len_diff) as u32;
+                    let new_offset = (*co as i64 + mdat_shift) as u32;
                     writer.write_be_u32(new_offset)?;
                 }
                 writer.flush()?;
@@ -589,7 +798,7 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, atoms: &[MetaItem]) -> c
 
                 writer.seek(SeekFrom::Start(a.content_pos() + 8))?;
                 for co in chunk_offset.offsets.iter() {
-                    let new_offset = (*co as i64 + len_diff) as u64;
+                    let new_offset = (*co as i64 + mdat_shift) as u64;
                     writer.write_be_u64(new_offset)?;
                 }
                 writer.flush()?;
@@ -597,42 +806,72 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, atoms: &[MetaItem]) -> c
         }
     }
 
-    // update existing ilst hierarchy atom lengths
+    // update changed atom lengths
     for a in update_atoms.iter().rev() {
-        let new_len = a.len() as i64 + len_diff;
-        writer.seek(SeekFrom::Start(a.pos()))?;
-        if a.ext() {
+        writer.seek(SeekFrom::Start(a.old_bounds.pos()))?;
+        if a.old_bounds.ext() {
             writer.write_be_u32(1)?;
             writer.skip(4)?;
-            writer.write_be_u64(new_len as u64)?;
+            writer.write_be_u64(a.new_len())?;
         } else {
-            writer.write_be_u32(new_len as u32)?;
+            writer.write_be_u32(a.new_len() as u32)?;
+        }
+        writer.flush()?;
+    }
+
+    // read moved data
+    let mut reader = BufReader::new(file);
+    let reader = &mut reader;
+
+    let old_file_len = reader.seek(SeekFrom::End(0))?;
+    let mut len_diff: i64 = 0;
+    let mut moved_data = Vec::new();
+    {
+        let mut new_atoms_iter = new_atoms.iter().peekable();
+
+        while let Some(a) = new_atoms_iter.next() {
+            len_diff += a.atom.len() as i64 - a.old_len() as i64;
+
+            let data_pos = a.old_end;
+            let data_end = new_atoms_iter.peek().map_or(old_file_len, |next| next.old_pos);
+            let data_len = data_end - data_pos;
+            let new_pos = (data_pos as i64 + len_diff) as u64;
+
+            let mut data = vec![0; data_len as usize];
+            reader.seek(SeekFrom::Start(data_pos))?;
+            reader.read_exact(&mut data)?;
+
+            moved_data.push(MovedData { new_pos, data });
         }
     }
 
-    // adjusting the file length
-    file.set_len((old_file_len as i64 + len_diff) as u64)?;
+    // adjust the file length
+    let new_file_len = (old_file_len as i64 + len_diff) as u64;
+    file.set_len(new_file_len)?;
 
-    // write missing ilst hierarchy and metadata
-    writer.seek(SeekFrom::Start(new_atoms_start))?;
-
-    if let Some(a) = new_udta {
-        a.write(writer)?;
-    } else if let Some(a) = new_meta {
-        a.write(writer)?;
-    } else {
-        if let Some(a) = new_hdlr {
-            a.write(writer)?;
-        }
-        if let Some(a) = new_ilst {
-            a.write(writer)?;
-        }
-    }
+    let mut writer = BufWriter::new(file);
+    let writer = &mut writer;
 
     // writing moved data
-    writer.seek(SeekFrom::Start((moved_data_start as i64 + len_diff) as u64))?;
-    writer.write_all(&moved_data)?;
-    writer.flush()?;
+    for d in moved_data {
+        writer.seek(SeekFrom::Start(d.new_pos))?;
+        writer.write_all(&d.data)?;
+        writer.flush()?;
+    }
+
+    // write new atoms
+    {
+        let mut pos_shift = 0;
+        for a in new_atoms.iter() {
+            let new_pos = a.old_pos as i64 + pos_shift;
+
+            writer.seek(SeekFrom::Start(new_pos as u64))?;
+            a.atom.write(writer)?;
+            writer.flush()?;
+
+            pos_shift += a.atom.len() as i64 - a.old_len() as i64;
+        }
+    }
 
     Ok(())
 }
@@ -653,20 +892,27 @@ pub(crate) fn dump_tag(
     let ftyp = Ftyp("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".to_owned());
     let mdat = Mdat::default();
     let mut moov = Moov {
-        mvhd: Some(Mvhd { version: 1, timescale: MVHD_TIMESCALE, duration, ..Default::default() }),
+        mvhd: Some(Mvhd {
+            version: 1,
+            timescale: MVHD_TIMESCALE,
+            duration,
+            ..Default::default()
+        }),
         udta: Some(Udta::default()),
         ..Default::default()
     };
 
     if cfg.write_item_list && !atoms.is_empty() {
         let udta = moov.udta.get_or_insert_with(Udta::default);
-        udta.meta = Some(Meta { hdlr: Some(Hdlr::meta()), ilst: Some(Ilst::Borrowed(atoms)) });
+        udta.meta = Some(Meta {
+            hdlr: Some(Hdlr::meta()),
+            ilst: Some(Ilst::Borrowed(atoms)),
+        });
     }
 
     let mut _chpl = Vec::new();
     if cfg.write_chapters && !chapters.is_empty() {
         let chpl_timescale = cfg.chpl_timescale.or_mvhd(MVHD_TIMESCALE);
-        println!("chpl_timescale: {}", chpl_timescale);
 
         let udta = moov.udta.get_or_insert_with(Udta::default);
         _chpl = chapters

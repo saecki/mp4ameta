@@ -88,16 +88,6 @@ impl MetaItem {
             (fourcc, _, _) => DataIdent::Fourcc(fourcc),
         };
 
-        if data.is_empty() {
-            return Err(crate::Error::new(
-                crate::ErrorKind::AtomNotFound(DATA),
-                format!(
-                    "Error constructing metadata item '{}', missing data atom",
-                    parent.fourcc()
-                ),
-            ));
-        }
-
         Ok(MetaItem { ident, data })
     }
 

@@ -67,6 +67,7 @@ impl WriteAtom for Moov<'_> {
 #[derive(Default)]
 pub struct MoovBounds {
     pub bounds: AtomBounds,
+    pub mvhd: Option<Mvhd>,
     pub trak: Vec<TrakBounds>,
     pub udta: Option<UdtaBounds>,
 }
@@ -91,6 +92,9 @@ impl FindAtom for Moov<'_> {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
+                MOVIE_HEADER => {
+                    moov.mvhd = Some(Mvhd::parse(reader, &ReadConfig::default(), head.size())?)
+                }
                 TRACK => moov.trak.push(Trak::find(reader, head.size())?),
                 USER_DATA => moov.udta = Some(Udta::find(reader, head.size())?),
                 _ => reader.skip(head.content_len() as i64)?,

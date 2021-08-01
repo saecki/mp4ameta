@@ -28,7 +28,7 @@ impl ParseAtom for Chpl<'_> {
         size: Size,
     ) -> crate::Result<Self> {
         let (version, _) = parse_full_head(reader)?;
-        let mut parsed_bytes = 4;
+        let mut parsed_bytes = 5;
 
         match version {
             0 => (),
@@ -45,7 +45,6 @@ impl ParseAtom for Chpl<'_> {
         }
 
         let entries = reader.read_u8()?;
-        parsed_bytes += 1;
 
         let mut chpl = Vec::with_capacity(entries as usize);
         while parsed_bytes < size.content_len() {
@@ -105,5 +104,27 @@ impl Chpl<'_> {
             Self::Owned(v) => Some(v),
             Self::Borrowed(_) => None,
         }
+    }
+}
+
+pub struct ChplBounds {
+    pub bounds: AtomBounds,
+}
+
+impl Deref for ChplBounds {
+    type Target = AtomBounds;
+
+    fn deref(&self) -> &Self::Target {
+        &self.bounds
+    }
+}
+
+impl FindAtom for Chpl<'_> {
+    type Bounds = ChplBounds;
+
+    fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
+        let bounds = find_bounds(reader, size)?;
+        seek_to_end(reader, &bounds)?;
+        Ok(Self::Bounds { bounds })
     }
 }

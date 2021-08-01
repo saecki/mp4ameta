@@ -113,7 +113,7 @@ impl Tag {
 
     /// Attempts to write the MPEG-4 audio tag to the writer.
     pub fn write_with(&self, file: &File, cfg: &WriteConfig) -> crate::Result<()> {
-        atom::write_tag(file, cfg, &self.atoms)
+        atom::write_tag(file, cfg, &self.atoms, &self.chapters)
     }
 
     /// Attempts to write the MPEG-4 audio tag to the writer. This will overwrite any metadata
