@@ -33,11 +33,13 @@
 //!             └─ data
 //! ```
 
+use std::cmp;
 use std::convert::TryFrom;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use std::num::NonZeroU32;
 use std::ops::{Deref, DerefMut};
+use std::time::Duration;
 
 use crate::{AudioInfo, Chapter, ErrorKind, Tag};
 
@@ -280,7 +282,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
     })?;
     let duration = scale_duration(mvhd.timescale, mvhd.duration);
 
-    let ilst = moov
+    let metaitems = moov
         .udta
         .as_mut()
         .and_then(|a| a.meta.take())
@@ -297,24 +299,9 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
             chpl.sort_by_key(|c| c.start);
             chapters.reserve(chpl.len());
 
-            let mut iter = chpl.into_iter().peekable();
-            while let Some(c) = iter.next() {
-                let scaled_duration = match iter.peek() {
-                    Some(next) => {
-                        // duration until next chapter start
-                        let diff = next.start.saturating_sub(c.start);
-                        scale_duration(chpl_timescale, diff)
-                    }
-                    None => {
-                        // remaining duration of movie
-                        let scaled_start = scale_duration(chpl_timescale, c.start);
-                        duration.saturating_sub(scaled_start)
-                    }
-                };
-
+            for c in chpl.into_iter() {
                 chapters.push(Chapter {
                     start: scale_duration(chpl_timescale, c.start),
-                    duration: scaled_duration,
                     title: c.title,
                 });
             }
@@ -362,7 +349,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
         }
     }
 
-    let mut info = AudioInfo { duration: Some(duration), ..Default::default() };
+    let mut info = AudioInfo { duration, ..Default::default() };
 
     if cfg.read_audio_info {
         let mp4a = moov.trak.into_iter().find_map(|trak| {
@@ -380,7 +367,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
         }
     }
 
-    Ok(Tag::new(ftyp, info, ilst, chapters))
+    Ok(Tag { ftyp, info, metaitems, chapters })
 }
 
 fn read_chapters<'a>(
@@ -395,11 +382,7 @@ fn read_chapters<'a>(
     for o in offsets {
         let duration = durations.next().map_or(0, |i| i.sample_duration) as u64;
         let title = read_chapter_title(reader, o)?;
-        chapters.push(Chapter {
-            start: scale_duration(timescale, start),
-            duration: scale_duration(timescale, duration),
-            title,
-        });
+        chapters.push(Chapter { start: scale_duration(timescale, start), title });
 
         start += duration;
     }
@@ -539,7 +522,7 @@ struct MovedData {
 pub(crate) fn write_tag(
     file: &File,
     cfg: &WriteConfig,
-    atoms: &[MetaItem],
+    metaitems: &[MetaItem],
     chapters: &[Chapter],
 ) -> crate::Result<()> {
     let mut reader = BufReader::new(file);
@@ -605,14 +588,14 @@ pub(crate) fn write_tag(
                 new_ilst = Some(NewAtom {
                     old_pos: ilst.pos(),
                     old_end: ilst.end(),
-                    atom: Ilst::Borrowed(atoms),
+                    atom: Ilst::Borrowed(metaitems),
                 });
             }
             None => {
                 new_ilst = Some(NewAtom {
                     old_pos: 0,
                     old_end: 0,
-                    atom: Ilst::Borrowed(atoms),
+                    atom: Ilst::Borrowed(metaitems),
                 });
             }
         }
@@ -878,16 +861,13 @@ pub(crate) fn write_tag(
 
 /// Attempts to dump the metadata atoms to the writer. This doesn't include a complete MPEG-4
 /// container hierarchy and won't result in a usable file.
-pub(crate) fn dump_tag(
-    writer: &mut impl Write,
-    cfg: &WriteConfig,
-    atoms: &[MetaItem],
-    chapters: &[Chapter],
-) -> crate::Result<()> {
+pub(crate) fn dump_tag(writer: &mut impl Write, cfg: &WriteConfig, tag: &Tag) -> crate::Result<()> {
     const MVHD_TIMESCALE: u32 = 1000;
+    let Tag { metaitems, chapters, info, .. } = tag;
 
-    let duration =
-        chapters.last().map_or(0, |c| unscale_duration(MVHD_TIMESCALE, c.start + c.duration));
+    let chapter_start = chapters.last().map_or(Duration::ZERO, |c| c.start);
+    let duration = cmp::max(info.duration, chapter_start);
+    let scaled_duration = unscale_duration(MVHD_TIMESCALE, duration);
 
     let ftyp = Ftyp("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".to_owned());
     let mdat = Mdat::default();
@@ -895,18 +875,18 @@ pub(crate) fn dump_tag(
         mvhd: Some(Mvhd {
             version: 1,
             timescale: MVHD_TIMESCALE,
-            duration,
+            duration: scaled_duration,
             ..Default::default()
         }),
         udta: Some(Udta::default()),
         ..Default::default()
     };
 
-    if cfg.write_item_list && !atoms.is_empty() {
+    if cfg.write_item_list && !metaitems.is_empty() {
         let udta = moov.udta.get_or_insert_with(Udta::default);
         udta.meta = Some(Meta {
             hdlr: Some(Hdlr::meta()),
-            ilst: Some(Ilst::Borrowed(atoms)),
+            ilst: Some(Ilst::Borrowed(metaitems)),
         });
     }
 

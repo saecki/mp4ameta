@@ -11,20 +11,15 @@ impl Tag {
     }
 
     /// Returns the duration in seconds.
-    pub fn duration(&self) -> Option<Duration> {
+    pub fn duration(&self) -> Duration {
         self.info.duration
     }
 
     /// Returns the duration formatted in an easily readable way.
     pub(crate) fn format_duration(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.duration() {
-            Some(d) => {
-                write!(f, "duration: ")?;
-                util::format_duration(f, d)?;
-                writeln!(f)
-            }
-            None => Ok(()),
-        }
+        write!(f, "duration: ")?;
+        util::format_duration(f, self.duration())?;
+        writeln!(f)
     }
 
     /// Returns the channel configuration.

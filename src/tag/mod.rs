@@ -23,13 +23,13 @@ mod tuple;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Tag {
     /// The `ftyp` atom.
-    ftyp: String,
+    pub(crate) ftyp: String,
     /// Readonly audio information
-    info: AudioInfo,
+    pub(crate) info: AudioInfo,
     /// A list of Metadata item atoms.
-    atoms: Vec<MetaItem>,
+    pub(crate) metaitems: Vec<MetaItem>,
     /// A list of chapters.
-    chapters: Vec<Chapter>,
+    pub(crate) chapters: Vec<Chapter>,
 }
 
 impl fmt::Display for Tag {
@@ -80,16 +80,6 @@ impl fmt::Display for Tag {
 }
 
 impl Tag {
-    /// Creates a new MPEG-4 audio tag containing the atom.
-    pub(crate) const fn new(
-        ftyp: String,
-        info: AudioInfo,
-        atoms: Vec<MetaItem>,
-        chapters: Vec<Chapter>,
-    ) -> Self {
-        Self { ftyp, info, atoms, chapters }
-    }
-
     /// Attempts to read a MPEG-4 audio tag from the reader.
     pub fn read_with(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> crate::Result<Self> {
         atom::read_tag(reader, cfg)
@@ -113,7 +103,7 @@ impl Tag {
 
     /// Attempts to write the MPEG-4 audio tag to the writer.
     pub fn write_with(&self, file: &File, cfg: &WriteConfig) -> crate::Result<()> {
-        atom::write_tag(file, cfg, &self.atoms, &self.chapters)
+        atom::write_tag(file, cfg, &self.metaitems, &self.chapters)
     }
 
     /// Attempts to write the MPEG-4 audio tag to the writer. This will overwrite any metadata
@@ -136,7 +126,7 @@ impl Tag {
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.
     pub fn dump_with(&self, writer: &mut impl Write, cfg: &WriteConfig) -> crate::Result<()> {
-        atom::dump_tag(writer, cfg, &self.atoms, &self.chapters)
+        atom::dump_tag(writer, cfg, self)
     }
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.
@@ -351,11 +341,18 @@ impl Tag {
 
     /// Add a chapter.
     pub fn add_chapter(&mut self, chapter: Chapter) {
-        let pos = self.chapters().position(|c| c.duration < chapter.duration);
+        let pos = self.chapters().position(|c| chapter.start < c.start);
 
         match pos {
-            Some(i) => self.chapters.insert(i + 1, chapter),
-            None => self.chapters.insert(0, chapter),
+            Some(i) => self.chapters.insert(i, chapter),
+            None => self.chapters.push(chapter),
+        }
+    }
+
+    /// Add all chapters.
+    pub fn add_all_chapters(&mut self, chapters: impl IntoIterator<Item = Chapter>) {
+        for c in chapters.into_iter() {
+            self.add_chapter(c);
         }
     }
 
@@ -372,7 +369,7 @@ impl Tag {
     fn format_chapters(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if !self.chapters.is_empty() {
             writeln!(f, "chapters:")?;
-            for c in self.chapters() {
+            for (i, c) in self.chapters().enumerate() {
                 writeln!(f, "    {}", c.title)?;
                 if c.start == Duration::ZERO {
                     f.write_str("      start: 0:00")?;
@@ -380,8 +377,14 @@ impl Tag {
                     f.write_str("      start: ")?;
                     util::format_duration(f, c.start)?;
                 }
+
+                let end = match self.chapters.get(i + 1) {
+                    Some(next) => next.start,
+                    None => self.duration(),
+                };
+                let duration = end.saturating_sub(c.start);
                 f.write_str(", duration: ")?;
-                util::format_duration(f, c.duration)?;
+                util::format_duration(f, duration)?;
                 writeln!(f)?;
             }
         }
@@ -573,7 +576,7 @@ impl Tag {
     /// assert_eq!(tag.data_of(&test).next().unwrap().string(), Some("data"));
     /// ```
     pub fn data_of<'a>(&'a self, ident: &'a impl Ident) -> impl Iterator<Item = &Data> {
-        match self.atoms.iter().find(|a| ident == &a.ident) {
+        match self.metaitems.iter().find(|a| ident == &a.ident) {
             Some(a) => a.data.iter(),
             None => [].iter(),
         }
@@ -594,7 +597,7 @@ impl Tag {
     /// assert_eq!(tag.strings_of(&test).next().unwrap(), "data1");
     /// ```
     pub fn data_mut_of(&mut self, ident: &impl Ident) -> impl Iterator<Item = &mut Data> {
-        match self.atoms.iter_mut().find(|a| ident == &a.ident) {
+        match self.metaitems.iter_mut().find(|a| ident == &a.ident) {
             Some(a) => a.data.iter_mut(),
             None => [].iter_mut(),
         }
@@ -615,9 +618,9 @@ impl Tag {
     /// ```
     pub fn take_data_of(&mut self, ident: &impl Ident) -> impl Iterator<Item = Data> {
         let mut i = 0;
-        while i < self.atoms.len() {
-            if ident == &self.atoms[i].ident {
-                let removed = self.atoms.remove(i);
+        while i < self.metaitems.len() {
+            if ident == &self.metaitems[i].ident {
+                let removed = self.metaitems.remove(i);
                 return removed.data.into_iter();
             }
 
@@ -855,7 +858,7 @@ impl Tag {
     /// assert_eq!(data.next(), None);
     /// ```
     pub fn data(&self) -> impl Iterator<Item = (&DataIdent, &Data)> {
-        self.atoms.iter().flat_map(|a| a.data.iter().map(move |d| (&a.ident, d)))
+        self.metaitems.iter().flat_map(|a| a.data.iter().map(move |d| (&a.ident, d)))
     }
 
     /// Returns an iterator over mutable references to all data.
@@ -878,7 +881,7 @@ impl Tag {
     /// assert_eq!(strings.next(), None);
     /// ```
     pub fn data_mut(&mut self) -> impl Iterator<Item = (&DataIdent, &mut Data)> {
-        self.atoms.iter_mut().flat_map(|a| {
+        self.metaitems.iter_mut().flat_map(|a| {
             let ident = &a.ident;
             let data = &mut a.data;
             data.iter_mut().map(move |d| (ident, d))
@@ -903,7 +906,7 @@ impl Tag {
     /// assert_eq!(image, Data::Jpeg(b"data".to_vec()));
     /// ```
     pub fn take_data(self) -> impl Iterator<Item = (Rc<DataIdent>, Data)> {
-        self.atoms.into_iter().flat_map(move |a| {
+        self.metaitems.into_iter().flat_map(move |a| {
             let ident = Rc::new(a.ident);
             let data = a.data;
             data.into_iter().map(move |d| (ident.clone(), d))
@@ -1012,7 +1015,7 @@ impl Tag {
     /// assert!(tag.data_of(&test).next().is_none());
     /// ```
     pub fn remove_data_of(&mut self, ident: &impl Ident) {
-        self.atoms.retain(|a| ident != &a.ident);
+        self.metaitems.retain(|a| ident != &a.ident);
     }
 
     /// Retains only the bytes, of the atom corresponding to the identifier, that match the
@@ -1131,12 +1134,12 @@ impl Tag {
     /// assert_eq!(data.next(), None);
     /// ```
     pub fn retain_data_of(&mut self, ident: &impl Ident, predicate: impl Fn(&Data) -> bool) {
-        let pos = self.atoms.iter().position(|a| ident == &a.ident);
+        let pos = self.metaitems.iter().position(|a| ident == &a.ident);
 
         if let Some(i) = pos {
-            self.atoms[i].data.retain(predicate);
-            if self.atoms[i].data.is_empty() {
-                self.atoms.remove(i);
+            self.metaitems[i].data.retain(predicate);
+            if self.metaitems[i].data.is_empty() {
+                self.metaitems.remove(i);
             }
         }
     }
@@ -1264,8 +1267,8 @@ impl Tag {
     /// ```
     pub fn retain_data(&mut self, predicate: impl Fn(&DataIdent, &Data) -> bool) {
         let mut i = 0;
-        while i < self.atoms.len() {
-            let a = &mut self.atoms[i];
+        while i < self.metaitems.len() {
+            let a = &mut self.metaitems[i];
             let mut j = 0;
             while j < a.data.len() {
                 if predicate(&a.ident, &a.data[j]) {
@@ -1276,7 +1279,7 @@ impl Tag {
             }
 
             if a.data.is_empty() {
-                self.atoms.remove(i);
+                self.metaitems.remove(i);
             } else {
                 i += 1;
             }
@@ -1298,7 +1301,7 @@ impl Tag {
     /// tag.clear();
     /// assert!(tag.is_empty());
     pub fn clear(&mut self) {
-        self.atoms.clear();
+        self.metaitems.clear();
     }
 
     /// If an atom corresponding to the identifier exists, it's data will be replaced by the new
@@ -1315,12 +1318,12 @@ impl Tag {
     /// assert_eq!(tag.strings_of(&test).next().unwrap(), "data");
     /// ```
     pub fn set_data(&mut self, ident: (impl Ident + Into<DataIdent>), data: Data) {
-        match self.atoms.iter_mut().find(|a| ident == a.ident) {
+        match self.metaitems.iter_mut().find(|a| ident == a.ident) {
             Some(a) => {
                 a.data.clear();
                 a.data.push(data);
             }
-            None => self.atoms.push(MetaItem::new(ident.into(), vec![data])),
+            None => self.metaitems.push(MetaItem::new(ident.into(), vec![data])),
         }
     }
 
@@ -1350,13 +1353,13 @@ impl Tag {
         ident: (impl Ident + Into<DataIdent>),
         data: impl IntoIterator<Item = Data>,
     ) {
-        match self.atoms.iter_mut().find(|a| ident == a.ident) {
+        match self.metaitems.iter_mut().find(|a| ident == a.ident) {
             Some(a) => {
                 a.data.clear();
                 a.data.extend(data);
             }
             None => {
-                self.atoms.push(MetaItem::new(ident.into(), data.into_iter().collect()));
+                self.metaitems.push(MetaItem::new(ident.into(), data.into_iter().collect()));
             }
         }
     }
@@ -1380,9 +1383,9 @@ impl Tag {
     /// assert_eq!(strings.next(), None)
     /// ```
     pub fn add_data(&mut self, ident: (impl Ident + Into<DataIdent>), data: Data) {
-        match self.atoms.iter_mut().find(|a| ident == a.ident) {
+        match self.metaitems.iter_mut().find(|a| ident == a.ident) {
             Some(a) => a.data.push(data),
-            None => self.atoms.push(MetaItem::new(ident.into(), vec![data])),
+            None => self.metaitems.push(MetaItem::new(ident.into(), vec![data])),
         }
     }
 
@@ -1412,9 +1415,9 @@ impl Tag {
         ident: (impl Ident + Into<DataIdent>),
         data: impl IntoIterator<Item = Data>,
     ) {
-        match self.atoms.iter_mut().find(|a| ident == a.ident) {
+        match self.metaitems.iter_mut().find(|a| ident == a.ident) {
             Some(a) => a.data.extend(data),
-            None => self.atoms.push(MetaItem::new(ident.into(), data.into_iter().collect())),
+            None => self.metaitems.push(MetaItem::new(ident.into(), data.into_iter().collect())),
         }
     }
 
@@ -1434,6 +1437,6 @@ impl Tag {
     /// assert!(tag.is_empty());
     /// ```
     pub fn is_empty(&self) -> bool {
-        self.atoms.is_empty()
+        self.metaitems.is_empty()
     }
 }

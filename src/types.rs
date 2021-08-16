@@ -343,7 +343,7 @@ impl SampleRate {
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct AudioInfo {
     /// The duration of the track.
-    pub duration: Option<Duration>,
+    pub duration: Duration,
     /// The channel configuration of the track.
     pub channel_config: Option<ChannelConfig>,
     /// The sample rate of the track.
@@ -425,20 +425,13 @@ impl ImgFmt {
 pub struct Chapter {
     /// The start of the chapter.
     pub start: Duration,
-    /// The duration of the chapter.
-    pub duration: Duration,
     /// The title of the chapter.
     pub title: String,
 }
 
 impl Chapter {
     /// Creates a new chapter.
-    pub fn new(start: Duration, duration: Duration, title: impl Into<String>) -> Self {
-        Self { start, duration, title: title.into() }
-    }
-
-    /// Returns the end of the chapter
-    pub fn end(&self) -> Duration {
-        self.start + self.duration
+    pub fn new(start: Duration, title: impl Into<String>) -> Self {
+        Self { start, title: title.into() }
     }
 }
