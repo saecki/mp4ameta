@@ -299,7 +299,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
             chpl.sort_by_key(|c| c.start);
             chapters.reserve(chpl.len());
 
-            for c in chpl.into_iter() {
+            for c in chpl {
                 chapters.push(Chapter {
                     start: scale_duration(chpl_timescale, c.start),
                     title: c.title,

@@ -351,7 +351,7 @@ impl Tag {
 
     /// Add all chapters.
     pub fn add_all_chapters(&mut self, chapters: impl IntoIterator<Item = Chapter>) {
-        for c in chapters.into_iter() {
+        for c in chapters {
             self.add_chapter(c);
         }
     }
@@ -1045,7 +1045,7 @@ impl Tag {
     /// ```
     pub fn retain_bytes_of(&mut self, ident: &impl Ident, predicate: impl Fn(&[u8]) -> bool) {
         #[allow(clippy::redundant_closure)]
-        self.retain_data_of(ident, |d| d.bytes().map_or(true, |b| predicate(b)))
+        self.retain_data_of(ident, |d| d.bytes().map_or(true, |b| predicate(b)));
     }
 
     /// Retains only the strings, of the atom corresponding to the identifier, that match the
@@ -1075,7 +1075,7 @@ impl Tag {
     /// ```
     pub fn retain_strings_of(&mut self, ident: &impl Ident, predicate: impl Fn(&str) -> bool) {
         #[allow(clippy::redundant_closure)]
-        self.retain_data_of(ident, |d| d.string().map_or(true, |s| predicate(s)))
+        self.retain_data_of(ident, |d| d.string().map_or(true, |s| predicate(s)));
     }
 
     /// Retains only the images, of the atom corresponding to the identifier, that match the
@@ -1105,7 +1105,7 @@ impl Tag {
     /// ```
     pub fn retain_images_of(&mut self, ident: &impl Ident, predicate: impl Fn(ImgRef) -> bool) {
         #[allow(clippy::redundant_closure)]
-        self.retain_data_of(ident, |d| d.image().map_or(true, |i| predicate(i)))
+        self.retain_data_of(ident, |d| d.image().map_or(true, |i| predicate(i)));
     }
 
     /// Retains only the data, of the atom corresponding to the identifier, that matches the
@@ -1300,6 +1300,7 @@ impl Tag {
     /// assert!(!tag.is_empty());
     /// tag.clear();
     /// assert!(tag.is_empty());
+    /// ```
     pub fn clear(&mut self) {
         self.metaitems.clear();
     }
