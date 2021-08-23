@@ -11,6 +11,12 @@
 //! │     ├─ mdhd
 //! │     ├─ hdlr
 //! │     └─ minf
+//! │        ├─ dinf
+//! │        │  └─ dref
+//! │        │     └─ url
+//! │        ├─ gmhd
+//! │        │  ├─ gmin
+//! │        │  └─ text
 //! │        └─ stbl
 //! │           ├─ stsd
 //! │           │  ├─ mp4a
@@ -50,7 +56,11 @@ use util::*;
 use chap::*;
 use chpl::*;
 use co64::*;
+use dinf::*;
+use dref::*;
 use ftyp::*;
+use gmhd::*;
+use gmin::*;
 use hdlr::*;
 use ilst::*;
 use mdat::*;
@@ -72,6 +82,7 @@ use tkhd::*;
 use trak::*;
 use tref::*;
 use udta::*;
+use url::*;
 
 pub use data::Data;
 pub use metaitem::MetaItem;
@@ -87,7 +98,11 @@ mod chap;
 mod chpl;
 mod co64;
 mod data;
+mod dinf;
+mod dref;
 mod ftyp;
+mod gmhd;
+mod gmin;
 mod hdlr;
 mod ilst;
 mod mdat;
@@ -110,6 +125,7 @@ mod tkhd;
 mod trak;
 mod tref;
 mod udta;
+mod url;
 
 trait Atom: Sized {
     const FOURCC: Fourcc;

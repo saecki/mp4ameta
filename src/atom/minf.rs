@@ -2,6 +2,8 @@ use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Minf {
+    pub gmhd: Option<Gmhd>,
+    pub dinf: Option<Dinf>,
     pub stbl: Option<Stbl>,
 }
 
@@ -36,6 +38,12 @@ impl ParseAtom for Minf {
 impl WriteAtom for Minf {
     fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
         self.write_head(writer)?;
+        if let Some(a) = &self.gmhd {
+            a.write(writer)?;
+        }
+        if let Some(a) = &self.dinf {
+            a.write(writer)?;
+        }
         if let Some(a) = &self.stbl {
             a.write(writer)?;
         }
@@ -43,7 +51,8 @@ impl WriteAtom for Minf {
     }
 
     fn size(&self) -> Size {
-        let content_len = self.stbl.len_or_zero();
+        let content_len =
+            self.gmhd.len_or_zero() + self.dinf.len_or_zero() + self.stbl.len_or_zero();
         Size::from(content_len)
     }
 }

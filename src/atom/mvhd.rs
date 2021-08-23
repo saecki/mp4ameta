@@ -58,10 +58,10 @@ impl ParseAtom for Mvhd {
         mvhd.preferred_rate = reader.read_be_u32()?;
         mvhd.preferred_volume = reader.read_be_u16()?;
         reader.skip(10)?; //reserved
-        for i in 0..3 {
-            mvhd.matrix[i][0] = reader.read_be_u32()?;
-            mvhd.matrix[i][1] = reader.read_be_u32()?;
-            mvhd.matrix[i][2] = reader.read_be_u32()?;
+        for row in mvhd.matrix.iter_mut() {
+            for i in row.iter_mut() {
+                *i = reader.read_be_u32()?;
+            }
         }
         mvhd.preview_time = reader.read_be_u32()?;
         mvhd.preview_duration = reader.read_be_u32()?;
@@ -103,10 +103,10 @@ impl WriteAtom for Mvhd {
         writer.write_be_u32(self.preferred_rate)?;
         writer.write_be_u16(self.preferred_volume)?;
         writer.write_all(&[0; 10])?; //reserved
-        for i in 0..3 {
-            writer.write_be_u32(self.matrix[i][0])?;
-            writer.write_be_u32(self.matrix[i][1])?;
-            writer.write_be_u32(self.matrix[i][2])?;
+        for row in self.matrix {
+            for i in row {
+                writer.write_be_u32(i)?;
+            }
         }
         writer.write_be_u32(self.preview_time)?;
         writer.write_be_u32(self.preview_duration)?;

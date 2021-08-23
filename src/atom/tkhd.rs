@@ -59,10 +59,10 @@ impl ParseAtom for Tkhd {
         tkhd.alternate_group = reader.read_be_u16()?;
         tkhd.volume = reader.read_be_u16()?;
         reader.skip(2)?; // reserved
-        for i in 0..3 {
-            tkhd.matrix[i][0] = reader.read_be_u32()?;
-            tkhd.matrix[i][1] = reader.read_be_u32()?;
-            tkhd.matrix[i][2] = reader.read_be_u32()?;
+        for row in tkhd.matrix.iter_mut() {
+            for i in row.iter_mut() {
+                *i = reader.read_be_u32()?;
+            }
         }
         tkhd.track_width = reader.read_be_u32()?;
         tkhd.track_height = reader.read_be_u32()?;
@@ -103,10 +103,10 @@ impl WriteAtom for Tkhd {
         writer.write_be_u16(self.alternate_group)?;
         writer.write_be_u16(self.volume)?;
         writer.write_all(&[0; 2])?; // reserved
-        for i in 0..3 {
-            writer.write_be_u32(self.matrix[i][0])?;
-            writer.write_be_u32(self.matrix[i][1])?;
-            writer.write_be_u32(self.matrix[i][2])?;
+        for row in self.matrix {
+            for i in row {
+                writer.write_be_u32(i)?;
+            }
         }
         writer.write_be_u32(self.track_width)?;
         writer.write_be_u32(self.track_height)?;

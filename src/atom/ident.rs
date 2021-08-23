@@ -26,6 +26,16 @@ pub(crate) const MEDIA: Fourcc = Fourcc(*b"mdia");
 pub(crate) const MEDIA_HEADER: Fourcc = Fourcc(*b"mdhd");
 /// (`minf`)
 pub(crate) const MEDIA_INFORMATION: Fourcc = Fourcc(*b"minf");
+/// (`gmhd`)
+pub(crate) const BASE_MEDIA_INFORMATION_HEADER: Fourcc = Fourcc(*b"gmhd");
+/// (`gmin`)
+pub(crate) const BASE_MEDIA_INFORMATION: Fourcc = Fourcc(*b"gmin");
+/// (`dinf`)
+pub(crate) const DATA_INFORMATION: Fourcc = Fourcc(*b"dinf");
+/// (`dref`)
+pub(crate) const DATA_REFERENCE: Fourcc = Fourcc(*b"dref");
+/// (`url `)
+pub(crate) const URL_MEDIA: Fourcc = Fourcc(*b"url ");
 /// (`stbl`)
 pub(crate) const SAMPLE_TABLE: Fourcc = Fourcc(*b"stbl");
 /// (`stsz`)

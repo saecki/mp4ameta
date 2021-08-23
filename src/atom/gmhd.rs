@@ -1,0 +1,55 @@
+use super::*;
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct Gmhd {
+    gmin: Option<Gmin>,
+    text: Option<Text>,
+}
+
+impl Atom for Gmhd {
+    const FOURCC: Fourcc = BASE_MEDIA_INFORMATION_HEADER;
+}
+
+impl ParseAtom for Gmhd {
+    fn parse_atom(
+        reader: &mut (impl Read + Seek),
+        cfg: &ReadConfig,
+        size: Size,
+    ) -> crate::Result<Self> {
+        let mut gmhd = Self::default();
+        let mut parsed_bytes = 0;
+
+        while parsed_bytes < size.content_len() {
+            let head = parse_head(reader)?;
+
+            match head.fourcc() {
+                BASE_MEDIA_INFORMATION => gmhd.gmin = Some(Gmin::parse(reader, cfg, head.size())?),
+                TEXT_MEDIA => gmhd.text = Some(Text::parse(reader, cfg, head.size())?),
+                _ => reader.skip(head.content_len() as i64)?,
+            }
+
+            parsed_bytes += head.len();
+        }
+
+        Ok(gmhd)
+    }
+}
+
+impl WriteAtom for Gmhd {
+    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+        self.write_head(writer)?;
+
+        if let Some(a) = &self.gmin {
+            a.write(writer)?;
+        }
+        if let Some(a) = &self.text {
+            a.write(writer)?;
+        }
+        Ok(())
+    }
+
+    fn size(&self) -> Size {
+        let content_len = 8 + self.gmin.len_or_zero() + self.text.len_or_zero();
+        Size::from(content_len)
+    }
+}
