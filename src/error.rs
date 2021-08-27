@@ -61,7 +61,7 @@ impl error::Error for Error {
 
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Error {
-        Error { kind: ErrorKind::Io(err), description: "".to_owned() }
+        Error { description: format!("IO error: {}", err.to_string()), kind: ErrorKind::Io(err) }
     }
 }
 
