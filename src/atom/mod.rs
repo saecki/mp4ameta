@@ -133,14 +133,14 @@ pub const READ_CONFIG: ReadConfig = ReadConfig {
     read_image_data: true,
     read_chapters: true,
     read_audio_info: true,
-    chpl_timescale: Timescale::Fixed(DEFAULT_CHPL_TIMESCALE),
+    chpl_timescale: ChplTimescale::Fixed(DEFAULT_CHPL_TIMESCALE),
 };
 
 /// The default configuration for writing tags.
 pub const WRITE_CONFIG: WriteConfig = WriteConfig {
     write_item_list: true,
     write_chapters: true,
-    chpl_timescale: Timescale::Fixed(DEFAULT_CHPL_TIMESCALE),
+    chpl_timescale: ChplTimescale::Fixed(DEFAULT_CHPL_TIMESCALE),
 };
 
 trait Atom: Sized {
@@ -231,16 +231,23 @@ impl<T: WriteAtom> LenOrZero for Option<T> {
     }
 }
 
-/// A struct representing a timescale (the number of units that pass per second).
+/// A struct representing a timescale (the number of units that pass per second) that is used to
+/// scale time for chapter list (chpl) atoms.
+///
+/// | library          | timescale  |
+/// |------------------|------------|
+/// | FFMpeg (default) | 10,000,000 |
+/// | mp4v2            |      1,000 |
+/// | mutagen          |       mvhd |
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum Timescale {
+pub enum ChplTimescale {
     /// Use a fixed timescale.
     Fixed(NonZeroU32),
     /// Use the timescale defined in the movie header (mvhd) atom.
     Mvhd,
 }
 
-impl Timescale {
+impl ChplTimescale {
     fn or_mvhd(self, mvhd_timescale: u32) -> u32 {
         match self {
             Self::Fixed(v) => v.get(),
@@ -260,16 +267,8 @@ pub struct ReadConfig {
     pub read_chapters: bool,
     /// Wheter audio information will be read.
     pub read_audio_info: bool,
-
     /// The timescale that is used to scale time for chapter list (chpl) atoms.
-    ///
-    /// | library          | timescale  |
-    /// |------------------|------------|
-    /// | FFMpeg (default) | 10,000,000 |
-    /// | mp4v2            |      1,000 |
-    /// | mutagen          |       mvhd |
-    ///
-    pub chpl_timescale: Timescale,
+    pub chpl_timescale: ChplTimescale,
 }
 
 impl Default for ReadConfig {
@@ -441,16 +440,8 @@ pub struct WriteConfig {
     pub write_item_list: bool,
     /// Wheter to overwrite chapter information.
     pub write_chapters: bool,
-
     /// The timescale that is used to scale time for chapter list (chpl) atoms.
-    ///
-    /// | library          | timescale  |
-    /// |------------------|------------|
-    /// | FFMpeg (default) | 10,000,000 |
-    /// | mp4v2            |      1,000 |
-    /// | mutagen          |       mvhd |
-    ///
-    pub chpl_timescale: Timescale,
+    pub chpl_timescale: ChplTimescale,
 }
 
 impl Default for WriteConfig {
@@ -463,26 +454,30 @@ trait LenDiff {
     fn len_diff(&self) -> i64;
 }
 
-impl<T: WriteAtom> LenDiff for Option<NewAtom<T>> {
+impl<T: WriteAtom> LenDiff for Option<ReplaceAtom<T>> {
     fn len_diff(&self) -> i64 {
         self.as_ref().map_or(0, |a| a.len_diff())
     }
 }
 
 #[derive(Debug)]
-struct NewAtom<T> {
+struct ReplaceAtom<T> {
     old_pos: u64,
     old_end: u64,
     atom: T,
 }
 
-impl<T> NewAtom<T> {
+impl<T> ReplaceAtom<T> {
     const fn old_len(&self) -> u64 {
         self.old_end - self.old_pos
     }
+
+    fn map_atom<A>(&self, atom: A) -> ReplaceAtom<A> {
+        ReplaceAtom { old_pos: self.old_pos, old_end: self.old_end, atom }
+    }
 }
 
-impl<T: WriteAtom> NewAtom<T> {
+impl<T: WriteAtom> ReplaceAtom<T> {
     fn new_len(&self) -> u64 {
         self.atom.len()
     }
@@ -504,21 +499,21 @@ enum AtomRef<'a> {
 impl AtomRef<'_> {
     fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
         match self {
-            AtomRef::Udta(a) => a.write(writer),
-            AtomRef::Chpl(a) => a.write(writer),
-            AtomRef::Meta(a) => a.write(writer),
-            AtomRef::Hdlr(a) => a.write(writer),
-            AtomRef::Ilst(a) => a.write(writer),
+            Self::Udta(a) => a.write(writer),
+            Self::Chpl(a) => a.write(writer),
+            Self::Meta(a) => a.write(writer),
+            Self::Hdlr(a) => a.write(writer),
+            Self::Ilst(a) => a.write(writer),
         }
     }
 
     fn len(&self) -> u64 {
         match self {
-            AtomRef::Udta(a) => a.len(),
-            AtomRef::Chpl(a) => a.len(),
-            AtomRef::Meta(a) => a.len(),
-            AtomRef::Hdlr(a) => a.len(),
-            AtomRef::Ilst(a) => a.len(),
+            Self::Udta(a) => a.len(),
+            Self::Chpl(a) => a.len(),
+            Self::Meta(a) => a.len(),
+            Self::Hdlr(a) => a.len(),
+            Self::Ilst(a) => a.len(),
         }
     }
 }
@@ -603,18 +598,18 @@ pub(crate) fn write_tag(
     // check wich atoms are missing
     if cfg.write_item_list {
         if hdlr.is_none() {
-            new_hdlr = Some(NewAtom { old_pos: 0, old_end: 0, atom: Hdlr::meta() });
+            new_hdlr = Some(ReplaceAtom { old_pos: 0, old_end: 0, atom: Hdlr::meta() });
         }
         match ilst {
             Some(ilst) => {
-                new_ilst = Some(NewAtom {
+                new_ilst = Some(ReplaceAtom {
                     old_pos: ilst.pos(),
                     old_end: ilst.end(),
                     atom: Ilst::Borrowed(metaitems),
                 });
             }
             None => {
-                new_ilst = Some(NewAtom {
+                new_ilst = Some(ReplaceAtom {
                     old_pos: 0,
                     old_end: 0,
                     atom: Ilst::Borrowed(metaitems),
@@ -643,7 +638,7 @@ pub(crate) fn write_tag(
                 });
             }
             None => {
-                new_meta = Some(NewAtom {
+                new_meta = Some(ReplaceAtom {
                     old_pos: 0,
                     old_end: 0,
                     atom: Meta {
@@ -667,14 +662,14 @@ pub(crate) fn write_tag(
 
         match chpl {
             Some(chpl) => {
-                new_chpl = Some(NewAtom {
+                new_chpl = Some(ReplaceAtom {
                     old_pos: chpl.pos(),
                     old_end: chpl.end(),
                     atom: Chpl::Borrowed(&_chpl),
                 });
             }
             None => {
-                new_chpl = Some(NewAtom {
+                new_chpl = Some(ReplaceAtom {
                     old_pos: 0,
                     old_end: 0,
                     atom: Chpl::Borrowed(&_chpl),
@@ -708,7 +703,7 @@ pub(crate) fn write_tag(
                 });
             }
             None => {
-                new_udta = Some(NewAtom {
+                new_udta = Some(ReplaceAtom {
                     old_pos: moov.end(),
                     old_end: moov.end(),
                     atom: Udta {
@@ -729,41 +724,20 @@ pub(crate) fn write_tag(
         });
     }
 
-    // add new atoms to the list
     if let Some(a) = &new_udta {
-        new_atoms.push(NewAtom {
-            old_pos: a.old_pos,
-            old_end: a.old_end,
-            atom: AtomRef::Udta(&a.atom),
-        });
+        new_atoms.push(a.map_atom(AtomRef::Udta(&a.atom)));
     }
     if let Some(a) = &new_chpl {
-        new_atoms.push(NewAtom {
-            old_pos: a.old_pos,
-            old_end: a.old_end,
-            atom: AtomRef::Chpl(&a.atom),
-        });
+        new_atoms.push(a.map_atom(AtomRef::Chpl(&a.atom)));
     }
     if let Some(a) = &new_meta {
-        new_atoms.push(NewAtom {
-            old_pos: a.old_pos,
-            old_end: a.old_end,
-            atom: AtomRef::Meta(&a.atom),
-        });
+        new_atoms.push(a.map_atom(AtomRef::Meta(&a.atom)));
     }
     if let Some(a) = &new_ilst {
-        new_atoms.push(NewAtom {
-            old_pos: a.old_pos,
-            old_end: a.old_end,
-            atom: AtomRef::Ilst(&a.atom),
-        });
+        new_atoms.push(a.map_atom(AtomRef::Ilst(&a.atom)));
     }
     if let Some(a) = &new_hdlr {
-        new_atoms.push(NewAtom {
-            old_pos: a.old_pos,
-            old_end: a.old_pos,
-            atom: AtomRef::Hdlr(&a.atom),
-        });
+        new_atoms.push(a.map_atom(AtomRef::Hdlr(&a.atom)));
     }
 
     new_atoms.sort_by_key(|a| a.old_pos);
