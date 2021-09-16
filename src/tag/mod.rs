@@ -8,7 +8,8 @@ use std::time::Duration;
 
 use crate::{
     atom, ident, util, AdvisoryRating, AudioInfo, Chapter, Data, DataIdent, Ident, Img, ImgBuf,
-    ImgFmt, ImgMut, ImgRef, MediaType, MetaItem, ReadConfig, WriteConfig,
+    ImgFmt, ImgMut, ImgRef, MediaType, MetaItem, ReadConfig, WriteConfig, READ_CONFIG,
+    WRITE_CONFIG,
 };
 
 pub use genre::*;
@@ -87,7 +88,7 @@ impl Tag {
 
     /// Attempts to read a MPEG-4 audio tag from the reader.
     pub fn read_from(reader: &mut (impl Read + Seek)) -> crate::Result<Self> {
-        Self::read_with(reader, &ReadConfig::default())
+        Self::read_with(reader, &READ_CONFIG)
     }
 
     /// Attempts to read a MPEG-4 audio tag from the file at the indicated path.
@@ -98,7 +99,7 @@ impl Tag {
 
     /// Attempts to read a MPEG-4 audio tag from the file at the indicated path.
     pub fn read_from_path(path: impl AsRef<Path>) -> crate::Result<Self> {
-        Self::read_with_path(path, &ReadConfig::default())
+        Self::read_with_path(path, &READ_CONFIG)
     }
 
     /// Attempts to write the MPEG-4 audio tag to the writer.
@@ -109,7 +110,7 @@ impl Tag {
     /// Attempts to write the MPEG-4 audio tag to the writer. This will overwrite any metadata
     /// previously present on the file.
     pub fn write_to(&self, file: &File) -> crate::Result<()> {
-        self.write_with(file, &WriteConfig::default())
+        self.write_with(file, &WRITE_CONFIG)
     }
 
     /// Attempts to write the MPEG-4 audio tag to the path.
@@ -121,7 +122,7 @@ impl Tag {
     /// Attempts to write the MPEG-4 audio tag to the path. This will overwrite any metadata
     /// previously present on the file.
     pub fn write_to_path(&self, path: impl AsRef<Path>) -> crate::Result<()> {
-        self.write_with_path(path, &WriteConfig::default())
+        self.write_with_path(path, &WRITE_CONFIG)
     }
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.
@@ -131,7 +132,7 @@ impl Tag {
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.
     pub fn dump_to(&self, writer: &mut impl Write) -> crate::Result<()> {
-        self.dump_with(writer, &WriteConfig::default())
+        self.dump_with(writer, &WRITE_CONFIG)
     }
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.
@@ -142,7 +143,7 @@ impl Tag {
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.
     pub fn dump_to_path(&self, path: impl AsRef<Path>) -> crate::Result<()> {
-        self.dump_with_path(path, &WriteConfig::default())
+        self.dump_with_path(path, &WRITE_CONFIG)
     }
 }
 

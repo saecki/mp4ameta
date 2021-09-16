@@ -40,3 +40,25 @@ impl WriteAtom for Chap {
         Size::from(content_len)
     }
 }
+
+#[derive(Default)]
+pub struct ChapBounds {
+    pub bounds: AtomBounds,
+    pub chapter_ids: Vec<u32>,
+}
+
+impl FindAtom for Chap {
+    type Bounds = ChapBounds;
+
+    fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
+        let bounds = find_bounds(reader, size)?;
+        let count = size.content_len() as usize / 4;
+        let mut chapter_ids = Vec::with_capacity(count);
+
+        for _ in 0..count {
+            chapter_ids.push(reader.read_be_u32()?);
+        }
+
+        Ok(Self::Bounds { bounds, chapter_ids })
+    }
+}

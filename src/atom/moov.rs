@@ -92,9 +92,7 @@ impl FindAtom for Moov<'_> {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                MOVIE_HEADER => {
-                    moov.mvhd = Some(Mvhd::parse(reader, &ReadConfig::default(), head.size())?)
-                }
+                MOVIE_HEADER => moov.mvhd = Some(Mvhd::parse(reader, &READ_CONFIG, head.size())?),
                 TRACK => moov.trak.push(Trak::find(reader, head.size())?),
                 USER_DATA => moov.udta = Some(Udta::find(reader, head.size())?),
                 _ => reader.skip(head.content_len() as i64)?,

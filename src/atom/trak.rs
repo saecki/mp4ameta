@@ -65,8 +65,11 @@ impl WriteAtom for Trak {
     }
 }
 
+#[derive(Default)]
 pub struct TrakBounds {
     pub bounds: AtomBounds,
+    pub tkhd: Option<Tkhd>,
+    pub tref: Option<TrefBounds>,
     pub mdia: Option<MdiaBounds>,
 }
 
@@ -75,20 +78,22 @@ impl FindAtom for Trak {
 
     fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
         let bounds = find_bounds(reader, size)?;
-        let mut mdia = None;
+        let mut trak = TrakBounds { bounds, ..Default::default() };
         let mut parsed_bytes = 0;
 
         while parsed_bytes < size.content_len() {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                MEDIA => mdia = Some(Mdia::find(reader, head.size())?),
+                TRACK_HEADER => trak.tkhd = Some(Tkhd::parse(reader, &READ_CONFIG, head.size())?),
+                TRACK_REFERENCE => trak.tref = Some(Tref::find(reader, head.size())?),
+                MEDIA => trak.mdia = Some(Mdia::find(reader, head.size())?),
                 _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();
         }
 
-        Ok(Self::Bounds { bounds, mdia })
+        Ok(trak)
     }
 }

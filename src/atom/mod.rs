@@ -127,6 +127,22 @@ mod tref;
 mod udta;
 mod url;
 
+/// The default configuration for reading tags.
+pub const READ_CONFIG: ReadConfig = ReadConfig {
+    read_item_list: true,
+    read_image_data: true,
+    read_chapters: true,
+    read_audio_info: true,
+    chpl_timescale: Timescale::Fixed(DEFAULT_CHPL_TIMESCALE),
+};
+
+/// The default configuration for writing tags.
+pub const WRITE_CONFIG: WriteConfig = WriteConfig {
+    write_item_list: true,
+    write_chapters: true,
+    chpl_timescale: Timescale::Fixed(DEFAULT_CHPL_TIMESCALE),
+};
+
 trait Atom: Sized {
     const FOURCC: Fourcc;
 }
@@ -258,13 +274,7 @@ pub struct ReadConfig {
 
 impl Default for ReadConfig {
     fn default() -> Self {
-        Self {
-            read_item_list: true,
-            read_image_data: true,
-            read_chapters: true,
-            read_audio_info: true,
-            chpl_timescale: Timescale::Fixed(DEFAULT_CHPL_TIMESCALE),
-        }
+        READ_CONFIG.clone()
     }
 }
 
@@ -445,11 +455,7 @@ pub struct WriteConfig {
 
 impl Default for WriteConfig {
     fn default() -> Self {
-        Self {
-            write_item_list: true,
-            write_chapters: true,
-            chpl_timescale: Timescale::Fixed(DEFAULT_CHPL_TIMESCALE),
-        }
+        WRITE_CONFIG.clone()
     }
 }
 
@@ -777,12 +783,11 @@ pub(crate) fn write_tag(
         let stbl_atoms = moov.trak.iter().filter_map(|a| {
             a.mdia.as_ref().and_then(|a| a.minf.as_ref()).and_then(|a| a.stbl.as_ref())
         });
-        let parse_cfg = ReadConfig::default();
 
         for stbl in stbl_atoms {
             if let Some(a) = &stbl.stco {
                 reader.seek(SeekFrom::Start(a.content_pos()))?;
-                let chunk_offset = Stco::parse(reader, &parse_cfg, a.size())?;
+                let chunk_offset = Stco::parse(reader, &READ_CONFIG, a.size())?;
 
                 writer.seek(SeekFrom::Start(a.content_pos() + 8))?;
                 for co in chunk_offset.offsets.iter() {
@@ -793,7 +798,7 @@ pub(crate) fn write_tag(
             }
             if let Some(a) = &stbl.co64 {
                 reader.seek(SeekFrom::Start(a.content_pos()))?;
-                let chunk_offset = Co64::parse(reader, &parse_cfg, a.size())?;
+                let chunk_offset = Co64::parse(reader, &READ_CONFIG, a.size())?;
 
                 writer.seek(SeekFrom::Start(a.content_pos() + 8))?;
                 for co in chunk_offset.offsets.iter() {
