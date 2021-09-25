@@ -7,6 +7,8 @@
 //! ├─ mvhd
 //! ├─ trak
 //! │  ├─ tkhd
+//! │  ├─ tref
+//! │  │  └─ chap
 //! │  └─ mdia
 //! │     ├─ mdhd
 //! │     ├─ hdlr
@@ -139,7 +141,7 @@ pub const READ_CONFIG: ReadConfig = ReadConfig {
 /// The default configuration for writing tags.
 pub const WRITE_CONFIG: WriteConfig = WriteConfig {
     write_item_list: true,
-    write_chapters: true,
+    write_chapters: WriteChapters::ChapterList,
     chpl_timescale: ChplTimescale::Fixed(DEFAULT_CHPL_TIMESCALE),
 };
 
@@ -232,7 +234,7 @@ impl<T: WriteAtom> LenOrZero for Option<T> {
 }
 
 /// A struct representing a timescale (the number of units that pass per second) that is used to
-/// scale time for chapter list (chpl) atoms.
+/// scale time for chapter list (`chpl`) atoms.
 ///
 /// | library          | timescale  |
 /// |------------------|------------|
@@ -439,7 +441,7 @@ pub struct WriteConfig {
     /// Wheter to overwrite item list metadata.
     pub write_item_list: bool,
     /// Wheter to overwrite chapter information.
-    pub write_chapters: bool,
+    pub write_chapters: WriteChapters,
     /// The timescale that is used to scale time for chapter list (chpl) atoms.
     pub chpl_timescale: ChplTimescale,
 }
@@ -447,6 +449,36 @@ pub struct WriteConfig {
 impl Default for WriteConfig {
     fn default() -> Self {
         WRITE_CONFIG.clone()
+    }
+}
+
+/// An enum representing the formats in which chapters can be stored in an mp4 file.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum WriteChapters {
+    /// Store chapters as user data inside a chapter list (`chpl`) atom.
+    ChapterList,
+    /// Store chapters in a track (`trak`) atom.
+    ChapterTrack,
+    // Store chapters in whatever format already exists.
+    //UseExisting, TODO
+    /// Don't write chapters and preserve existing ones.
+    Preserve,
+}
+
+impl WriteChapters {
+    /// Returns true if `self` is of type [`Self::ChapterList`], false otherwise.
+    pub const fn is_list(&self) -> bool {
+        matches!(self, Self::ChapterList)
+    }
+
+    /// Returns true if `self` is of type [`Self::ChapterTrack`], false otherwise.
+    pub const fn is_track(&self) -> bool {
+        matches!(self, Self::ChapterTrack)
+    }
+
+    /// Returns true if `self` is of type [`Self::Preserve`], false otherwise.
+    pub const fn is_preserve(&self) -> bool {
+        matches!(self, Self::Preserve)
     }
 }
 
@@ -464,7 +496,7 @@ impl<T: WriteAtom> LenDiff for Option<ReplaceAtom<T>> {
 struct ReplaceAtom<T> {
     old_pos: u64,
     old_end: u64,
-    atom: T,
+    atom: Option<T>,
 }
 
 impl<T> ReplaceAtom<T> {
@@ -472,14 +504,28 @@ impl<T> ReplaceAtom<T> {
         self.old_end - self.old_pos
     }
 
-    fn map_atom<A>(&self, atom: A) -> ReplaceAtom<A> {
-        ReplaceAtom { old_pos: self.old_pos, old_end: self.old_end, atom }
+    fn map_atom(&self, map: impl Fn(&T) -> AtomRef) -> ReplaceAtom<AtomRef> {
+        ReplaceAtom {
+            old_pos: self.old_pos,
+            old_end: self.old_end,
+            atom: self.atom.as_ref().map(map),
+        }
     }
 }
 
 impl<T: WriteAtom> ReplaceAtom<T> {
     fn new_len(&self) -> u64 {
-        self.atom.len()
+        self.atom.as_ref().map_or(0, |a| a.len())
+    }
+
+    fn len_diff(&self) -> i64 {
+        self.new_len() as i64 - self.old_len() as i64
+    }
+}
+
+impl ReplaceAtom<AtomRef<'_>> {
+    fn new_len(&self) -> u64 {
+        self.atom.as_ref().map_or(0, |a| a.len())
     }
 
     fn len_diff(&self) -> i64 {
@@ -612,19 +658,19 @@ pub(crate) fn write_tag(
 
     let mut new_atoms = Vec::new();
     if let Some(a) = &new.udta {
-        new_atoms.push(a.map_atom(AtomRef::Udta(&a.atom)));
+        new_atoms.push(a.map_atom(|a| AtomRef::Udta(a)));
     }
     if let Some(a) = &new.chpl {
-        new_atoms.push(a.map_atom(AtomRef::Chpl(&a.atom)));
+        new_atoms.push(a.map_atom(|a| AtomRef::Chpl(a)));
     }
     if let Some(a) = &new.meta {
-        new_atoms.push(a.map_atom(AtomRef::Meta(&a.atom)));
+        new_atoms.push(a.map_atom(|a| AtomRef::Meta(a)));
     }
     if let Some(a) = &new.ilst {
-        new_atoms.push(a.map_atom(AtomRef::Ilst(&a.atom)));
+        new_atoms.push(a.map_atom(|a| AtomRef::Ilst(a)));
     }
     if let Some(a) = &new.hdlr {
-        new_atoms.push(a.map_atom(AtomRef::Hdlr(&a.atom)));
+        new_atoms.push(a.map_atom(|a| AtomRef::Hdlr(a)));
     }
 
     new_atoms.sort_by_key(|a| a.old_pos);
@@ -635,7 +681,7 @@ pub(crate) fn write_tag(
     let mut mdat_shift: i64 = 0;
     for a in new_atoms.iter() {
         if a.old_pos <= mdat_pos {
-            mdat_shift += a.atom.len() as i64 - a.old_len() as i64;
+            mdat_shift += a.len_diff();
         }
     }
 
@@ -695,7 +741,7 @@ pub(crate) fn write_tag(
         let mut new_atoms_iter = new_atoms.iter().peekable();
 
         while let Some(a) = new_atoms_iter.next() {
-            len_diff += a.atom.len() as i64 - a.old_len() as i64;
+            len_diff += a.len_diff();
 
             let data_pos = a.old_end;
             let data_end = new_atoms_iter.peek().map_or(old_file_len, |next| next.old_pos);
@@ -731,10 +777,12 @@ pub(crate) fn write_tag(
             let new_pos = a.old_pos as i64 + pos_shift;
 
             writer.seek(SeekFrom::Start(new_pos as u64))?;
-            a.atom.write(writer)?;
-            writer.flush()?;
+            if let Some(n) = &a.atom {
+                n.write(writer)?;
+                writer.flush()?;
+            }
 
-            pos_shift += a.atom.len() as i64 - a.old_len() as i64;
+            pos_shift += a.len_diff();
         }
     }
 
@@ -752,21 +800,21 @@ fn check_udta<'a, 'b, 'c>(
 ) -> crate::Result<()> {
     if cfg.write_item_list {
         if old.hdlr.is_none() {
-            new.hdlr = Some(ReplaceAtom { old_pos: 0, old_end: 0, atom: Hdlr::meta() });
+            new.hdlr = Some(ReplaceAtom { old_pos: 0, old_end: 0, atom: Some(Hdlr::meta()) });
         }
         match old.ilst {
             Some(ilst) => {
                 new.ilst = Some(ReplaceAtom {
                     old_pos: ilst.pos(),
                     old_end: ilst.end(),
-                    atom: Ilst::Borrowed(metaitems),
+                    atom: Some(Ilst::Borrowed(metaitems)),
                 });
             }
             None => {
                 new.ilst = Some(ReplaceAtom {
                     old_pos: 0,
                     old_end: 0,
-                    atom: Ilst::Borrowed(metaitems),
+                    atom: Some(Ilst::Borrowed(metaitems)),
                 });
             }
         }
@@ -795,16 +843,16 @@ fn check_udta<'a, 'b, 'c>(
                 new.meta = Some(ReplaceAtom {
                     old_pos: 0,
                     old_end: 0,
-                    atom: Meta {
-                        hdlr: new.hdlr.take().map(|a| a.atom),
-                        ilst: new.ilst.take().map(|a| a.atom),
-                    },
+                    atom: Some(Meta {
+                        hdlr: new.hdlr.take().and_then(|a| a.atom),
+                        ilst: new.ilst.take().and_then(|a| a.atom),
+                    }),
                 });
             }
         }
     }
 
-    if cfg.write_chapters {
+    if cfg.write_chapters.is_list() {
         let chpl_timescale = cfg.chpl_timescale.or_mvhd(old.mvhd.timescale);
         let chpl_items = chapters
             .iter()
@@ -814,25 +862,27 @@ fn check_udta<'a, 'b, 'c>(
             })
             .collect();
 
-        match old.chpl {
-            Some(chpl) => {
-                new.chpl = Some(ReplaceAtom {
-                    old_pos: chpl.pos(),
-                    old_end: chpl.end(),
-                    atom: Chpl::Borrowed(chpl_items),
-                });
-            }
-            None => {
-                new.chpl = Some(ReplaceAtom {
-                    old_pos: 0,
-                    old_end: 0,
-                    atom: Chpl::Borrowed(chpl_items),
-                });
-            }
+        let mut new_chpl = ReplaceAtom {
+            old_pos: 0,
+            old_end: 0,
+            atom: Some(Chpl::Borrowed(chpl_items)),
+        };
+        if let Some(chpl) = old.chpl {
+            new_chpl.old_pos = chpl.pos();
+            new_chpl.old_end = chpl.end();
+        }
+        new.chpl = Some(new_chpl);
+    } else if cfg.write_chapters.is_preserve() {
+        if let Some(chpl) = old.chpl {
+            new.chpl = Some(ReplaceAtom {
+                old_pos: chpl.pos(),
+                old_end: chpl.end(),
+                atom: None,
+            });
         }
     }
 
-    if cfg.write_item_list || cfg.write_chapters {
+    if cfg.write_item_list || cfg.write_chapters.is_list() {
         match old.udta {
             Some(udta) => {
                 if old.meta.is_none() {
@@ -860,10 +910,10 @@ fn check_udta<'a, 'b, 'c>(
                 new.udta = Some(ReplaceAtom {
                     old_pos: old.moov.end(),
                     old_end: old.moov.end(),
-                    atom: Udta {
-                        chpl: new.chpl.take().map(|a| a.atom),
-                        meta: new.meta.take().map(|a| a.atom),
-                    },
+                    atom: Some(Udta {
+                        chpl: new.chpl.take().and_then(|a| a.atom),
+                        meta: new.meta.take().and_then(|a| a.atom),
+                    }),
                 });
             }
         }
@@ -911,7 +961,7 @@ pub(crate) fn dump_tag(writer: &mut impl Write, cfg: &WriteConfig, tag: &Tag) ->
         });
     }
 
-    if cfg.write_chapters && !chapters.is_empty() {
+    if cfg.write_chapters.is_list() {
         let chpl_timescale = cfg.chpl_timescale.or_mvhd(MVHD_TIMESCALE);
 
         let udta = moov.udta.get_or_insert_with(Udta::default);
