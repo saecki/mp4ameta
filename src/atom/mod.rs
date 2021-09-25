@@ -536,6 +536,25 @@ struct MovedData {
     data: Vec<u8>,
 }
 
+struct OldAtoms<'a> {
+    moov: &'a MoovBounds,
+    mvhd: &'a Mvhd,
+    udta: Option<&'a UdtaBounds>,
+    chpl: Option<&'a ChplBounds>,
+    meta: Option<&'a MetaBounds>,
+    hdlr: Option<&'a HdlrBounds>,
+    ilst: Option<&'a IlstBounds>,
+}
+
+#[derive(Default)]
+struct NewAtoms<'a> {
+    udta: Option<ReplaceAtom<Udta<'a>>>,
+    chpl: Option<ReplaceAtom<Chpl<'a>>>,
+    meta: Option<ReplaceAtom<Meta<'a>>>,
+    hdlr: Option<ReplaceAtom<Hdlr>>,
+    ilst: Option<ReplaceAtom<Ilst<'a>>>,
+}
+
 pub(crate) fn write_tag(
     file: &File,
     cfg: &WriteConfig,
@@ -567,7 +586,7 @@ pub(crate) fn write_tag(
     }
 
     let mdat_pos = mdat.map_or(0, |a| a.pos());
-    let moov = moov.ok_or_else(|| {
+    let moov = moov.as_ref().ok_or_else(|| {
         crate::Error::new(
             crate::ErrorKind::AtomNotFound(MOVIE),
             "Missing necessary data, no movie (moov) atom found",
@@ -579,164 +598,32 @@ pub(crate) fn write_tag(
             "Missing necessary data, no movie header (mvhd) atom found",
         )
     })?;
-    let udta = &moov.udta;
+    let udta = moov.udta.as_ref();
     let chpl = udta.as_ref().and_then(|a| a.chpl.as_ref());
     let meta = udta.as_ref().and_then(|a| a.meta.as_ref());
     let hdlr = meta.as_ref().and_then(|a| a.hdlr.as_ref());
     let ilst = meta.as_ref().and_then(|a| a.ilst.as_ref());
 
+    let old = OldAtoms { moov, mvhd, udta, chpl, meta, hdlr, ilst };
+
     let mut update_atoms = Vec::new();
+    let mut new = NewAtoms::default();
+    check_udta(&old, &mut update_atoms, &mut new, cfg, metaitems, chapters)?;
+
     let mut new_atoms = Vec::new();
-
-    let mut new_udta = None;
-    let mut new_chpl = None;
-    let mut _chpl = Vec::new();
-    let mut new_meta = None;
-    let mut new_hdlr = None;
-    let mut new_ilst = None;
-
-    // check wich atoms are missing
-    if cfg.write_item_list {
-        if hdlr.is_none() {
-            new_hdlr = Some(ReplaceAtom { old_pos: 0, old_end: 0, atom: Hdlr::meta() });
-        }
-        match ilst {
-            Some(ilst) => {
-                new_ilst = Some(ReplaceAtom {
-                    old_pos: ilst.pos(),
-                    old_end: ilst.end(),
-                    atom: Ilst::Borrowed(metaitems),
-                });
-            }
-            None => {
-                new_ilst = Some(ReplaceAtom {
-                    old_pos: 0,
-                    old_end: 0,
-                    atom: Ilst::Borrowed(metaitems),
-                });
-            }
-        }
-
-        match meta {
-            Some(meta) => {
-                if hdlr.is_none() {
-                    if let Some(a) = &mut new_hdlr {
-                        a.old_pos = meta.content_pos();
-                        a.old_end = meta.content_pos();
-                    }
-                }
-                if ilst.is_none() {
-                    if let Some(a) = &mut new_ilst {
-                        a.old_pos = meta.end();
-                        a.old_end = meta.end();
-                    }
-                }
-
-                update_atoms.push(UpdateAtom {
-                    old_bounds: &meta.bounds,
-                    len_diff: new_hdlr.len_diff() + new_ilst.len_diff(),
-                });
-            }
-            None => {
-                new_meta = Some(ReplaceAtom {
-                    old_pos: 0,
-                    old_end: 0,
-                    atom: Meta {
-                        hdlr: new_hdlr.take().map(|a| a.atom),
-                        ilst: new_ilst.take().map(|a| a.atom),
-                    },
-                });
-            }
-        }
-    }
-
-    if cfg.write_chapters {
-        let chpl_timescale = cfg.chpl_timescale.or_mvhd(mvhd.timescale);
-        _chpl = chapters
-            .iter()
-            .map(|c| BorrowedChplItem {
-                start: unscale_duration(chpl_timescale, c.start),
-                title: &c.title,
-            })
-            .collect();
-
-        match chpl {
-            Some(chpl) => {
-                new_chpl = Some(ReplaceAtom {
-                    old_pos: chpl.pos(),
-                    old_end: chpl.end(),
-                    atom: Chpl::Borrowed(&_chpl),
-                });
-            }
-            None => {
-                new_chpl = Some(ReplaceAtom {
-                    old_pos: 0,
-                    old_end: 0,
-                    atom: Chpl::Borrowed(&_chpl),
-                });
-            }
-        }
-    }
-
-    if cfg.write_item_list || cfg.write_chapters {
-        match udta {
-            Some(udta) => {
-                if meta.is_none() {
-                    if let Some(a) = &mut new_meta {
-                        a.old_pos = udta.end();
-                        a.old_end = udta.end();
-                    }
-                }
-                if chpl.is_none() {
-                    if let Some(a) = &mut new_chpl {
-                        a.old_pos = udta.end();
-                        a.old_end = udta.end();
-                    }
-                }
-
-                update_atoms.push(UpdateAtom {
-                    old_bounds: &udta.bounds,
-                    len_diff: new_chpl.len_diff()
-                        + new_meta.len_diff()
-                        + new_hdlr.len_diff()
-                        + new_ilst.len_diff(),
-                });
-            }
-            None => {
-                new_udta = Some(ReplaceAtom {
-                    old_pos: moov.end(),
-                    old_end: moov.end(),
-                    atom: Udta {
-                        chpl: new_chpl.take().map(|a| a.atom),
-                        meta: new_meta.take().map(|a| a.atom),
-                    },
-                });
-            }
-        }
-
-        update_atoms.push(UpdateAtom {
-            old_bounds: &moov.bounds,
-            len_diff: new_udta.len_diff()
-                + new_chpl.len_diff()
-                + new_meta.len_diff()
-                + new_hdlr.len_diff()
-                + new_ilst.len_diff(),
-        });
-    }
-
-    if let Some(a) = &new_udta {
+    if let Some(a) = &new.udta {
         new_atoms.push(a.map_atom(AtomRef::Udta(&a.atom)));
     }
-    if let Some(a) = &new_chpl {
+    if let Some(a) = &new.chpl {
         new_atoms.push(a.map_atom(AtomRef::Chpl(&a.atom)));
     }
-    if let Some(a) = &new_meta {
+    if let Some(a) = &new.meta {
         new_atoms.push(a.map_atom(AtomRef::Meta(&a.atom)));
     }
-    if let Some(a) = &new_ilst {
+    if let Some(a) = &new.ilst {
         new_atoms.push(a.map_atom(AtomRef::Ilst(&a.atom)));
     }
-    if let Some(a) = &new_hdlr {
+    if let Some(a) = &new.hdlr {
         new_atoms.push(a.map_atom(AtomRef::Hdlr(&a.atom)));
     }
 
@@ -854,6 +741,145 @@ pub(crate) fn write_tag(
     Ok(())
 }
 
+/// Check which atoms inside the udta hierarchy are missing, or will be replaced
+fn check_udta<'a, 'b, 'c>(
+    old: &'a OldAtoms<'a>,
+    update_atoms: &mut Vec<UpdateAtom<'a>>,
+    new: &'b mut NewAtoms<'c>,
+    cfg: &'a WriteConfig,
+    metaitems: &'c [MetaItem],
+    chapters: &'c [Chapter],
+) -> crate::Result<()> {
+    if cfg.write_item_list {
+        if old.hdlr.is_none() {
+            new.hdlr = Some(ReplaceAtom { old_pos: 0, old_end: 0, atom: Hdlr::meta() });
+        }
+        match old.ilst {
+            Some(ilst) => {
+                new.ilst = Some(ReplaceAtom {
+                    old_pos: ilst.pos(),
+                    old_end: ilst.end(),
+                    atom: Ilst::Borrowed(metaitems),
+                });
+            }
+            None => {
+                new.ilst = Some(ReplaceAtom {
+                    old_pos: 0,
+                    old_end: 0,
+                    atom: Ilst::Borrowed(metaitems),
+                });
+            }
+        }
+
+        match old.meta {
+            Some(meta) => {
+                if old.hdlr.is_none() {
+                    if let Some(a) = &mut new.hdlr {
+                        a.old_pos = meta.content_pos();
+                        a.old_end = meta.content_pos();
+                    }
+                }
+                if old.ilst.is_none() {
+                    if let Some(a) = &mut new.ilst {
+                        a.old_pos = meta.end();
+                        a.old_end = meta.end();
+                    }
+                }
+
+                update_atoms.push(UpdateAtom {
+                    old_bounds: &meta.bounds,
+                    len_diff: new.hdlr.len_diff() + new.ilst.len_diff(),
+                });
+            }
+            None => {
+                new.meta = Some(ReplaceAtom {
+                    old_pos: 0,
+                    old_end: 0,
+                    atom: Meta {
+                        hdlr: new.hdlr.take().map(|a| a.atom),
+                        ilst: new.ilst.take().map(|a| a.atom),
+                    },
+                });
+            }
+        }
+    }
+
+    if cfg.write_chapters {
+        let chpl_timescale = cfg.chpl_timescale.or_mvhd(old.mvhd.timescale);
+        let chpl_items = chapters
+            .iter()
+            .map(|c| BorrowedChplItem {
+                start: unscale_duration(chpl_timescale, c.start),
+                title: &c.title,
+            })
+            .collect();
+
+        match old.chpl {
+            Some(chpl) => {
+                new.chpl = Some(ReplaceAtom {
+                    old_pos: chpl.pos(),
+                    old_end: chpl.end(),
+                    atom: Chpl::Borrowed(chpl_items),
+                });
+            }
+            None => {
+                new.chpl = Some(ReplaceAtom {
+                    old_pos: 0,
+                    old_end: 0,
+                    atom: Chpl::Borrowed(chpl_items),
+                });
+            }
+        }
+    }
+
+    if cfg.write_item_list || cfg.write_chapters {
+        match old.udta {
+            Some(udta) => {
+                if old.meta.is_none() {
+                    if let Some(a) = &mut new.meta {
+                        a.old_pos = udta.end();
+                        a.old_end = udta.end();
+                    }
+                }
+                if old.chpl.is_none() {
+                    if let Some(a) = &mut new.chpl {
+                        a.old_pos = udta.end();
+                        a.old_end = udta.end();
+                    }
+                }
+
+                update_atoms.push(UpdateAtom {
+                    old_bounds: &udta.bounds,
+                    len_diff: new.chpl.len_diff()
+                        + new.meta.len_diff()
+                        + new.hdlr.len_diff()
+                        + new.ilst.len_diff(),
+                });
+            }
+            None => {
+                new.udta = Some(ReplaceAtom {
+                    old_pos: old.moov.end(),
+                    old_end: old.moov.end(),
+                    atom: Udta {
+                        chpl: new.chpl.take().map(|a| a.atom),
+                        meta: new.meta.take().map(|a| a.atom),
+                    },
+                });
+            }
+        }
+
+        update_atoms.push(UpdateAtom {
+            old_bounds: &old.moov.bounds,
+            len_diff: new.udta.len_diff()
+                + new.chpl.len_diff()
+                + new.meta.len_diff()
+                + new.hdlr.len_diff()
+                + new.ilst.len_diff(),
+        });
+    }
+    Ok(())
+}
+
 /// Attempts to dump the metadata atoms to the writer. This doesn't include a complete MPEG-4
 /// container hierarchy and won't result in a usable file.
 pub(crate) fn dump_tag(writer: &mut impl Write, cfg: &WriteConfig, tag: &Tag) -> crate::Result<()> {
@@ -885,12 +911,11 @@ pub(crate) fn dump_tag(writer: &mut impl Write, cfg: &WriteConfig, tag: &Tag) ->
         });
     }
 
-    let mut _chpl = Vec::new();
     if cfg.write_chapters && !chapters.is_empty() {
         let chpl_timescale = cfg.chpl_timescale.or_mvhd(MVHD_TIMESCALE);
 
         let udta = moov.udta.get_or_insert_with(Udta::default);
-        _chpl = chapters
+        let chpl_items = chapters
             .iter()
             .map(|c| BorrowedChplItem {
                 start: unscale_duration(chpl_timescale, c.start),
@@ -898,7 +923,7 @@ pub(crate) fn dump_tag(writer: &mut impl Write, cfg: &WriteConfig, tag: &Tag) ->
             })
             .collect();
 
-        udta.chpl = Some(Chpl::Borrowed(&_chpl));
+        udta.chpl = Some(Chpl::Borrowed(chpl_items));
     }
 
     ftyp.write(writer)?;

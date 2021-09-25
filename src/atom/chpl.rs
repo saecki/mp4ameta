@@ -5,7 +5,7 @@ pub const DEFAULT_CHPL_TIMESCALE: NonZeroU32 = unsafe { NonZeroU32::new_unchecke
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Chpl<'a> {
     Owned(Vec<OwnedChplItem>),
-    Borrowed(&'a [BorrowedChplItem<'a>]),
+    Borrowed(Vec<BorrowedChplItem<'a>>),
 }
 
 pub type OwnedChplItem = ChplItem<String>;
