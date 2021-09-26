@@ -45,7 +45,7 @@ impl WriteAtom for Text {
 
 impl Text {
     #[allow(unused)]
-    pub fn chapter() -> Self {
+    pub fn media_chapter() -> Self {
         Self(vec![
             // Text Sample Entry
             0x00, 0x00, 0x00, 0x01, // displayFlags
@@ -77,6 +77,20 @@ impl Text {
             // Font Record
             0x00, 0x01, // font ID
             0x00, // font name length
+        ])
+    }
+
+    pub fn media_information_chapter() -> Self {
+        Self(vec![
+            0x00, 0x01, 0x00, 0x00, //
+            0x00, 0x00, 0x00, 0x00, //
+            0x00, 0x00, 0x00, 0x00, //
+            0x00, 0x00, 0x00, 0x00, //
+            0x00, 0x01, 0x00, 0x00, //
+            0x00, 0x00, 0x00, 0x00, //
+            0x00, 0x00, 0x00, 0x00, //
+            0x00, 0x00, 0x00, 0x00, //
+            0x40, 0x00, 0x00, 0x00, //
         ])
     }
 }

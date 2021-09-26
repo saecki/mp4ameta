@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use mp4ameta::{
     AdvisoryRating, ChannelConfig, Chapter, Data, Fourcc, Img, MediaType, SampleRate, Tag,
-    STANDARD_GENRES,
+    WriteChapters, WriteConfig, STANDARD_GENRES,
 };
 use walkdir::WalkDir;
 
@@ -394,7 +394,7 @@ fn dump_2() {
 }
 
 #[test]
-fn dump_chapter() {
+fn dump_chapter_list() {
     let mut tag = Tag::default();
     let chapters = [
         Chapter::new(Duration::ZERO, "CHAPTER 1"),
@@ -404,12 +404,45 @@ fn dump_chapter() {
 
     tag.add_all_chapters(chapters.clone());
 
-    let _ = std::fs::remove_file("target/dump_chapter.m4a");
-    println!("dumping to target/dump_chapter.m4a...");
-    tag.dump_to_path("target/dump_chapter.m4a").unwrap();
+    let _ = std::fs::remove_file("target/dump_chapter_list.m4a");
+    println!("dumping to target/dump_chapter_list.m4a...");
+    let cfg = WriteConfig {
+        write_chapters: WriteChapters::ChapterList,
+        ..Default::default()
+    };
+    tag.dump_with_path("target/dump_chapter_list.m4a", &cfg).unwrap();
 
-    println!("reading target/dump_chapter.m4a...");
-    let tag = Tag::read_from_path("target/dump_chapter.m4a").unwrap();
+    println!("reading target/dump_chapter_list.m4a...");
+    let tag = Tag::read_from_path("target/dump_chapter_list.m4a").unwrap();
+
+    let mut chapters_iter = tag.chapters();
+    assert_eq!(chapters_iter.next(), Some(&chapters[0]));
+    assert_eq!(chapters_iter.next(), Some(&chapters[1]));
+    assert_eq!(chapters_iter.next(), Some(&chapters[2]));
+    assert_eq!(chapters_iter.next(), None);
+}
+
+#[test]
+fn dump_chapter_track() {
+    let mut tag = Tag::default();
+    let chapters = [
+        Chapter::new(Duration::ZERO, "CHAPTER 1"),
+        Chapter::new(Duration::new(234, 324_000_000), "CHAPTER 2"),
+        Chapter::new(Duration::new(553, 946_000_000), "CHAPTER 3"),
+    ];
+
+    tag.add_all_chapters(chapters.clone());
+
+    let _ = std::fs::remove_file("target/dump_chapter_track.m4a");
+    println!("dumping to target/dump_chapter_track.m4a...");
+    let cfg = WriteConfig {
+        write_chapters: WriteChapters::ChapterTrack,
+        ..Default::default()
+    };
+    tag.dump_with_path("target/dump_chapter_track.m4a", &cfg).unwrap();
+
+    println!("reading target/dump_chapter_track.m4a...");
+    let tag = Tag::read_from_path("target/dump_chapter_track.m4a").unwrap();
 
     let mut chapters_iter = tag.chapters();
     assert_eq!(chapters_iter.next(), Some(&chapters[0]));

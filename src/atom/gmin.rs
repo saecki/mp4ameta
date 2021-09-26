@@ -36,6 +36,7 @@ impl ParseAtom for Gmin {
             *c = reader.read_be_u16()?;
         }
         gmin.balance = reader.read_be_u16()?;
+        reader.skip(2)?; // reserved
 
         Ok(gmin)
     }
@@ -51,11 +52,24 @@ impl WriteAtom for Gmin {
             writer.write_be_u16(c)?;
         }
         writer.write_be_u16(self.balance)?;
+        writer.write_be_u16(0)?; // reserved
 
         Ok(())
     }
 
     fn size(&self) -> Size {
         Size::from(16)
+    }
+}
+
+impl Gmin {
+    pub fn chapter() -> Self {
+        Self {
+            version: 0,
+            flags: [0; 3],
+            graphics_mode: 0x0040,
+            op_color: [0x8000; 3],
+            balance: 0,
+        }
     }
 }

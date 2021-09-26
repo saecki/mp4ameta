@@ -2,8 +2,8 @@ use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Gmhd {
-    gmin: Option<Gmin>,
-    text: Option<Text>,
+    pub gmin: Option<Gmin>,
+    pub text: Option<Text>,
 }
 
 impl Atom for Gmhd {
@@ -49,7 +49,7 @@ impl WriteAtom for Gmhd {
     }
 
     fn size(&self) -> Size {
-        let content_len = 8 + self.gmin.len_or_zero() + self.text.len_or_zero();
+        let content_len = self.gmin.len_or_zero() + self.text.len_or_zero();
         Size::from(content_len)
     }
 }

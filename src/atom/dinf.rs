@@ -15,21 +15,21 @@ impl ParseAtom for Dinf {
         cfg: &ReadConfig,
         size: Size,
     ) -> crate::Result<Self> {
-        let mut minf = Self::default();
+        let mut dinf = Self::default();
         let mut parsed_bytes = 0;
 
         while parsed_bytes < size.content_len() {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                DATA_REFERENCE => minf.dref = Some(Dref::parse(reader, cfg, head.size())?),
+                DATA_REFERENCE => dinf.dref = Some(Dref::parse(reader, cfg, head.size())?),
                 _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();
         }
 
-        Ok(minf)
+        Ok(dinf)
     }
 }
 

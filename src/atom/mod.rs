@@ -852,34 +852,38 @@ fn check_udta<'a, 'b, 'c>(
         }
     }
 
-    if cfg.write_chapters.is_list() {
-        let chpl_timescale = cfg.chpl_timescale.or_mvhd(old.mvhd.timescale);
-        let chpl_items = chapters
-            .iter()
-            .map(|c| BorrowedChplItem {
-                start: unscale_duration(chpl_timescale, c.start),
-                title: &c.title,
-            })
-            .collect();
+    match cfg.write_chapters {
+        WriteChapters::ChapterList => {
+            let chpl_timescale = cfg.chpl_timescale.or_mvhd(old.mvhd.timescale);
+            let chpl_items = chapters
+                .iter()
+                .map(|c| BorrowedChplItem {
+                    start: unscale_duration(chpl_timescale, c.start),
+                    title: &c.title,
+                })
+                .collect();
 
-        let mut new_chpl = ReplaceAtom {
-            old_pos: 0,
-            old_end: 0,
-            atom: Some(Chpl::Borrowed(chpl_items)),
-        };
-        if let Some(chpl) = old.chpl {
-            new_chpl.old_pos = chpl.pos();
-            new_chpl.old_end = chpl.end();
+            let mut new_chpl = ReplaceAtom {
+                old_pos: 0,
+                old_end: 0,
+                atom: Some(Chpl::Borrowed(chpl_items)),
+            };
+            if let Some(chpl) = old.chpl {
+                new_chpl.old_pos = chpl.pos();
+                new_chpl.old_end = chpl.end();
+            }
+            new.chpl = Some(new_chpl);
         }
-        new.chpl = Some(new_chpl);
-    } else if cfg.write_chapters.is_preserve() {
-        if let Some(chpl) = old.chpl {
-            new.chpl = Some(ReplaceAtom {
-                old_pos: chpl.pos(),
-                old_end: chpl.end(),
-                atom: None,
-            });
+        WriteChapters::ChapterTrack => {
+            if let Some(chpl) = old.chpl {
+                new.chpl = Some(ReplaceAtom {
+                    old_pos: chpl.pos(),
+                    old_end: chpl.end(),
+                    atom: None,
+                });
+            }
         }
+        WriteChapters::Preserve => (),
     }
 
     if cfg.write_item_list || cfg.write_chapters.is_list() {
@@ -941,7 +945,7 @@ pub(crate) fn dump_tag(writer: &mut impl Write, cfg: &WriteConfig, tag: &Tag) ->
     let scaled_duration = unscale_duration(MVHD_TIMESCALE, duration);
 
     let ftyp = Ftyp("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".to_owned());
-    let mdat = Mdat::default();
+    let mut mdat = Mdat::default();
     let mut moov = Moov {
         mvhd: Some(Mvhd {
             version: 1,
@@ -953,7 +957,7 @@ pub(crate) fn dump_tag(writer: &mut impl Write, cfg: &WriteConfig, tag: &Tag) ->
         ..Default::default()
     };
 
-    if cfg.write_item_list && !metaitems.is_empty() {
+    if cfg.write_item_list {
         let udta = moov.udta.get_or_insert_with(Udta::default);
         udta.meta = Some(Meta {
             hdlr: Some(Hdlr::meta()),
@@ -961,19 +965,98 @@ pub(crate) fn dump_tag(writer: &mut impl Write, cfg: &WriteConfig, tag: &Tag) ->
         });
     }
 
-    if cfg.write_chapters.is_list() {
-        let chpl_timescale = cfg.chpl_timescale.or_mvhd(MVHD_TIMESCALE);
+    match cfg.write_chapters {
+        WriteChapters::ChapterList => {
+            let chpl_timescale = cfg.chpl_timescale.or_mvhd(MVHD_TIMESCALE);
 
-        let udta = moov.udta.get_or_insert_with(Udta::default);
-        let chpl_items = chapters
-            .iter()
-            .map(|c| BorrowedChplItem {
-                start: unscale_duration(chpl_timescale, c.start),
-                title: &c.title,
-            })
-            .collect();
+            let udta = moov.udta.get_or_insert_with(Udta::default);
+            let chpl_items = chapters
+                .iter()
+                .map(|c| BorrowedChplItem {
+                    start: unscale_duration(chpl_timescale, c.start),
+                    title: &c.title,
+                })
+                .collect();
 
-        udta.chpl = Some(Chpl::Borrowed(chpl_items));
+            udta.chpl = Some(Chpl::Borrowed(chpl_items));
+        }
+        WriteChapters::ChapterTrack => {
+            let mut chunk_offsets = Vec::with_capacity(chapters.len());
+            let mut sample_sizes = Vec::with_capacity(chapters.len());
+            let mut time_to_samples = Vec::with_capacity(chapters.len());
+
+            let mut chapters_iter = chapters.iter().enumerate().peekable();
+            while let Some((i, c)) = chapters_iter.next() {
+                let c_duration = match chapters_iter.peek() {
+                    Some((_, next)) => next.start - c.start,
+                    None => c.start - duration,
+                };
+                time_to_samples.push(SttsItem {
+                    sample_count: i as u32,
+                    sample_duration: unscale_duration(MVHD_TIMESCALE, c_duration) as u32,
+                });
+                sample_sizes.push(c.title.len() as u32 + 2);
+                chunk_offsets.push(ftyp.len() + mdat.len()); // XXX: assumes that length won't exceed 32 bit after pushing chapter titles
+
+                mdat.data.write_be_u16(c.title.len() as u16).ok();
+                mdat.data.write_utf8(&c.title).ok();
+            }
+
+            // audio track
+            moov.trak.push(Trak {
+                tkhd: Some(Tkhd { id: 1, ..Default::default() }),
+                tref: Some(Tref { chap: Some(Chap { chapter_ids: vec![2] }) }),
+                mdia: Some(Mdia {
+                    mdhd: Some(Mdhd {
+                        version: 1,
+                        timescale: MVHD_TIMESCALE,
+                        duration: unscale_duration(MVHD_TIMESCALE, duration),
+                        ..Default::default()
+                    }),
+                    hdlr: Some(Hdlr::mp4a_mdia()),
+                    ..Default::default()
+                }),
+            });
+
+            // chapter track
+            moov.trak.push(Trak {
+                tkhd: Some(Tkhd { id: 2, ..Default::default() }),
+                mdia: Some(Mdia {
+                    mdhd: Some(Mdhd {
+                        version: 1,
+                        timescale: MVHD_TIMESCALE,
+                        ..Default::default()
+                    }),
+                    hdlr: Some(Hdlr::text_mdia()),
+                    minf: Some(Minf {
+                        gmhd: Some(Gmhd {
+                            gmin: Some(Gmin::chapter()),
+                            text: Some(Text::media_information_chapter()),
+                        }),
+                        dinf: Some(Dinf { dref: Some(Dref { url: Some(Url::track()) }) }),
+                        stbl: Some(Stbl {
+                            stsd: Some(Stsd {
+                                text: Some(Text::media_chapter()),
+                                ..Default::default()
+                            }),
+                            stts: Some(Stts { items: time_to_samples }),
+                            stsc: Some(Stsc {
+                                items: vec![StscItem {
+                                    first_chunk: 1,
+                                    samples_per_chunk: 1,
+                                    sample_description_id: 1,
+                                }],
+                            }),
+                            stsz: Some(Stsz { sample_size: 0, sizes: sample_sizes }),
+                            co64: Some(Co64 { offsets: chunk_offsets }),
+                            ..Default::default()
+                        }),
+                    }),
+                }),
+                ..Default::default()
+            });
+        }
+        WriteChapters::Preserve => (),
     }
 
     ftyp.write(writer)?;

@@ -26,21 +26,21 @@ impl ParseAtom for Dref {
 
         reader.skip(4)?; // number of entries
 
-        let mut minf = Self::default();
+        let mut dref = Self::default();
         let mut parsed_bytes = 8;
 
         while parsed_bytes < size.content_len() {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                URL_MEDIA => minf.url = Some(Url::parse(reader, cfg, head.size())?),
+                URL_MEDIA => dref.url = Some(Url::parse(reader, cfg, head.size())?),
                 _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();
         }
 
-        Ok(minf)
+        Ok(dref)
     }
 }
 

@@ -42,3 +42,9 @@ impl WriteAtom for Url {
         Size::from(self.0.len() as u64)
     }
 }
+
+impl Url {
+    pub fn track() -> Self {
+        Self(vec![0x01, 0x00, 0x00, 0x00])
+    }
+}
