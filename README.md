@@ -1,9 +1,9 @@
 # rust-mp4ameta
-[![CI](https://github.com/Saecki/rust-mp4ameta/workflows/CI/badge.svg)](https://github.com/Saecki/rust-mp4ameta/actions?query=workflow%3ACI)
-[![Style](https://github.com/Saecki/rust-mp4ameta/workflows/Style/badge.svg)](https://github.com/Saecki/rust-mp4ameta/actions?query=workflow%3AStyle)
+[![Build](https://github.com/Saecki/rust-mp4ameta/actions/workflows/build.yml/badge.svg)](https://github.com/Saecki/rust-mp4ameta/actions/workflows/build.yml)
+[![Style](https://github.com/Saecki/rust-mp4ameta/actions/workflows/style.yml/badge.svg)](https://github.com/Saecki/rust-mp4ameta/actions/workflows/style.yml)
 [![Crate](https://img.shields.io/crates/v/mp4ameta.svg)](https://crates.io/crates/mp4ameta)
-[![Documentation](https://docs.rs/mp4ameta/badge.svg)](https://docs.rs/mp4ameta)
-![License](https://img.shields.io/crates/l/mp4ameta?color=blue)
+[![Documentation](https://img.shields.io/docsrs/mp4ameta?label=docs.rs)](https://docs.rs/mp4ameta)
+![License](https://img.shields.io/crates/l/mp4ameta)
 ![LOC](https://tokei.rs/b1/github/saecki/rust-mp4ameta?category=code)
 
 A library for reading and writing iTunes style MPEG-4 audio metadata.
