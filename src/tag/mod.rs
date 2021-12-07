@@ -963,6 +963,7 @@ impl Tag {
     /// assert_eq!(bytes.next(), None);
     /// ```
     pub fn retain_bytes_of(&mut self, ident: &impl Ident, predicate: impl Fn(&[u8]) -> bool) {
+        #[allow(clippy::redundant_closure)]
         self.retain_data_of(ident, |d| d.bytes().map_or(true, |b| predicate(b)))
     }
 
@@ -992,6 +993,7 @@ impl Tag {
     /// assert_eq!(strings.next(), None);
     /// ```
     pub fn retain_strings_of(&mut self, ident: &impl Ident, predicate: impl Fn(&str) -> bool) {
+        #[allow(clippy::redundant_closure)]
         self.retain_data_of(ident, |d| d.string().map_or(true, |s| predicate(s)))
     }
 
@@ -1021,6 +1023,7 @@ impl Tag {
     /// assert_eq!(images.next(), None);
     /// ```
     pub fn retain_images_of(&mut self, ident: &impl Ident, predicate: impl Fn(ImgRef) -> bool) {
+        #[allow(clippy::redundant_closure)]
         self.retain_data_of(ident, |d| d.image().map_or(true, |i| predicate(i)))
     }
 
