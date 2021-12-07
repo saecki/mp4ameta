@@ -11,7 +11,7 @@ impl Deref for Ilst<'_> {
 
     fn deref(&self) -> &Self::Target {
         match self {
-            Self::Owned(a) => &a,
+            Self::Owned(a) => a,
             Self::Borrowed(a) => a,
         }
     }

@@ -215,7 +215,7 @@ impl Tag {
 fn stanard_genre(code: u16) -> Option<&'static str> {
     let c = code as usize;
     if c > 0 && c <= STANDARD_GENRES.len() {
-        return Some(&STANDARD_GENRES[c - 1]);
+        return Some(STANDARD_GENRES[c - 1]);
     }
 
     None
