@@ -90,8 +90,8 @@ impl Head {
 }
 
 /// Attempts to parse the atom's head containing a 32 bit unsigned integer determining the size of
-/// the atom in bytes and the following 4 byte identifier from the reader. If the 32 len is set to
-/// 1 an extended 64 bit length is read.
+/// the atom in bytes and the following 4 byte identifier from the reader. If the 32 bit length is
+/// set to 1 an extended 64 bit length is read.
 ///
 /// ```md
 /// 4 bytes standard length
