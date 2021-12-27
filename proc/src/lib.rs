@@ -195,7 +195,7 @@ impl Tag {{
 
     /// Sets the {n} flag to true (`{ais}`).
     pub fn set_{vi}(&mut self) {{
-        self.set_data({ai}, Data::BeSigned(vec![1u8]));
+        self.set_data({ai}, Data::BeSigned(vec![1]));
     }}
 
     /// Removes the {n} flag (`{ais}`).

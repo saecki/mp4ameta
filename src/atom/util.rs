@@ -3,35 +3,35 @@ use std::io::{self, Read, Seek, SeekFrom};
 pub trait ReadUtil: Read {
     /// Attempts to read an unsigned 8 bit integer from the reader.
     fn read_u8(&mut self) -> io::Result<u8> {
-        let mut buf = [0u8];
+        let mut buf = [0];
         self.read_exact(&mut buf)?;
         Ok(buf[0])
     }
 
     /// Attempts to read an unsigned 16 bit big endian integer from the reader.
     fn read_u16(&mut self) -> io::Result<u16> {
-        let mut buf = [0u8; 2];
+        let mut buf = [0; 2];
         self.read_exact(&mut buf)?;
         Ok(u16::from_be_bytes(buf))
     }
 
     /// Attempts to read an unsigned 32 bit big endian integer from the reader.
     fn read_u32(&mut self) -> io::Result<u32> {
-        let mut buf = [0u8; 4];
+        let mut buf = [0; 4];
         self.read_exact(&mut buf)?;
         Ok(u32::from_be_bytes(buf))
     }
 
     /// Attempts to read an unsigned 64 bit big endian integer from the reader.
     fn read_u64(&mut self) -> io::Result<u64> {
-        let mut buf = [0u8; 8];
+        let mut buf = [0; 8];
         self.read_exact(&mut buf)?;
         Ok(u64::from_be_bytes(buf))
     }
 
     /// Attempts to read 8 bit unsigned integers from the reader to a vector of size length.
     fn read_u8_vec(&mut self, len: u64) -> io::Result<Vec<u8>> {
-        let mut buf = vec![0u8; len as usize];
+        let mut buf = vec![0; len as usize];
         self.read_exact(&mut buf)?;
         Ok(buf)
     }
@@ -45,7 +45,7 @@ pub trait ReadUtil: Read {
 
     /// Attempts to read a utf-16 string from the reader.
     fn read_utf16(&mut self, len: u64) -> crate::Result<String> {
-        let mut buf = vec![0u8; len as usize];
+        let mut buf = vec![0; len as usize];
 
         self.read_exact(&mut buf)?;
 
@@ -125,9 +125,9 @@ mod test {
 
     #[test]
     fn set_be_int() {
-        let mut bytes = vec![0u8, 0, 0, 0, 0, 0, 0, 0];
+        let mut bytes = vec![0, 0, 0, 0, 0, 0, 0, 0];
         set_be_int!(bytes, 4, 524, u16);
-        assert_eq!(bytes[4], 2u8);
-        assert_eq!(bytes[5], 12u8);
+        assert_eq!(bytes[4], 2);
+        assert_eq!(bytes[5], 12);
     }
 }

@@ -947,19 +947,19 @@ impl Tag {
     /// let mut tag = Tag::default();
     /// let test = Fourcc(*b"test");
     ///
-    /// tag.add_data(test, Data::BeSigned(vec![4u8; 12]));
-    /// tag.add_data(test, Data::Reserved(vec![6u8; 16]));
+    /// tag.add_data(test, Data::BeSigned(vec![4; 12]));
+    /// tag.add_data(test, Data::Reserved(vec![6; 16]));
     ///
     /// let mut bytes = tag.bytes_of(&test);
-    /// assert_eq!(bytes.next(), Some(&[4u8; 12][..]));
-    /// assert_eq!(bytes.next(), Some(&[6u8; 16][..]));
+    /// assert_eq!(bytes.next(), Some(&[4; 12][..]));
+    /// assert_eq!(bytes.next(), Some(&[6; 16][..]));
     /// assert_eq!(bytes.next(), None);
     /// drop(bytes);
     ///
-    /// tag.retain_bytes_of(&test, |b| b[2..4] == [4u8, 4u8]);
+    /// tag.retain_bytes_of(&test, |b| b[2..4] == [4, 4]);
     ///
     /// let mut bytes = tag.bytes_of(&test);
-    /// assert_eq!(bytes.next(), Some(&[4u8; 12][..]));
+    /// assert_eq!(bytes.next(), Some(&[4; 12][..]));
     /// assert_eq!(bytes.next(), None);
     /// ```
     pub fn retain_bytes_of(&mut self, ident: &impl Ident, predicate: impl Fn(&[u8]) -> bool) {
@@ -1007,19 +1007,19 @@ impl Tag {
     /// let mut tag = Tag::default();
     /// let test = Fourcc(*b"test");
     ///
-    /// tag.add_data(test, Data::Png(vec![5u8; 4]));
-    /// tag.add_data(test, Data::Jpeg(vec![6u8; 16]));
+    /// tag.add_data(test, Data::Png(vec![5; 4]));
+    /// tag.add_data(test, Data::Jpeg(vec![6; 16]));
     ///
     /// let mut images = tag.images_of(&test);
-    /// assert_eq!(images.next(), Some(Img::new(ImgFmt::Png, &[5u8; 4][..])));
-    /// assert_eq!(images.next(), Some(Img::new(ImgFmt::Jpeg, &[6u8; 16][..])));
+    /// assert_eq!(images.next(), Some(Img::new(ImgFmt::Png, &[5; 4][..])));
+    /// assert_eq!(images.next(), Some(Img::new(ImgFmt::Jpeg, &[6; 16][..])));
     /// assert_eq!(images.next(), None);
     /// drop(images);
     ///
     /// tag.retain_images_of(&test, |d| d.fmt == ImgFmt::Jpeg);
     ///
     /// let mut images = tag.images_of(&test);
-    /// assert_eq!(images.next(), Some(Img::new(ImgFmt::Jpeg, &[6u8; 16][..])));
+    /// assert_eq!(images.next(), Some(Img::new(ImgFmt::Jpeg, &[6; 16][..])));
     /// assert_eq!(images.next(), None);
     /// ```
     pub fn retain_images_of(&mut self, ident: &impl Ident, predicate: impl Fn(ImgRef) -> bool) {
@@ -1038,11 +1038,11 @@ impl Tag {
     /// let test = Fourcc(*b"test");
     ///
     /// tag.add_data(test, Data::Utf8("short".into()));
-    /// tag.add_data(test, Data::Reserved(vec![6u8; 16]));
+    /// tag.add_data(test, Data::Reserved(vec![6; 16]));
     ///
     /// let mut data = tag.data_of(&test);
     /// assert_eq!(data.next(), Some(&Data::Utf8("short".into())));
-    /// assert_eq!(data.next(), Some(&Data::Reserved(vec![6u8; 16])));
+    /// assert_eq!(data.next(), Some(&Data::Reserved(vec![6; 16])));
     /// assert_eq!(data.next(), None);
     /// drop(data);
     ///

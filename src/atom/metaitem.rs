@@ -117,13 +117,13 @@ impl MetaItem {
                 let mean_len: u32 = 12 + mean.len() as u32;
                 writer.write_all(&u32::to_be_bytes(mean_len))?;
                 writer.write_all(MEAN.deref())?;
-                writer.write_all(&[0u8; 4])?;
+                writer.write_all(&[0; 4])?;
                 writer.write_all(mean.as_bytes())?;
 
                 let name_len: u32 = 12 + name.len() as u32;
                 writer.write_all(&u32::to_be_bytes(name_len))?;
                 writer.write_all(NAME.deref())?;
-                writer.write_all(&[0u8; 4])?;
+                writer.write_all(&[0; 4])?;
                 writer.write_all(name.as_bytes())?;
             }
         }

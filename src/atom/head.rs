@@ -108,7 +108,7 @@ pub fn parse_head(reader: &mut impl Read) -> crate::Result<Head> {
             ));
         }
     };
-    let mut ident = Fourcc([0u8; 4]);
+    let mut ident = Fourcc([0; 4]);
     if let Err(e) = reader.read_exact(&mut *ident) {
         return Err(crate::Error::new(
             ErrorKind::Io(e),
@@ -163,7 +163,7 @@ pub fn parse_full_head(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
         }
     };
 
-    let mut flags = [0u8; 3];
+    let mut flags = [0; 3];
     if let Err(e) = reader.read_exact(&mut flags) {
         return Err(crate::Error::new(
             crate::ErrorKind::Io(e),

@@ -193,7 +193,7 @@ impl WriteAtom for Data {
 
         writer.write_all(&datatype.to_be_bytes())?;
         // Writing 4 byte locale indicator
-        writer.write_all(&[0u8; 4])?;
+        writer.write_all(&[0; 4])?;
 
         match self {
             Self::Reserved(v) => writer.write_all(v)?,
