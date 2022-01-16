@@ -1016,7 +1016,7 @@ pub(crate) fn dump_tag(writer: &mut impl Write, cfg: &WriteConfig, tag: &Tag) ->
                     sample_duration: unscale_duration(MVHD_TIMESCALE, c_duration) as u32,
                 });
                 sample_sizes.push(c.title.len() as u32 + 2);
-                chunk_offsets.push(ftyp.len() + mdat.len()); // XXX: assumes that length won't exceed 32 bit after pushing chapter titles
+                chunk_offsets.push(ftyp.len() + mdat.len());
 
                 mdat.data.write_be_u16(c.title.len() as u16).ok();
                 mdat.data.write_utf8(&c.title).ok();

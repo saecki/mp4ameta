@@ -18,7 +18,7 @@ impl WriteAtom for Mdat {
 
     fn size(&self) -> Size {
         let content_len = self.data.len() as u64;
-        Size::from(content_len)
+        Size::new(true, content_len)
     }
 }
 

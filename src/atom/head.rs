@@ -14,13 +14,14 @@ pub struct Size {
 }
 
 impl Size {
-    pub const fn from(content_len: u64) -> Self {
-        let mut len = content_len + 8;
-        let ext = len > u32::MAX as u64;
-        if ext {
-            len += 8;
-        }
+    pub const fn new(ext: bool, content_len: u64) -> Self {
+        let len = if ext { content_len + 16 } else { content_len + 8 };
         Self { ext, len }
+    }
+
+    pub const fn from(content_len: u64) -> Self {
+        let ext = content_len + 8 > u32::MAX as u64;
+        Self::new(ext, content_len)
     }
 
     /// Whether the head is of standard size (8 bytes) with a 32 bit length or extended (16 bytes)
