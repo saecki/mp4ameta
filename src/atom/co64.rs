@@ -3,6 +3,7 @@ use super::*;
 /// A struct representing of a 64bit sample table chunk offset atom (`co64`).
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Co64 {
+    pub state: State,
     pub offsets: Vec<u64>,
 }
 
@@ -16,6 +17,7 @@ impl ParseAtom for Co64 {
         _cfg: &ReadConfig,
         size: Size,
     ) -> crate::Result<Self> {
+        let bounds = find_bounds(reader, size)?;
         let (version, _) = parse_full_head(reader)?;
 
         match version {
@@ -34,7 +36,7 @@ impl ParseAtom for Co64 {
                     offsets.push(offset);
                 }
 
-                Ok(Self { offsets })
+                Ok(Self { state: State::Existing(bounds), offsets })
             }
             _ => Err(crate::Error::new(
                 crate::ErrorKind::UnknownVersion(version),

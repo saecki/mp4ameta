@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Moov<'a> {
+    pub state: State,
     pub mvhd: Option<Mvhd>,
     pub trak: Vec<Trak>,
     pub udta: Option<Udta<'a>>,
@@ -17,7 +18,11 @@ impl ParseAtom for Moov<'_> {
         cfg: &ReadConfig,
         size: Size,
     ) -> crate::Result<Self> {
-        let mut moov = Self::default();
+        let bounds = find_bounds(reader, size)?;
+        let mut moov = Self {
+            state: State::Existing(bounds),
+            ..Default::default()
+        };
         let mut parsed_bytes = 0;
 
         while parsed_bytes < size.content_len() {

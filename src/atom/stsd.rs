@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Stsd {
+    pub state: State,
     pub mp4a: Option<Mp4a>,
     pub text: Option<Text>,
 }
@@ -16,6 +17,7 @@ impl ParseAtom for Stsd {
         cfg: &ReadConfig,
         size: Size,
     ) -> crate::Result<Self> {
+        let bounds = find_bounds(reader, size)?;
         let (version, _) = parse_full_head(reader)?;
 
         if version != 0 {
@@ -27,7 +29,10 @@ impl ParseAtom for Stsd {
 
         reader.skip(4)?; // number of entries
 
-        let mut stsd = Self::default();
+        let mut stsd = Self {
+            state: State::Existing(bounds),
+            ..Default::default()
+        };
         let mut parsed_bytes = 8;
 
         while parsed_bytes < size.content_len() {

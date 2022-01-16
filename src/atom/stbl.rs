@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Stbl {
+    pub state: State,
     pub stsd: Option<Stsd>,
     pub stts: Option<Stts>,
     pub stsc: Option<Stsc>,
@@ -20,7 +21,11 @@ impl ParseAtom for Stbl {
         cfg: &ReadConfig,
         size: Size,
     ) -> crate::Result<Self> {
-        let mut stbl = Self::default();
+        let bounds = find_bounds(reader, size)?;
+        let mut stbl = Self {
+            state: State::Existing(bounds),
+            ..Default::default()
+        };
         let mut parsed_bytes = 0;
 
         while parsed_bytes < size.content_len() {

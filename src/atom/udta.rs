@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Udta<'a> {
+    pub state: State,
     pub chpl: Option<Chpl<'a>>,
     pub meta: Option<Meta<'a>>,
 }
@@ -16,7 +17,11 @@ impl ParseAtom for Udta<'_> {
         cfg: &ReadConfig,
         size: Size,
     ) -> crate::Result<Self> {
-        let mut udta = Self::default();
+        let bounds = find_bounds(reader, size)?;
+        let mut udta = Self {
+            state: State::Existing(bounds),
+            ..Default::default()
+        };
         let mut parsed_bytes = 0;
 
         while parsed_bytes < size.content_len() {
@@ -24,7 +29,7 @@ impl ParseAtom for Udta<'_> {
 
             match head.fourcc() {
                 CHAPTER_LIST if cfg.read_chapters => {
-                    udta.chpl = Some(Chpl::parse(reader, cfg, head.size())?)
+                    udta.chpl = Some(Chpl::parse(reader, cfg, head.size())?);
                 }
                 METADATA if cfg.read_item_list => {
                     udta.meta = Some(Meta::parse(reader, cfg, head.size())?)

@@ -1,7 +1,13 @@
 use super::*;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum Ilst<'a> {
+pub struct Ilst<'a> {
+    pub state: State,
+    pub data: IlstData<'a>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum IlstData<'a> {
     Owned(Vec<MetaItem>),
     Borrowed(&'a [MetaItem]),
 }
@@ -10,9 +16,9 @@ impl Deref for Ilst<'_> {
     type Target = [MetaItem];
 
     fn deref(&self) -> &Self::Target {
-        match self {
-            Self::Owned(a) => a,
-            Self::Borrowed(a) => a,
+        match &self.data {
+            IlstData::Owned(a) => a,
+            IlstData::Borrowed(a) => a,
         }
     }
 }
@@ -27,6 +33,7 @@ impl ParseAtom for Ilst<'_> {
         cfg: &ReadConfig,
         size: Size,
     ) -> crate::Result<Self> {
+        let bounds = find_bounds(reader, size)?;
         let mut ilst = Vec::<MetaItem>::new();
         let mut parsed_bytes = 0;
 
@@ -49,7 +56,10 @@ impl ParseAtom for Ilst<'_> {
             parsed_bytes += head.len();
         }
 
-        Ok(Self::Owned(ilst))
+        Ok(Self {
+            state: State::Existing(bounds),
+            data: IlstData::Owned(ilst),
+        })
     }
 }
 
@@ -70,9 +80,9 @@ impl WriteAtom for Ilst<'_> {
 
 impl Ilst<'_> {
     pub fn owned(self) -> Option<Vec<MetaItem>> {
-        match self {
-            Self::Owned(a) => Some(a),
-            Self::Borrowed(_) => None,
+        match self.data {
+            IlstData::Owned(a) => Some(a),
+            IlstData::Borrowed(_) => None,
         }
     }
 }

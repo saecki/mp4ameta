@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Gmhd {
+    pub state: State,
     pub gmin: Option<Gmin>,
     pub text: Option<Text>,
 }
@@ -16,7 +17,11 @@ impl ParseAtom for Gmhd {
         cfg: &ReadConfig,
         size: Size,
     ) -> crate::Result<Self> {
-        let mut gmhd = Self::default();
+        let bounds = find_bounds(reader, size)?;
+        let mut gmhd = Self {
+            state: State::Existing(bounds),
+            ..Default::default()
+        };
         let mut parsed_bytes = 0;
 
         while parsed_bytes < size.content_len() {

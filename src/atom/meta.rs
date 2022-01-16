@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Meta<'a> {
+    pub state: State,
     pub hdlr: Option<Hdlr>,
     pub ilst: Option<Ilst<'a>>,
 }
@@ -16,6 +17,7 @@ impl ParseAtom for Meta<'_> {
         cfg: &ReadConfig,
         size: Size,
     ) -> crate::Result<Self> {
+        let bounds = find_bounds(reader, size)?;
         let (version, _) = parse_full_head(reader)?;
 
         if version != 0 {
@@ -25,7 +27,10 @@ impl ParseAtom for Meta<'_> {
             ));
         }
 
-        let mut meta = Self::default();
+        let mut meta = Self {
+            state: State::Existing(bounds),
+            ..Default::default()
+        };
         let mut parsed_bytes = 4;
 
         while parsed_bytes < size.content_len() {

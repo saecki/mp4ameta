@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Gmin {
+    pub state: State,
     pub version: u8,
     pub flags: [u8; 3],
     pub graphics_mode: u16,
@@ -17,9 +18,13 @@ impl ParseAtom for Gmin {
     fn parse_atom(
         reader: &mut (impl Read + Seek),
         _cfg: &ReadConfig,
-        _size: Size,
+        size: Size,
     ) -> crate::Result<Self> {
-        let mut gmin = Self::default();
+        let bounds = find_bounds(reader, size)?;
+        let mut gmin = Self {
+            state: State::Existing(bounds),
+            ..Default::default()
+        };
 
         let (version, flags) = parse_full_head(reader)?;
         gmin.version = version;
@@ -65,6 +70,7 @@ impl WriteAtom for Gmin {
 impl Gmin {
     pub fn chapter() -> Self {
         Self {
+            state: State::New,
             version: 0,
             flags: [0; 3],
             graphics_mode: 0x0040,

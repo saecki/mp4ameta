@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Mdia {
+    pub state: State,
     pub mdhd: Option<Mdhd>,
     pub hdlr: Option<Hdlr>,
     pub minf: Option<Minf>,
@@ -17,7 +18,11 @@ impl ParseAtom for Mdia {
         cfg: &ReadConfig,
         size: Size,
     ) -> crate::Result<Self> {
-        let mut mdia = Self::default();
+        let bounds = find_bounds(reader, size)?;
+        let mut mdia = Self {
+            state: State::Existing(bounds),
+            ..Default::default()
+        };
         let mut parsed_bytes = 0;
 
         while parsed_bytes < size.content_len() {

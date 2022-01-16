@@ -3,6 +3,7 @@ use super::*;
 /// A struct representing of a sample table chunk offset atom (`stco`).
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Stco {
+    pub state: State,
     pub offsets: Vec<u32>,
 }
 
@@ -16,6 +17,7 @@ impl ParseAtom for Stco {
         _cfg: &ReadConfig,
         size: Size,
     ) -> crate::Result<Self> {
+        let bounds = find_bounds(reader, size)?;
         let (version, _) = parse_full_head(reader)?;
 
         if version != 0 {
@@ -39,7 +41,7 @@ impl ParseAtom for Stco {
             offsets.push(offset);
         }
 
-        Ok(Self { offsets })
+        Ok(Self { state: State::Existing(bounds), offsets })
     }
 }
 

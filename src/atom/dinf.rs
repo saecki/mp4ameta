@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Dinf {
+    pub state: State,
     pub dref: Option<Dref>,
 }
 
@@ -15,7 +16,11 @@ impl ParseAtom for Dinf {
         cfg: &ReadConfig,
         size: Size,
     ) -> crate::Result<Self> {
-        let mut dinf = Self::default();
+        let bounds = find_bounds(reader, size)?;
+        let mut dinf = Self {
+            state: State::Existing(bounds),
+            ..Default::default()
+        };
         let mut parsed_bytes = 0;
 
         while parsed_bytes < size.content_len() {

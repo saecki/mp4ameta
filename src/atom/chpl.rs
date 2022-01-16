@@ -3,7 +3,13 @@ use super::*;
 pub const DEFAULT_CHPL_TIMESCALE: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(10_000_000) };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum Chpl<'a> {
+pub struct Chpl<'a> {
+    pub state: State,
+    pub data: ChplData<'a>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ChplData<'a> {
     Owned(Vec<OwnedChplItem>),
     Borrowed(Vec<BorrowedChplItem<'a>>),
 }
@@ -27,6 +33,7 @@ impl ParseAtom for Chpl<'_> {
         _cfg: &ReadConfig,
         size: Size,
     ) -> crate::Result<Self> {
+        let bounds = find_bounds(reader, size)?;
         let (version, _) = parse_full_head(reader)?;
         let mut parsed_bytes = 5;
 
@@ -58,7 +65,10 @@ impl ParseAtom for Chpl<'_> {
             parsed_bytes += 9 + str_len as u64;
         }
 
-        Ok(Self::Owned(chpl))
+        Ok(Self {
+            state: State::Existing(bounds),
+            data: ChplData::Owned(chpl),
+        })
     }
 }
 
@@ -67,8 +77,8 @@ impl WriteAtom for Chpl<'_> {
         self.write_head(writer)?;
         write_full_head(writer, 0, [0; 3])?;
 
-        match self {
-            Self::Owned(v) => {
+        match &self.data {
+            ChplData::Owned(v) => {
                 writer.write_u8(v.len() as u8)?;
                 for c in v.iter() {
                     writer.write_be_u64(c.start)?;
@@ -76,7 +86,7 @@ impl WriteAtom for Chpl<'_> {
                     writer.write_utf8(&c.title)?;
                 }
             }
-            Self::Borrowed(v) => {
+            ChplData::Borrowed(v) => {
                 writer.write_u8(v.len() as u8)?;
                 for c in v.iter() {
                     writer.write_be_u64(c.start)?;
@@ -90,9 +100,9 @@ impl WriteAtom for Chpl<'_> {
     }
 
     fn size(&self) -> Size {
-        let content_len = 5 + match self {
-            Chpl::Owned(v) => v.iter().map(|c| 9 + c.title.len() as u64).sum::<u64>(),
-            Chpl::Borrowed(v) => v.iter().map(|c| 9 + c.title.len() as u64).sum::<u64>(),
+        let content_len = 5 + match &self.data {
+            ChplData::Owned(v) => v.iter().map(|c| 9 + c.title.len() as u64).sum::<u64>(),
+            ChplData::Borrowed(v) => v.iter().map(|c| 9 + c.title.len() as u64).sum::<u64>(),
         };
         Size::from(content_len)
     }
@@ -100,9 +110,9 @@ impl WriteAtom for Chpl<'_> {
 
 impl Chpl<'_> {
     pub fn owned(self) -> Option<Vec<OwnedChplItem>> {
-        match self {
-            Self::Owned(v) => Some(v),
-            Self::Borrowed(_) => None,
+        match self.data {
+            ChplData::Owned(v) => Some(v),
+            ChplData::Borrowed(_) => None,
         }
     }
 }

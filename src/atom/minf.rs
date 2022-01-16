@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Minf {
+    pub state: State,
     pub gmhd: Option<Gmhd>,
     pub dinf: Option<Dinf>,
     pub stbl: Option<Stbl>,
@@ -17,7 +18,11 @@ impl ParseAtom for Minf {
         cfg: &ReadConfig,
         size: Size,
     ) -> crate::Result<Self> {
-        let mut minf = Self::default();
+        let bounds = find_bounds(reader, size)?;
+        let mut minf = Self {
+            state: State::Existing(bounds),
+            ..Default::default()
+        };
         let mut parsed_bytes = 0;
 
         while parsed_bytes < size.content_len() {

@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Chap {
+    pub state: State,
     pub chapter_ids: Vec<u32>,
 }
 
@@ -15,6 +16,7 @@ impl ParseAtom for Chap {
         _cfg: &ReadConfig,
         size: Size,
     ) -> crate::Result<Self> {
+        let bounds = find_bounds(reader, size)?;
         let count = size.content_len() as usize / 4;
         let mut chapter_ids = Vec::with_capacity(count);
 
@@ -22,7 +24,7 @@ impl ParseAtom for Chap {
             chapter_ids.push(reader.read_be_u32()?);
         }
 
-        Ok(Self { chapter_ids })
+        Ok(Self { state: State::Existing(bounds), chapter_ids })
     }
 }
 

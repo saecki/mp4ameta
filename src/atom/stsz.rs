@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Stsz {
+    pub state: State,
     pub sample_size: u32,
     pub sizes: Vec<u32>,
 }
@@ -16,6 +17,7 @@ impl ParseAtom for Stsz {
         _cfg: &ReadConfig,
         size: Size,
     ) -> crate::Result<Self> {
+        let bounds = find_bounds(reader, size)?;
         let (version, _) = parse_full_head(reader)?;
 
         if version != 0 {
@@ -40,7 +42,7 @@ impl ParseAtom for Stsz {
             sizes.push(offset);
         }
 
-        Ok(Self { sample_size, sizes })
+        Ok(Self { state: State::Existing(bounds), sample_size, sizes })
     }
 }
 

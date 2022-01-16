@@ -43,14 +43,14 @@ impl MetaItem {
     pub fn parse(
         reader: &mut (impl Read + Seek),
         cfg: &ReadConfig,
-        parent: Head,
+        head: Head,
     ) -> crate::Result<Self> {
         let mut data = Vec::new();
         let mut mean: Option<String> = None;
         let mut name: Option<String> = None;
         let mut parsed_bytes = 0;
 
-        while parsed_bytes < parent.content_len() {
+        while parsed_bytes < head.content_len() {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
@@ -83,7 +83,7 @@ impl MetaItem {
             parsed_bytes += head.len();
         }
 
-        let ident = match (parent.fourcc(), mean, name) {
+        let ident = match (head.fourcc(), mean, name) {
             (FREEFORM, Some(mean), Some(name)) => DataIdent::Freeform { mean, name },
             (fourcc, _, _) => DataIdent::Fourcc(fourcc),
         };

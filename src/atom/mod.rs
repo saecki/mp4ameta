@@ -73,6 +73,7 @@ use minf::*;
 use moov::*;
 use mp4a::*;
 use mvhd::*;
+use state::*;
 use stbl::*;
 use stco::*;
 use stsc::*;
@@ -116,6 +117,7 @@ mod minf;
 mod moov;
 mod mp4a;
 mod mvhd;
+mod state;
 mod stbl;
 mod stco;
 mod stsc;
@@ -807,14 +809,20 @@ fn check_udta<'a, 'b, 'c>(
                 new.ilst = Some(ReplaceAtom {
                     old_pos: ilst.pos(),
                     old_end: ilst.end(),
-                    atom: Some(Ilst::Borrowed(metaitems)),
+                    atom: Some(Ilst {
+                        state: State::New,
+                        data: IlstData::Borrowed(metaitems),
+                    }),
                 });
             }
             None => {
                 new.ilst = Some(ReplaceAtom {
                     old_pos: 0,
                     old_end: 0,
-                    atom: Some(Ilst::Borrowed(metaitems)),
+                    atom: Some(Ilst {
+                        state: State::New,
+                        data: IlstData::Borrowed(metaitems),
+                    }),
                 });
             }
         }
@@ -844,6 +852,7 @@ fn check_udta<'a, 'b, 'c>(
                     old_pos: 0,
                     old_end: 0,
                     atom: Some(Meta {
+                        state: State::New,
                         hdlr: new.hdlr.take().and_then(|a| a.atom),
                         ilst: new.ilst.take().and_then(|a| a.atom),
                     }),
@@ -866,7 +875,10 @@ fn check_udta<'a, 'b, 'c>(
             let mut new_chpl = ReplaceAtom {
                 old_pos: 0,
                 old_end: 0,
-                atom: Some(Chpl::Borrowed(chpl_items)),
+                atom: Some(Chpl {
+                    state: State::New,
+                    data: ChplData::Borrowed(chpl_items),
+                }),
             };
             if let Some(chpl) = old.chpl {
                 new_chpl.old_pos = chpl.pos();
@@ -915,6 +927,7 @@ fn check_udta<'a, 'b, 'c>(
                     old_pos: old.moov.end(),
                     old_end: old.moov.end(),
                     atom: Some(Udta {
+                        state: State::New,
                         chpl: new.chpl.take().and_then(|a| a.atom),
                         meta: new.meta.take().and_then(|a| a.atom),
                     }),
@@ -960,8 +973,12 @@ pub(crate) fn dump_tag(writer: &mut impl Write, cfg: &WriteConfig, tag: &Tag) ->
     if cfg.write_item_list {
         let udta = moov.udta.get_or_insert_with(Udta::default);
         udta.meta = Some(Meta {
+            state: State::New,
             hdlr: Some(Hdlr::meta()),
-            ilst: Some(Ilst::Borrowed(metaitems)),
+            ilst: Some(Ilst {
+                state: State::New,
+                data: IlstData::Borrowed(metaitems),
+            }),
         });
     }
 
@@ -978,7 +995,10 @@ pub(crate) fn dump_tag(writer: &mut impl Write, cfg: &WriteConfig, tag: &Tag) ->
                 })
                 .collect();
 
-            udta.chpl = Some(Chpl::Borrowed(chpl_items));
+            udta.chpl = Some(Chpl {
+                state: State::New,
+                data: ChplData::Borrowed(chpl_items),
+            });
         }
         WriteChapters::ChapterTrack => {
             let mut chunk_offsets = Vec::with_capacity(chapters.len());
@@ -1004,8 +1024,12 @@ pub(crate) fn dump_tag(writer: &mut impl Write, cfg: &WriteConfig, tag: &Tag) ->
 
             // audio track
             moov.trak.push(Trak {
+                state: State::New,
                 tkhd: Some(Tkhd { id: 1, ..Default::default() }),
-                tref: Some(Tref { chap: Some(Chap { chapter_ids: vec![2] }) }),
+                tref: Some(Tref {
+                    state: State::New,
+                    chap: Some(Chap { state: State::New, chapter_ids: vec![2] }),
+                }),
                 mdia: Some(Mdia {
                     mdhd: Some(Mdhd {
                         version: 1,
@@ -1022,6 +1046,7 @@ pub(crate) fn dump_tag(writer: &mut impl Write, cfg: &WriteConfig, tag: &Tag) ->
             moov.trak.push(Trak {
                 tkhd: Some(Tkhd { id: 2, ..Default::default() }),
                 mdia: Some(Mdia {
+                    state: State::New,
                     mdhd: Some(Mdhd {
                         version: 1,
                         timescale: MVHD_TIMESCALE,
@@ -1029,26 +1054,36 @@ pub(crate) fn dump_tag(writer: &mut impl Write, cfg: &WriteConfig, tag: &Tag) ->
                     }),
                     hdlr: Some(Hdlr::text_mdia()),
                     minf: Some(Minf {
+                        state: State::New,
                         gmhd: Some(Gmhd {
+                            state: State::New,
                             gmin: Some(Gmin::chapter()),
                             text: Some(Text::media_information_chapter()),
                         }),
-                        dinf: Some(Dinf { dref: Some(Dref { url: Some(Url::track()) }) }),
+                        dinf: Some(Dinf {
+                            state: State::New,
+                            dref: Some(Dref { state: State::New, url: Some(Url::track()) }),
+                        }),
                         stbl: Some(Stbl {
                             stsd: Some(Stsd {
                                 text: Some(Text::media_chapter()),
                                 ..Default::default()
                             }),
-                            stts: Some(Stts { items: time_to_samples }),
+                            stts: Some(Stts { state: State::New, items: time_to_samples }),
                             stsc: Some(Stsc {
+                                state: State::New,
                                 items: vec![StscItem {
                                     first_chunk: 1,
                                     samples_per_chunk: 1,
                                     sample_description_id: 1,
                                 }],
                             }),
-                            stsz: Some(Stsz { sample_size: 0, sizes: sample_sizes }),
-                            co64: Some(Co64 { offsets: chunk_offsets }),
+                            stsz: Some(Stsz {
+                                state: State::New,
+                                sample_size: 0,
+                                sizes: sample_sizes,
+                            }),
+                            co64: Some(Co64 { state: State::New, offsets: chunk_offsets }),
                             ..Default::default()
                         }),
                     }),

@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Mvhd {
+    pub state: State,
     pub version: u8,
     pub flags: [u8; 3],
     pub creation_time: u64,
@@ -28,9 +29,13 @@ impl ParseAtom for Mvhd {
     fn parse_atom(
         reader: &mut (impl Read + Seek),
         _cfg: &ReadConfig,
-        _size: Size,
+        size: Size,
     ) -> crate::Result<Self> {
-        let mut mvhd = Self::default();
+        let bounds = find_bounds(reader, size)?;
+        let mut mvhd = Self {
+            state: State::Existing(bounds),
+            ..Default::default()
+        };
 
         let (version, flags) = parse_full_head(reader)?;
         mvhd.version = version;

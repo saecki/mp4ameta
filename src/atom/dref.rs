@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Dref {
+    pub state: State,
     pub url: Option<Url>,
 }
 
@@ -15,6 +16,7 @@ impl ParseAtom for Dref {
         cfg: &ReadConfig,
         size: Size,
     ) -> crate::Result<Self> {
+        let bounds = find_bounds(reader, size)?;
         let (version, _) = parse_full_head(reader)?;
 
         if version != 0 {
@@ -26,7 +28,10 @@ impl ParseAtom for Dref {
 
         reader.skip(4)?; // number of entries
 
-        let mut dref = Self::default();
+        let mut dref = Self {
+            state: State::Existing(bounds),
+            ..Default::default()
+        };
         let mut parsed_bytes = 8;
 
         while parsed_bytes < size.content_len() {

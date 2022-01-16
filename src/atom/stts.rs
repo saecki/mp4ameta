@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Stts {
+    pub state: State,
     pub items: Vec<SttsItem>,
 }
 
@@ -21,6 +22,7 @@ impl ParseAtom for Stts {
         _cfg: &ReadConfig,
         size: Size,
     ) -> crate::Result<Self> {
+        let bounds = find_bounds(reader, size)?;
         let (version, _) = parse_full_head(reader)?;
 
         if version != 0 {
@@ -46,7 +48,7 @@ impl ParseAtom for Stts {
             });
         }
 
-        Ok(Self { items })
+        Ok(Self { state: State::Existing(bounds), items })
     }
 }
 

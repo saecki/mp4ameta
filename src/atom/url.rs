@@ -1,19 +1,22 @@
 use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct Url(pub Vec<u8>);
+pub struct Url {
+    pub state: State,
+    pub data: Vec<u8>,
+}
 
 impl Deref for Url {
     type Target = Vec<u8>;
 
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &self.data
     }
 }
 
 impl DerefMut for Url {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+        &mut self.data
     }
 }
 
@@ -27,7 +30,11 @@ impl ParseAtom for Url {
         _cfg: &ReadConfig,
         size: Size,
     ) -> crate::Result<Self> {
-        Ok(Self(reader.read_u8_vec(size.content_len())?))
+        let bounds = find_bounds(reader, size)?;
+        Ok(Self {
+            state: State::Existing(bounds),
+            data: reader.read_u8_vec(size.content_len())?,
+        })
     }
 }
 
@@ -39,12 +46,15 @@ impl WriteAtom for Url {
     }
 
     fn size(&self) -> Size {
-        Size::from(self.0.len() as u64)
+        Size::from(self.data.len() as u64)
     }
 }
 
 impl Url {
     pub fn track() -> Self {
-        Self(vec![0x01, 0x00, 0x00, 0x00])
+        Self {
+            state: State::New,
+            data: vec![0x01, 0x00, 0x00, 0x00],
+        }
     }
 }
