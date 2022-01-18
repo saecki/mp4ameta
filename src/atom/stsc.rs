@@ -34,10 +34,15 @@ impl ParseAtom for Stsc {
         }
 
         let entries = reader.read_be_u32()?;
-        if 8 + 12 * entries as u64 != size.content_len() {
+        let table_size = 8 + 12 * entries as u64;
+        if table_size != size.content_len() {
             return Err(crate::Error::new(
                 crate::ErrorKind::Parsing,
-                "Sample table sample size (stsz) table size doesn't match atom length",
+                format!(
+                    "Sample table sample to count (stsc) table size {} doesn't match atom content length {}",
+                    table_size,
+                    size.content_len(),
+                ),
             ));
         }
 
@@ -59,7 +64,7 @@ impl WriteAtom for Stsc {
         self.write_head(writer)?;
         write_full_head(writer, 0, [0; 3])?;
 
-        writer.write_be_u32(12 * self.items.len() as u32)?;
+        writer.write_be_u32(self.items.len() as u32)?;
         for i in self.items.iter() {
             writer.write_be_u32(i.first_chunk)?;
             writer.write_be_u32(i.samples_per_chunk)?;

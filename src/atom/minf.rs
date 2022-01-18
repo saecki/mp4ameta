@@ -29,6 +29,8 @@ impl ParseAtom for Minf {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
+                BASE_MEDIA_INFORMATION_HEADER => minf.gmhd = Some(Gmhd::parse(reader, cfg, head.size())?),
+                DATA_INFORMATION => minf.dinf = Some(Dinf::parse(reader, cfg, head.size())?),
                 SAMPLE_TABLE => minf.stbl = Some(Stbl::parse(reader, cfg, head.size())?),
                 _ => reader.skip(head.content_len() as i64)?,
             }

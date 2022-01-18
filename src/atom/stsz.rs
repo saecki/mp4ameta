@@ -29,18 +29,39 @@ impl ParseAtom for Stsz {
 
         let sample_size = reader.read_be_u32()?;
         let entries = reader.read_be_u32()?;
-        if 12 + 4 * entries as u64 != size.content_len() {
-            return Err(crate::Error::new(
-                crate::ErrorKind::Parsing,
-                "Sample table sample size (stsz) table size doesn't match atom length",
-            ));
-        }
+        let table_size = 12 + 4 * entries as u64;
 
-        let mut sizes = Vec::with_capacity(entries as usize);
-        for _ in 0..entries {
-            let offset = reader.read_be_u32()?;
-            sizes.push(offset);
-        }
+        let sizes = if sample_size == 0 {
+            if table_size != size.content_len() {
+                return Err(crate::Error::new(
+                    crate::ErrorKind::Parsing,
+                    format!(
+                        "Sample table sample size (stsz) table size {} doesn't match atom content length {}",
+                        table_size,
+                        size.content_len(),
+                    ),
+                ));
+            }
+
+            let mut sizes = Vec::with_capacity(entries as usize);
+            for _ in 0..entries {
+                let offset = reader.read_be_u32()?;
+                sizes.push(offset);
+            }
+            sizes
+        } else {
+            if size.content_len() != 12 {
+                return Err(crate::Error::new(
+                    crate::ErrorKind::Parsing,
+                    format!(
+                        "Sample table sample size (stsz) uniform sample size set, but content length {} doesn't match",
+                        size.content_len(),
+                    ),
+                ));
+            }
+
+            Vec::new()
+        };
 
         Ok(Self { state: State::Existing(bounds), sample_size, sizes })
     }

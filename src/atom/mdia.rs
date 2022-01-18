@@ -32,6 +32,7 @@ impl ParseAtom for Mdia {
                 MEDIA_HEADER if cfg.read_chapters => {
                     mdia.mdhd = Some(Mdhd::parse(reader, cfg, head.size())?)
                 }
+                HANDLER_REFERENCE => mdia.hdlr = Some(Hdlr::parse(reader, cfg, head.size())?),
                 MEDIA_INFORMATION => mdia.minf = Some(Minf::parse(reader, cfg, head.size())?),
                 _ => reader.skip(head.content_len() as i64)?,
             }

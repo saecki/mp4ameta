@@ -38,6 +38,12 @@ impl ParseAtom for Stbl {
                 SAMPLE_TABLE_TIME_TO_SAMPLE if cfg.read_chapters => {
                     stbl.stts = Some(Stts::parse(reader, cfg, head.size())?)
                 }
+                SAMPLE_TABLE_SAMPLE_TO_COUNT => {
+                    stbl.stsc = Some(Stsc::parse(reader, cfg, head.size())?)
+                }
+                SAMPLE_TABLE_SAMPLE_SIZE => {
+                    stbl.stsz = Some(Stsz::parse(reader, cfg, head.size())?)
+                }
                 SAMPLE_TABLE_CHUNK_OFFSET if cfg.read_chapters => {
                     stbl.stco = Some(Stco::parse(reader, cfg, head.size())?)
                 }
