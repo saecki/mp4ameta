@@ -69,43 +69,22 @@ impl WriteAtom for Moov<'_> {
     }
 }
 
-#[derive(Default)]
-pub struct MoovBounds {
-    pub bounds: AtomBounds,
-    pub mvhd: Option<Mvhd>,
-    pub trak: Vec<TrakBounds>,
-    pub udta: Option<UdtaBounds>,
-}
-
-impl Deref for MoovBounds {
-    type Target = AtomBounds;
-
-    fn deref(&self) -> &Self::Target {
-        &self.bounds
+impl SimpleCollectChanges for Moov<'_> {
+    fn state(&self) -> &State {
+        &self.state
     }
-}
 
-impl FindAtom for Moov<'_> {
-    type Bounds = MoovBounds;
+    fn existing<'a>(
+        &'a self,
+        level: u8,
+        bounds: &'a AtomBounds,
+        changes: &mut Vec<Change<'a>>,
+    ) -> i64 {
+        self.trak.iter().map(|a| a.collect_changes(bounds.end(), level, changes)).sum::<i64>()
+            + self.udta.collect_changes(bounds.end(), level, changes)
+    }
 
-    fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
-        let bounds = find_bounds(reader, size)?;
-        let mut moov = Self::Bounds { bounds, ..Default::default() };
-        let mut parsed_bytes = 0;
-
-        while parsed_bytes < size.content_len() {
-            let head = parse_head(reader)?;
-
-            match head.fourcc() {
-                MOVIE_HEADER => moov.mvhd = Some(Mvhd::parse(reader, &READ_CONFIG, head.size())?),
-                TRACK => moov.trak.push(Trak::find(reader, head.size())?),
-                USER_DATA => moov.udta = Some(Udta::find(reader, head.size())?),
-                _ => reader.skip(head.content_len() as i64)?,
-            }
-
-            parsed_bytes += head.len();
-        }
-
-        Ok(moov)
+    fn atom_ref(&self) -> AtomRef {
+        AtomRef::Moov(self)
     }
 }

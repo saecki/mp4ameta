@@ -20,29 +20,28 @@ impl ParseAtom for Co64 {
         let bounds = find_bounds(reader, size)?;
         let (version, _) = parse_full_head(reader)?;
 
-        match version {
-            0 => {
-                let entries = reader.read_be_u32()?;
-                if 8 + 8 * entries as u64 != size.content_len() {
-                    return Err(crate::Error::new(
-                        crate::ErrorKind::Parsing,
-                        "Sample table chunk offset 64 (co64) offset table size doesn't match atom length",
-                    ));
-                }
-
-                let mut offsets = Vec::with_capacity(entries as usize);
-                for _ in 0..entries {
-                    let offset = reader.read_be_u64()?;
-                    offsets.push(offset);
-                }
-
-                Ok(Self { state: State::Existing(bounds), offsets })
-            }
-            _ => Err(crate::Error::new(
+        if version != 0 {
+            return Err(crate::Error::new(
                 crate::ErrorKind::UnknownVersion(version),
                 "Unknown 64bit sample table chunk offset (co64) version",
-            )),
+            ));
         }
+
+        let entries = reader.read_be_u32()?;
+        if 8 + 8 * entries as u64 != size.content_len() {
+            return Err(crate::Error::new(
+                crate::ErrorKind::Parsing,
+                "Sample table chunk offset 64 (co64) offset table size doesn't match atom length",
+            ));
+        }
+
+        let mut offsets = Vec::with_capacity(entries as usize);
+        for _ in 0..entries {
+            let offset = reader.read_be_u64()?;
+            offsets.push(offset);
+        }
+
+        Ok(Self { state: State::Existing(bounds), offsets })
     }
 }
 
@@ -65,24 +64,25 @@ impl WriteAtom for Co64 {
     }
 }
 
-pub struct Co64Bounds {
-    pub bounds: AtomBounds,
-}
-
-impl Deref for Co64Bounds {
-    type Target = AtomBounds;
-
-    fn deref(&self) -> &Self::Target {
-        &self.bounds
+impl SimpleCollectChanges for Co64 {
+    fn state(&self) -> &State {
+        &self.state
     }
-}
 
-impl FindAtom for Co64 {
-    type Bounds = Co64Bounds;
+    fn existing<'a>(
+        &'a self,
+        _level: u8,
+        bounds: &'a AtomBounds,
+        changes: &mut Vec<Change<'a>>,
+    ) -> i64 {
+        changes.push(Change::UpdateChunkOffset(UpdateChunkOffsets {
+            bounds,
+            offsets: ChunkOffsets::Co64(&self.offsets),
+        }));
+        0
+    }
 
-    fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
-        let bounds = find_bounds(reader, size)?;
-        seek_to_end(reader, &bounds)?;
-        Ok(Self::Bounds { bounds })
+    fn atom_ref(&self) -> AtomRef {
+        AtomRef::Co64(self)
     }
 }

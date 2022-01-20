@@ -70,7 +70,7 @@ impl WriteAtom for Gmin {
 impl Gmin {
     pub fn chapter() -> Self {
         Self {
-            state: State::New,
+            state: State::Insert,
             version: 0,
             flags: [0; 3],
             graphics_mode: 0x0040,

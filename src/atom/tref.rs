@@ -52,32 +52,3 @@ impl WriteAtom for Tref {
         Size::from(content_len)
     }
 }
-
-#[derive(Default)]
-pub struct TrefBounds {
-    pub bounds: AtomBounds,
-    pub chap: Option<ChapBounds>,
-}
-
-impl FindAtom for Tref {
-    type Bounds = TrefBounds;
-
-    fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
-        let bounds = find_bounds(reader, size)?;
-        let mut tref = TrefBounds { bounds, ..Default::default() };
-        let mut parsed_bytes = 0;
-
-        while parsed_bytes < size.content_len() {
-            let head = parse_head(reader)?;
-
-            match head.fourcc() {
-                CHAPTER => tref.chap = Some(Chap::find(reader, head.size())?),
-                _ => reader.skip(head.content_len() as i64)?,
-            }
-
-            parsed_bytes += head.len();
-        }
-
-        Ok(tref)
-    }
-}

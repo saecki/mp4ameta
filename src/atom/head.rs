@@ -201,10 +201,6 @@ impl AtomBounds {
         self.pos
     }
 
-    pub const fn size(&self) -> Size {
-        self.size
-    }
-
     pub fn content_pos(&self) -> u64 {
         self.pos + self.head_len()
     }

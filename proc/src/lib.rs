@@ -309,3 +309,53 @@ impl Tag {{
     .parse()
     .expect("Error parsing accessor impl block:")
 }
+
+#[proc_macro]
+pub fn atom_ref(input: TokenStream) -> TokenStream {
+    let mut declaration = String::new();
+    let mut write = String::new();
+    let mut len = String::new();
+
+    for i in input.to_string().split(',').filter(|s| !s.is_empty()) {
+        match i.split_once('<') {
+            Some((ident, lifetime)) => {
+                declaration.push_str(&format!("{0}(&'a {0}<{1}),", ident, lifetime));
+                write.push_str(&format!("Self::{}(a) => a.write(writer),", ident));
+                len.push_str(&format!("Self::{}(a) => a.len(),", ident));
+            }
+            None => {
+                declaration.push_str(&format!("{0}(&'a {0}),", i));
+                write.push_str(&format!("Self::{}(a) => a.write(writer),", i));
+                len.push_str(&format!("Self::{}(a) => a.len(),", i));
+            }
+        }
+    }
+
+    format!(
+        "
+#[derive(Debug)]
+pub enum AtomRef<'a> {{
+    {decl}
+}}
+
+impl AtomRef<'_> {{
+    pub fn write(&self, writer: &mut impl Write) -> crate::Result<()> {{
+        match self {{
+            {write}
+        }}
+    }}
+
+    fn len(&self) -> u64 {{
+        match self {{
+            {len}
+        }}
+    }}
+}}
+    ",
+        decl = declaration,
+        write = write,
+        len = len,
+    )
+    .parse()
+    .expect("Error parsing atom ref block:")
+}

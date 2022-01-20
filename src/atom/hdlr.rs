@@ -50,10 +50,29 @@ impl WriteAtom for Hdlr {
     }
 }
 
+impl SimpleCollectChanges for Hdlr {
+    fn state(&self) -> &State {
+        &self.state
+    }
+
+    fn existing<'a>(
+        &'a self,
+        _level: u8,
+        _bounds: &AtomBounds,
+        _changes: &mut Vec<Change<'a>>,
+    ) -> i64 {
+        0
+    }
+
+    fn atom_ref(&self) -> AtomRef {
+        AtomRef::Hdlr(self)
+    }
+}
+
 impl Hdlr {
     pub fn meta() -> Self {
         Self {
-            state: State::New,
+            state: State::Insert,
             data: vec![
                 0x00, 0x00, 0x00, 0x00, // version + flags
                 0x00, 0x00, 0x00, 0x00, // component type
@@ -66,10 +85,9 @@ impl Hdlr {
         }
     }
 
-    #[allow(unused)]
     pub fn mp4a_mdia() -> Self {
         Self {
-            state: State::New,
+            state: State::Insert,
             data: vec![
                 0x00, 0x00, 0x00, 0x00, // version + flags
                 0x00, 0x00, 0x00, 0x00, // component type
@@ -82,10 +100,9 @@ impl Hdlr {
         }
     }
 
-    #[allow(unused)]
     pub fn text_mdia() -> Self {
         Self {
-            state: State::New,
+            state: State::Insert,
             data: vec![
                 0x00, 0x00, 0x00, 0x00, // version + flags
                 0x00, 0x00, 0x00, 0x00, // component type
@@ -96,27 +113,5 @@ impl Hdlr {
                 0x00, // component name
             ],
         }
-    }
-}
-
-pub struct HdlrBounds {
-    pub bounds: AtomBounds,
-}
-
-impl Deref for HdlrBounds {
-    type Target = AtomBounds;
-
-    fn deref(&self) -> &Self::Target {
-        &self.bounds
-    }
-}
-
-impl FindAtom for Hdlr {
-    type Bounds = HdlrBounds;
-
-    fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
-        let bounds = find_bounds(reader, size)?;
-        seek_to_end(reader, &bounds)?;
-        Ok(Self::Bounds { bounds })
     }
 }

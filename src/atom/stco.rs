@@ -64,24 +64,25 @@ impl WriteAtom for Stco {
     }
 }
 
-pub struct StcoBounds {
-    pub bounds: AtomBounds,
-}
-
-impl Deref for StcoBounds {
-    type Target = AtomBounds;
-
-    fn deref(&self) -> &Self::Target {
-        &self.bounds
+impl SimpleCollectChanges for Stco {
+    fn state(&self) -> &State {
+        &self.state
     }
-}
 
-impl FindAtom for Stco {
-    type Bounds = StcoBounds;
+    fn existing<'a>(
+        &'a self,
+        _level: u8,
+        bounds: &'a AtomBounds,
+        changes: &mut Vec<Change<'a>>,
+    ) -> i64 {
+        changes.push(Change::UpdateChunkOffset(UpdateChunkOffsets {
+            bounds,
+            offsets: ChunkOffsets::Stco(&self.offsets),
+        }));
+        0
+    }
 
-    fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
-        let bounds = find_bounds(reader, size)?;
-        seek_to_end(reader, &bounds)?;
-        Ok(Self::Bounds { bounds })
+    fn atom_ref(&self) -> AtomRef {
+        AtomRef::Stco(self)
     }
 }

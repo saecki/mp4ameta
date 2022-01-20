@@ -78,33 +78,30 @@ impl WriteAtom for Ilst<'_> {
     }
 }
 
+impl SimpleCollectChanges for Ilst<'_> {
+    fn state(&self) -> &State {
+        &self.state
+    }
+
+    fn existing<'a>(
+        &'a self,
+        _level: u8,
+        _bounds: &AtomBounds,
+        _changes: &mut Vec<Change<'a>>,
+    ) -> i64 {
+        0
+    }
+
+    fn atom_ref(&self) -> AtomRef {
+        AtomRef::Ilst(self)
+    }
+}
+
 impl Ilst<'_> {
     pub fn owned(self) -> Option<Vec<MetaItem>> {
         match self.data {
             IlstData::Owned(a) => Some(a),
             IlstData::Borrowed(_) => None,
         }
-    }
-}
-
-pub struct IlstBounds {
-    pub bounds: AtomBounds,
-}
-
-impl Deref for IlstBounds {
-    type Target = AtomBounds;
-
-    fn deref(&self) -> &Self::Target {
-        &self.bounds
-    }
-}
-
-impl FindAtom for Ilst<'_> {
-    type Bounds = IlstBounds;
-
-    fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
-        let bounds = find_bounds(reader, size)?;
-        seek_to_end(reader, &bounds)?;
-        Ok(Self::Bounds { bounds })
     }
 }

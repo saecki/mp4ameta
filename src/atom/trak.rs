@@ -70,35 +70,21 @@ impl WriteAtom for Trak {
     }
 }
 
-#[derive(Default)]
-pub struct TrakBounds {
-    pub bounds: AtomBounds,
-    pub tkhd: Option<Tkhd>,
-    pub tref: Option<TrefBounds>,
-    pub mdia: Option<MdiaBounds>,
-}
+impl SimpleCollectChanges for Trak {
+    fn state(&self) -> &State {
+        &self.state
+    }
 
-impl FindAtom for Trak {
-    type Bounds = TrakBounds;
+    fn existing<'a>(
+        &'a self,
+        level: u8,
+        bounds: &'a AtomBounds,
+        changes: &mut Vec<Change<'a>>,
+    ) -> i64 {
+        self.mdia.collect_changes(bounds.end(), level, changes)
+    }
 
-    fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
-        let bounds = find_bounds(reader, size)?;
-        let mut trak = TrakBounds { bounds, ..Default::default() };
-        let mut parsed_bytes = 0;
-
-        while parsed_bytes < size.content_len() {
-            let head = parse_head(reader)?;
-
-            match head.fourcc() {
-                TRACK_HEADER => trak.tkhd = Some(Tkhd::parse(reader, &READ_CONFIG, head.size())?),
-                TRACK_REFERENCE => trak.tref = Some(Tref::find(reader, head.size())?),
-                MEDIA => trak.mdia = Some(Mdia::find(reader, head.size())?),
-                _ => reader.skip(head.content_len() as i64)?,
-            }
-
-            parsed_bytes += head.len();
-        }
-
-        Ok(trak)
+    fn atom_ref(&self) -> AtomRef {
+        AtomRef::Trak(self)
     }
 }

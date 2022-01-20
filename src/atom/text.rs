@@ -51,10 +51,9 @@ impl WriteAtom for Text {
 }
 
 impl Text {
-    #[allow(unused)]
     pub fn media_chapter() -> Self {
         Self {
-            state: State::New,
+            state: State::Insert,
             data: vec![
                 // Text Sample Entry
                 0x00, 0x00, 0x00, 0x01, // displayFlags
@@ -92,7 +91,7 @@ impl Text {
 
     pub fn media_information_chapter() -> Self {
         Self {
-            state: State::New,
+            state: State::Insert,
             data: vec![
                 0x00, 0x01, 0x00, 0x00, //
                 0x00, 0x00, 0x00, 0x00, //

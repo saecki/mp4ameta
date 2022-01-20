@@ -66,30 +66,21 @@ impl WriteAtom for Mdia {
     }
 }
 
-pub struct MdiaBounds {
-    pub bounds: AtomBounds,
-    pub minf: Option<MinfBounds>,
-}
+impl SimpleCollectChanges for Mdia {
+    fn state(&self) -> &State {
+        &self.state
+    }
 
-impl FindAtom for Mdia {
-    type Bounds = MdiaBounds;
+    fn existing<'a>(
+        &'a self,
+        level: u8,
+        bounds: &'a AtomBounds,
+        changes: &mut Vec<Change<'a>>,
+    ) -> i64 {
+        self.minf.collect_changes(bounds.end(), level, changes)
+    }
 
-    fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
-        let bounds = find_bounds(reader, size)?;
-        let mut minf = None;
-        let mut parsed_bytes = 0;
-
-        while parsed_bytes < size.content_len() {
-            let head = parse_head(reader)?;
-
-            match head.fourcc() {
-                MEDIA_INFORMATION => minf = Some(Minf::find(reader, head.size())?),
-                _ => reader.skip(head.content_len() as i64)?,
-            }
-
-            parsed_bytes += head.len();
-        }
-
-        Ok(Self::Bounds { bounds, minf })
+    fn atom_ref(&self) -> AtomRef {
+        AtomRef::Mdia(self)
     }
 }

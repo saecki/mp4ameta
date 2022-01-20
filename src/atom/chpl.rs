@@ -108,33 +108,30 @@ impl WriteAtom for Chpl<'_> {
     }
 }
 
+impl SimpleCollectChanges for Chpl<'_> {
+    fn state(&self) -> &State {
+        &self.state
+    }
+
+    fn existing<'a>(
+        &'a self,
+        _level: u8,
+        _bounds: &AtomBounds,
+        _changes: &mut Vec<Change<'a>>,
+    ) -> i64 {
+        0
+    }
+
+    fn atom_ref(&self) -> AtomRef {
+        AtomRef::Chpl(self)
+    }
+}
+
 impl Chpl<'_> {
     pub fn owned(self) -> Option<Vec<OwnedChplItem>> {
         match self.data {
             ChplData::Owned(v) => Some(v),
             ChplData::Borrowed(_) => None,
         }
-    }
-}
-
-pub struct ChplBounds {
-    pub bounds: AtomBounds,
-}
-
-impl Deref for ChplBounds {
-    type Target = AtomBounds;
-
-    fn deref(&self) -> &Self::Target {
-        &self.bounds
-    }
-}
-
-impl FindAtom for Chpl<'_> {
-    type Bounds = ChplBounds;
-
-    fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
-        let bounds = find_bounds(reader, size)?;
-        seek_to_end(reader, &bounds)?;
-        Ok(Self::Bounds { bounds })
     }
 }

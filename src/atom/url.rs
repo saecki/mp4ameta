@@ -53,7 +53,7 @@ impl WriteAtom for Url {
 impl Url {
     pub fn track() -> Self {
         Self {
-            state: State::New,
+            state: State::Insert,
             data: vec![0x01, 0x00, 0x00, 0x00],
         }
     }

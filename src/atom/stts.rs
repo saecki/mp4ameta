@@ -71,25 +71,3 @@ impl WriteAtom for Stts {
         Size::from(content_len)
     }
 }
-
-pub struct SttsBounds {
-    pub bounds: AtomBounds,
-}
-
-impl Deref for SttsBounds {
-    type Target = AtomBounds;
-
-    fn deref(&self) -> &Self::Target {
-        &self.bounds
-    }
-}
-
-impl FindAtom for Stts {
-    type Bounds = SttsBounds;
-
-    fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
-        let bounds = find_bounds(reader, size)?;
-        seek_to_end(reader, &bounds)?;
-        Ok(Self::Bounds { bounds })
-    }
-}

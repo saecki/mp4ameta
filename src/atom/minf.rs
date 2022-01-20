@@ -66,30 +66,21 @@ impl WriteAtom for Minf {
     }
 }
 
-pub struct MinfBounds {
-    pub bounds: AtomBounds,
-    pub stbl: Option<StblBounds>,
-}
+impl SimpleCollectChanges for Minf {
+    fn state(&self) -> &State {
+        &self.state
+    }
 
-impl FindAtom for Minf {
-    type Bounds = MinfBounds;
+    fn existing<'a>(
+        &'a self,
+        level: u8,
+        bounds: &'a AtomBounds,
+        changes: &mut Vec<Change<'a>>,
+    ) -> i64 {
+        self.stbl.collect_changes(bounds.end(), level, changes)
+    }
 
-    fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
-        let bounds = find_bounds(reader, size)?;
-        let mut stbl = None;
-        let mut parsed_bytes = 0;
-
-        while parsed_bytes < size.content_len() {
-            let head = parse_head(reader)?;
-
-            match head.fourcc() {
-                SAMPLE_TABLE => stbl = Some(Stbl::find(reader, head.size())?),
-                _ => reader.skip(head.content_len() as i64)?,
-            }
-
-            parsed_bytes += head.len();
-        }
-
-        Ok(Self::Bounds { bounds, stbl })
+    fn atom_ref(&self) -> AtomRef {
+        AtomRef::Minf(self)
     }
 }

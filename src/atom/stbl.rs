@@ -95,39 +95,22 @@ impl WriteAtom for Stbl {
     }
 }
 
-#[derive(Default)]
-pub struct StblBounds {
-    pub bounds: AtomBounds,
-    pub stts: Option<SttsBounds>,
-    pub stsc: Option<StscBounds>,
-    pub stsz: Option<StszBounds>,
-    pub stco: Option<StcoBounds>,
-    pub co64: Option<Co64Bounds>,
-}
+impl SimpleCollectChanges for Stbl {
+    fn state(&self) -> &State {
+        &self.state
+    }
 
-impl FindAtom for Stbl {
-    type Bounds = StblBounds;
+    fn existing<'a>(
+        &'a self,
+        level: u8,
+        bounds: &'a AtomBounds,
+        changes: &mut Vec<Change<'a>>,
+    ) -> i64 {
+        self.stco.collect_changes(bounds.end(), level, changes)
+            + self.co64.collect_changes(bounds.end(), level, changes)
+    }
 
-    fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
-        let bounds = find_bounds(reader, size)?;
-        let mut stbl = Self::Bounds { bounds, ..Default::default() };
-        let mut parsed_bytes = 0;
-
-        while parsed_bytes < size.content_len() {
-            let head = parse_head(reader)?;
-
-            match head.fourcc() {
-                SAMPLE_TABLE_TIME_TO_SAMPLE => stbl.stts = Some(Stts::find(reader, head.size())?),
-                SAMPLE_TABLE_SAMPLE_TO_COUNT => stbl.stsc = Some(Stsc::find(reader, head.size())?),
-                SAMPLE_TABLE_SAMPLE_SIZE => stbl.stsz = Some(Stsz::find(reader, head.size())?),
-                SAMPLE_TABLE_CHUNK_OFFSET => stbl.stco = Some(Stco::find(reader, head.size())?),
-                SAMPLE_TABLE_CHUNK_OFFSET_64 => stbl.co64 = Some(Co64::find(reader, head.size())?),
-                _ => reader.skip(head.content_len() as i64)?,
-            }
-
-            parsed_bytes += head.len();
-        }
-
-        Ok(stbl)
+    fn atom_ref(&self) -> AtomRef {
+        AtomRef::Stbl(self)
     }
 }

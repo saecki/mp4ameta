@@ -407,7 +407,7 @@ fn dump_chapter_list() {
     let _ = std::fs::remove_file("target/dump_chapter_list.m4a");
     println!("dumping to target/dump_chapter_list.m4a...");
     let cfg = WriteConfig {
-        write_chapters: WriteChapters::ChapterList,
+        write_chapters: WriteChapters::List,
         ..Default::default()
     };
     tag.dump_with_path("target/dump_chapter_list.m4a", &cfg).unwrap();
@@ -436,7 +436,7 @@ fn dump_chapter_track() {
     let _ = std::fs::remove_file("target/dump_chapter_track.m4a");
     println!("dumping to target/dump_chapter_track.m4a...");
     let cfg = WriteConfig {
-        write_chapters: WriteChapters::ChapterTrack,
+        write_chapters: WriteChapters::Track,
         ..Default::default()
     };
     tag.dump_with_path("target/dump_chapter_track.m4a", &cfg).unwrap();
