@@ -3,7 +3,7 @@ use super::*;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Trak {
     pub state: State,
-    pub tkhd: Option<Tkhd>,
+    pub tkhd: Tkhd,
     pub tref: Option<Tref>,
     pub mdia: Option<Mdia>,
 }
@@ -19,30 +19,38 @@ impl ParseAtom for Trak {
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
-        let mut trak = Self {
-            state: State::Existing(bounds),
-            ..Default::default()
-        };
         let mut parsed_bytes = 0;
+        let mut tkhd = None;
+        let mut tref = None;
+        let mut mdia = None;
 
         while parsed_bytes < size.content_len() {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
                 TRACK_HEADER if cfg.read_chapters => {
-                    trak.tkhd = Some(Tkhd::parse(reader, cfg, head.size())?)
+                    tkhd = Some(Tkhd::parse(reader, cfg, head.size())?)
                 }
                 TRACK_REFERENCE if cfg.read_chapters => {
-                    trak.tref = Some(Tref::parse(reader, cfg, head.size())?)
+                    tref = Some(Tref::parse(reader, cfg, head.size())?)
                 }
                 MEDIA if cfg.read_chapters || cfg.read_audio_info => {
-                    trak.mdia = Some(Mdia::parse(reader, cfg, head.size())?)
+                    mdia = Some(Mdia::parse(reader, cfg, head.size())?)
                 }
                 _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();
         }
+
+        let tkhd = tkhd.ok_or_else(|| {
+            crate::Error::new(
+                crate::ErrorKind::AtomNotFound(TRACK_HEADER),
+                "Missing necessary data, no track header (tkhd) atom found",
+            )
+        })?;
+
+        let trak = Self { state: State::Existing(bounds), tkhd, tref, mdia };
 
         Ok(trak)
     }
@@ -51,9 +59,7 @@ impl ParseAtom for Trak {
 impl WriteAtom for Trak {
     fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
         self.write_head(writer)?;
-        if let Some(a) = &self.tkhd {
-            a.write(writer)?;
-        }
+        self.tkhd.write(writer)?;
         if let Some(a) = &self.tref {
             a.write(writer)?;
         }
@@ -64,8 +70,7 @@ impl WriteAtom for Trak {
     }
 
     fn size(&self) -> Size {
-        let content_len =
-            self.tkhd.len_or_zero() + self.tref.len_or_zero() + self.mdia.len_or_zero();
+        let content_len = self.tkhd.len() + self.tref.len_or_zero() + self.mdia.len_or_zero();
         Size::from(content_len)
     }
 }

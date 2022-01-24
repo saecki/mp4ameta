@@ -394,8 +394,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
         // chapter tracks
         for chap in moov.trak.iter().filter_map(|a| a.tref.as_ref().and_then(|a| a.chap.as_ref())) {
             for c_id in chap.chapter_ids.iter() {
-                let chapter_track =
-                    moov.trak.iter().find(|a| a.tkhd.as_ref().map_or(false, |a| a.id == *c_id));
+                let chapter_track = moov.trak.iter().find(|a| a.tkhd.id == *c_id);
 
                 let chapter_track = match chapter_track {
                     Some(t) => t,
@@ -657,10 +656,8 @@ pub(crate) fn write_tag(
             }
 
             for trak in moov.trak.iter_mut() {
-                if let Some(tkhd) = &mut trak.tkhd {
-                    if chapter_track_ids.contains(&tkhd.id) {
-                        trak.state.remove_existing();
-                    }
+                if chapter_track_ids.contains(&trak.tkhd.id) {
+                    trak.state.remove_existing();
                 }
             }
         }
@@ -831,7 +828,7 @@ pub(crate) fn dump_tag(writer: &mut impl Write, cfg: &WriteConfig, tag: &Tag) ->
             // audio track
             moov.trak.push(Trak {
                 state: State::Insert,
-                tkhd: Some(Tkhd { id: 1, ..Default::default() }),
+                tkhd: Tkhd { id: 1, ..Default::default() },
                 tref: Some(Tref {
                     state: State::Insert,
                     chap: Some(Chap { state: State::Insert, chapter_ids: vec![2] }),
@@ -850,7 +847,7 @@ pub(crate) fn dump_tag(writer: &mut impl Write, cfg: &WriteConfig, tag: &Tag) ->
 
             // chapter track
             moov.trak.push(Trak {
-                tkhd: Some(Tkhd { id: 2, ..Default::default() }),
+                tkhd: Tkhd { id: 2, ..Default::default() },
                 mdia: Some(Mdia {
                     state: State::Insert,
                     mdhd: Some(Mdhd {
