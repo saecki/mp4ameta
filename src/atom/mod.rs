@@ -579,7 +579,7 @@ pub(crate) fn write_tag(
     }
 
     let mdat_pos = mdat_bounds.map_or(0, |a| a.pos());
-    let moov = moov.as_mut().ok_or_else(|| {
+    let mut moov = moov.ok_or_else(|| {
         crate::Error::new(
             crate::ErrorKind::AtomNotFound(MOVIE),
             "Missing necessary data, no movie (moov) atom found",
@@ -595,6 +595,27 @@ pub(crate) fn write_tag(
     if cfg.write_item_list || !cfg.write_chapters.is_preserve() {
         let udta = moov.udta.get_or_insert(Udta { state: State::Insert, ..Default::default() });
 
+        // item list (ilst)
+        if cfg.write_item_list {
+            let meta = udta.meta.get_or_insert(Meta { state: State::Insert, ..Default::default() });
+
+            meta.hdlr.get_or_insert_with(Hdlr::meta);
+
+            match meta.ilst.as_mut() {
+                Some(ilst) => {
+                    ilst.state.replace_existing();
+                    ilst.data = IlstData::Borrowed(metaitems);
+                }
+                None => {
+                    meta.ilst = Some(Ilst {
+                        state: State::Insert,
+                        data: IlstData::Borrowed(metaitems),
+                    });
+                }
+            }
+        }
+
+        // chapter list (chpl)
         match cfg.write_chapters {
             WriteChapters::List => {
                 let chpl_timescale = cfg.chpl_timescale.fixed_or_mvhd(mvhd.timescale);
@@ -626,28 +647,39 @@ pub(crate) fn write_tag(
             }
             WriteChapters::Preserve => (),
         }
+    }
 
-        if cfg.write_item_list {
-            let meta = udta.meta.get_or_insert(Meta { state: State::Insert, ..Default::default() });
+    // chapter track
+    match cfg.write_chapters {
+        WriteChapters::List => {
+            let mut chapter_track_ids = Vec::new();
+            for tref in moov.trak.iter_mut().filter_map(|a| a.tref.as_mut()) {
+                if let Some(chap) = &mut tref.chap {
+                    chap.state.remove_existing();
 
-            meta.hdlr.get_or_insert_with(Hdlr::meta);
+                    if let State::Existing(bounds) = &tref.state {
+                        if bounds.content_len() == chap.len() {
+                            tref.state.remove_existing();
+                        }
+                    }
 
-            match meta.ilst.as_mut() {
-                Some(ilst) => {
-                    ilst.state.replace_existing();
-                    ilst.data = IlstData::Borrowed(metaitems);
+                    chapter_track_ids.extend(chap.chapter_ids.iter().copied());
                 }
-                None => {
-                    meta.ilst = Some(Ilst {
-                        state: State::Insert,
-                        data: IlstData::Borrowed(metaitems),
-                    });
+            }
+
+            for trak in moov.trak.iter_mut() {
+                if let Some(tkhd) = &mut trak.tkhd {
+                    if chapter_track_ids.contains(&tkhd.id) {
+                        trak.state.remove_existing();
+                    }
                 }
             }
         }
+        WriteChapters::Track => {
+            // TODO: update or add track and track reference
+        }
+        WriteChapters::Preserve => (),
     }
-
-    // TODO: check chapter track
 
     // collect changes
     let mut changes = Vec::<Change>::new();
