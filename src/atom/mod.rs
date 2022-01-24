@@ -587,7 +587,7 @@ pub(crate) fn write_tag(
     })?;
     let mvhd = moov.mvhd.as_ref().ok_or_else(|| {
         crate::Error::new(
-            crate::ErrorKind::AtomNotFound(MOVIE),
+            crate::ErrorKind::AtomNotFound(MOVIE_HEADER),
             "Missing necessary data, no movie header (mvhd) atom found",
         )
     })?;
