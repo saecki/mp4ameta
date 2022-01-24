@@ -405,9 +405,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
                 let stbl = mdia.and_then(|a| a.minf.as_ref()).and_then(|a| a.stbl.as_ref());
                 let stts = stbl.and_then(|a| a.stts.as_ref());
 
-                let timescale = mdia
-                    .and_then(|a| a.mdhd.as_ref().map(|a| a.timescale))
-                    .unwrap_or(mvhd.timescale);
+                let timescale = mdia.map(|a| a.mdhd.timescale).unwrap_or(mvhd.timescale);
 
                 if let Some(stco) = stbl.and_then(|a| a.stco.as_ref()) {
                     chapters.reserve(stco.offsets.len());
@@ -834,12 +832,12 @@ pub(crate) fn dump_tag(writer: &mut impl Write, cfg: &WriteConfig, tag: &Tag) ->
                     chap: Some(Chap { state: State::Insert, chapter_ids: vec![2] }),
                 }),
                 mdia: Some(Mdia {
-                    mdhd: Some(Mdhd {
+                    mdhd: Mdhd {
                         version: 1,
                         timescale: MVHD_TIMESCALE,
                         duration: unscale_duration(MVHD_TIMESCALE, duration),
                         ..Default::default()
-                    }),
+                    },
                     hdlr: Some(Hdlr::mp4a_mdia()),
                     ..Default::default()
                 }),
@@ -850,11 +848,11 @@ pub(crate) fn dump_tag(writer: &mut impl Write, cfg: &WriteConfig, tag: &Tag) ->
                 tkhd: Tkhd { id: 2, ..Default::default() },
                 mdia: Some(Mdia {
                     state: State::Insert,
-                    mdhd: Some(Mdhd {
+                    mdhd: Mdhd {
                         version: 1,
                         timescale: MVHD_TIMESCALE,
                         ..Default::default()
-                    }),
+                    },
                     hdlr: Some(Hdlr::text_mdia()),
                     minf: Some(Minf {
                         state: State::Insert,
