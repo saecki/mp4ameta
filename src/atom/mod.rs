@@ -363,12 +363,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
         parsed_bytes += head.len();
     };
 
-    let mvhd = moov.mvhd.ok_or_else(|| {
-        crate::Error::new(
-            ErrorKind::AtomNotFound(MOVIE_HEADER),
-            "Missing necessary data, no movie header (mvhd) atom found",
-        )
-    })?;
+    let mvhd = moov.mvhd;
     let duration = scale_duration(mvhd.timescale, mvhd.duration);
 
     let metaitems = moov
@@ -585,12 +580,6 @@ pub(crate) fn write_tag(
             "Missing necessary data, no movie (moov) atom found",
         )
     })?;
-    let mvhd = moov.mvhd.as_ref().ok_or_else(|| {
-        crate::Error::new(
-            crate::ErrorKind::AtomNotFound(MOVIE_HEADER),
-            "Missing necessary data, no movie header (mvhd) atom found",
-        )
-    })?;
 
     if cfg.write_item_list || !cfg.write_chapters.is_preserve() {
         let udta = moov.udta.get_or_insert(Udta { state: State::Insert, ..Default::default() });
@@ -618,7 +607,7 @@ pub(crate) fn write_tag(
         // chapter list (chpl)
         match cfg.write_chapters {
             WriteChapters::List => {
-                let chpl_timescale = cfg.chpl_timescale.fixed_or_mvhd(mvhd.timescale);
+                let chpl_timescale = cfg.chpl_timescale.fixed_or_mvhd(moov.mvhd.timescale);
                 let chpl_items = chapters
                     .iter()
                     .map(|c| BorrowedChplItem {
@@ -777,12 +766,12 @@ pub(crate) fn dump_tag(writer: &mut impl Write, cfg: &WriteConfig, tag: &Tag) ->
     let ftyp = Ftyp("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".to_owned());
     let mut mdat = Mdat::default();
     let mut moov = Moov {
-        mvhd: Some(Mvhd {
+        mvhd: Mvhd {
             version: 1,
             timescale: MVHD_TIMESCALE,
             duration: scaled_duration,
             ..Default::default()
-        }),
+        },
         udta: Some(Udta::default()),
         ..Default::default()
     };

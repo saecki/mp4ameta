@@ -3,7 +3,7 @@ use super::*;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Moov<'a> {
     pub state: State,
-    pub mvhd: Option<Mvhd>,
+    pub mvhd: Mvhd,
     pub trak: Vec<Trak>,
     pub udta: Option<Udta<'a>>,
 }
@@ -19,28 +19,36 @@ impl ParseAtom for Moov<'_> {
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
-        let mut moov = Self {
-            state: State::Existing(bounds),
-            ..Default::default()
-        };
         let mut parsed_bytes = 0;
+        let mut mvhd = None;
+        let mut trak = Vec::new();
+        let mut udta = None;
 
         while parsed_bytes < size.content_len() {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                MOVIE_HEADER => moov.mvhd = Some(Mvhd::parse(reader, cfg, head.size())?),
+                MOVIE_HEADER => mvhd = Some(Mvhd::parse(reader, cfg, head.size())?),
                 TRACK if cfg.read_chapters || cfg.read_audio_info => {
-                    moov.trak.push(Trak::parse(reader, cfg, head.size())?)
+                    trak.push(Trak::parse(reader, cfg, head.size())?)
                 }
                 USER_DATA if cfg.read_item_list || cfg.read_chapters => {
-                    moov.udta = Some(Udta::parse(reader, cfg, head.size())?)
+                    udta = Some(Udta::parse(reader, cfg, head.size())?)
                 }
                 _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();
         }
+
+        let mvhd = mvhd.ok_or_else(|| {
+            crate::Error::new(
+                ErrorKind::AtomNotFound(MOVIE_HEADER),
+                "Missing necessary data, no movie header (mvhd) atom found",
+            )
+        })?;
+
+        let moov = Self { state: State::Existing(bounds), mvhd, trak, udta };
 
         Ok(moov)
     }
@@ -49,9 +57,7 @@ impl ParseAtom for Moov<'_> {
 impl WriteAtom for Moov<'_> {
     fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
         self.write_head(writer)?;
-        if let Some(a) = &self.mvhd {
-            a.write(writer)?;
-        }
+        self.mvhd.write(writer)?;
         for t in self.trak.iter() {
             t.write(writer)?;
         }
@@ -62,7 +68,7 @@ impl WriteAtom for Moov<'_> {
     }
 
     fn size(&self) -> Size {
-        let content_len = self.mvhd.len_or_zero()
+        let content_len = self.mvhd.len()
             + self.trak.iter().map(Trak::len).sum::<u64>()
             + self.udta.len_or_zero();
         Size::from(content_len)
