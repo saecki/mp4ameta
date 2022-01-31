@@ -1355,7 +1355,6 @@ impl Tag {
     /// tag.clear();
     /// assert!(tag.is_empty());
     /// ```
-    /// use mp4ameta::{Tag, Data, Fourcc};
     pub fn is_empty(&self) -> bool {
         self.atoms.is_empty()
     }
