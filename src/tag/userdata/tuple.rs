@@ -1,12 +1,12 @@
 use std::fmt;
 
-use crate::{ident, Data, Tag};
+use crate::{ident, Data, Userdata};
 
 /// ### Track
 ///
 /// The track number and total number of tracks are stored in a tuple. If only one is present the
 /// other is represented as 0 and will be treated as if nonexistent.
-impl Tag {
+impl Userdata {
     /// Returns the track number and the total number of tracks (`trkn`).
     pub fn track(&self) -> (Option<u16>, Option<u16>) {
         let vec = match self.bytes_of(&ident::TRACK_NUMBER).next() {
@@ -102,7 +102,7 @@ impl Tag {
 ///
 /// The disc number and total number of discs are stored in a tuple. If only one is present the
 /// other is represented as 0 and will be treated as if nonexistent.
-impl Tag {
+impl Userdata {
     /// Returns the disc number and total number of discs (`disk`).
     pub fn disc(&self) -> (Option<u16>, Option<u16>) {
         let vec = match self.bytes_of(&ident::DISC_NUMBER).next() {

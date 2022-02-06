@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::{ident, Data, Tag};
+use crate::{ident, Data, Userdata};
 
 /// A list of standard genre codes and values found in the `gnre` atom. The codes are equivalent to
 /// the ID3v1 genre codes plus 1.
@@ -88,7 +88,7 @@ pub const STANDARD_GENRES: [&str; 80] = [
 ];
 
 /// ### Standard genre
-impl Tag {
+impl Userdata {
     /// Returns all standard genres (`gnre`).
     pub fn standard_genres(&self) -> impl Iterator<Item = u16> + '_ {
         self.bytes_of(&ident::STANDARD_GENRE).filter_map(|v| {
@@ -139,7 +139,7 @@ impl Tag {
 ///
 /// These are convenience methods that operate on values of both standard genres (`gnre`) and
 /// custom genres (`©gen`).
-impl Tag {
+impl Userdata {
     /// Returns all genres, first the standard genres (`gnre`) then custom ones (`©gen`).
     pub fn genres(&self) -> impl Iterator<Item = &str> + '_ {
         #[allow(clippy::redundant_closure)]

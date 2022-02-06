@@ -41,7 +41,7 @@
 //!             └─ data
 //! ```
 
-use std::cmp::{self, Ordering};
+use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
@@ -49,7 +49,7 @@ use std::num::NonZeroU32;
 use std::ops::{Deref, DerefMut};
 use std::time::Duration;
 
-use crate::{AudioInfo, Chapter, ErrorKind, Tag};
+use crate::{AudioInfo, Chapter, ErrorKind, Tag, Userdata};
 
 use head::*;
 use ident::*;
@@ -448,7 +448,8 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
         }
     }
 
-    Ok(Tag { ftyp, info, metaitems, chapters })
+    let userdata = Userdata { metaitems, chapters };
+    Ok(Tag { ftyp, info, userdata })
 }
 
 fn read_chapters<'a>(
@@ -542,12 +543,7 @@ struct MovedData {
     data: Vec<u8>,
 }
 
-pub(crate) fn write_tag(
-    file: &File,
-    cfg: &WriteConfig,
-    metaitems: &[MetaItem],
-    chapters: &[Chapter],
-) -> crate::Result<()> {
+pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> crate::Result<()> {
     let reader = &mut BufReader::new(file);
 
     Ftyp::parse(reader)?;
@@ -590,12 +586,12 @@ pub(crate) fn write_tag(
             match meta.ilst.as_mut() {
                 Some(ilst) => {
                     ilst.state.replace_existing();
-                    ilst.data = IlstData::Borrowed(metaitems);
+                    ilst.data = IlstData::Borrowed(&userdata.metaitems);
                 }
                 None => {
                     meta.ilst = Some(Ilst {
                         state: State::Insert,
-                        data: IlstData::Borrowed(metaitems),
+                        data: IlstData::Borrowed(&userdata.metaitems),
                     });
                 }
             }
@@ -605,7 +601,8 @@ pub(crate) fn write_tag(
         match cfg.write_chapters {
             WriteChapters::List => {
                 let chpl_timescale = cfg.chpl_timescale.fixed_or_mvhd(moov.mvhd.timescale);
-                let chpl_items = chapters
+                let chpl_items = userdata
+                    .chapters
                     .iter()
                     .map(|c| BorrowedChplItem {
                         start: unscale_duration(chpl_timescale, c.start),
@@ -750,12 +747,16 @@ pub(crate) fn write_tag(
 
 /// Attempts to dump the metadata atoms to the writer. This doesn't include a complete MPEG-4
 /// container hierarchy and won't result in a usable file.
-pub(crate) fn dump_tag(writer: &mut impl Write, cfg: &WriteConfig, tag: &Tag) -> crate::Result<()> {
+pub(crate) fn dump_tag(
+    writer: &mut impl Write,
+    cfg: &WriteConfig,
+    userdata: &Userdata,
+) -> crate::Result<()> {
     const MVHD_TIMESCALE: u32 = 1000;
-    let Tag { metaitems, chapters, info, .. } = tag;
 
-    let chapter_start = chapters.last().map_or(Duration::ZERO, |c| c.start);
-    let duration = cmp::max(info.duration, chapter_start);
+    let Userdata { metaitems, chapters } = userdata;
+
+    let duration = userdata.chapters.last().map_or(Duration::ZERO, |c| c.start);
     let scaled_duration = unscale_duration(MVHD_TIMESCALE, duration);
 
     let ftyp = Ftyp("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".to_owned());
