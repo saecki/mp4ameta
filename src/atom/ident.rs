@@ -1,5 +1,8 @@
+use std::array::TryFromSliceError;
+use std::convert::TryInto;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
+use std::str::FromStr;
 
 /// (`ftyp`) Identifier of an atom information about the filetype.
 pub(crate) const FILETYPE: Fourcc = Fourcc(*b"ftyp");
@@ -196,6 +199,14 @@ impl Ident for Fourcc {
 
     fn freeform(&self) -> Option<FreeformIdent> {
         None
+    }
+}
+
+impl FromStr for Fourcc {
+    type Err = TryFromSliceError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Fourcc(s.as_bytes().try_into()?))
     }
 }
 
