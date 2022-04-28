@@ -151,8 +151,7 @@ pub enum AdvisoryRating {
     Clean,
     /// An advisory rating stored as 0 in the `rtng` atom.
     Inoffensive,
-    /// An advisory rating indicated by any other value than 0 or 2 in the `rtng` atom, containing
-    /// the value.
+    /// An advisory rating indicated by any other value than 0 or 2 in the `rtng` atom.
     Explicit,
 }
 
