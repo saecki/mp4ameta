@@ -493,9 +493,9 @@ fn read_chapter_title(reader: &mut (impl Read + Seek), offset: u64) -> crate::Re
 /// A struct that configures parsing behavior.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WriteConfig {
-    /// Wheter to overwrite item list metadata.
+    /// Whether to overwrite item list metadata.
     pub write_item_list: bool,
-    /// Wheter to overwrite chapter information.
+    /// Whether to overwrite chapter information.
     pub write_chapters: WriteChapters,
     /// The timescale that is used to scale time for chapter list (chpl) atoms.
     pub chpl_timescale: ChplTimescale,
