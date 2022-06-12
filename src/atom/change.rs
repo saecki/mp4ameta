@@ -17,6 +17,7 @@ pub enum Change<'a> {
     Remove(RemoveAtom<'a>),
     Replace(ReplaceAtom<'a>),
     Insert(InsertAtom<'a>),
+    Data(u64, Vec<u8>),
 }
 
 impl ChangeBounds for Change<'_> {
@@ -27,6 +28,7 @@ impl ChangeBounds for Change<'_> {
             Self::Remove(c) => c.old_pos(),
             Self::Replace(c) => c.old_pos(),
             Self::Insert(c) => c.old_pos(),
+            Self::Data(pos, _) => *pos,
         }
     }
 
@@ -37,6 +39,7 @@ impl ChangeBounds for Change<'_> {
             Self::Remove(c) => c.old_end(),
             Self::Replace(c) => c.old_end(),
             Self::Insert(c) => c.old_end(),
+            Self::Data(pos, _) => *pos,
         }
     }
 
@@ -47,6 +50,7 @@ impl ChangeBounds for Change<'_> {
             Self::Remove(c) => c.len_diff(),
             Self::Replace(c) => c.len_diff(),
             Self::Insert(c) => c.len_diff(),
+            Self::Data(_, d) => d.len() as i64,
         }
     }
 
@@ -57,6 +61,7 @@ impl ChangeBounds for Change<'_> {
             Self::Remove(c) => c.level(),
             Self::Replace(c) => c.level(),
             Self::Insert(c) => c.level(),
+            Self::Data(_, _) => 0,
         }
     }
 }

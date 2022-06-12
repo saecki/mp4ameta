@@ -565,11 +565,16 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
         }
     }
 
-    let mdat_pos = mdat_bounds.map_or(0, |a| a.pos());
     let Some(mut moov) = moov else {
         return Err(crate::Error::new(
             crate::ErrorKind::AtomNotFound(MOVIE),
             "Missing necessary data, no movie (moov) atom found",
+        ));
+    };
+    let Some(mdat_bounds) = mdat_bounds else {
+        return Err(crate::Error::new(
+            crate::ErrorKind::AtomNotFound(MEDIA_DATA),
+            "Missing necessary data, no media data (mdat) atom found",
         ));
     };
 
@@ -656,7 +661,87 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
             }
         }
         WriteChapters::Track => {
-            // TODO: update or add track and track reference
+            let content_trak = &Trak::default(); // TODO: find content track
+            let chapter_timescale =
+                content_trak.mdia.as_ref().map_or(moov.mvhd.timescale, |a| a.mdhd.timescale);
+            let new_id = moov.trak.iter().map(|t| t.tkhd.id).max().unwrap() + 1; // TODO
+            let duration = moov.mvhd.duration;
+            let mut chunk_offsets = Vec::with_capacity(userdata.chapters.len());
+            let mut sample_sizes = Vec::with_capacity(userdata.chapters.len());
+            let mut time_to_samples = Vec::with_capacity(userdata.chapters.len());
+            let mut chapters_iter = userdata.chapters.iter().enumerate().peekable();
+            while let Some((i, c)) = chapters_iter.next() {
+                let c_duration = match chapters_iter.peek() {
+                    Some((_, next)) => unscale_duration(chapter_timescale, next.start - c.start),
+                    None => unscale_duration(chapter_timescale, c.start) - duration,
+                };
+                time_to_samples.push(SttsItem {
+                    sample_count: i as u32,
+                    sample_duration: c_duration as u32,
+                });
+                sample_sizes.push(c.title.len() as u32 + 2);
+
+                // TODO: figure out position of chapters
+                chunk_offsets.push(mdat_bounds.end());
+
+                // TODO: write actual chapter data
+                // mdat.data.write_be_u16(c.title.len() as u16).ok();
+                // mdat.data.write_utf8(&c.title).ok();
+            }
+
+            let chapter_track = Trak {
+                state: State::Insert,
+                tkhd: Tkhd {
+                    state: State::Insert,
+                    id: new_id,
+                    ..Default::default()
+                },
+                mdia: Some(Mdia {
+                    state: State::Insert,
+                    mdhd: Mdhd {
+                        state: State::Insert,
+                        timescale: chapter_timescale,
+                        ..Default::default()
+                    },
+                    hdlr: Some(Hdlr::text_mdia()),
+                    minf: Some(Minf {
+                        state: State::Insert,
+                        gmhd: Some(Gmhd {
+                            state: State::Insert,
+                            gmin: Some(Gmin::chapter()),
+                            text: Some(Text::media_information_chapter()),
+                        }),
+                        dinf: Some(Dinf {
+                            state: State::Insert,
+                            dref: Some(Dref { state: State::Insert, url: Some(Url::track()) }),
+                        }),
+                        stbl: Some(Stbl {
+                            stsd: Some(Stsd {
+                                text: Some(Text::media_chapter()),
+                                ..Default::default()
+                            }),
+                            stts: Some(Stts { state: State::Insert, items: time_to_samples }),
+                            stsc: Some(Stsc {
+                                state: State::Insert,
+                                items: vec![StscItem {
+                                    first_chunk: 1,
+                                    samples_per_chunk: 1,
+                                    sample_description_id: 1,
+                                }],
+                            }),
+                            stsz: Some(Stsz {
+                                state: State::Insert,
+                                sample_size: 0,
+                                sizes: sample_sizes,
+                            }),
+                            co64: Some(Co64 { state: State::Insert, offsets: chunk_offsets }),
+                            ..Default::default()
+                        }),
+                    }),
+                }),
+                ..Default::default()
+            };
+            moov.trak.push(chapter_track);
         }
         WriteChapters::Preserve => (),
     }
@@ -680,7 +765,7 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
     // calculate mdat position shift
     let mut mdat_shift: i64 = 0;
     for c in changes.iter() {
-        if c.old_pos() <= mdat_pos {
+        if c.old_pos() <= mdat_bounds.pos() {
             mdat_shift += c.len_diff();
         }
     }
@@ -734,6 +819,7 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
             Change::Remove(_) => (),
             Change::Replace(r) => r.atom.write(writer)?,
             Change::Insert(i) => i.atom.write(writer)?,
+            Change::Data(_, d) => writer.write_all(d)?,
         }
 
         pos_shift += c.len_diff();
