@@ -754,8 +754,6 @@ pub(crate) fn dump_tag(
 ) -> crate::Result<()> {
     const MVHD_TIMESCALE: u32 = 1000;
 
-    let Userdata { metaitems, chapters } = userdata;
-
     let duration = userdata.chapters.last().map_or(Duration::ZERO, |c| c.start);
     let scaled_duration = unscale_duration(MVHD_TIMESCALE, duration);
 
@@ -779,7 +777,7 @@ pub(crate) fn dump_tag(
             hdlr: Some(Hdlr::meta()),
             ilst: Some(Ilst {
                 state: State::Insert,
-                data: IlstData::Borrowed(metaitems),
+                data: IlstData::Borrowed(&userdata.metaitems),
             }),
         });
     }
@@ -789,7 +787,7 @@ pub(crate) fn dump_tag(
             let chpl_timescale = cfg.chpl_timescale.fixed_or_mvhd(MVHD_TIMESCALE);
 
             let udta = moov.udta.get_or_insert_with(Udta::default);
-            let chpl_items = chapters
+            let chpl_items = userdata.chapters
                 .iter()
                 .map(|c| BorrowedChplItem {
                     start: unscale_duration(chpl_timescale, c.start),
@@ -803,11 +801,11 @@ pub(crate) fn dump_tag(
             });
         }
         WriteChapters::Track => {
-            let mut chunk_offsets = Vec::with_capacity(chapters.len());
-            let mut sample_sizes = Vec::with_capacity(chapters.len());
-            let mut time_to_samples = Vec::with_capacity(chapters.len());
+            let mut chunk_offsets = Vec::with_capacity(userdata.chapters.len());
+            let mut sample_sizes = Vec::with_capacity(userdata.chapters.len());
+            let mut time_to_samples = Vec::with_capacity(userdata.chapters.len());
 
-            let mut chapters_iter = chapters.iter().enumerate().peekable();
+            let mut chapters_iter = userdata.chapters.iter().enumerate().peekable();
             while let Some((i, c)) = chapters_iter.next() {
                 let c_duration = match chapters_iter.peek() {
                     Some((_, next)) => next.start - c.start,
