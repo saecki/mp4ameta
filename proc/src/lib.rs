@@ -190,7 +190,7 @@ impl Tag {{
             Some(v) => v,
             None => return false,
         }};
-        vec.get(0).map(|&v| v == 1).unwrap_or(false)
+        vec.first().map(|&v| v == 1).unwrap_or(false)
     }}
 
     /// Sets the {n} flag to true (`{ais}`).
