@@ -1,10 +1,10 @@
-# rust-mp4ameta
-[![Build](https://github.com/Saecki/rust-mp4ameta/actions/workflows/build.yml/badge.svg)](https://github.com/Saecki/rust-mp4ameta/actions/workflows/build.yml)
-[![Style](https://github.com/Saecki/rust-mp4ameta/actions/workflows/style.yml/badge.svg)](https://github.com/Saecki/rust-mp4ameta/actions/workflows/style.yml)
+# mp4ameta
+[![Build](https://github.com/Saecki/mp4ameta/actions/workflows/build.yml/badge.svg)](https://github.com/Saecki/mp4ameta/actions/workflows/build.yml)
+[![Style](https://github.com/Saecki/mp4ameta/actions/workflows/style.yml/badge.svg)](https://github.com/Saecki/mp4ameta/actions/workflows/style.yml)
 [![Crate](https://img.shields.io/crates/v/mp4ameta.svg)](https://crates.io/crates/mp4ameta)
 [![Documentation](https://img.shields.io/docsrs/mp4ameta?label=docs.rs)](https://docs.rs/mp4ameta)
 ![License](https://img.shields.io/crates/l/mp4ameta)
-![LOC](https://tokei.rs/b1/github/saecki/rust-mp4ameta?category=code)
+![LOC](https://tokei.rs/b1/github/saecki/mp4ameta?category=code)
 
 A library for reading and writing iTunes style MPEG-4 audio metadata.
 Most commonly this kind of metadata is found inside `m4a` or `m4b` files but basically any `mp4` container supports it.
