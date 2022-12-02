@@ -396,9 +396,8 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
             for c_id in chap.chapter_ids.iter() {
                 let chapter_track = moov.trak.iter().find(|a| a.tkhd.id == *c_id);
 
-                let chapter_track = match chapter_track {
-                    Some(t) => t,
-                    None => continue, // TODO maybe log warning: referenced chapter track not found
+                let Some(chapter_track) = chapter_track else {
+                    continue // TODO maybe log warning: referenced chapter track not found
                 };
 
                 let mdia = chapter_track.mdia.as_ref();
@@ -567,12 +566,12 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
     }
 
     let mdat_pos = mdat_bounds.map_or(0, |a| a.pos());
-    let mut moov = moov.ok_or_else(|| {
-        crate::Error::new(
+    let Some(mut moov) = moov else {
+        return Err(crate::Error::new(
             crate::ErrorKind::AtomNotFound(MOVIE),
             "Missing necessary data, no movie (moov) atom found",
-        )
-    })?;
+        ));
+    };
 
     if cfg.write_item_list || !cfg.write_chapters.is_preserve() {
         let udta = moov.udta.get_or_insert(Udta { state: State::Insert, ..Default::default() });
@@ -787,7 +786,8 @@ pub(crate) fn dump_tag(
             let chpl_timescale = cfg.chpl_timescale.fixed_or_mvhd(MVHD_TIMESCALE);
 
             let udta = moov.udta.get_or_insert_with(Udta::default);
-            let chpl_items = userdata.chapters
+            let chpl_items = userdata
+                .chapters
                 .iter()
                 .map(|c| BorrowedChplItem {
                     start: unscale_duration(chpl_timescale, c.start),
