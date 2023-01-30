@@ -25,7 +25,7 @@ impl ParseAtom for Mvhd {
                 // 1 byte version
                 // 3 bytes flags
                 // 4 bytes creation time
-                // 4 bytes motification time
+                // 4 bytes modification time
                 // 4 bytes time scale
                 // 4 bytes duration
                 // ...
@@ -40,7 +40,7 @@ impl ParseAtom for Mvhd {
                 // 1 byte version
                 // 3 bytes flags
                 // 8 bytes creation time
-                // 8 bytes motification time
+                // 8 bytes modification time
                 // 4 bytes time scale
                 // 8 bytes duration
                 // ...
