@@ -75,7 +75,7 @@ impl fmt::Display for Tag {
             if let DataIdent::Freeform { .. } = &a.ident {
                 writeln!(f, "{}:", a.ident)?;
                 for d in a.data.iter() {
-                    writeln!(f, "    {:?}", d)?;
+                    writeln!(f, "    {d:?}")?;
                 }
             }
         }
@@ -224,13 +224,13 @@ impl Tag {
             let len = i.data.len();
 
             if len < 1024 {
-                writeln!(f, " {}", len)?;
+                writeln!(f, " {len}")?;
             } else if len < 1024 * 1024 {
                 let size = len / 1024;
-                writeln!(f, " {}k", size)?;
+                writeln!(f, " {size}k")?;
             } else {
                 let size = len / (1024 * 1024);
-                writeln!(f, " {}M", size)?;
+                writeln!(f, " {size}M")?;
             }
             Ok(())
         }
@@ -274,7 +274,7 @@ impl Tag {
 
     fn format_media_type(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.media_type() {
-            Some(m) => writeln!(f, "media type: {}", m),
+            Some(m) => writeln!(f, "media type: {m}"),
             None => Ok(()),
         }
     }
@@ -305,7 +305,7 @@ impl Tag {
 
     fn format_advisory_rating(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.advisory_rating() {
-            Some(r) => writeln!(f, "advisory rating: {}", r),
+            Some(r) => writeln!(f, "advisory rating: {r}"),
             None => Ok(()),
         }
     }

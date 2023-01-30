@@ -296,8 +296,8 @@ impl Ident for DataIdent {
 impl fmt::Display for DataIdent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Fourcc(ident) => write!(f, "{}", ident),
-            Self::Freeform { mean, name } => write!(f, "----:{}:{}", mean, name),
+            Self::Fourcc(ident) => write!(f, "{ident}"),
+            Self::Freeform { mean, name } => write!(f, "----:{mean}:{name}"),
         }
     }
 }

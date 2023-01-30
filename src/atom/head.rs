@@ -127,7 +127,7 @@ pub fn parse_head(reader: &mut impl Read) -> crate::Result<Head> {
     } else if len < 8 {
         Err(crate::Error::new(
             crate::ErrorKind::Parsing,
-            format!("Read length of '{}' which is less than 8 bytes: {}", ident, len),
+            format!("Read length of '{ident}' which is less than 8 bytes: {len}"),
         ))
     } else {
         Ok(Head::new(false, len, ident))

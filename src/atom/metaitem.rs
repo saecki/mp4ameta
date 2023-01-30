@@ -94,7 +94,7 @@ impl MetaItem {
         if data.is_empty() {
             return Err(crate::Error::new(
                 crate::ErrorKind::AtomNotFound(DATA),
-                format!("Error constructing meta item '{}', missing data atom", parent),
+                format!("Error constructing meta item '{parent}', missing data atom"),
             ));
         }
 

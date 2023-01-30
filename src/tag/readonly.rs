@@ -30,12 +30,12 @@ impl Tag {
         let hours = total_seconds / 60 / 60;
 
         match (hours, minutes, seconds, millis, micros, nanos) {
-            (0, 0, 0, 0, 0, n) => writeln!(f, "duration: {}ns", n),
-            (0, 0, 0, 0, u, _) => writeln!(f, "duration: {}µs", u),
-            (0, 0, 0, m, _, _) => writeln!(f, "duration: {}ms", m),
-            (0, 0, s, _, _, _) => writeln!(f, "duration: {}s", s),
-            (0, m, s, _, _, _) => writeln!(f, "duration: {}:{:02}", m, s),
-            (h, m, s, _, _, _) => writeln!(f, "duration: {}:{:02}:{:02}", h, m, s),
+            (0, 0, 0, 0, 0, n) => writeln!(f, "duration: {n}ns"),
+            (0, 0, 0, 0, u, _) => writeln!(f, "duration: {u}µs"),
+            (0, 0, 0, m, _, _) => writeln!(f, "duration: {m}ms"),
+            (0, 0, s, _, _, _) => writeln!(f, "duration: {s}s"),
+            (0, m, s, _, _, _) => writeln!(f, "duration: {m}:{s:02}"),
+            (h, m, s, _, _, _) => writeln!(f, "duration: {h}:{m:02}:{s:02}"),
         }
     }
 
@@ -46,7 +46,7 @@ impl Tag {
 
     pub(crate) fn format_channel_config(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.channel_config() {
-            Some(c) => writeln!(f, "channel config: {}", c),
+            Some(c) => writeln!(f, "channel config: {c}"),
             None => Ok(()),
         }
     }
@@ -58,7 +58,7 @@ impl Tag {
 
     pub(crate) fn format_sample_rate(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.sample_rate() {
-            Some(c) => writeln!(f, "sample rate: {}", c),
+            Some(r) => writeln!(f, "sample rate: {r}"),
             None => Ok(()),
         }
     }
