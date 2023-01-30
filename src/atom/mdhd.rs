@@ -48,7 +48,7 @@ impl ParseAtom for Mdhd {
             v => {
                 return Err(crate::Error::new(
                     crate::ErrorKind::UnknownVersion(version),
-                    format!("Unknown media header (mdhd) version {}", v),
+                    format!("Unknown media header (mdhd) version {v}"),
                 ));
             }
         }
@@ -80,7 +80,7 @@ impl WriteAtom for Mdhd {
             v => {
                 return Err(crate::Error::new(
                     crate::ErrorKind::UnknownVersion(self.version),
-                    format!("Unknown media header (mdhd) version {}", v),
+                    format!("Unknown media header (mdhd) version {v}"),
                 ));
             }
         }

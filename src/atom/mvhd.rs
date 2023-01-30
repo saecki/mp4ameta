@@ -56,8 +56,8 @@ impl ParseAtom for Mvhd {
             v => {
                 return Err(crate::Error::new(
                     crate::ErrorKind::UnknownVersion(version),
-                    format!("Unknown movie header (mvhd) version {}", v),
-                ));
+                    format!("Error unknown movie header (mvhd) version {v}"),
+                ))
             }
         }
         mvhd.preferred_rate = reader.read_be_u32()?;
@@ -101,7 +101,7 @@ impl WriteAtom for Mvhd {
             v => {
                 return Err(crate::Error::new(
                     crate::ErrorKind::UnknownVersion(self.version),
-                    format!("Unknown movie header (mvhd) version {}", v),
+                    format!("Unknown movie header (mvhd) version {v}"),
                 ));
             }
         }

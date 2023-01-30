@@ -55,7 +55,7 @@ impl ParseAtom for Tkhd {
             v => {
                 return Err(crate::Error::new(
                     crate::ErrorKind::UnknownVersion(version),
-                    format!("Unknown track header (tkhd) version {}", v),
+                    format!("Unknown track header (tkhd) version {v}"),
                 ));
             }
         }
@@ -99,7 +99,7 @@ impl WriteAtom for Tkhd {
             v => {
                 return Err(crate::Error::new(
                     crate::ErrorKind::UnknownVersion(self.version),
-                    format!("Unknown track header (tkhd) version {}", v),
+                    format!("Unknown track header (tkhd) version {v}"),
                 ));
             }
         }

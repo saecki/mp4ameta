@@ -117,8 +117,7 @@ pub fn parse_head(reader: &mut impl Read) -> crate::Result<Head> {
             Ok(ext_len) if ext_len < 16 => Err(crate::Error::new(
                 crate::ErrorKind::Parsing,
                 format!(
-                    "Read extended length of '{}' which is less than 16 bytes: {}",
-                    fourcc, ext_len
+                    "Read extended length of '{fourcc}' which is less than 16 bytes: {ext_len}"
                 ),
             )),
             Ok(ext_len) => Ok(Head::new(true, ext_len, fourcc)),
@@ -129,7 +128,7 @@ pub fn parse_head(reader: &mut impl Read) -> crate::Result<Head> {
     } else if len < 8 {
         Err(crate::Error::new(
             crate::ErrorKind::Parsing,
-            format!("Read length of '{}' which is less than 8 bytes: {}", fourcc, len),
+            format!("Read length of '{fourcc}' which is less than 8 bytes: {len}"),
         ))
     } else {
         Ok(Head::new(false, len, fourcc))
@@ -211,12 +210,12 @@ impl AtomBounds {
 }
 
 pub fn find_bounds(reader: &mut impl Seek, size: Size) -> crate::Result<AtomBounds> {
-    let pos = reader.seek(SeekFrom::Current(0))? - size.head_len();
+    let pos = reader.stream_position()? - size.head_len();
     Ok(AtomBounds { pos, size })
 }
 
 pub fn seek_to_end(reader: &mut impl Seek, bounds: &AtomBounds) -> crate::Result<()> {
-    let current = reader.seek(SeekFrom::Current(0))?;
+    let current = reader.stream_position()?;
     let diff = bounds.end() - current;
     reader.skip(diff as i64)?;
     Ok(())

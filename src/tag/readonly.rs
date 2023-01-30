@@ -29,7 +29,7 @@ impl Tag {
 
     pub(crate) fn format_channel_config(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.channel_config() {
-            Some(c) => writeln!(f, "channel config: {}", c),
+            Some(c) => writeln!(f, "channel config: {c}"),
             None => Ok(()),
         }
     }
@@ -41,7 +41,7 @@ impl Tag {
 
     pub(crate) fn format_sample_rate(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.sample_rate() {
-            Some(c) => writeln!(f, "sample rate: {}", c),
+            Some(r) => writeln!(f, "sample rate: {r}"),
             None => Ok(()),
         }
     }

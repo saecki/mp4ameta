@@ -115,12 +115,12 @@ pub enum Data {
 impl fmt::Debug for Data {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Reserved(d) => write!(f, "Data::Reserved({:?})", d),
-            Self::Utf8(d) => write!(f, "Data::Utf8({:?})", d),
-            Self::Utf16(d) => write!(f, "Data::Utf16({:?})", d),
+            Self::Reserved(d) => write!(f, "Data::Reserved({d:?})"),
+            Self::Utf8(d) => write!(f, "Data::Utf8({d:?})"),
+            Self::Utf16(d) => write!(f, "Data::Utf16({d:?})"),
             Self::Jpeg(_) => write!(f, "Data::Jpeg"),
             Self::Png(_) => write!(f, "Data::Png"),
-            Self::BeSigned(d) => write!(f, "Data::BeSigned({:?})", d),
+            Self::BeSigned(d) => write!(f, "Data::BeSigned({d:?})"),
             Self::Bmp(_) => write!(f, "Data::Bmp"),
             Self::Unknown { code, data } => {
                 f.debug_struct("Data::Unknown").field("code", code).field("data", data).finish()

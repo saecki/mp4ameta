@@ -67,7 +67,7 @@ impl error::Error for Error {
 
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Error {
-        let description = format!("IO error: {}", err);
+        let description = format!("IO error: {err}");
         Error::new(ErrorKind::Io(err), description)
     }
 }

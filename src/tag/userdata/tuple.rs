@@ -90,9 +90,9 @@ impl Userdata {
     /// Returns the track numer and total number of tracks formatted in an easily readable way.
     pub(crate) fn format_track(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.track() {
-            (Some(d), Some(t)) => writeln!(f, "track: {} of {}", d, t),
-            (Some(d), None) => writeln!(f, "track: {}", d),
-            (None, Some(t)) => writeln!(f, "track: ? of {}", t),
+            (Some(n), Some(t)) => writeln!(f, "track: {n} of {t}"),
+            (Some(n), None) => writeln!(f, "track: {n}"),
+            (None, Some(t)) => writeln!(f, "track: ? of {t}"),
             (None, None) => Ok(()),
         }
     }
@@ -186,9 +186,9 @@ impl Userdata {
     /// Returns the disc numer and total number of discs formatted in an easily readable way.
     pub(crate) fn format_disc(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.disc() {
-            (Some(d), Some(t)) => writeln!(f, "disc: {} of {}", d, t),
-            (Some(d), None) => writeln!(f, "disc: {}", d),
-            (None, Some(t)) => writeln!(f, "disc: ? of {}", t),
+            (Some(d), Some(t)) => writeln!(f, "disc: {d} of {t}"),
+            (Some(d), None) => writeln!(f, "disc: {d}"),
+            (None, Some(t)) => writeln!(f, "disc: ? of {t}"),
             (None, None) => Ok(()),
         }
     }

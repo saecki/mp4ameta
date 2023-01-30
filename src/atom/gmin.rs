@@ -32,7 +32,7 @@ impl ParseAtom for Gmin {
         if version != 0 {
             return Err(crate::Error::new(
                 crate::ErrorKind::UnknownVersion(version),
-                format!("Unknown base media information (gmin) version {}", version),
+                format!("Unknown base media information (gmin) version {version}"),
             ));
         }
 

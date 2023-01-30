@@ -74,7 +74,7 @@ impl<T: Read> ReadUtil for T {}
 pub trait SeekUtil: Seek {
     /// Attempts to read the remaining stream length and returns to the starting position.
     fn remaining_stream_len(&mut self) -> io::Result<u64> {
-        let current_pos = self.seek(SeekFrom::Current(0))?;
+        let current_pos = self.stream_position()?;
         let complete_len = self.seek(SeekFrom::End(0))?;
         let len = complete_len - current_pos;
 

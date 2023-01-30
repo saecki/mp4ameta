@@ -203,10 +203,10 @@ impl Userdata {
         if self.genres().count() > 1 {
             writeln!(f, "genres:")?;
             for v in self.genres() {
-                writeln!(f, "    {}", v)?;
+                writeln!(f, "    {v}")?;
             }
         } else if let Some(s) = self.genre() {
-            writeln!(f, "genre: {}", s)?;
+            writeln!(f, "genre: {s}")?;
         }
         Ok(())
     }
