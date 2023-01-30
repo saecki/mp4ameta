@@ -213,12 +213,12 @@ impl AtomBounds {
 }
 
 pub fn find_bounds(reader: &mut impl Seek, size: Size) -> crate::Result<AtomBounds> {
-    let pos = reader.seek(SeekFrom::Current(0))? - size.head_len();
+    let pos = reader.stream_position()? - size.head_len();
     Ok(AtomBounds { pos, size })
 }
 
 pub fn seek_to_end(reader: &mut impl Seek, bounds: &AtomBounds) -> crate::Result<()> {
-    let current = reader.seek(SeekFrom::Current(0))?;
+    let current = reader.stream_position()?;
     let diff = bounds.end() - current;
     reader.seek(SeekFrom::Current(diff as i64))?;
     Ok(())

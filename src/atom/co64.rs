@@ -1,4 +1,4 @@
-use std::io::{Read, Seek, SeekFrom};
+use std::io::{Read, Seek};
 
 use super::*;
 
@@ -27,7 +27,7 @@ impl ParseAtom for Co64 {
                     ));
                 }
 
-                let table_pos = reader.seek(SeekFrom::Current(0))?;
+                let table_pos = reader.stream_position()?;
                 let mut offsets = Vec::with_capacity(entries as usize);
                 for _ in 0..entries {
                     let offset = reader.read_u64()?;
