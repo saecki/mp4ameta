@@ -397,7 +397,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
                 let chapter_track = moov.trak.iter().find(|a| a.tkhd.id == *c_id);
 
                 let Some(chapter_track) = chapter_track else {
-                    continue // TODO maybe log warning: referenced chapter track not found
+                    continue; // TODO maybe log warning: referenced chapter track not found
                 };
 
                 let mdia = chapter_track.mdia.as_ref();
