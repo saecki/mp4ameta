@@ -16,7 +16,7 @@ impl Tag {
     }
 
     /// Returns the duration formatted in an easily readable way.
-    pub(crate) fn format_duration(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    pub(crate) fn format_duration(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "duration: ")?;
         util::format_duration(f, self.duration())?;
         writeln!(f)
@@ -27,7 +27,7 @@ impl Tag {
         self.info.channel_config
     }
 
-    pub(crate) fn format_channel_config(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    pub(crate) fn format_channel_config(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.channel_config() {
             Some(c) => writeln!(f, "channel config: {c}"),
             None => Ok(()),
@@ -39,7 +39,7 @@ impl Tag {
         self.info.sample_rate
     }
 
-    pub(crate) fn format_sample_rate(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    pub(crate) fn format_sample_rate(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.sample_rate() {
             Some(r) => writeln!(f, "sample rate: {r}"),
             None => Ok(()),
@@ -51,7 +51,7 @@ impl Tag {
         self.info.avg_bitrate
     }
 
-    pub(crate) fn format_avg_bitrate(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    pub(crate) fn format_avg_bitrate(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.avg_bitrate() {
             Some(c) => writeln!(f, "average bitrate: {}kbps", c / 1024),
             None => Ok(()),
@@ -63,7 +63,7 @@ impl Tag {
         self.info.max_bitrate
     }
 
-    pub(crate) fn format_max_bitrate(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    pub(crate) fn format_max_bitrate(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.max_bitrate() {
             Some(c) => writeln!(f, "maximum bitrate: {}kbps", c / 1024),
             None => Ok(()),

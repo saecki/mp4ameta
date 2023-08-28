@@ -82,7 +82,7 @@ impl SimpleCollectChanges for Meta<'_> {
             + self.hdlr.collect_changes(bounds.end(), level, changes)
     }
 
-    fn atom_ref(&self) -> AtomRef {
+    fn atom_ref(&self) -> AtomRef<'_> {
         AtomRef::Meta(self)
     }
 }

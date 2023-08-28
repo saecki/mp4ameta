@@ -90,7 +90,7 @@ impl SimpleCollectChanges for Moov<'_> {
             + self.udta.collect_changes(bounds.end(), level, changes)
     }
 
-    fn atom_ref(&self) -> AtomRef {
+    fn atom_ref(&self) -> AtomRef<'_> {
         AtomRef::Moov(self)
     }
 }

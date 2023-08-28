@@ -64,7 +64,7 @@ impl SimpleCollectChanges for Hdlr {
         0
     }
 
-    fn atom_ref(&self) -> AtomRef {
+    fn atom_ref(&self) -> AtomRef<'_> {
         AtomRef::Hdlr(self)
     }
 }

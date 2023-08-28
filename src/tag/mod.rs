@@ -39,7 +39,7 @@ impl DerefMut for Tag {
 }
 
 impl fmt::Display for Tag {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.format_album_artists(f)?;
         self.format_artists(f)?;
         self.format_composers(f)?;
@@ -86,7 +86,7 @@ impl fmt::Display for Tag {
 }
 
 impl Tag {
-    fn format_chapters(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn format_chapters(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if !self.userdata.chapters.is_empty() {
             writeln!(f, "chapters:")?;
             for (i, c) in self.userdata.chapters().enumerate() {

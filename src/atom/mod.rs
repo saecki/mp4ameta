@@ -232,7 +232,7 @@ trait SimpleCollectChanges: WriteAtom {
         changes: &mut Vec<Change<'a>>,
     ) -> i64;
 
-    fn atom_ref(&self) -> AtomRef;
+    fn atom_ref(&self) -> AtomRef<'_>;
 }
 
 impl<T: SimpleCollectChanges> CollectChanges for T {
@@ -662,7 +662,7 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
     }
 
     // collect changes
-    let mut changes = Vec::<Change>::new();
+    let mut changes = Vec::<Change<'_>>::new();
     moov.collect_changes(0, 0, &mut changes);
 
     changes.sort_by(|a, b| {

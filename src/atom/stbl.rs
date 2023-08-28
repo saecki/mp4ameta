@@ -110,7 +110,7 @@ impl SimpleCollectChanges for Stbl {
             + self.co64.collect_changes(bounds.end(), level, changes)
     }
 
-    fn atom_ref(&self) -> AtomRef {
+    fn atom_ref(&self) -> AtomRef<'_> {
         AtomRef::Stbl(self)
     }
 }

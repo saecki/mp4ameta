@@ -85,7 +85,7 @@ impl SimpleCollectChanges for Mdia {
         self.minf.collect_changes(bounds.end(), level, changes)
     }
 
-    fn atom_ref(&self) -> AtomRef {
+    fn atom_ref(&self) -> AtomRef<'_> {
         AtomRef::Mdia(self)
     }
 }

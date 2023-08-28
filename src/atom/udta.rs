@@ -77,7 +77,7 @@ impl SimpleCollectChanges for Udta<'_> {
             + self.meta.collect_changes(bounds.end(), level, changes)
     }
 
-    fn atom_ref(&self) -> AtomRef {
+    fn atom_ref(&self) -> AtomRef<'_> {
         AtomRef::Udta(self)
     }
 }

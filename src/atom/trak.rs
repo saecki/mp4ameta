@@ -89,7 +89,7 @@ impl SimpleCollectChanges for Trak {
         self.mdia.collect_changes(bounds.end(), level, changes)
     }
 
-    fn atom_ref(&self) -> AtomRef {
+    fn atom_ref(&self) -> AtomRef<'_> {
         AtomRef::Trak(self)
     }
 }

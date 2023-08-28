@@ -175,16 +175,16 @@ pub const SHOW_MOVEMENT: Fourcc = Fourcc(*b"shwm");
 pub const APPLE_ITUNES_MEAN: &str = "com.apple.iTunes";
 
 /// (`----:com.apple.iTunes:ISRC`)
-pub const ISRC: FreeformIdent = FreeformIdent::new(APPLE_ITUNES_MEAN, "ISRC");
+pub const ISRC: FreeformIdent<'_> = FreeformIdent::new(APPLE_ITUNES_MEAN, "ISRC");
 /// (`----:com.apple.iTunes:LYRICIST`)
-pub const LYRICIST: FreeformIdent = FreeformIdent::new(APPLE_ITUNES_MEAN, "LYRICIST");
+pub const LYRICIST: FreeformIdent<'_> = FreeformIdent::new(APPLE_ITUNES_MEAN, "LYRICIST");
 
 /// A trait providing information about an identifier.
 pub trait Ident: PartialEq<DataIdent> {
     /// Returns a 4 byte atom identifier.
     fn fourcc(&self) -> Option<Fourcc>;
     /// Returns a freeform identifier.
-    fn freeform(&self) -> Option<FreeformIdent>;
+    fn freeform(&self) -> Option<FreeformIdent<'_>>;
 }
 
 // TODO: figure out how to implement PartialEq for Ident or require an implementation as a trait bound.
@@ -225,7 +225,7 @@ impl Ident for Fourcc {
         Some(*self)
     }
 
-    fn freeform(&self) -> Option<FreeformIdent> {
+    fn freeform(&self) -> Option<FreeformIdent<'_>> {
         None
     }
 }
@@ -281,13 +281,13 @@ impl Ident for FreeformIdent<'_> {
         None
     }
 
-    fn freeform(&self) -> Option<FreeformIdent> {
+    fn freeform(&self) -> Option<FreeformIdent<'_>> {
         Some(self.clone())
     }
 }
 
 impl fmt::Display for FreeformIdent<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "----:{}:{}", self.mean, self.name)
     }
 }
@@ -321,7 +321,7 @@ impl Ident for DataIdent {
         }
     }
 
-    fn freeform(&self) -> Option<FreeformIdent> {
+    fn freeform(&self) -> Option<FreeformIdent<'_>> {
         match self {
             Self::Fourcc(_) => None,
             Self::Freeform { mean, name } => Some(FreeformIdent::new(mean.as_str(), name.as_str())),
@@ -330,7 +330,7 @@ impl Ident for DataIdent {
 }
 
 impl fmt::Display for DataIdent {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Fourcc(ident) => write!(f, "{ident}"),
             Self::Freeform { mean, name } => write!(f, "----:{mean}:{name}"),
@@ -345,13 +345,13 @@ impl From<Fourcc> for DataIdent {
 }
 
 impl From<FreeformIdent<'_>> for DataIdent {
-    fn from(value: FreeformIdent) -> Self {
+    fn from(value: FreeformIdent<'_>) -> Self {
         Self::freeform(value.mean, value.name)
     }
 }
 
 impl From<&FreeformIdent<'_>> for DataIdent {
-    fn from(value: &FreeformIdent) -> Self {
+    fn from(value: &FreeformIdent<'_>) -> Self {
         Self::freeform(value.mean, value.name)
     }
 }

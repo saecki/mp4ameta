@@ -85,7 +85,7 @@ impl From<string::FromUtf16Error> for Error {
 }
 
 impl fmt::Debug for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.description.is_empty() {
             write!(f, "{:?}", self.kind)
         } else {
@@ -95,7 +95,7 @@ impl fmt::Debug for Error {
 }
 
 impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.description.is_empty() {
             write!(f, "{:?}", self.kind)
         } else {

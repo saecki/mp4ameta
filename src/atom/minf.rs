@@ -80,7 +80,7 @@ impl SimpleCollectChanges for Minf {
         self.stbl.collect_changes(bounds.end(), level, changes)
     }
 
-    fn atom_ref(&self) -> AtomRef {
+    fn atom_ref(&self) -> AtomRef<'_> {
         AtomRef::Minf(self)
     }
 }

@@ -82,7 +82,7 @@ impl SimpleCollectChanges for Co64 {
         0
     }
 
-    fn atom_ref(&self) -> AtomRef {
+    fn atom_ref(&self) -> AtomRef<'_> {
         AtomRef::Co64(self)
     }
 }

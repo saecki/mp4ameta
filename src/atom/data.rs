@@ -346,7 +346,7 @@ impl Data {
 
     /// Returns a reference to an image if `self` is of type [`Self::Jpeg`], [`Self::Png`] or
     /// [`Self::Bmp`].
-    pub fn image(&self) -> Option<ImgRef> {
+    pub fn image(&self) -> Option<ImgRef<'_>> {
         match self {
             Self::Jpeg(v) => Some(Img::new(ImgFmt::Jpeg, v)),
             Self::Png(v) => Some(Img::new(ImgFmt::Png, v)),
@@ -357,7 +357,7 @@ impl Data {
 
     /// Returns a mutable reference to an image if `self` is of type [`Self::Jpeg`], [`Self::Png`]
     /// or [`Self::Bmp`].
-    pub fn image_mut(&mut self) -> Option<ImgMut> {
+    pub fn image_mut(&mut self) -> Option<ImgMut<'_>> {
         match self {
             Self::Jpeg(v) => Some(Img::new(ImgFmt::Jpeg, v)),
             Self::Png(v) => Some(Img::new(ImgFmt::Png, v)),

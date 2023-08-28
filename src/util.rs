@@ -1,7 +1,7 @@
 use std::fmt;
 use std::time::Duration;
 
-pub(crate) fn format_duration(f: &mut fmt::Formatter, duration: Duration) -> fmt::Result {
+pub(crate) fn format_duration(f: &mut fmt::Formatter<'_>, duration: Duration) -> fmt::Result {
     let total_seconds = duration.as_secs();
     let nanos = duration.subsec_nanos();
     let micros = nanos / 1_000;
