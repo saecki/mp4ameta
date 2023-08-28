@@ -88,7 +88,7 @@ impl Tag {
     }
 
     /// Returns the track numer and total number of tracks formatted in an easily readable way.
-    pub(crate) fn format_track(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    pub(crate) fn format_track(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.track() {
             (Some(n), Some(t)) => writeln!(f, "track: {n} of {t}"),
             (Some(n), None) => writeln!(f, "track: {n}"),
@@ -184,7 +184,7 @@ impl Tag {
     }
 
     /// Returns the disc numer and total number of discs formatted in an easily readable way.
-    pub(crate) fn format_disc(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    pub(crate) fn format_disc(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.disc() {
             (Some(d), Some(t)) => writeln!(f, "disc: {d} of {t}"),
             (Some(d), None) => writeln!(f, "disc: {d}"),

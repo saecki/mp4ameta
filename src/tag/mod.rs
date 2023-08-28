@@ -30,7 +30,7 @@ pub struct Tag {
 }
 
 impl fmt::Display for Tag {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.format_album_artists(f)?;
         self.format_artists(f)?;
         self.format_composers(f)?;
@@ -168,12 +168,12 @@ mp4ameta_proc::u32_value_accessor!("tv_season", "tvsn");
 /// ### Artwork
 impl Tag {
     /// Returns all artwork images (`covr`).
-    pub fn artworks(&self) -> impl Iterator<Item = ImgRef> {
+    pub fn artworks(&self) -> impl Iterator<Item = ImgRef<'_>> {
         self.images_of(&ident::ARTWORK)
     }
 
     /// Returns the first artwork image (`covr`).
-    pub fn artwork(&self) -> Option<ImgRef> {
+    pub fn artwork(&self) -> Option<ImgRef<'_>> {
         self.images_of(&ident::ARTWORK).next()
     }
 
@@ -213,8 +213,8 @@ impl Tag {
     }
 
     /// Returns information about all artworks formatted in an easily readable way.
-    fn format_artworks(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fn format_artwork(f: &mut fmt::Formatter, i: ImgRef) -> fmt::Result {
+    fn format_artworks(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn format_artwork(f: &mut fmt::Formatter<'_>, i: ImgRef<'_>) -> fmt::Result {
             match i.fmt {
                 ImgFmt::Png => write!(f, "png")?,
                 ImgFmt::Jpeg => write!(f, "jpeg")?,
@@ -272,7 +272,7 @@ impl Tag {
         self.remove_data_of(&ident::MEDIA_TYPE);
     }
 
-    fn format_media_type(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn format_media_type(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.media_type() {
             Some(m) => writeln!(f, "media type: {m}"),
             None => Ok(()),
@@ -303,7 +303,7 @@ impl Tag {
         self.remove_data_of(&ident::ADVISORY_RATING);
     }
 
-    fn format_advisory_rating(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn format_advisory_rating(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.advisory_rating() {
             Some(r) => writeln!(f, "advisory rating: {r}"),
             None => Ok(()),
@@ -438,7 +438,7 @@ impl Tag {
     /// let img = tag.images_of(&test).next().unwrap();
     /// assert_eq!(img.data, b"image");
     /// ```
-    pub fn images_of<'a>(&'a self, ident: &'a impl Ident) -> impl Iterator<Item = ImgRef> {
+    pub fn images_of<'a>(&'a self, ident: &'a impl Ident) -> impl Iterator<Item = ImgRef<'_>> {
         self.data_of(ident).filter_map(Data::image)
     }
 
@@ -706,7 +706,7 @@ impl Tag {
     /// assert_eq!(images.next().unwrap(), (&test, Img::jpeg(&b"image2"[..])));
     /// assert_eq!(images.next(), None);
     /// ```
-    pub fn images(&self) -> impl Iterator<Item = (&DataIdent, ImgRef)> {
+    pub fn images(&self) -> impl Iterator<Item = (&DataIdent, ImgRef<'_>)> {
         self.data().filter_map(|(i, d)| Some((i, d.image()?)))
     }
 
@@ -730,7 +730,7 @@ impl Tag {
     /// assert_eq!(images.next().unwrap(), (&test, Img::bmp(&b"data1"[..])));
     /// assert_eq!(images.next(), None);
     /// ```
-    pub fn images_mut(&mut self) -> impl Iterator<Item = (&DataIdent, ImgMut)> {
+    pub fn images_mut(&mut self) -> impl Iterator<Item = (&DataIdent, ImgMut<'_>)> {
         self.data_mut().filter_map(|(i, d)| Some((i, d.image_mut()?)))
     }
 
@@ -1022,7 +1022,7 @@ impl Tag {
     /// assert_eq!(images.next(), Some(Img::new(ImgFmt::Jpeg, &[6; 16][..])));
     /// assert_eq!(images.next(), None);
     /// ```
-    pub fn retain_images_of(&mut self, ident: &impl Ident, predicate: impl Fn(ImgRef) -> bool) {
+    pub fn retain_images_of(&mut self, ident: &impl Ident, predicate: impl Fn(ImgRef<'_>) -> bool) {
         #[allow(clippy::redundant_closure)]
         self.retain_data_of(ident, |d| d.image().map_or(true, |i| predicate(i)))
     }
@@ -1155,7 +1155,7 @@ impl Tag {
     /// assert_eq!(data.next(), Some(&Data::Utf8("data3".into())));
     /// assert_eq!(data.next(), None);
     /// ```
-    pub fn retain_images(&mut self, predicate: impl Fn(&DataIdent, ImgRef) -> bool) {
+    pub fn retain_images(&mut self, predicate: impl Fn(&DataIdent, ImgRef<'_>) -> bool) {
         self.retain_data(|i, d| d.image().map_or(true, |s| predicate(i, s)));
     }
 

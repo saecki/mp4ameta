@@ -199,7 +199,7 @@ impl Tag {
     }
 
     /// Returns all genres formatted in an easily readable way.
-    pub(crate) fn format_genres(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    pub(crate) fn format_genres(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.genres().count() > 1 {
             writeln!(f, "genres:")?;
             for v in self.genres() {
