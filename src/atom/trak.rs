@@ -28,9 +28,7 @@ impl ParseAtom for Trak {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                TRACK_HEADER if cfg.read_chapters => {
-                    tkhd = Some(Tkhd::parse(reader, cfg, head.size())?)
-                }
+                TRACK_HEADER => tkhd = Some(Tkhd::parse(reader, cfg, head.size())?),
                 TRACK_REFERENCE if cfg.read_chapters => {
                     tref = Some(Tref::parse(reader, cfg, head.size())?)
                 }
