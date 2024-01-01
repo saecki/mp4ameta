@@ -12,7 +12,6 @@ use crate::{
 
 pub use genre::*;
 
-
 mod genre;
 mod tuple;
 

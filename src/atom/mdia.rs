@@ -28,7 +28,7 @@ impl ParseAtom for Mdia {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                MEDIA_HEADER  => mdhd = Some(Mdhd::parse(reader, cfg, head.size())?),
+                MEDIA_HEADER => mdhd = Some(Mdhd::parse(reader, cfg, head.size())?),
                 HANDLER_REFERENCE => hdlr = Some(Hdlr::parse(reader, cfg, head.size())?),
                 MEDIA_INFORMATION => minf = Some(Minf::parse(reader, cfg, head.size())?),
                 _ => reader.skip(head.content_len() as i64)?,
