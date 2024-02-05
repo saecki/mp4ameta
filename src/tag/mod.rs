@@ -11,8 +11,6 @@ use crate::{
 };
 
 pub use genre::*;
-pub use readonly::*;
-pub use tuple::*;
 
 mod genre;
 mod readonly;
