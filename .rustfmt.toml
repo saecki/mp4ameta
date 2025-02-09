@@ -2,4 +2,3 @@ use_small_heuristics = "Max"
 max_width = 100
 struct_lit_width = 50
 reorder_imports = true
-imports_granularity = "Module"
