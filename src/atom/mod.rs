@@ -578,98 +578,205 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
         ));
     };
 
+    // update atom hierachty
+    let mut append_mdat = Vec::new();
     if cfg.write_item_list || !cfg.write_chapters.is_preserve() {
-        let udta = moov.udta.get_or_insert(Udta { state: State::Insert, ..Default::default() });
+        update_userdata(&mut moov, &mdat_bounds, &mut append_mdat, userdata, cfg);
+    }
 
-        // item list (ilst)
-        if cfg.write_item_list {
-            let meta = udta.meta.get_or_insert(Meta { state: State::Insert, ..Default::default() });
+    // collect changes
+    let mut changes = Vec::<Change<'_>>::new();
+    moov.collect_changes(0, 0, &mut changes);
+    if !append_mdat.is_empty() {
+        changes.push(Change::UpdateLen(UpdateAtomLen {
+            bounds: &mdat_bounds,
+            fourcc: MEDIA_DATA,
+            len_diff: append_mdat.len() as i64,
+        }));
+        changes.push(Change::AppendMdat(mdat_bounds.end(), &append_mdat));
+    }
 
-            meta.hdlr.get_or_insert_with(Hdlr::meta);
-
-            match meta.ilst.as_mut() {
-                Some(ilst) => {
-                    ilst.state.replace_existing();
-                    ilst.data = IlstData::Borrowed(&userdata.metaitems);
-                }
-                None => {
-                    meta.ilst = Some(Ilst {
-                        state: State::Insert,
-                        data: IlstData::Borrowed(&userdata.metaitems),
-                    });
-                }
-            }
+    changes.sort_by(|a, b| {
+        if a.old_pos() < b.old_pos() {
+            Ordering::Less
+        } else if a.old_pos() > b.old_pos() {
+            Ordering::Greater
+        } else if a.level() > b.level() {
+            Ordering::Less
+        } else {
+            Ordering::Greater
         }
+    });
 
-        // chapter list (chpl)
-        match cfg.write_chapters {
-            WriteChapters::List => {
-                let chpl_timescale = cfg.chpl_timescale.fixed_or_mvhd(moov.mvhd.timescale);
-                let chpl_items = userdata
-                    .chapters
-                    .iter()
-                    .map(|c| BorrowedChplItem {
-                        start: unscale_duration(chpl_timescale, c.start),
-                        title: &c.title,
-                    })
-                    .collect();
+    // calculate mdat position shift
+    let mut mdat_shift: i64 = 0;
+    for c in changes.iter() {
+        if matches!(c, Change::AppendMdat(..)) {
+            break;
+        }
+        mdat_shift += c.len_diff();
+    }
 
-                match udta.chpl.as_mut() {
-                    Some(chpl) => {
-                        chpl.state.replace_existing();
-                        chpl.data = ChplData::Borrowed(chpl_items);
-                    }
-                    None => {
-                        udta.chpl = Some(Chpl {
-                            state: State::Insert,
-                            data: ChplData::Borrowed(chpl_items),
-                        });
-                    }
-                }
+    // read moved data
+    let old_file_len = reader.seek(SeekFrom::End(0))?;
+    let mut len_diff: i64 = 0;
+    let mut moved_data = Vec::new();
+    {
+        let mut changes_iter = changes.iter().peekable();
+
+        while let Some(a) = changes_iter.next() {
+            len_diff += a.len_diff();
+
+            let data_pos = a.old_end();
+            let data_end = changes_iter.peek().map_or(old_file_len, |next| next.old_pos());
+            let data_len = data_end - data_pos;
+
+            if data_len > 0 {
+                let new_pos = (data_pos as i64 + len_diff) as u64;
+                let mut data = vec![0; data_len as usize];
+                reader.seek(SeekFrom::Start(data_pos))?;
+                reader.read_exact(&mut data)?;
+
+                moved_data.push(MovedData { new_pos, data });
             }
-            WriteChapters::Track => {
-                if let Some(chpl) = udta.chpl.as_mut() {
-                    chpl.state.remove_existing();
-                }
-            }
-            WriteChapters::Preserve => (),
         }
     }
 
-    // chapter track
-    match cfg.write_chapters {
-        WriteChapters::List => {
-            let mut chapter_track_ids = Vec::new();
-            for tref in moov.trak.iter_mut().filter_map(|a| a.tref.as_mut()) {
-                if let Some(chap) = &mut tref.chap {
-                    chap.state.remove_existing();
+    // adjust the file length
+    let new_file_len = (old_file_len as i64 + len_diff) as u64;
+    file.set_len(new_file_len)?;
 
-                    if let State::Existing(bounds) = &tref.state {
-                        if bounds.content_len() == chap.len() {
-                            tref.state.remove_existing();
-                        }
-                    }
+    let writer = &mut BufWriter::new(file);
 
-                    chapter_track_ids.extend(chap.chapter_ids.iter().copied());
+    // write moved data
+    for d in moved_data {
+        writer.seek(SeekFrom::Start(d.new_pos))?;
+        writer.write_all(&d.data)?;
+    }
+
+    // write changes
+    let mut pos_shift = 0;
+    for c in changes.iter() {
+        let new_pos = c.old_pos() as i64 + pos_shift;
+        writer.seek(SeekFrom::Start(new_pos as u64))?;
+
+        match c {
+            Change::UpdateLen(u) => u.update_len(writer)?,
+            Change::UpdateChunkOffset(u) => u.offsets.update_offsets(writer, mdat_shift)?,
+            Change::Remove(_) => (),
+            Change::Replace(r) => r.atom.write(writer)?,
+            Change::Insert(i) => i.atom.write(writer)?,
+            Change::AppendMdat(_, d) => writer.write_all(d)?,
+        }
+
+        pos_shift += c.len_diff();
+    }
+
+    writer.flush()?;
+
+    Ok(())
+}
+
+fn update_userdata<'a>(
+    moov: &mut Moov<'a>,
+    mdat_bounds: &AtomBounds,
+    append_mdat: &mut Vec<u8>,
+    userdata: &'a Userdata,
+    cfg: &WriteConfig,
+) {
+    let udta = moov.udta.get_or_insert(Udta { state: State::Insert, ..Default::default() });
+
+    // item list (ilst)
+    if cfg.write_item_list {
+        let meta = udta.meta.get_or_insert(Meta { state: State::Insert, ..Default::default() });
+
+        meta.hdlr.get_or_insert_with(Hdlr::meta);
+
+        match meta.ilst.as_mut() {
+            Some(ilst) => {
+                ilst.state.replace_existing();
+                ilst.data = IlstData::Borrowed(&userdata.metaitems);
+            }
+            None => {
+                meta.ilst = Some(Ilst {
+                    state: State::Insert,
+                    data: IlstData::Borrowed(&userdata.metaitems),
+                });
+            }
+        }
+    }
+
+    // chapters
+    if cfg.write_chapters.is_preserve() {
+        return;
+    }
+
+    let mut chapter_track_ids = Vec::new();
+    for tref in moov.trak.iter_mut().filter_map(|a| a.tref.as_mut()) {
+        if let Some(chap) = &mut tref.chap {
+            chap.state.remove_existing();
+
+            if let State::Existing(bounds) = &tref.state {
+                if bounds.content_len() == chap.len() {
+                    tref.state.remove_existing();
                 }
             }
 
+            chapter_track_ids.extend(chap.chapter_ids.iter().copied());
+        }
+    }
+
+    match cfg.write_chapters {
+        WriteChapters::List => {
+            // remove chapter tracks
             for trak in moov.trak.iter_mut() {
                 if chapter_track_ids.contains(&trak.tkhd.id) {
                     trak.state.remove_existing();
                 }
             }
+
+            // update or add chapter list (chpl)
+            let chpl_timescale = cfg.chpl_timescale.fixed_or_mvhd(moov.mvhd.timescale);
+            let chpl_items = userdata
+                .chapters
+                .iter()
+                .map(|c| BorrowedChplItem {
+                    start: unscale_duration(chpl_timescale, c.start),
+                    title: &c.title,
+                })
+                .collect();
+
+            match udta.chpl.as_mut() {
+                Some(chpl) => {
+                    chpl.state.replace_existing();
+                    chpl.data = ChplData::Borrowed(chpl_items);
+                }
+                None => {
+                    udta.chpl = Some(Chpl {
+                        state: State::Insert,
+                        data: ChplData::Borrowed(chpl_items),
+                    });
+                }
+            }
         }
         WriteChapters::Track => {
+            // remove chapter list (chpl)
+            if let Some(chpl) = udta.chpl.as_mut() {
+                chpl.state.remove_existing();
+            }
+
             let content_trak = &Trak::default(); // TODO: find content track
             let chapter_timescale =
-                content_trak.mdia.as_ref().map_or(moov.mvhd.timescale, |a| a.mdhd.timescale);
-            let new_id = moov.trak.iter().map(|t| t.tkhd.id).max().unwrap() + 1; // TODO
+                content_trak.mdia.as_ref().map(|a| a.mdhd.timescale).unwrap_or(moov.mvhd.timescale);
+            // TODO: add trak reference to content track
+
+            let new_id = moov.trak.iter().map(|t| t.tkhd.id).max().unwrap() + 1; // TODO: is this correct?
             let duration = moov.mvhd.duration;
             let mut chunk_offsets = Vec::with_capacity(userdata.chapters.len());
             let mut sample_sizes = Vec::with_capacity(userdata.chapters.len());
             let mut time_to_samples = Vec::with_capacity(userdata.chapters.len());
             let mut chapters_iter = userdata.chapters.iter().enumerate().peekable();
+
             while let Some((i, c)) = chapters_iter.next() {
                 let c_duration = match chapters_iter.peek() {
                     Some((_, next)) => unscale_duration(chapter_timescale, next.start - c.start),
@@ -681,12 +788,11 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
                 });
                 sample_sizes.push(c.title.len() as u32 + 2);
 
-                // TODO: figure out position of chapters
+                // chunk offsets will be adjusted for the mdat shift later on
                 chunk_offsets.push(mdat_bounds.end());
 
-                // TODO: write actual chapter data
-                // mdat.data.write_be_u16(c.title.len() as u16).ok();
-                // mdat.data.write_utf8(&c.title).ok();
+                append_mdat.write_be_u16(c.title.len() as u16).ok();
+                append_mdat.write_utf8(&c.title).ok();
             }
 
             let chapter_track = Trak {
@@ -745,89 +851,6 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
         }
         WriteChapters::Preserve => (),
     }
-
-    // collect changes
-    let mut changes = Vec::<Change<'_>>::new();
-    moov.collect_changes(0, 0, &mut changes);
-
-    changes.sort_by(|a, b| {
-        if a.old_pos() < b.old_pos() {
-            Ordering::Less
-        } else if a.old_pos() > b.old_pos() {
-            Ordering::Greater
-        } else if a.level() > b.level() {
-            Ordering::Less
-        } else {
-            Ordering::Greater
-        }
-    });
-
-    // calculate mdat position shift
-    let mut mdat_shift: i64 = 0;
-    for c in changes.iter() {
-        if c.old_pos() <= mdat_bounds.pos() {
-            mdat_shift += c.len_diff();
-        }
-    }
-
-    // read moved data
-    let old_file_len = reader.seek(SeekFrom::End(0))?;
-    let mut len_diff: i64 = 0;
-    let mut moved_data = Vec::new();
-    {
-        let mut changes_iter = changes.iter().peekable();
-
-        while let Some(a) = changes_iter.next() {
-            len_diff += a.len_diff();
-
-            let data_pos = a.old_end();
-            let data_end = changes_iter.peek().map_or(old_file_len, |next| next.old_pos());
-            let data_len = data_end - data_pos;
-
-            if data_len > 0 {
-                let new_pos = (data_pos as i64 + len_diff) as u64;
-                let mut data = vec![0; data_len as usize];
-                reader.seek(SeekFrom::Start(data_pos))?;
-                reader.read_exact(&mut data)?;
-
-                moved_data.push(MovedData { new_pos, data });
-            }
-        }
-    }
-
-    // adjust the file length
-    let new_file_len = (old_file_len as i64 + len_diff) as u64;
-    file.set_len(new_file_len)?;
-
-    let writer = &mut BufWriter::new(file);
-
-    // write moved data
-    for d in moved_data {
-        writer.seek(SeekFrom::Start(d.new_pos))?;
-        writer.write_all(&d.data)?;
-    }
-
-    // write changes
-    let mut pos_shift = 0;
-    for c in changes.iter() {
-        let new_pos = c.old_pos() as i64 + pos_shift;
-        writer.seek(SeekFrom::Start(new_pos as u64))?;
-
-        match c {
-            Change::UpdateLen(u) => u.update_len(writer)?,
-            Change::UpdateChunkOffset(u) => u.offsets.update_offsets(writer, mdat_shift)?,
-            Change::Remove(_) => (),
-            Change::Replace(r) => r.atom.write(writer)?,
-            Change::Insert(i) => i.atom.write(writer)?,
-            Change::Data(_, d) => writer.write_all(d)?,
-        }
-
-        pos_shift += c.len_diff();
-    }
-
-    writer.flush()?;
-
-    Ok(())
 }
 
 /// Attempts to dump the metadata atoms to the writer. This doesn't include a complete MPEG-4

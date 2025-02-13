@@ -17,7 +17,7 @@ pub enum Change<'a> {
     Remove(RemoveAtom<'a>),
     Replace(ReplaceAtom<'a>),
     Insert(InsertAtom<'a>),
-    Data(u64, Vec<u8>),
+    AppendMdat(u64, &'a [u8]),
 }
 
 impl ChangeBounds for Change<'_> {
@@ -28,7 +28,7 @@ impl ChangeBounds for Change<'_> {
             Self::Remove(c) => c.old_pos(),
             Self::Replace(c) => c.old_pos(),
             Self::Insert(c) => c.old_pos(),
-            Self::Data(pos, _) => *pos,
+            Self::AppendMdat(pos, _) => *pos,
         }
     }
 
@@ -39,7 +39,7 @@ impl ChangeBounds for Change<'_> {
             Self::Remove(c) => c.old_end(),
             Self::Replace(c) => c.old_end(),
             Self::Insert(c) => c.old_end(),
-            Self::Data(pos, _) => *pos,
+            Self::AppendMdat(pos, _) => *pos,
         }
     }
 
@@ -50,7 +50,7 @@ impl ChangeBounds for Change<'_> {
             Self::Remove(c) => c.len_diff(),
             Self::Replace(c) => c.len_diff(),
             Self::Insert(c) => c.len_diff(),
-            Self::Data(_, d) => d.len() as i64,
+            Self::AppendMdat(_, d) => d.len() as i64,
         }
     }
 
@@ -61,7 +61,7 @@ impl ChangeBounds for Change<'_> {
             Self::Remove(c) => c.level(),
             Self::Replace(c) => c.level(),
             Self::Insert(c) => c.level(),
-            Self::Data(_, _) => 0,
+            Self::AppendMdat(_, _) => 0,
         }
     }
 }
@@ -108,8 +108,8 @@ pub struct UpdateChunkOffsets<'a> {
 
 #[derive(Debug)]
 pub enum ChunkOffsets<'a> {
-    Stco(&'a Vec<u32>),
-    Co64(&'a Vec<u64>),
+    Stco(&'a [u32]),
+    Co64(&'a [u64]),
 }
 
 impl ChunkOffsets<'_> {
