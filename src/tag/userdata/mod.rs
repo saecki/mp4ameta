@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use crate::{
     atom, ident, AdvisoryRating, Chapter, Data, DataIdent, Ident, Img, ImgBuf, ImgFmt, ImgMut,
-    ImgRef, MediaType, MetaItem, WriteConfig, WRITE_CONFIG,
+    ImgRef, MediaType, MetaItem, WriteConfig,
 };
 
 pub use genre::*;
@@ -18,10 +18,11 @@ mod tuple;
 /// A struct that holds user defined data.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Userdata {
+    // TODO: maybe use indexmap for metaitems?
     /// A list of Metadata item atoms.
     pub(crate) metaitems: Vec<MetaItem>,
-    /// A list of chapters.
-    pub(crate) chapters: Vec<Chapter>,
+    pub(crate) chapter_list: Vec<Chapter>,
+    pub(crate) chapter_track: Vec<Chapter>,
 }
 
 impl Userdata {
@@ -33,7 +34,7 @@ impl Userdata {
     /// Attempts to write the MPEG-4 audio tag to the writer. This will overwrite any metadata
     /// previously present on the file.
     pub fn write_to(&self, file: &File) -> crate::Result<()> {
-        self.write_with(file, &WRITE_CONFIG)
+        self.write_with(file, &WriteConfig::DEFAULT)
     }
 
     /// Attempts to write the MPEG-4 audio tag to the path.
@@ -45,7 +46,7 @@ impl Userdata {
     /// Attempts to write the MPEG-4 audio tag to the path. This will overwrite any metadata
     /// previously present on the file.
     pub fn write_to_path(&self, path: impl AsRef<Path>) -> crate::Result<()> {
-        self.write_with_path(path, &WRITE_CONFIG)
+        self.write_with_path(path, &WriteConfig::DEFAULT)
     }
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.
@@ -55,7 +56,7 @@ impl Userdata {
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.
     pub fn dump_to(&self, writer: &mut impl Write) -> crate::Result<()> {
-        self.dump_with(writer, &WRITE_CONFIG)
+        self.dump_with(writer, &WriteConfig::DEFAULT)
     }
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.
@@ -66,7 +67,7 @@ impl Userdata {
 
     /// Attempts to dump the MPEG-4 audio tag to the writer.
     pub fn dump_to_path(&self, path: impl AsRef<Path>) -> crate::Result<()> {
-        self.dump_with_path(path, &WRITE_CONFIG)
+        self.dump_with_path(path, &WriteConfig::DEFAULT)
     }
 }
 
@@ -258,36 +259,46 @@ impl Userdata {
 
 /// ### Chapters
 impl Userdata {
-    /// Returns all chapters.
-    pub fn chapters(&self) -> impl Iterator<Item = &Chapter> {
-        self.chapters.iter()
+    pub fn chapters(&self) -> &[Chapter] {
+        todo!()
     }
 
-    /// Add a chapter.
-    pub fn add_chapter(&mut self, chapter: Chapter) {
-        let pos = self.chapters().position(|c| chapter.start < c.start);
-
-        match pos {
-            Some(i) => self.chapters.insert(i, chapter),
-            None => self.chapters.push(chapter),
-        }
+    pub fn chapters_mut(&mut self) -> &mut Vec<Chapter> {
+        todo!()
     }
 
-    /// Add all chapters.
-    pub fn add_all_chapters(&mut self, chapters: impl IntoIterator<Item = Chapter>) {
-        for c in chapters {
-            self.add_chapter(c);
-        }
+    pub fn take_chapters(&mut self) -> Vec<Chapter> {
+        todo!()
+    }
+}
+
+/// ### Chapter list
+impl Userdata {
+    pub fn chapter_list(&self) -> &[Chapter] {
+        &self.chapter_list
     }
 
-    /// Remove the chapter at position `index`.
-    pub fn remove_chapter(&mut self, index: usize) -> Chapter {
-        self.chapters.remove(index)
+    pub fn chapter_list_mut(&mut self) -> &mut Vec<Chapter> {
+        &mut self.chapter_list
     }
 
-    /// Remove the chapter at position `index`.
-    pub fn retain_chapters(&mut self, predicate: impl Fn(&Chapter) -> bool) {
-        self.chapters.retain(predicate);
+    pub fn take_chapter_list(&mut self) -> Vec<Chapter> {
+        std::mem::take(&mut self.chapter_list)
+    }
+}
+
+/// ### Chapter track
+impl Userdata {
+    pub fn chapter_track(&self) -> &[Chapter] {
+        &self.chapter_track
+    }
+
+    pub fn chapter_track_mut(&mut self) -> &mut Vec<Chapter> {
+        &mut self.chapter_track
+    }
+
+    pub fn take_chapter_track(&mut self) -> Vec<Chapter> {
+        std::mem::take(&mut self.chapter_track)
     }
 }
 
@@ -1185,6 +1196,8 @@ impl Userdata {
         }
     }
 
+    // TODO: clear chapters too
+    // TODO: also add clear_meta and clear_chapters?
     /// Removes all metadata atoms of the tag.
     ///
     /// # Example

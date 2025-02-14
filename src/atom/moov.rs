@@ -15,7 +15,7 @@ impl Atom for Moov<'_> {
 impl ParseAtom for Moov<'_> {
     fn parse_atom(
         reader: &mut (impl Read + Seek),
-        cfg: &ReadConfig,
+        cfg: &ParseConfig<'_>,
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
@@ -29,10 +29,10 @@ impl ParseAtom for Moov<'_> {
 
             match head.fourcc() {
                 MOVIE_HEADER => mvhd = Some(Mvhd::parse(reader, cfg, head.size())?),
-                TRACK if cfg.read_chapters || cfg.read_audio_info => {
+                TRACK if cfg.write || cfg.cfg.read_chapter_track || cfg.cfg.read_audio_info => {
                     trak.push(Trak::parse(reader, cfg, head.size())?)
                 }
-                USER_DATA if cfg.read_item_list || cfg.read_chapters => {
+                USER_DATA if cfg.cfg.read_item_list || cfg.cfg.read_chapter_list => {
                     udta = Some(Udta::parse(reader, cfg, head.size())?)
                 }
                 _ => reader.skip(head.content_len() as i64)?,

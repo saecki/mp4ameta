@@ -30,7 +30,7 @@ impl Atom for Ilst<'_> {
 impl ParseAtom for Ilst<'_> {
     fn parse_atom(
         reader: &mut (impl Read + Seek),
-        cfg: &ReadConfig,
+        cfg: &ParseConfig<'_>,
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;

@@ -27,7 +27,7 @@ impl Atom for Hdlr {
 impl ParseAtom for Hdlr {
     fn parse_atom(
         reader: &mut (impl Read + Seek),
-        _cfg: &ReadConfig,
+        _cfg: &ParseConfig<'_>,
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;

@@ -13,7 +13,7 @@ impl Atom for Chap {
 impl ParseAtom for Chap {
     fn parse_atom(
         reader: &mut (impl Read + Seek),
-        _cfg: &ReadConfig,
+        _cfg: &ParseConfig<'_>,
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;

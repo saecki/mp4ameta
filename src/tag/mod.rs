@@ -3,9 +3,8 @@ use std::fs::File;
 use std::io::{BufReader, Read, Seek};
 use std::ops::{Deref, DerefMut};
 use std::path::Path;
-use std::time::Duration;
 
-use crate::{atom, util, AudioInfo, ReadConfig, READ_CONFIG};
+use crate::{atom, util, AudioInfo, ReadConfig};
 
 pub use userdata::*;
 
@@ -79,33 +78,25 @@ impl fmt::Display for Tag {
         self.format_compilation(f)?;
         self.format_isrc(f)?;
         self.format_lyrics(f)?;
-        self.format_chapters(f)?;
+        self.format_chapter_list(f)?;
+        self.format_chapter_track(f)?;
         writeln!(f, "filetype: {}", self.filetype())
     }
 }
 
 impl Tag {
-    fn format_chapters(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if !self.userdata.chapters.is_empty() {
-            writeln!(f, "chapters:")?;
-            for (i, c) in self.userdata.chapters().enumerate() {
-                writeln!(f, "    {}", c.title)?;
-                if c.start == Duration::ZERO {
-                    f.write_str("      start: 0:00")?;
-                } else {
-                    f.write_str("      start: ")?;
-                    util::format_duration(f, c.start)?;
-                }
+    fn format_chapter_list(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if !self.userdata.chapter_list.is_empty() {
+            writeln!(f, "chapter list:")?;
+            util::format_chapters(f, &self.chapter_list, self.info.duration)?;
+        }
+        Ok(())
+    }
 
-                let end = match self.userdata.chapters.get(i + 1) {
-                    Some(next) => next.start,
-                    None => self.duration(),
-                };
-                let duration = end.saturating_sub(c.start);
-                f.write_str(", duration: ")?;
-                util::format_duration(f, duration)?;
-                writeln!(f)?;
-            }
+    fn format_chapter_track(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if !self.userdata.chapter_track.is_empty() {
+            writeln!(f, "chapter track:")?;
+            util::format_chapters(f, &self.chapter_track, self.info.duration)?;
         }
         Ok(())
     }
@@ -119,7 +110,7 @@ impl Tag {
 
     /// Attempts to read a MPEG-4 audio tag from the reader.
     pub fn read_from(reader: &mut (impl Read + Seek)) -> crate::Result<Self> {
-        Self::read_with(reader, &READ_CONFIG)
+        Self::read_with(reader, &ReadConfig::DEFAULT)
     }
 
     /// Attempts to read a MPEG-4 audio tag from the file at the indicated path.
@@ -130,6 +121,6 @@ impl Tag {
 
     /// Attempts to read a MPEG-4 audio tag from the file at the indicated path.
     pub fn read_from_path(path: impl AsRef<Path>) -> crate::Result<Self> {
-        Self::read_with_path(path, &READ_CONFIG)
+        Self::read_with_path(path, &ReadConfig::DEFAULT)
     }
 }

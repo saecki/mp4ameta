@@ -13,7 +13,7 @@ impl Atom for Dinf {
 impl ParseAtom for Dinf {
     fn parse_atom(
         reader: &mut (impl Read + Seek),
-        cfg: &ReadConfig,
+        cfg: &ParseConfig<'_>,
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;

@@ -15,7 +15,7 @@ impl Atom for Mdia {
 impl ParseAtom for Mdia {
     fn parse_atom(
         reader: &mut (impl Read + Seek),
-        cfg: &ReadConfig,
+        cfg: &ParseConfig<'_>,
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
@@ -29,7 +29,7 @@ impl ParseAtom for Mdia {
 
             match head.fourcc() {
                 MEDIA_HEADER => mdhd = Some(Mdhd::parse(reader, cfg, head.size())?),
-                HANDLER_REFERENCE => hdlr = Some(Hdlr::parse(reader, cfg, head.size())?),
+                HANDLER_REFERENCE if cfg.write => hdlr = Some(Hdlr::parse(reader, cfg, head.size())?),
                 MEDIA_INFORMATION => minf = Some(Minf::parse(reader, cfg, head.size())?),
                 _ => reader.skip(head.content_len() as i64)?,
             }
@@ -80,6 +80,7 @@ impl SimpleCollectChanges for Mdia {
         bounds: &'a AtomBounds,
         changes: &mut Vec<Change<'a>>,
     ) -> i64 {
+        // TODO: check other child atoms
         self.minf.collect_changes(bounds.end(), level, changes)
     }
 

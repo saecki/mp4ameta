@@ -13,7 +13,7 @@ impl Atom for Tref {
 impl ParseAtom for Tref {
     fn parse_atom(
         reader: &mut (impl Read + Seek),
-        cfg: &ReadConfig,
+        cfg: &ParseConfig<'_>,
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;

@@ -42,7 +42,7 @@ impl MetaItem {
 
     pub fn parse(
         reader: &mut (impl Read + Seek),
-        cfg: &ReadConfig,
+        cfg: &ParseConfig<'_>,
         head: Head,
     ) -> crate::Result<Self> {
         let mut data = Vec::new();

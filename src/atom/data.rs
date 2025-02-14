@@ -147,7 +147,7 @@ impl ParseAtom for Data {
     /// Parses data based on [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
     fn parse_atom(
         reader: &mut (impl Read + Seek),
-        cfg: &ReadConfig,
+        cfg: &ParseConfig<'_>,
         size: Size,
     ) -> crate::Result<Data> {
         let (version, [b2, b1, b0]) = parse_full_head(reader)?;
@@ -166,10 +166,10 @@ impl ParseAtom for Data {
             RESERVED => Data::Reserved(reader.read_u8_vec(len)?),
             UTF8 => Data::Utf8(reader.read_utf8(len)?),
             UTF16 => Data::Utf16(reader.read_be_utf16(len)?),
-            JPEG => Data::Jpeg(read_image(reader, cfg.read_image_data, len)?),
-            PNG => Data::Png(read_image(reader, cfg.read_image_data, len)?),
+            JPEG => Data::Jpeg(read_image(reader, cfg.cfg.read_image_data, len)?),
+            PNG => Data::Png(read_image(reader, cfg.cfg.read_image_data, len)?),
             BE_SIGNED => Data::BeSigned(reader.read_u8_vec(len)?),
-            BMP => Data::Bmp(read_image(reader, cfg.read_image_data, len)?),
+            BMP => Data::Bmp(read_image(reader, cfg.cfg.read_image_data, len)?),
             _ => {
                 // TODO: maybe log warning (optional log dependency behind feature flag)
                 Data::Unknown { code: datatype, data: reader.read_u8_vec(len)? }

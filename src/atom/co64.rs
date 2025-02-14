@@ -14,7 +14,7 @@ impl Atom for Co64 {
 impl ParseAtom for Co64 {
     fn parse_atom(
         reader: &mut (impl Read + Seek),
-        _cfg: &ReadConfig,
+        _cfg: &ParseConfig<'_>,
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;

@@ -14,7 +14,7 @@ impl Atom for Udta<'_> {
 impl ParseAtom for Udta<'_> {
     fn parse_atom(
         reader: &mut (impl Read + Seek),
-        cfg: &ReadConfig,
+        cfg: &ParseConfig<'_>,
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
@@ -28,10 +28,10 @@ impl ParseAtom for Udta<'_> {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                CHAPTER_LIST if cfg.read_chapters => {
+                CHAPTER_LIST if cfg.cfg.read_chapter_list => {
                     udta.chpl = Some(Chpl::parse(reader, cfg, head.size())?);
                 }
-                METADATA if cfg.read_item_list => {
+                METADATA if cfg.cfg.read_item_list => {
                     udta.meta = Some(Meta::parse(reader, cfg, head.size())?)
                 }
                 _ => reader.skip(head.content_len() as i64)?,

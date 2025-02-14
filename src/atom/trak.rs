@@ -15,7 +15,7 @@ impl Atom for Trak {
 impl ParseAtom for Trak {
     fn parse_atom(
         reader: &mut (impl Read + Seek),
-        cfg: &ReadConfig,
+        cfg: &ParseConfig<'_>,
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
@@ -29,10 +29,10 @@ impl ParseAtom for Trak {
 
             match head.fourcc() {
                 TRACK_HEADER => tkhd = Some(Tkhd::parse(reader, cfg, head.size())?),
-                TRACK_REFERENCE if cfg.read_chapters => {
+                TRACK_REFERENCE if cfg.cfg.read_chapter_track => {
                     tref = Some(Tref::parse(reader, cfg, head.size())?)
                 }
-                MEDIA if cfg.read_chapters || cfg.read_audio_info => {
+                MEDIA if cfg.write || cfg.cfg.read_chapter_track || cfg.cfg.read_audio_info => {
                     mdia = Some(Mdia::parse(reader, cfg, head.size())?)
                 }
                 _ => reader.skip(head.content_len() as i64)?,

@@ -15,7 +15,7 @@ impl Atom for Minf {
 impl ParseAtom for Minf {
     fn parse_atom(
         reader: &mut (impl Read + Seek),
-        cfg: &ReadConfig,
+        cfg: &ParseConfig<'_>,
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
@@ -29,10 +29,12 @@ impl ParseAtom for Minf {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                BASE_MEDIA_INFORMATION_HEADER => {
+                BASE_MEDIA_INFORMATION_HEADER if cfg.write => {
                     minf.gmhd = Some(Gmhd::parse(reader, cfg, head.size())?)
                 }
-                DATA_INFORMATION => minf.dinf = Some(Dinf::parse(reader, cfg, head.size())?),
+                DATA_INFORMATION if cfg.write => {
+                    minf.dinf = Some(Dinf::parse(reader, cfg, head.size())?)
+                }
                 SAMPLE_TABLE => minf.stbl = Some(Stbl::parse(reader, cfg, head.size())?),
                 _ => reader.skip(head.content_len() as i64)?,
             }
@@ -77,6 +79,7 @@ impl SimpleCollectChanges for Minf {
         bounds: &'a AtomBounds,
         changes: &mut Vec<Change<'a>>,
     ) -> i64 {
+        // TODO: check other child atoms
         self.stbl.collect_changes(bounds.end(), level, changes)
     }
 

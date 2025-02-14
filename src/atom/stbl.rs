@@ -18,7 +18,7 @@ impl Atom for Stbl {
 impl ParseAtom for Stbl {
     fn parse_atom(
         reader: &mut (impl Read + Seek),
-        cfg: &ReadConfig,
+        cfg: &ParseConfig<'_>,
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
@@ -32,22 +32,22 @@ impl ParseAtom for Stbl {
             let head = parse_head(reader)?;
 
             match head.fourcc() {
-                SAMPLE_TABLE_SAMPLE_DESCRIPTION if cfg.read_audio_info => {
+                SAMPLE_TABLE_SAMPLE_DESCRIPTION if cfg.cfg.read_audio_info => {
                     stbl.stsd = Some(Stsd::parse(reader, cfg, head.size())?)
                 }
-                SAMPLE_TABLE_TIME_TO_SAMPLE if cfg.read_chapters => {
+                SAMPLE_TABLE_TIME_TO_SAMPLE if cfg.cfg.read_chapter_track => {
                     stbl.stts = Some(Stts::parse(reader, cfg, head.size())?)
                 }
-                SAMPLE_TABLE_SAMPLE_TO_COUNT => {
+                SAMPLE_TABLE_SAMPLE_TO_COUNT if cfg.cfg.read_chapter_track => {
                     stbl.stsc = Some(Stsc::parse(reader, cfg, head.size())?)
                 }
-                SAMPLE_TABLE_SAMPLE_SIZE => {
+                SAMPLE_TABLE_SAMPLE_SIZE if cfg.cfg.read_chapter_track => {
                     stbl.stsz = Some(Stsz::parse(reader, cfg, head.size())?)
                 }
-                SAMPLE_TABLE_CHUNK_OFFSET if cfg.read_chapters => {
+                SAMPLE_TABLE_CHUNK_OFFSET if cfg.write || cfg.cfg.read_chapter_track => {
                     stbl.stco = Some(Stco::parse(reader, cfg, head.size())?)
                 }
-                SAMPLE_TABLE_CHUNK_OFFSET_64 if cfg.read_chapters => {
+                SAMPLE_TABLE_CHUNK_OFFSET_64 if cfg.write || cfg.cfg.read_chapter_track => {
                     stbl.co64 = Some(Co64::parse(reader, cfg, head.size())?)
                 }
                 _ => reader.skip(head.content_len() as i64)?,
@@ -106,6 +106,7 @@ impl SimpleCollectChanges for Stbl {
         bounds: &'a AtomBounds,
         changes: &mut Vec<Change<'a>>,
     ) -> i64 {
+        // TODO: check other child atoms
         self.stco.collect_changes(bounds.end(), level, changes)
             + self.co64.collect_changes(bounds.end(), level, changes)
     }

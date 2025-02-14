@@ -14,7 +14,7 @@ impl Atom for Meta<'_> {
 impl ParseAtom for Meta<'_> {
     fn parse_atom(
         reader: &'_ mut (impl Read + Seek),
-        cfg: &ReadConfig,
+        cfg: &ParseConfig<'_>,
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;

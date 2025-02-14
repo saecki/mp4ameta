@@ -30,6 +30,7 @@
 //! │           ├─ stco
 //! │           └─ co64
 //! └─ udta
+//!    ├─ chpl
 //!    └─ meta
 //!       ├─ hdlr
 //!       └─ ilst
@@ -133,28 +134,16 @@ mod tref;
 mod udta;
 mod url;
 
-/// The default configuration for reading tags.
-pub const READ_CONFIG: ReadConfig = ReadConfig {
-    read_item_list: true,
-    read_image_data: true,
-    read_chapters: true,
-    read_audio_info: true,
-    chpl_timescale: ChplTimescale::Fixed(DEFAULT_CHPL_TIMESCALE),
-};
-
-/// The default configuration for writing tags.
-pub const WRITE_CONFIG: WriteConfig = WriteConfig {
-    write_item_list: true,
-    write_chapters: WriteChapters::List,
-    chpl_timescale: ChplTimescale::Fixed(DEFAULT_CHPL_TIMESCALE),
-};
-
 trait Atom: Sized {
     const FOURCC: Fourcc;
 }
 
 trait ParseAtom: Atom {
-    fn parse(reader: &mut (impl Read + Seek), cfg: &ReadConfig, size: Size) -> crate::Result<Self> {
+    fn parse(
+        reader: &mut (impl Read + Seek),
+        cfg: &ParseConfig<'_>,
+        size: Size,
+    ) -> crate::Result<Self> {
         match Self::parse_atom(reader, cfg, size) {
             Err(mut e) => {
                 let mut d = e.description.into_owned();
@@ -168,7 +157,7 @@ trait ParseAtom: Atom {
 
     fn parse_atom(
         reader: &mut (impl Read + Seek),
-        cfg: &ReadConfig,
+        cfg: &ParseConfig<'_>,
         size: Size,
     ) -> crate::Result<Self>;
 }
@@ -327,21 +316,43 @@ pub struct ReadConfig {
     pub read_item_list: bool,
     /// Wheter image data will be read.
     pub read_image_data: bool,
-    /// Wheter chapter information will be read.
-    pub read_chapters: bool,
+    /// Wheter chapter list information will be read.
+    pub read_chapter_list: bool,
+    /// Wheter chapter track information will be read.
+    pub read_chapter_track: bool,
     /// Wheter audio information will be read.
+    /// The [`AudioInfo::duration`] will always be read.
     pub read_audio_info: bool,
     /// The timescale that is used to scale time for chapter list (chpl) atoms.
     pub chpl_timescale: ChplTimescale,
 }
 
+impl ReadConfig {
+    /// The default configuration for reading tags.
+    pub const DEFAULT: ReadConfig = ReadConfig {
+        read_item_list: true,
+        read_image_data: true,
+        read_chapter_list: true,
+        read_chapter_track: true,
+        read_audio_info: true,
+        chpl_timescale: ChplTimescale::Fixed(DEFAULT_CHPL_TIMESCALE),
+    };
+}
+
 impl Default for ReadConfig {
     fn default() -> Self {
-        READ_CONFIG.clone()
+        Self::DEFAULT.clone()
     }
 }
 
+pub(crate) struct ParseConfig<'a> {
+    cfg: &'a ReadConfig,
+    write: bool,
+}
+
 pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> crate::Result<Tag> {
+    let parse_cfg = ParseConfig { cfg, write: false };
+
     let Ftyp(ftyp) = Ftyp::parse(reader)?;
 
     let len = reader.remaining_stream_len()?;
@@ -356,12 +367,14 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
 
         let head = parse_head(reader)?;
         if head.fourcc() == MOVIE {
-            break Moov::parse(reader, cfg, head.size())?;
+            break Moov::parse(reader, &parse_cfg, head.size())?;
         }
 
         reader.skip(head.content_len() as i64)?;
         parsed_bytes += head.len();
     };
+
+    dbg!(&moov);
 
     let mvhd = moov.mvhd;
     let duration = scale_duration(mvhd.timescale, mvhd.duration);
@@ -374,52 +387,55 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
         .and_then(|a| a.owned())
         .unwrap_or_default();
 
-    let mut chapters = Vec::new();
-    if cfg.read_chapters {
-        // chapter list atom
+    // chapter list atom
+    let mut chapter_list = Vec::new();
+    if cfg.read_chapter_list {
         if let Some(mut chpl) = moov.udta.and_then(|a| a.chpl).and_then(|a| a.owned()) {
             let chpl_timescale = cfg.chpl_timescale.fixed_or_mvhd(mvhd.timescale);
 
             chpl.sort_by_key(|c| c.start);
-            chapters.reserve(chpl.len());
+            chapter_list.reserve(chpl.len());
 
             for c in chpl {
-                chapters.push(Chapter {
+                chapter_list.push(Chapter {
                     start: scale_duration(chpl_timescale, c.start),
                     title: c.title,
                 });
             }
         }
+    }
 
-        // chapter tracks
+    // chapter tracks
+    let mut chapter_track = Vec::new();
+    if cfg.read_chapter_track {
         for chap in moov.trak.iter().filter_map(|a| a.tref.as_ref().and_then(|a| a.chap.as_ref())) {
             for c_id in chap.chapter_ids.iter() {
-                let chapter_track = moov.trak.iter().find(|a| a.tkhd.id == *c_id);
+                let trak = moov.trak.iter().find(|a| a.tkhd.id == *c_id);
 
-                let Some(chapter_track) = chapter_track else {
+                let Some(trak) = trak else {
                     continue; // TODO maybe log warning: referenced chapter track not found
                 };
 
-                let mdia = chapter_track.mdia.as_ref();
+                let mdia = trak.mdia.as_ref();
                 let stbl = mdia.and_then(|a| a.minf.as_ref()).and_then(|a| a.stbl.as_ref());
                 let stts = stbl.and_then(|a| a.stts.as_ref());
 
                 let timescale = mdia.map(|a| a.mdhd.timescale).unwrap_or(mvhd.timescale);
 
                 if let Some(stco) = stbl.and_then(|a| a.stco.as_ref()) {
-                    chapters.reserve(stco.offsets.len());
+                    chapter_track.reserve(stco.offsets.len());
                     read_chapters(
                         reader,
-                        &mut chapters,
+                        &mut chapter_track,
                         timescale,
                         stco.offsets.iter().map(|o| *o as u64),
                         stts.map_or([].iter(), |a| a.items.iter()),
                     )?;
                 } else if let Some(co64) = stbl.and_then(|a| a.co64.as_ref()) {
-                    chapters.reserve(co64.offsets.len());
+                    chapter_track.reserve(co64.offsets.len());
                     read_chapters(
                         reader,
-                        &mut chapters,
+                        &mut chapter_track,
                         timescale,
                         co64.offsets.iter().copied(),
                         stts.map_or([].iter(), |a| a.items.iter()),
@@ -430,7 +446,6 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
     }
 
     let mut info = AudioInfo { duration, ..Default::default() };
-
     if cfg.read_audio_info {
         let mp4a = moov.trak.into_iter().find_map(|trak| {
             trak.mdia
@@ -447,7 +462,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
         }
     }
 
-    let userdata = Userdata { metaitems, chapters };
+    let userdata = Userdata { metaitems, chapter_list, chapter_track };
     Ok(Tag { ftyp, info, userdata })
 }
 
@@ -494,45 +509,27 @@ fn read_chapter_title(reader: &mut (impl Read + Seek), offset: u64) -> crate::Re
 pub struct WriteConfig {
     /// Whether to overwrite item list metadata.
     pub write_item_list: bool,
-    /// Whether to overwrite chapter information.
-    pub write_chapters: WriteChapters,
+    /// Whether to overwrite chapter list information.
+    pub write_chapter_list: bool,
+    /// Whether to overwrite chapter track information.
+    pub write_chapter_track: bool,
     /// The timescale that is used to scale time for chapter list (chpl) atoms.
     pub chpl_timescale: ChplTimescale,
 }
 
+impl WriteConfig {
+    /// The default configuration for writing tags.
+    pub const DEFAULT: WriteConfig = WriteConfig {
+        write_item_list: true,
+        write_chapter_list: true,
+        write_chapter_track: true,
+        chpl_timescale: ChplTimescale::Fixed(DEFAULT_CHPL_TIMESCALE),
+    };
+}
+
 impl Default for WriteConfig {
     fn default() -> Self {
-        WRITE_CONFIG.clone()
-    }
-}
-
-/// An enum representing the formats in which chapters can be stored in an mp4 file.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum WriteChapters {
-    /// Store chapters as user data inside a chapter list (`chpl`) atom.
-    List,
-    /// Store chapters in a track (`trak`) atom.
-    Track,
-    // Store chapters in whatever format already exists.
-    //UseExisting, TODO
-    /// Don't write chapters and preserve existing ones.
-    Preserve,
-}
-
-impl WriteChapters {
-    /// Returns true if `self` is of type [`Self::ChapterList`], false otherwise.
-    pub const fn is_list(&self) -> bool {
-        matches!(self, Self::List)
-    }
-
-    /// Returns true if `self` is of type [`Self::ChapterTrack`], false otherwise.
-    pub const fn is_track(&self) -> bool {
-        matches!(self, Self::Track)
-    }
-
-    /// Returns true if `self` is of type [`Self::Preserve`], false otherwise.
-    pub const fn is_preserve(&self) -> bool {
-        matches!(self, Self::Preserve)
+        Self::DEFAULT.clone()
     }
 }
 
@@ -555,8 +552,17 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
         while parsed_bytes < len {
             let head = parse_head(reader)?;
 
+            let read_cfg = ReadConfig {
+                read_item_list: cfg.write_item_list,
+                read_chapter_list: cfg.write_chapter_list,
+                read_chapter_track: cfg.write_chapter_track,
+                read_audio_info: false,
+                read_image_data: false,
+                ..Default::default()
+            };
+            let parse_cfg = ParseConfig { cfg: &read_cfg, write: true };
             match head.fourcc() {
-                MOVIE => moov = Some(Moov::parse(reader, &READ_CONFIG, head.size())?),
+                MOVIE => moov = Some(Moov::parse(reader, &parse_cfg, head.size())?),
                 MEDIA_DATA => mdat_bounds = Some(Mdat::read_bounds(reader, head.size())?),
                 _ => reader.skip(head.content_len() as i64)?,
             }
@@ -580,7 +586,7 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
 
     // update atom hierachty
     let mut append_mdat = Vec::new();
-    if cfg.write_item_list || !cfg.write_chapters.is_preserve() {
+    if cfg.write_item_list || cfg.write_chapter_list || cfg.write_chapter_track {
         update_userdata(&mut moov, &mdat_bounds, &mut append_mdat, userdata, cfg);
     }
 
@@ -706,150 +712,143 @@ fn update_userdata<'a>(
         }
     }
 
-    // chapters
-    if cfg.write_chapters.is_preserve() {
-        return;
-    }
+    // chapter list
+    if cfg.write_chapter_list {
+        let chpl_timescale = cfg.chpl_timescale.fixed_or_mvhd(moov.mvhd.timescale);
+        let chpl_items = userdata
+            .chapter_list
+            .iter()
+            .map(|c| BorrowedChplItem {
+                start: unscale_duration(chpl_timescale, c.start),
+                title: &c.title,
+            })
+            .collect();
 
-    let mut chapter_track_ids = Vec::new();
-    for tref in moov.trak.iter_mut().filter_map(|a| a.tref.as_mut()) {
-        if let Some(chap) = &mut tref.chap {
-            chap.state.remove_existing();
-
-            if let State::Existing(bounds) = &tref.state {
-                if bounds.content_len() == chap.len() {
-                    tref.state.remove_existing();
-                }
-            }
-
-            chapter_track_ids.extend(chap.chapter_ids.iter().copied());
-        }
-    }
-
-    match cfg.write_chapters {
-        WriteChapters::List => {
-            // remove chapter tracks
-            for trak in moov.trak.iter_mut() {
-                if chapter_track_ids.contains(&trak.tkhd.id) {
-                    trak.state.remove_existing();
-                }
-            }
-
-            // update or add chapter list (chpl)
-            let chpl_timescale = cfg.chpl_timescale.fixed_or_mvhd(moov.mvhd.timescale);
-            let chpl_items = userdata
-                .chapters
-                .iter()
-                .map(|c| BorrowedChplItem {
-                    start: unscale_duration(chpl_timescale, c.start),
-                    title: &c.title,
-                })
-                .collect();
-
-            match udta.chpl.as_mut() {
-                Some(chpl) => {
-                    chpl.state.replace_existing();
-                    chpl.data = ChplData::Borrowed(chpl_items);
-                }
-                None => {
-                    udta.chpl = Some(Chpl {
-                        state: State::Insert,
-                        data: ChplData::Borrowed(chpl_items),
-                    });
-                }
-            }
-        }
-        WriteChapters::Track => {
-            // remove chapter list (chpl)
-            if let Some(chpl) = udta.chpl.as_mut() {
+        match udta.chpl.as_mut() {
+            Some(chpl) if userdata.chapter_list.is_empty() => {
                 chpl.state.remove_existing();
             }
-
-            let content_trak = &Trak::default(); // TODO: find content track
-            let chapter_timescale =
-                content_trak.mdia.as_ref().map(|a| a.mdhd.timescale).unwrap_or(moov.mvhd.timescale);
-            // TODO: add trak reference to content track
-
-            let new_id = moov.trak.iter().map(|t| t.tkhd.id).max().unwrap() + 1; // TODO: is this correct?
-            let duration = moov.mvhd.duration;
-            let mut chunk_offsets = Vec::with_capacity(userdata.chapters.len());
-            let mut sample_sizes = Vec::with_capacity(userdata.chapters.len());
-            let mut time_to_samples = Vec::with_capacity(userdata.chapters.len());
-            let mut chapters_iter = userdata.chapters.iter().enumerate().peekable();
-
-            while let Some((i, c)) = chapters_iter.next() {
-                let c_duration = match chapters_iter.peek() {
-                    Some((_, next)) => unscale_duration(chapter_timescale, next.start - c.start),
-                    None => unscale_duration(chapter_timescale, c.start) - duration,
-                };
-                time_to_samples.push(SttsItem {
-                    sample_count: i as u32,
-                    sample_duration: c_duration as u32,
-                });
-                sample_sizes.push(c.title.len() as u32 + 2);
-
-                // chunk offsets will be adjusted for the mdat shift later on
-                chunk_offsets.push(mdat_bounds.end());
-
-                append_mdat.write_be_u16(c.title.len() as u16).ok();
-                append_mdat.write_utf8(&c.title).ok();
+            Some(chpl) => {
+                chpl.state.replace_existing();
+                chpl.data = ChplData::Borrowed(chpl_items);
             }
-
-            let chapter_track = Trak {
-                state: State::Insert,
-                tkhd: Tkhd {
+            None => {
+                udta.chpl = Some(Chpl {
                     state: State::Insert,
-                    id: new_id,
+                    data: ChplData::Borrowed(chpl_items),
+                });
+            }
+        }
+    }
+
+    // chapter tracks
+    if cfg.write_chapter_track {
+        // TODO: remove entire track?
+        // remove chapter tracks
+        //for trak in moov.trak.iter_mut() {
+        //    if chapter_track_ids.contains(&trak.tkhd.id) {
+        //        trak.state.remove_existing();
+        //    }
+        //}
+
+        let mut chapter_track_ids = Vec::new();
+        for tref in moov.trak.iter_mut().filter_map(|a| a.tref.as_mut()) {
+            if let Some(chap) = &mut tref.chap {
+                chap.state.remove_existing();
+
+                if let State::Existing(bounds) = &tref.state {
+                    if bounds.content_len() == chap.len() {
+                        tref.state.remove_existing();
+                    }
+                }
+
+                chapter_track_ids.extend(chap.chapter_ids.iter().copied());
+            }
+        }
+
+        let content_trak = &Trak::default(); // TODO: find content track
+        let chapter_timescale =
+            content_trak.mdia.as_ref().map(|a| a.mdhd.timescale).unwrap_or(moov.mvhd.timescale);
+        // TODO: add trak reference to content track
+
+        let new_id = moov.trak.iter().map(|t| t.tkhd.id).max().unwrap() + 1; // TODO: is this correct?
+        let duration = moov.mvhd.duration;
+        let mut chunk_offsets = Vec::with_capacity(userdata.chapter_list.len());
+        let mut sample_sizes = Vec::with_capacity(userdata.chapter_list.len());
+        let mut time_to_samples = Vec::with_capacity(userdata.chapter_list.len());
+        let mut chapters_iter = userdata.chapter_list.iter().enumerate().peekable();
+
+        while let Some((i, c)) = chapters_iter.next() {
+            let c_duration = match chapters_iter.peek() {
+                Some((_, next)) => unscale_duration(chapter_timescale, next.start - c.start),
+                None => unscale_duration(chapter_timescale, c.start) - duration,
+            };
+            time_to_samples.push(SttsItem {
+                sample_count: i as u32,
+                sample_duration: c_duration as u32,
+            });
+            sample_sizes.push(2 + c.title.len() as u32);
+
+            // chunk offsets will be adjusted for the mdat shift later on
+            chunk_offsets.push(mdat_bounds.end());
+
+            append_mdat.write_be_u16(c.title.len() as u16).ok();
+            append_mdat.write_utf8(&c.title).ok();
+        }
+
+        let chapter_track = Trak {
+            state: State::Insert,
+            tkhd: Tkhd {
+                state: State::Insert,
+                id: new_id,
+                ..Default::default()
+            },
+            mdia: Some(Mdia {
+                state: State::Insert,
+                mdhd: Mdhd {
+                    state: State::Insert,
+                    timescale: chapter_timescale,
                     ..Default::default()
                 },
-                mdia: Some(Mdia {
+                hdlr: Some(Hdlr::text_mdia()),
+                minf: Some(Minf {
                     state: State::Insert,
-                    mdhd: Mdhd {
+                    gmhd: Some(Gmhd {
                         state: State::Insert,
-                        timescale: chapter_timescale,
-                        ..Default::default()
-                    },
-                    hdlr: Some(Hdlr::text_mdia()),
-                    minf: Some(Minf {
+                        gmin: Some(Gmin::chapter()),
+                        text: Some(Text::media_information_chapter()),
+                    }),
+                    dinf: Some(Dinf {
                         state: State::Insert,
-                        gmhd: Some(Gmhd {
-                            state: State::Insert,
-                            gmin: Some(Gmin::chapter()),
-                            text: Some(Text::media_information_chapter()),
-                        }),
-                        dinf: Some(Dinf {
-                            state: State::Insert,
-                            dref: Some(Dref { state: State::Insert, url: Some(Url::track()) }),
-                        }),
-                        stbl: Some(Stbl {
-                            stsd: Some(Stsd {
-                                text: Some(Text::media_chapter()),
-                                ..Default::default()
-                            }),
-                            stts: Some(Stts { state: State::Insert, items: time_to_samples }),
-                            stsc: Some(Stsc {
-                                state: State::Insert,
-                                items: vec![StscItem {
-                                    first_chunk: 1,
-                                    samples_per_chunk: 1,
-                                    sample_description_id: 1,
-                                }],
-                            }),
-                            stsz: Some(Stsz {
-                                state: State::Insert,
-                                sample_size: 0,
-                                sizes: sample_sizes,
-                            }),
-                            co64: Some(Co64 { state: State::Insert, offsets: chunk_offsets }),
+                        dref: Some(Dref { state: State::Insert, url: Some(Url::track()) }),
+                    }),
+                    stbl: Some(Stbl {
+                        stsd: Some(Stsd {
+                            text: Some(Text::media_chapter()),
                             ..Default::default()
                         }),
+                        stts: Some(Stts { state: State::Insert, items: time_to_samples }),
+                        stsc: Some(Stsc {
+                            state: State::Insert,
+                            items: vec![StscItem {
+                                first_chunk: 1,
+                                samples_per_chunk: 1,
+                                sample_description_id: 1,
+                            }],
+                        }),
+                        stsz: Some(Stsz {
+                            state: State::Insert,
+                            sample_size: 0,
+                            sizes: sample_sizes,
+                        }),
+                        co64: Some(Co64 { state: State::Insert, offsets: chunk_offsets }),
+                        ..Default::default()
                     }),
                 }),
-                ..Default::default()
-            };
-            moov.trak.push(chapter_track);
-        }
-        WriteChapters::Preserve => (),
+            }),
+            ..Default::default()
+        };
+        moov.trak.push(chapter_track);
     }
 }
 
@@ -862,7 +861,7 @@ pub(crate) fn dump_tag(
 ) -> crate::Result<()> {
     const MVHD_TIMESCALE: u32 = 1000;
 
-    let duration = userdata.chapters.last().map_or(Duration::ZERO, |c| c.start);
+    let duration = userdata.chapter_list.last().map_or(Duration::ZERO, |c| c.start);
     let scaled_duration = unscale_duration(MVHD_TIMESCALE, duration);
 
     let ftyp = Ftyp("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".to_owned());
@@ -890,117 +889,115 @@ pub(crate) fn dump_tag(
         });
     }
 
-    match cfg.write_chapters {
-        WriteChapters::List => {
-            let chpl_timescale = cfg.chpl_timescale.fixed_or_mvhd(MVHD_TIMESCALE);
+    if cfg.write_chapter_list {
+        let chpl_timescale = cfg.chpl_timescale.fixed_or_mvhd(MVHD_TIMESCALE);
 
-            let udta = moov.udta.get_or_insert_with(Udta::default);
-            let chpl_items = userdata
-                .chapters
-                .iter()
-                .map(|c| BorrowedChplItem {
-                    start: unscale_duration(chpl_timescale, c.start),
-                    title: &c.title,
-                })
-                .collect();
+        let udta = moov.udta.get_or_insert_with(Udta::default);
+        let chpl_items = userdata
+            .chapter_list
+            .iter()
+            .map(|c| BorrowedChplItem {
+                start: unscale_duration(chpl_timescale, c.start),
+                title: &c.title,
+            })
+            .collect();
 
-            udta.chpl = Some(Chpl {
-                state: State::Insert,
-                data: ChplData::Borrowed(chpl_items),
+        udta.chpl = Some(Chpl {
+            state: State::Insert,
+            data: ChplData::Borrowed(chpl_items),
+        });
+    }
+
+    if cfg.write_chapter_track {
+        let mut chunk_offsets = Vec::with_capacity(userdata.chapter_list.len());
+        let mut sample_sizes = Vec::with_capacity(userdata.chapter_list.len());
+        let mut time_to_samples = Vec::with_capacity(userdata.chapter_list.len());
+
+        let mut chapters_iter = userdata.chapter_list.iter().enumerate().peekable();
+        while let Some((i, c)) = chapters_iter.next() {
+            let c_duration = match chapters_iter.peek() {
+                Some((_, next)) => next.start - c.start,
+                None => c.start - duration,
+            };
+            time_to_samples.push(SttsItem {
+                sample_count: i as u32,
+                sample_duration: unscale_duration(MVHD_TIMESCALE, c_duration) as u32,
             });
+            sample_sizes.push(c.title.len() as u32 + 2);
+            chunk_offsets.push(ftyp.len() + mdat.len());
+
+            mdat.data.write_be_u16(c.title.len() as u16).ok();
+            mdat.data.write_utf8(&c.title).ok();
         }
-        WriteChapters::Track => {
-            let mut chunk_offsets = Vec::with_capacity(userdata.chapters.len());
-            let mut sample_sizes = Vec::with_capacity(userdata.chapters.len());
-            let mut time_to_samples = Vec::with_capacity(userdata.chapters.len());
 
-            let mut chapters_iter = userdata.chapters.iter().enumerate().peekable();
-            while let Some((i, c)) = chapters_iter.next() {
-                let c_duration = match chapters_iter.peek() {
-                    Some((_, next)) => next.start - c.start,
-                    None => c.start - duration,
-                };
-                time_to_samples.push(SttsItem {
-                    sample_count: i as u32,
-                    sample_duration: unscale_duration(MVHD_TIMESCALE, c_duration) as u32,
-                });
-                sample_sizes.push(c.title.len() as u32 + 2);
-                chunk_offsets.push(ftyp.len() + mdat.len());
-
-                mdat.data.write_be_u16(c.title.len() as u16).ok();
-                mdat.data.write_utf8(&c.title).ok();
-            }
-
-            // audio track
-            moov.trak.push(Trak {
+        // audio track
+        moov.trak.push(Trak {
+            state: State::Insert,
+            tkhd: Tkhd { id: 1, ..Default::default() },
+            tref: Some(Tref {
                 state: State::Insert,
-                tkhd: Tkhd { id: 1, ..Default::default() },
-                tref: Some(Tref {
-                    state: State::Insert,
-                    chap: Some(Chap { state: State::Insert, chapter_ids: vec![2] }),
-                }),
-                mdia: Some(Mdia {
-                    mdhd: Mdhd {
-                        version: 1,
-                        timescale: MVHD_TIMESCALE,
-                        duration: unscale_duration(MVHD_TIMESCALE, duration),
-                        ..Default::default()
-                    },
-                    hdlr: Some(Hdlr::mp4a_mdia()),
+                chap: Some(Chap { state: State::Insert, chapter_ids: vec![2] }),
+            }),
+            mdia: Some(Mdia {
+                mdhd: Mdhd {
+                    version: 1,
+                    timescale: MVHD_TIMESCALE,
+                    duration: unscale_duration(MVHD_TIMESCALE, duration),
                     ..Default::default()
-                }),
-            });
+                },
+                hdlr: Some(Hdlr::mp4a_mdia()),
+                ..Default::default()
+            }),
+        });
 
-            // chapter track
-            moov.trak.push(Trak {
-                tkhd: Tkhd { id: 2, ..Default::default() },
-                mdia: Some(Mdia {
+        // chapter track
+        moov.trak.push(Trak {
+            tkhd: Tkhd { id: 2, ..Default::default() },
+            mdia: Some(Mdia {
+                state: State::Insert,
+                mdhd: Mdhd {
+                    version: 1,
+                    timescale: MVHD_TIMESCALE,
+                    ..Default::default()
+                },
+                hdlr: Some(Hdlr::text_mdia()),
+                minf: Some(Minf {
                     state: State::Insert,
-                    mdhd: Mdhd {
-                        version: 1,
-                        timescale: MVHD_TIMESCALE,
-                        ..Default::default()
-                    },
-                    hdlr: Some(Hdlr::text_mdia()),
-                    minf: Some(Minf {
+                    gmhd: Some(Gmhd {
                         state: State::Insert,
-                        gmhd: Some(Gmhd {
-                            state: State::Insert,
-                            gmin: Some(Gmin::chapter()),
-                            text: Some(Text::media_information_chapter()),
-                        }),
-                        dinf: Some(Dinf {
-                            state: State::Insert,
-                            dref: Some(Dref { state: State::Insert, url: Some(Url::track()) }),
-                        }),
-                        stbl: Some(Stbl {
-                            stsd: Some(Stsd {
-                                text: Some(Text::media_chapter()),
-                                ..Default::default()
-                            }),
-                            stts: Some(Stts { state: State::Insert, items: time_to_samples }),
-                            stsc: Some(Stsc {
-                                state: State::Insert,
-                                items: vec![StscItem {
-                                    first_chunk: 1,
-                                    samples_per_chunk: 1,
-                                    sample_description_id: 1,
-                                }],
-                            }),
-                            stsz: Some(Stsz {
-                                state: State::Insert,
-                                sample_size: 0,
-                                sizes: sample_sizes,
-                            }),
-                            co64: Some(Co64 { state: State::Insert, offsets: chunk_offsets }),
+                        gmin: Some(Gmin::chapter()),
+                        text: Some(Text::media_information_chapter()),
+                    }),
+                    dinf: Some(Dinf {
+                        state: State::Insert,
+                        dref: Some(Dref { state: State::Insert, url: Some(Url::track()) }),
+                    }),
+                    stbl: Some(Stbl {
+                        stsd: Some(Stsd {
+                            text: Some(Text::media_chapter()),
                             ..Default::default()
                         }),
+                        stts: Some(Stts { state: State::Insert, items: time_to_samples }),
+                        stsc: Some(Stsc {
+                            state: State::Insert,
+                            items: vec![StscItem {
+                                first_chunk: 1,
+                                samples_per_chunk: 1,
+                                sample_description_id: 1,
+                            }],
+                        }),
+                        stsz: Some(Stsz {
+                            state: State::Insert,
+                            sample_size: 0,
+                            sizes: sample_sizes,
+                        }),
+                        co64: Some(Co64 { state: State::Insert, offsets: chunk_offsets }),
+                        ..Default::default()
                     }),
                 }),
-                ..Default::default()
-            });
-        }
-        WriteChapters::Preserve => (),
+            }),
+            ..Default::default()
+        });
     }
 
     ftyp.write(writer)?;

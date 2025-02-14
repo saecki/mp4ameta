@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use mp4ameta::{
     AdvisoryRating, ChannelConfig, Chapter, Data, Fourcc, Img, MediaType, SampleRate, Tag,
-    WriteChapters, WriteConfig, STANDARD_GENRES,
+    WriteConfig, STANDARD_GENRES,
 };
 use walkdir::WalkDir;
 
@@ -96,9 +96,16 @@ fn get_tag_2() -> Tag {
     tag.set_isrc("NEW ISRC");
     tag.set_lyricist("NEW LYRICIST");
 
-    tag.add_chapter(Chapter::new(Duration::ZERO, "CHAPTER 1"));
-    tag.add_chapter(Chapter::new(Duration::new(234, 324_000_000), "CHAPTER 2"));
-    tag.add_chapter(Chapter::new(Duration::new(553, 946_000_000), "CHAPTER 3"));
+    tag.chapter_list_mut().extend([
+        Chapter::new(Duration::ZERO, "CHAPTER 1"),
+        Chapter::new(Duration::new(234, 324_000_000), "CHAPTER 2"),
+        Chapter::new(Duration::new(553, 946_000_000), "CHAPTER 3"),
+    ]);
+    tag.chapter_track_mut().extend([
+        Chapter::new(Duration::ZERO, "CHAPTER 1"),
+        Chapter::new(Duration::new(234, 324_000_000), "CHAPTER 2"),
+        Chapter::new(Duration::new(553, 946_000_000), "CHAPTER 3"),
+    ]);
 
     tag
 }
@@ -166,11 +173,14 @@ fn assert_tag_2(tag: &Tag) {
     assert_eq!(tag.isrc(), Some("NEW ISRC"));
     assert_eq!(tag.lyricist(), Some("NEW LYRICIST"));
 
-    let mut chapters = tag.chapters();
-    assert_eq!(chapters.next(), Some(&Chapter::new(Duration::ZERO, "CHAPTER 1")));
-    assert_eq!(chapters.next(), Some(&Chapter::new(Duration::new(234, 324_000_000), "CHAPTER 2")));
-    assert_eq!(chapters.next(), Some(&Chapter::new(Duration::new(553, 946_000_000), "CHAPTER 3")));
-    assert_eq!(chapters.next(), None);
+    assert_eq!(
+        tag.chapters(),
+        [
+            Chapter::new(Duration::ZERO, "CHAPTER 1"),
+            Chapter::new(Duration::new(234, 324_000_000), "CHAPTER 2"),
+            Chapter::new(Duration::new(553, 946_000_000), "CHAPTER 3"),
+        ]
+    );
 }
 
 fn assert_tag_3(tag: &Tag) {
@@ -402,24 +412,15 @@ fn dump_chapter_list() {
         Chapter::new(Duration::new(553, 946_000_000), "CHAPTER 3"),
     ];
 
-    tag.add_all_chapters(chapters.clone());
+    tag.chapter_list_mut().extend(chapters.clone());
 
     let _ = std::fs::remove_file("target/dump_chapter_list.m4a");
     println!("dumping to target/dump_chapter_list.m4a...");
-    let cfg = WriteConfig {
-        write_chapters: WriteChapters::List,
-        ..Default::default()
-    };
-    tag.dump_with_path("target/dump_chapter_list.m4a", &cfg).unwrap();
+    tag.dump_with_path("target/dump_chapter_list.m4a", &WriteConfig::DEFAULT).unwrap();
 
     println!("reading target/dump_chapter_list.m4a...");
     let tag = Tag::read_from_path("target/dump_chapter_list.m4a").unwrap();
-
-    let mut chapters_iter = tag.chapters();
-    assert_eq!(chapters_iter.next(), Some(&chapters[0]));
-    assert_eq!(chapters_iter.next(), Some(&chapters[1]));
-    assert_eq!(chapters_iter.next(), Some(&chapters[2]));
-    assert_eq!(chapters_iter.next(), None);
+    assert_eq!(tag.chapters(), chapters.as_slice());
 }
 
 #[test]
@@ -431,24 +432,16 @@ fn dump_chapter_track() {
         Chapter::new(Duration::new(553, 946_000_000), "CHAPTER 3"),
     ];
 
-    tag.add_all_chapters(chapters.clone());
+    tag.chapter_track_mut().extend(chapters.clone());
 
     let _ = std::fs::remove_file("target/dump_chapter_track.m4a");
     println!("dumping to target/dump_chapter_track.m4a...");
-    let cfg = WriteConfig {
-        write_chapters: WriteChapters::Track,
-        ..Default::default()
-    };
-    tag.dump_with_path("target/dump_chapter_track.m4a", &cfg).unwrap();
+    tag.dump_with_path("target/dump_chapter_track.m4a", &WriteConfig::DEFAULT).unwrap();
 
     println!("reading target/dump_chapter_track.m4a...");
     let tag = Tag::read_from_path("target/dump_chapter_track.m4a").unwrap();
 
-    let mut chapters_iter = tag.chapters();
-    assert_eq!(chapters_iter.next(), Some(&chapters[0]));
-    assert_eq!(chapters_iter.next(), Some(&chapters[1]));
-    assert_eq!(chapters_iter.next(), Some(&chapters[2]));
-    assert_eq!(chapters_iter.next(), None);
+    assert_eq!(tag.chapters(), chapters);
 }
 
 #[test]
@@ -629,35 +622,38 @@ fn work_movement_handling() {
     assert_eq!(tag.work(), Some(work));
 }
 
-#[test]
-fn chapter_handling() {
-    let chapter1 = Chapter::new(Duration::from_secs(0), "CHAPTER 1");
-    let chapter2 = Chapter::new(Duration::from_secs(1), "CHAPTER 2");
-    let chapter3 = Chapter::new(Duration::from_secs(2), "CHAPTER 3");
-
-    let mut tag = Tag::default();
-    assert_eq!(tag.chapters().next(), None);
-
-    tag.add_chapter(chapter2.clone());
-    let mut chapters = tag.chapters();
-    assert_eq!(chapters.next(), Some(&chapter2));
-    assert_eq!(chapters.next(), None);
-    drop(chapters);
-
-    tag.add_chapter(chapter1.clone());
-    let mut chapters = tag.chapters();
-    assert_eq!(chapters.next(), Some(&chapter1));
-    assert_eq!(chapters.next(), Some(&chapter2));
-    assert_eq!(chapters.next(), None);
-    drop(chapters);
-
-    tag.add_chapter(chapter3.clone());
-    let mut chapters = tag.chapters();
-    assert_eq!(chapters.next(), Some(&chapter1));
-    assert_eq!(chapters.next(), Some(&chapter2));
-    assert_eq!(chapters.next(), Some(&chapter3));
-    assert_eq!(chapters.next(), None);
-}
+// TODO: should this be up to the user?
+//#[test]
+//fn chapter_handling() {
+//    let chapters = [
+//        Chapter::new(Duration::from_secs(0), "CHAPTER 1"),
+//        Chapter::new(Duration::from_secs(1), "CHAPTER 2"),
+//        Chapter::new(Duration::from_secs(2), "CHAPTER 3"),
+//    ];
+//
+//    let mut tag = Tag::default();
+//    assert_eq!(tag.chapters(), []);
+//
+//    tag.add_chapter(chapter2.clone());
+//    let mut chapters = tag.chapters();
+//    assert_eq!(chapters.next(), Some(&chapter2));
+//    assert_eq!(chapters.next(), None);
+//    drop(chapters);
+//
+//    tag.add_chapter(chapter1.clone());
+//    let mut chapters = tag.chapters();
+//    assert_eq!(chapters.next(), Some(&chapter1));
+//    assert_eq!(chapters.next(), Some(&chapter2));
+//    assert_eq!(chapters.next(), None);
+//    drop(chapters);
+//
+//    tag.add_chapter(chapter3.clone());
+//    let mut chapters = tag.chapters();
+//    assert_eq!(chapters.next(), Some(&chapter1));
+//    assert_eq!(chapters.next(), Some(&chapter2));
+//    assert_eq!(chapters.next(), Some(&chapter3));
+//    assert_eq!(chapters.next(), None);
+//}
 
 #[test]
 fn tag_destructuring() {

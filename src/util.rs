@@ -1,6 +1,8 @@
 use std::fmt;
 use std::time::Duration;
 
+use crate::Chapter;
+
 pub(crate) fn format_duration(f: &mut fmt::Formatter<'_>, duration: Duration) -> fmt::Result {
     let total_seconds = duration.as_secs();
     let nanos = duration.subsec_nanos();
@@ -18,4 +20,27 @@ pub(crate) fn format_duration(f: &mut fmt::Formatter<'_>, duration: Duration) ->
         (0, m, s, _, _, _) => write!(f, "{m}:{s:02}"),
         (h, m, s, _, _, _) => write!(f, "{h}:{m:02}:{s:02}"),
     }
+}
+
+pub(crate) fn format_chapters(
+    f: &mut fmt::Formatter<'_>,
+    chapters: &[Chapter],
+    duration: Duration,
+) -> fmt::Result {
+    for (i, c) in chapters.iter().enumerate() {
+        writeln!(f, "    {}", c.title)?;
+        if c.start == Duration::ZERO {
+            f.write_str("      start: 0:00")?;
+        } else {
+            f.write_str("      start: ")?;
+            format_duration(f, c.start)?;
+        }
+
+        let end = chapters.get(i + 1).map(|c| c.start).unwrap_or(duration);
+        let duration = end.saturating_sub(c.start);
+        f.write_str(", duration: ")?;
+        format_duration(f, duration)?;
+        writeln!(f)?;
+    }
+    Ok(())
 }
