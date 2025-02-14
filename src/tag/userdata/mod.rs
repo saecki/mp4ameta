@@ -14,6 +14,7 @@ pub use genre::*;
 
 mod genre;
 mod tuple;
+mod generated;
 
 /// A struct that holds user defined data.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -70,45 +71,6 @@ impl Userdata {
         self.dump_with_path(path, &WriteConfig::DEFAULT)
     }
 }
-
-// ## Individual string values
-mp4ameta_proc::single_string_value_accessor!("album", "©alb");
-mp4ameta_proc::single_string_value_accessor!("copyright", "cprt");
-mp4ameta_proc::single_string_value_accessor!("encoder", "©too");
-mp4ameta_proc::single_string_value_accessor!("lyrics", "©lyr");
-mp4ameta_proc::single_string_value_accessor!("movement", "©mvn");
-mp4ameta_proc::single_string_value_accessor!("title", "©nam");
-mp4ameta_proc::single_string_value_accessor!("tv_episode_name", "tven");
-mp4ameta_proc::single_string_value_accessor!("tv_network_name", "tvnn");
-mp4ameta_proc::single_string_value_accessor!("tv_show_name", "tvsh");
-mp4ameta_proc::single_string_value_accessor!("work", "©wrk");
-mp4ameta_proc::single_string_value_accessor!("year", "©day");
-mp4ameta_proc::single_string_value_accessor!("isrc", "----:com.apple.iTunes:ISRC");
-
-// ## Multiple string values
-mp4ameta_proc::multiple_string_values_accessor!("album_artist", "aART");
-mp4ameta_proc::multiple_string_values_accessor!("artist", "©ART");
-mp4ameta_proc::multiple_string_values_accessor!("category", "catg");
-mp4ameta_proc::multiple_string_values_accessor!("comment", "©cmt");
-mp4ameta_proc::multiple_string_values_accessor!("composer", "©wrt");
-mp4ameta_proc::multiple_string_values_accessor!("custom_genre", "©gen");
-mp4ameta_proc::multiple_string_values_accessor!("description", "desc");
-mp4ameta_proc::multiple_string_values_accessor!("grouping", "©grp");
-mp4ameta_proc::multiple_string_values_accessor!("keyword", "keyw");
-mp4ameta_proc::multiple_string_values_accessor!("lyricist", "----:com.apple.iTunes:LYRICIST");
-
-// ## Flags
-mp4ameta_proc::flag_value_accessor!("compilation", "cpil");
-mp4ameta_proc::flag_value_accessor!("gapless_playback", "pgap");
-mp4ameta_proc::flag_value_accessor!("show_movement", "shwm");
-
-// ## Integer values
-mp4ameta_proc::u16_value_accessor!("bpm", "tmpo");
-mp4ameta_proc::u16_value_accessor!("movement_count", "©mvc");
-mp4ameta_proc::u16_value_accessor!("movement_index", "©mvi");
-
-mp4ameta_proc::u32_value_accessor!("tv_episode", "tves");
-mp4ameta_proc::u32_value_accessor!("tv_season", "tvsn");
 
 // ## Custom values
 /// ### Artwork

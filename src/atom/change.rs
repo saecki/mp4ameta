@@ -148,21 +148,6 @@ impl ChangeBounds for UpdateChunkOffsets<'_> {
     }
 }
 
-mp4ameta_proc::atom_ref!(
-    Moov<'a>,
-    Udta<'a>,
-    Chpl<'a>,
-    Meta<'a>,
-    Hdlr,
-    Ilst<'a>,
-    Trak,
-    Mdia,
-    Minf,
-    Stbl,
-    Stco,
-    Co64,
-);
-
 #[derive(Debug)]
 pub struct RemoveAtom<'a> {
     pub bounds: &'a AtomBounds,
@@ -236,3 +221,41 @@ impl ChangeBounds for InsertAtom<'_> {
         self.level
     }
 }
+
+macro_rules! atom_ref {
+    ($($name:ident $(<$lifetime:lifetime>)?,)+) => {
+        #[derive(Debug)]
+        pub enum AtomRef<'a> {
+            $($name(&'a $name $(<$lifetime>)?)),+
+        }
+
+        impl AtomRef<'_> {
+            pub fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
+                match self {
+                    $(Self::$name(a) => a.write(writer)),+
+                }
+            }
+
+            fn len(&self) -> u64 {
+                match self {
+                    $(Self::$name(a) => a.len()),+
+                }
+            }
+        }
+    };
+}
+
+atom_ref!(
+    Moov<'a>,
+    Udta<'a>,
+    Chpl<'a>,
+    Meta<'a>,
+    Hdlr,
+    Ilst<'a>,
+    Trak,
+    Mdia,
+    Minf,
+    Stbl,
+    Stco,
+    Co64,
+);

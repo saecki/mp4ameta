@@ -1,0 +1,41 @@
+# This file is used to genreate the `generated.rs` file with userdata accessors.
+
+[accessors.single_strings]
+"album"           = "©alb"
+"copyright"       = "cprt"
+"encoder"         = "©too"
+"lyrics"          = "©lyr"
+"movement"        = "©mvn"
+"title"           = "©nam"
+"tv_episode_name" = "tven"
+"tv_network_name" = "tvnn"
+"tv_show_name"    = "tvsh"
+"work"            = "©wrk"
+"year"            = "©day"
+"isrc"            = "----:com.apple.iTunes:ISRC"
+
+[accessors.multiple_strings]
+"album_artist" = "aART"
+"artist"       = "©ART"
+"category"     = "catg"
+"comment"      = "©cmt"
+"composer"     = "©wrt"
+"custom_genre" = "©gen"
+"description"  = "desc"
+"grouping"     = "©grp"
+"keyword"      = "keyw"
+"lyricist"     = "----:com.apple.iTunes:LYRICIST"
+
+[accessors.bool_flags]
+"compilation"      = "cpil"
+"gapless_playback" = "pgap"
+"show_movement"    = "shwm"
+
+[accessors.u16_ints]
+"bpm"            = "tmpo"
+"movement_count" = "©mvc"
+"movement_index" = "©mvi"
+
+[accessors.u32_ints]
+"tv_episode" = "tves"
+"tv_season"  = "tvsn"
