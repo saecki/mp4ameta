@@ -284,6 +284,16 @@ impl<T: WriteAtom> LenOrZero for Option<T> {
     }
 }
 
+trait PushAndGet<T> {
+    fn push_and_get(&mut self, item: T) -> &mut T;
+}
+impl<T> PushAndGet<T> for Vec<T> {
+    fn push_and_get(&mut self, item: T) -> &mut T {
+        self.push(item);
+        self.last_mut().unwrap()
+    }
+}
+
 /// A struct representing a timescale (the number of units that pass per second) that is used to
 /// scale time for chapter list (`chpl`) atoms.
 ///
@@ -743,15 +753,12 @@ fn update_userdata<'a>(
 
     // chapter tracks
     if cfg.write_chapter_track {
-        // TODO: remove entire track?
-        // remove chapter tracks
-        //for trak in moov.trak.iter_mut() {
-        //    if chapter_track_ids.contains(&trak.tkhd.id) {
-        //        trak.state.remove_existing();
-        //    }
-        //}
+        let content_trak = &Trak::default(); // TODO: find content track
+        let chapter_timescale =
+            content_trak.mdia.as_ref().map(|a| a.mdhd.timescale).unwrap_or(moov.mvhd.timescale);
 
-        let mut chapter_track_ids = Vec::new();
+        // find existing chapter tracks
+        let mut chapter_trak_ids = Vec::new();
         for tref in moov.trak.iter_mut().filter_map(|a| a.tref.as_mut()) {
             if let Some(chap) = &mut tref.chap {
                 chap.state.remove_existing();
@@ -762,22 +769,28 @@ fn update_userdata<'a>(
                     }
                 }
 
-                chapter_track_ids.extend(chap.chapter_ids.iter().copied());
+                chapter_trak_ids.extend(chap.chapter_ids.iter().copied());
             }
         }
 
-        let content_trak = &Trak::default(); // TODO: find content track
-        let chapter_timescale =
-            content_trak.mdia.as_ref().map(|a| a.mdhd.timescale).unwrap_or(moov.mvhd.timescale);
-        // TODO: add trak reference to content track
+        if userdata.chapter_track.is_empty() {
+            // TODO: remove entire track?
+            // TODO: if so also remove chap references in content tracks
+            // remove chapter tracks
+            //for trak in moov.trak.iter_mut() {
+            //    if chapter_trak_ids.contains(&trak.tkhd.id) {
+            //        trak.state.remove_existing();
+            //    }
+            //}
+            // TODO: remove media data
+        }
 
-        let new_id = moov.trak.iter().map(|t| t.tkhd.id).max().unwrap() + 1; // TODO: is this correct?
+        // generate chapter track sample table
         let duration = moov.mvhd.duration;
         let mut chunk_offsets = Vec::with_capacity(userdata.chapter_list.len());
         let mut sample_sizes = Vec::with_capacity(userdata.chapter_list.len());
         let mut time_to_samples = Vec::with_capacity(userdata.chapter_list.len());
         let mut chapters_iter = userdata.chapter_list.iter().enumerate().peekable();
-
         while let Some((i, c)) = chapters_iter.next() {
             let c_duration = match chapters_iter.peek() {
                 Some((_, next)) => unscale_duration(chapter_timescale, next.start - c.start),
@@ -796,59 +809,71 @@ fn update_userdata<'a>(
             append_mdat.write_utf8(&c.title).ok();
         }
 
-        let chapter_track = Trak {
+        // TODO: check more than the first chapter track?
+        let chapter_trak =
+            match moov.trak.iter_mut().find(|a| chapter_trak_ids.contains(&a.tkhd.id)) {
+                Some(trak) => trak,
+                None => {
+                    // TODO: is this correct?
+                    let new_id = moov.trak.iter().map(|t| t.tkhd.id).max().unwrap() + 1;
+
+                    // TODO: add trak reference to content track
+                    moov.trak.push_and_get(Trak {
+                        state: State::Insert,
+                        tkhd: Tkhd {
+                            state: State::Insert,
+                            id: new_id,
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    })
+                }
+            };
+
+        let mdia = chapter_trak.mdia.get_or_insert_with(|| Mdia {
             state: State::Insert,
-            tkhd: Tkhd {
+            mdhd: Mdhd {
                 state: State::Insert,
-                id: new_id,
+                timescale: chapter_timescale,
                 ..Default::default()
             },
-            mdia: Some(Mdia {
-                state: State::Insert,
-                mdhd: Mdhd {
-                    state: State::Insert,
-                    timescale: chapter_timescale,
-                    ..Default::default()
-                },
-                hdlr: Some(Hdlr::text_mdia()),
-                minf: Some(Minf {
-                    state: State::Insert,
-                    gmhd: Some(Gmhd {
-                        state: State::Insert,
-                        gmin: Some(Gmin::chapter()),
-                        text: Some(Text::media_information_chapter()),
-                    }),
-                    dinf: Some(Dinf {
-                        state: State::Insert,
-                        dref: Some(Dref { state: State::Insert, url: Some(Url::track()) }),
-                    }),
-                    stbl: Some(Stbl {
-                        stsd: Some(Stsd {
-                            text: Some(Text::media_chapter()),
-                            ..Default::default()
-                        }),
-                        stts: Some(Stts { state: State::Insert, items: time_to_samples }),
-                        stsc: Some(Stsc {
-                            state: State::Insert,
-                            items: vec![StscItem {
-                                first_chunk: 1,
-                                samples_per_chunk: 1,
-                                sample_description_id: 1,
-                            }],
-                        }),
-                        stsz: Some(Stsz {
-                            state: State::Insert,
-                            sample_size: 0,
-                            sizes: sample_sizes,
-                        }),
-                        co64: Some(Co64 { state: State::Insert, offsets: chunk_offsets }),
-                        ..Default::default()
-                    }),
-                }),
-            }),
             ..Default::default()
-        };
-        moov.trak.push(chapter_track);
+        });
+
+        mdia.hdlr.get_or_insert_with(Hdlr::text_mdia);
+        let minf = mdia.minf.get_or_insert_default();
+
+        let gmhd = minf.gmhd.get_or_insert_default();
+        gmhd.gmin.get_or_insert_with(Gmin::chapter);
+        gmhd.text.get_or_insert_with(Text::media_information_chapter);
+
+        let dinf = minf.dinf.get_or_insert_default();
+        let dref = dinf.dref.get_or_insert_default();
+        dref.url.get_or_insert_with(Url::track);
+
+        let stbl = minf.stbl.get_or_insert_default();
+        let stsd = stbl.stsd.get_or_insert_default();
+        stsd.text.get_or_insert_with(Text::media_chapter);
+
+        let stts = stbl.stts.get_or_insert_default();
+        stts.items = time_to_samples;
+
+        let stsc = stbl.stsc.get_or_insert_default();
+        stsc.items = vec![StscItem {
+            first_chunk: 1,
+            samples_per_chunk: 1,
+            sample_description_id: 1,
+        }];
+
+        let stsz = stbl.stsz.get_or_insert_default();
+        stsz.sample_size = 0;
+        stsz.sizes = sample_sizes;
+
+        let co64 = stbl.co64.get_or_insert_default();
+        co64.offsets = chunk_offsets;
+
+        // TODO: remove previous chapter track data in the mdat atom
+        // TODO: how to handle shift
     }
 }
 
