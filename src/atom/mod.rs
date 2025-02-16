@@ -613,15 +613,22 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
     }
 
     changes.sort_by(|a, b| {
-        if a.old_pos() < b.old_pos() {
-            Ordering::Less
-        } else if a.old_pos() > b.old_pos() {
-            Ordering::Greater
-        } else if a.level() > b.level() {
-            Ordering::Less
-        } else {
-            Ordering::Greater
-        }
+        a.old_pos().cmp(&b.old_pos()).then_with(|| {
+            // Fix sorting of zero-sized changes in child atoms.
+            // ```md
+            // moov
+            // ├─ trak
+            // │  └─ tkhd (to be inserted)
+            // └─ udta    (to be inserted)
+            // ```
+            // Given the hierarchy above, if the changes would order the insertion of the `udta`
+            // atom before the `tkhd` the hierarchy would be invalid.
+            if a.level() > b.level() {
+                Ordering::Less
+            } else {
+                Ordering::Greater
+            }
+        })
     });
 
     // calculate mdat position shift

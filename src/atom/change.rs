@@ -61,7 +61,7 @@ impl ChangeBounds for Change<'_> {
             Self::Remove(c) => c.level(),
             Self::Replace(c) => c.level(),
             Self::Insert(c) => c.level(),
-            Self::AppendMdat(_, _) => 0,
+            Self::AppendMdat(_, _) => u8::MAX,
         }
     }
 }
@@ -96,7 +96,7 @@ impl ChangeBounds for UpdateAtomLen<'_> {
     }
 
     fn level(&self) -> u8 {
-        u8::MAX
+        0
     }
 }
 
