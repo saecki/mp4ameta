@@ -1,5 +1,8 @@
 use super::*;
 
+pub const HEADER_SIZE: u64 = 12;
+pub const ENTRY_SIZE: u64 = 4;
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Stsz {
     pub state: State,
@@ -28,10 +31,10 @@ impl ParseAtom for Stsz {
         }
 
         let sample_size = reader.read_be_u32()?;
-        let entries = reader.read_be_u32()?;
-        let table_size = 12 + 4 * entries as u64;
 
+        let num_entries = reader.read_be_u32()?;
         let sizes = if sample_size == 0 {
+            let table_size = HEADER_SIZE + ENTRY_SIZE * num_entries as u64;
             if table_size != size.content_len() {
                 return Err(crate::Error::new(
                     crate::ErrorKind::Parsing,
@@ -43,14 +46,14 @@ impl ParseAtom for Stsz {
                 ));
             }
 
-            let mut sizes = Vec::with_capacity(entries as usize);
-            for _ in 0..entries {
+            let mut sizes = Vec::with_capacity(num_entries as usize);
+            for _ in 0..num_entries {
                 let offset = reader.read_be_u32()?;
                 sizes.push(offset);
             }
             sizes
         } else {
-            if size.content_len() != 12 {
+            if size.content_len() != HEADER_SIZE {
                 return Err(crate::Error::new(
                     crate::ErrorKind::Parsing,
                     format!(
@@ -82,7 +85,7 @@ impl WriteAtom for Stsz {
     }
 
     fn size(&self) -> Size {
-        let content_len = 12 + 4 * self.sizes.len() as u64;
+        let content_len = HEADER_SIZE + ENTRY_SIZE * self.sizes.len() as u64;
         Size::from(content_len)
     }
 }

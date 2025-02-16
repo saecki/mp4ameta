@@ -2,7 +2,7 @@ use super::*;
 
 pub const DEFAULT_CHPL_TIMESCALE: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(10_000_000) };
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Chpl<'a> {
     pub state: State,
     pub data: ChplData<'a>,
@@ -10,17 +10,20 @@ pub struct Chpl<'a> {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ChplData<'a> {
-    Owned(Vec<OwnedChplItem>),
-    Borrowed(Vec<BorrowedChplItem<'a>>),
+    Owned(Vec<ChplItem>),
+    Borrowed(u32, &'a [Chapter]),
 }
 
-pub type OwnedChplItem = ChplItem<String>;
-pub type BorrowedChplItem<'a> = ChplItem<&'a str>;
+impl<'a> Default for ChplData<'a> {
+    fn default() -> Self {
+        ChplData::Owned(Vec::new())
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ChplItem<T: AsRef<str>> {
+pub struct ChplItem {
     pub start: u64,
-    pub title: T,
+    pub title: String,
 }
 
 impl Atom for Chpl<'_> {
@@ -51,16 +54,16 @@ impl ParseAtom for Chpl<'_> {
             }
         }
 
-        let entries = reader.read_u8()?;
+        let num_entries = reader.read_u8()?;
 
-        let mut chpl = Vec::with_capacity(entries as usize);
+        let mut chpl = Vec::with_capacity(num_entries as usize);
         while parsed_bytes < size.content_len() {
             let start = reader.read_be_u64()?;
 
             let str_len = reader.read_u8()?;
             let title = reader.read_utf8(str_len as u64)?;
 
-            chpl.push(OwnedChplItem { start, title });
+            chpl.push(ChplItem { start, title });
 
             parsed_bytes += 9 + str_len as u64;
         }
@@ -86,12 +89,13 @@ impl WriteAtom for Chpl<'_> {
                     writer.write_utf8(&c.title)?;
                 }
             }
-            ChplData::Borrowed(v) => {
-                writer.write_u8(v.len() as u8)?;
-                for c in v.iter() {
-                    writer.write_be_u64(c.start)?;
+            ChplData::Borrowed(timescale, chapters) => {
+                writer.write_u8(chapters.len() as u8)?;
+                for c in chapters.iter() {
+                    let start = unscale_duration(*timescale, c.start);
+                    writer.write_be_u64(start)?;
                     writer.write_u8(c.title.len() as u8)?;
-                    writer.write_utf8(c.title)?;
+                    writer.write_utf8(&c.title)?;
                 }
             }
         }
@@ -102,7 +106,7 @@ impl WriteAtom for Chpl<'_> {
     fn size(&self) -> Size {
         let content_len = 5 + match &self.data {
             ChplData::Owned(v) => v.iter().map(|c| 9 + c.title.len() as u64).sum::<u64>(),
-            ChplData::Borrowed(v) => v.iter().map(|c| 9 + c.title.len() as u64).sum::<u64>(),
+            ChplData::Borrowed(_, v) => v.iter().map(|c| 9 + c.title.len() as u64).sum::<u64>(),
         };
         Size::from(content_len)
     }
@@ -128,10 +132,10 @@ impl SimpleCollectChanges for Chpl<'_> {
 }
 
 impl Chpl<'_> {
-    pub fn owned(self) -> Option<Vec<OwnedChplItem>> {
+    pub fn into_owned(self) -> Option<Vec<ChplItem>> {
         match self.data {
             ChplData::Owned(v) => Some(v),
-            ChplData::Borrowed(_) => None,
+            ChplData::Borrowed(_, _) => None,
         }
     }
 }

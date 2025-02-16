@@ -1,5 +1,7 @@
 use super::*;
 
+pub const HEADER_SIZE: u64 = 8;
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Stsd {
     pub state: State,
@@ -33,7 +35,7 @@ impl ParseAtom for Stsd {
             state: State::Existing(bounds),
             ..Default::default()
         };
-        let mut parsed_bytes = 8;
+        let mut parsed_bytes = HEADER_SIZE;
 
         while parsed_bytes < size.content_len() {
             let head = parse_head(reader)?;
@@ -69,7 +71,7 @@ impl WriteAtom for Stsd {
     }
 
     fn size(&self) -> Size {
-        let content_len = 8 + self.text.len_or_zero();
+        let content_len = HEADER_SIZE + self.text.len_or_zero();
         Size::from(content_len)
     }
 }

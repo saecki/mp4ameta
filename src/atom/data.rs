@@ -4,7 +4,9 @@ use crate::{Img, ImgBuf, ImgFmt, ImgMut, ImgRef};
 
 use super::*;
 
-// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) codes
+pub const HEADER_SIZE: u64 = 8;
+
+// [Table 3-5 Well-known data types](https://developer.apple.com/documentation/quicktime-file-format/well-known_types) codes
 /// Reserved for use where no type needs to be indicated.
 const RESERVED: u32 = 0;
 /// UTF-8 without any count or NULL terminator.
@@ -86,7 +88,7 @@ const BE_U64: u32 = 78;
 const AFFINE_TRANSFORM_F64: u32 = 79;
 
 /// An enum that holds different types of data defined by
-/// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
+/// [Table 3-5 Well-known data types](https://developer.apple.com/documentation/quicktime-file-format/well-known_types).
 #[derive(Clone, Eq, PartialEq)]
 pub enum Data {
     /// A value containing reserved type data inside a `Vec<u8>`.
@@ -144,7 +146,7 @@ impl Atom for Data {
 }
 
 impl ParseAtom for Data {
-    /// Parses data based on [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
+    /// Parses data based on [Table 3-5 Well-known data types](https://developer.apple.com/documentation/quicktime-file-format/well-known_types).
     fn parse_atom(
         reader: &mut (impl Read + Seek),
         cfg: &ParseConfig<'_>,
@@ -161,7 +163,7 @@ impl ParseAtom for Data {
 
         reader.skip(4)?; // locale indicator
 
-        let len = size.content_len() - 8;
+        let len = size.content_len() - HEADER_SIZE;
         Ok(match datatype {
             RESERVED => Data::Reserved(reader.read_u8_vec(len)?),
             UTF8 => Data::Utf8(reader.read_utf8(len)?),

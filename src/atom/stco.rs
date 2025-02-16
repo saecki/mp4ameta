@@ -1,5 +1,8 @@
 use super::*;
 
+pub const HEADER_SIZE: u64 = 8;
+pub const ENTRY_SIZE: u64 = 4;
+
 /// A struct representing of a sample table chunk offset atom (`stco`).
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Stco {
@@ -27,16 +30,16 @@ impl ParseAtom for Stco {
             ));
         }
 
-        let entries = reader.read_be_u32()?;
-        if 8 + 4 * entries as u64 != size.content_len() {
+        let num_entries = reader.read_be_u32()?;
+        if HEADER_SIZE + ENTRY_SIZE * num_entries as u64 != size.content_len() {
             return Err(crate::Error::new(
                 crate::ErrorKind::Parsing,
                 "Sample table chunk offset (stco) table size doesn't match atom length",
             ));
         }
 
-        let mut offsets = Vec::with_capacity(entries as usize);
-        for _ in 0..entries {
+        let mut offsets = Vec::with_capacity(num_entries as usize);
+        for _ in 0..num_entries {
             let offset = reader.read_be_u32()?;
             offsets.push(offset);
         }
@@ -59,7 +62,7 @@ impl WriteAtom for Stco {
     }
 
     fn size(&self) -> Size {
-        let content_len = 8 + 4 * self.offsets.len() as u64;
+        let content_len = HEADER_SIZE + ENTRY_SIZE * self.offsets.len() as u64;
         Size::from(content_len)
     }
 }

@@ -23,6 +23,6 @@ impl Ftyp {
     }
 
     pub fn len(&self) -> u64 {
-        self.0.len() as u64 + 8
+        Head::NORMAL_SIZE + self.0.len() as u64
     }
 }

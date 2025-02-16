@@ -17,10 +17,10 @@ impl ParseAtom for Chap {
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
-        let count = size.content_len() as usize / 4;
-        let mut chapter_ids = Vec::with_capacity(count);
+        let num_entries = size.content_len() as usize / 4;
+        let mut chapter_ids = Vec::with_capacity(num_entries);
 
-        for _ in 0..count {
+        for _ in 0..num_entries {
             chapter_ids.push(reader.read_be_u32()?);
         }
 

@@ -1,5 +1,8 @@
 use super::*;
 
+pub const HEADER_SIZE: u64 = 8;
+pub const ENTRY_SIZE: u64 = 12;
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Stsc {
     pub state: State,
@@ -33,8 +36,8 @@ impl ParseAtom for Stsc {
             ));
         }
 
-        let entries = reader.read_be_u32()?;
-        let table_size = 8 + 12 * entries as u64;
+        let num_entries = reader.read_be_u32()?;
+        let table_size = HEADER_SIZE + ENTRY_SIZE * num_entries as u64;
         if table_size != size.content_len() {
             return Err(crate::Error::new(
                 crate::ErrorKind::Parsing,
@@ -46,8 +49,8 @@ impl ParseAtom for Stsc {
             ));
         }
 
-        let mut items = Vec::with_capacity(entries as usize);
-        for _ in 0..entries {
+        let mut items = Vec::with_capacity(num_entries as usize);
+        for _ in 0..num_entries {
             items.push(StscItem {
                 first_chunk: reader.read_be_u32()?,
                 samples_per_chunk: reader.read_be_u32()?,
@@ -75,7 +78,7 @@ impl WriteAtom for Stsc {
     }
 
     fn size(&self) -> Size {
-        let content_len = 8 + 12 * self.items.len() as u64;
+        let content_len = HEADER_SIZE + ENTRY_SIZE * self.items.len() as u64;
         Size::from(content_len)
     }
 }

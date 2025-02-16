@@ -132,7 +132,7 @@ impl ChunkOffsets<'_> {
 
 impl ChangeBounds for UpdateChunkOffsets<'_> {
     fn old_pos(&self) -> u64 {
-        self.bounds.content_pos() + 8
+        self.bounds.content_pos() + stco::HEADER_SIZE
     }
 
     fn old_end(&self) -> u64 {

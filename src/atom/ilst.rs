@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Ilst<'a> {
     pub state: State,
     pub data: IlstData<'a>,
@@ -10,6 +10,12 @@ pub struct Ilst<'a> {
 pub enum IlstData<'a> {
     Owned(Vec<MetaItem>),
     Borrowed(&'a [MetaItem]),
+}
+
+impl<'a> Default for IlstData<'a> {
+    fn default() -> Self {
+        IlstData::Owned(Vec::new())
+    }
 }
 
 impl Deref for Ilst<'_> {

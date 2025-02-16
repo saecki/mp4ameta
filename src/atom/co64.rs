@@ -1,5 +1,8 @@
 use super::*;
 
+pub const HEADER_SIZE: u64 = 8;
+pub const ENTRY_SIZE: u64 = 8;
+
 /// A struct representing of a 64bit sample table chunk offset atom (`co64`).
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Co64 {
@@ -27,16 +30,16 @@ impl ParseAtom for Co64 {
             ));
         }
 
-        let entries = reader.read_be_u32()?;
-        if 8 + 8 * entries as u64 != size.content_len() {
+        let num_entries = reader.read_be_u32()?;
+        if HEADER_SIZE + ENTRY_SIZE * num_entries as u64 != size.content_len() {
             return Err(crate::Error::new(
                 crate::ErrorKind::Parsing,
                 "Sample table chunk offset 64 (co64) offset table size doesn't match atom length",
             ));
         }
 
-        let mut offsets = Vec::with_capacity(entries as usize);
-        for _ in 0..entries {
+        let mut offsets = Vec::with_capacity(num_entries as usize);
+        for _ in 0..num_entries {
             let offset = reader.read_be_u64()?;
             offsets.push(offset);
         }
@@ -59,7 +62,7 @@ impl WriteAtom for Co64 {
     }
 
     fn size(&self) -> Size {
-        let content_len = 8 + 8 * self.offsets.len() as u64;
+        let content_len = HEADER_SIZE + ENTRY_SIZE * self.offsets.len() as u64;
         Size::from(content_len)
     }
 }

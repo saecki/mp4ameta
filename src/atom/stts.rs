@@ -1,5 +1,8 @@
 use super::*;
 
+pub const HEADER_SIZE: u64 = 8;
+pub const ENTRY_SIZE: u64 = 8;
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Stts {
     pub state: State,
@@ -32,16 +35,16 @@ impl ParseAtom for Stts {
             ));
         }
 
-        let entries = reader.read_be_u32()?;
-        if 8 + 8 * entries as u64 != size.content_len() {
+        let num_entries = reader.read_be_u32()?;
+        if HEADER_SIZE + ENTRY_SIZE * num_entries as u64 != size.content_len() {
             return Err(crate::Error::new(
                 crate::ErrorKind::Parsing,
                 "Sample table time to sample (stts) table size doesn't match atom length",
             ));
         }
 
-        let mut items = Vec::with_capacity(entries as usize);
-        for _ in 0..entries {
+        let mut items = Vec::with_capacity(num_entries as usize);
+        for _ in 0..num_entries {
             items.push(SttsItem {
                 sample_count: reader.read_be_u32()?,
                 sample_duration: reader.read_be_u32()?,
@@ -67,7 +70,7 @@ impl WriteAtom for Stts {
     }
 
     fn size(&self) -> Size {
-        let content_len = 8 + 8 * self.items.len() as u64;
+        let content_len = HEADER_SIZE + ENTRY_SIZE * self.items.len() as u64;
         Size::from(content_len)
     }
 }

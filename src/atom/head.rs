@@ -38,8 +38,8 @@ impl Size {
     /// The length of the atom's head.
     pub const fn head_len(&self) -> u64 {
         match self.ext {
-            true => 16,
-            false => 8,
+            true => Head::EXT_SIZE,
+            false => Head::NORMAL_SIZE,
         }
     }
 
@@ -74,6 +74,9 @@ impl Deref for Head {
 }
 
 impl Head {
+    pub const NORMAL_SIZE: u64 = 8;
+    pub const EXT_SIZE: u64 = 16;
+
     pub const fn new(ext: bool, len: u64, fourcc: Fourcc) -> Self {
         Self { size: Size { ext, len }, fourcc }
     }
