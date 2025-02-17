@@ -424,30 +424,64 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
                     continue; // TODO maybe log warning: referenced chapter track not found
                 };
 
-                let mdia = trak.mdia.as_ref();
-                let stbl = mdia.and_then(|a| a.minf.as_ref()).and_then(|a| a.stbl.as_ref());
-                let stts = stbl.and_then(|a| a.stts.as_ref());
+                let Some(mdia) = &trak.mdia else {
+                    return Err(crate::Error::new(
+                        ErrorKind::AtomNotFound(MEDIA),
+                        "Media (mdia) atom of chapter track not found",
+                    ));
+                };
+                let Some(stbl) = mdia.minf.as_ref().and_then(|a| a.stbl.as_ref()) else {
+                    return Err(crate::Error::new(
+                        ErrorKind::AtomNotFound(SAMPLE_TABLE),
+                        "Sample table (stbl) of chapter track not found",
+                    ));
+                };
+                let Some(stsc) = &stbl.stsc else {
+                    return Err(crate::Error::new(
+                        ErrorKind::AtomNotFound(SAMPLE_TABLE_SAMPLE_TO_CHUNK),
+                        "Sample table sample to chunk (stsc) atom of chapter track not found",
+                    ));
+                };
+                let Some(stsz) = &stbl.stsz else {
+                    return Err(crate::Error::new(
+                        ErrorKind::AtomNotFound(SAMPLE_TABLE_SAMPLE_SIZE),
+                        "Sample table sample size (stsz) atom of chapter track not found",
+                    ));
+                };
+                let Some(stts) = &stbl.stts else {
+                    return Err(crate::Error::new(
+                        ErrorKind::AtomNotFound(SAMPLE_TABLE_TIME_TO_SAMPLE),
+                        "Sample table time to sample (stts) atom of chapter track not found",
+                    ));
+                };
+                let timescale = mdia.mdhd.timescale;
 
-                let timescale = mdia.map(|a| a.mdhd.timescale).unwrap_or(mvhd.timescale);
-
-                if let Some(stco) = stbl.and_then(|a| a.stco.as_ref()) {
-                    chapter_track.reserve(stco.offsets.len());
-                    read_chapters(
-                        reader,
-                        &mut chapter_track,
-                        timescale,
-                        stco.offsets.iter().map(|o| *o as u64),
-                        stts.map_or([].iter(), |a| a.items.iter()),
-                    )?;
-                } else if let Some(co64) = stbl.and_then(|a| a.co64.as_ref()) {
+                if let Some(co64) = &stbl.co64 {
                     chapter_track.reserve(co64.offsets.len());
                     read_chapters(
                         reader,
                         &mut chapter_track,
                         timescale,
-                        co64.offsets.iter().copied(),
-                        stts.map_or([].iter(), |a| a.items.iter()),
+                        &co64.offsets,
+                        &stsc.items,
+                        stsz.uniform_sample_size,
+                        &stsz.sizes,
+                        &stts.items,
                     )?;
+                } else if let Some(stco) = &stbl.stco {
+                    chapter_track.reserve(stco.offsets.len());
+                    read_chapters(
+                        reader,
+                        &mut chapter_track,
+                        timescale,
+                        &stco.offsets,
+                        &stsc.items,
+                        stsz.uniform_sample_size,
+                        &stsz.sizes,
+                        &stts.items,
+                    )?;
+                } else {
+                    todo!("error missing chunk offsets")
                 }
             }
         }
@@ -474,21 +508,59 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
     Ok(Tag { ftyp, info, userdata })
 }
 
-fn read_chapters<'a>(
+fn read_chapters<T: ChunkOffsetInt>(
     reader: &mut (impl Read + Seek),
     chapters: &mut Vec<Chapter>,
     timescale: u32,
-    offsets: impl Iterator<Item = u64>,
-    mut durations: impl Iterator<Item = &'a SttsItem>,
+    offsets: &[T],
+    stsc: &[StscItem],
+    stsz_uniform_size: u32,
+    stsz_sizes: &[u32],
+    stts: &[SttsItem],
 ) -> crate::Result<()> {
-    let mut start = 0;
+    let mut time = 0;
+    let mut stco_idx = 0;
+    let mut stsz_iter = stsz_sizes.iter();
+    let mut stts_iter = stts.iter().flat_map(|stts_item| {
+        std::iter::repeat_n(stts_item.sample_duration, stts_item.sample_count as usize)
+    });
 
-    for o in offsets {
-        let duration = durations.next().map_or(0, |i| i.sample_duration) as u64;
-        let title = read_chapter_title(reader, o)?;
-        chapters.push(Chapter { start: scale_duration(timescale, start), title });
+    for (stsc_idx, stsc_item) in stsc.iter().enumerate() {
+        let stco_end_idx = match stsc.get(stsc_idx + 1) {
+            Some(next_stsc_item) => {
+                let end_idx = next_stsc_item.first_chunk as usize;
+                if end_idx > offsets.len() {
+                    todo!("error out of bounds");
+                }
+                end_idx
+            }
+            None => offsets.len(),
+        };
 
-        start += duration;
+        for o in offsets[stco_idx..stco_end_idx].iter().copied() {
+            let mut current_offset = o.into();
+
+            for _ in 0..stsc_item.samples_per_chunk {
+                let size = if stsz_uniform_size != 0 {
+                    stsz_uniform_size
+                } else {
+                    let Some(size) = stsz_iter.next() else {
+                        todo!("error");
+                    };
+                    *size
+                };
+                let Some(duration) = stts_iter.next() else { todo!("error") };
+
+                let title = read_chapter_title(reader, current_offset)?;
+                chapters.push(Chapter { start: scale_duration(timescale, time), title });
+
+                time += duration as u64;
+
+                current_offset += size as u64;
+            }
+        }
+
+        stco_idx = stco_end_idx;
     }
 
     Ok(())
