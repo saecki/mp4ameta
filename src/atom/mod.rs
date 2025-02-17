@@ -816,7 +816,7 @@ fn update_userdata<'a>(
         // generate chapter track sample table
         let mut new_chapter_media_data = Vec::new();
         let duration = moov.mvhd.duration;
-        let mut chunk_offsets = Vec::with_capacity(userdata.chapter_list.len());
+        let chunk_offsets = vec![mdat_bounds.end()];
         let mut sample_sizes = Vec::with_capacity(userdata.chapter_list.len());
         let mut time_to_samples = Vec::with_capacity(userdata.chapter_list.len());
         let mut chapters_iter = userdata.chapter_list.iter().enumerate().peekable();
@@ -825,18 +825,23 @@ fn update_userdata<'a>(
                 Some((_, next)) => unscale_duration(chapter_timescale, next.start - c.start),
                 None => unscale_duration(chapter_timescale, c.start) - duration,
             };
+
             time_to_samples.push(SttsItem {
-                sample_count: i as u32,
+                sample_count: 1,
                 sample_duration: c_duration as u32,
             });
-            sample_sizes.push(2 + c.title.len() as u32);
 
-            // FIXME: chunk offsets need to be adjusted for the mdat shift, but this is currently
-            // only done if the `stco` or `co64` already exists
-            chunk_offsets.push(mdat_bounds.end());
+            const ENCD: [u8; 12] = [
+                0, 0, 0, 12, // size
+                b'e', b'n', b'c', b'd', // fourcc
+                0, 0, 1, 0, // content
+            ];
+            let sample_size = 2 + c.title.len() + ENCD.len();
+            sample_sizes.push(sample_size as u32);
 
             new_chapter_media_data.write_be_u16(c.title.len() as u16).ok();
             new_chapter_media_data.write_utf8(&c.title).ok();
+            new_chapter_media_data.extend(ENCD);
         }
 
         // https://developer.apple.com/documentation/quicktime-file-format/chapter_lists
@@ -905,7 +910,7 @@ fn update_userdata<'a>(
             &mut stsc.items,
             vec![StscItem {
                 first_chunk: 1,
-                samples_per_chunk: 1,
+                samples_per_chunk: sample_sizes.len() as u32,
                 sample_description_id: 1,
             }],
         );
@@ -943,7 +948,9 @@ fn update_userdata<'a>(
             )?;
         }
 
-        changes.push(Change::EditMdat(mdat_bounds.end(), 0, new_chapter_media_data));
+        if !new_chapter_media_data.is_empty() {
+            changes.push(Change::EditMdat(mdat_bounds.end(), 0, new_chapter_media_data));
+        }
 
         let len_diff = changes.iter().map(|c| c.len_diff()).sum();
         if len_diff != 0 {
