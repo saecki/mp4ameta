@@ -39,10 +39,10 @@ impl ParseAtom for Dinf {
 }
 
 impl WriteAtom for Dinf {
-    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+    fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
         if let Some(a) = &self.dref {
-            a.write(writer)?;
+            a.write(writer, changes)?;
         }
         Ok(())
     }

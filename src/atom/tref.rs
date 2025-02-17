@@ -39,10 +39,10 @@ impl ParseAtom for Tref {
 }
 
 impl WriteAtom for Tref {
-    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+    fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
         if let Some(a) = &self.chap {
-            a.write(writer)?;
+            a.write(writer, changes)?;
         }
         Ok(())
     }

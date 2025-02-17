@@ -49,14 +49,14 @@ impl ParseAtom for Meta<'_> {
 }
 
 impl WriteAtom for Meta<'_> {
-    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+    fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
         write_full_head(writer, 0, [0; 3])?;
         if let Some(a) = &self.hdlr {
-            a.write(writer)?;
+            a.write(writer, changes)?;
         }
         if let Some(a) = &self.ilst {
-            a.write(writer)?;
+            a.write(writer, changes)?;
         }
         Ok(())
     }

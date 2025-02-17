@@ -17,7 +17,7 @@ pub enum Change<'a> {
     Remove(RemoveAtom<'a>),
     Replace(ReplaceAtom<'a>),
     Insert(InsertAtom<'a>),
-    AppendMdat(u64, &'a [u8]),
+    EditMdat(u64, u64, Vec<u8>),
 }
 
 impl ChangeBounds for Change<'_> {
@@ -28,7 +28,7 @@ impl ChangeBounds for Change<'_> {
             Self::Remove(c) => c.old_pos(),
             Self::Replace(c) => c.old_pos(),
             Self::Insert(c) => c.old_pos(),
-            Self::AppendMdat(pos, _) => *pos,
+            Self::EditMdat(pos, _, _) => *pos,
         }
     }
 
@@ -39,7 +39,7 @@ impl ChangeBounds for Change<'_> {
             Self::Remove(c) => c.old_end(),
             Self::Replace(c) => c.old_end(),
             Self::Insert(c) => c.old_end(),
-            Self::AppendMdat(pos, _) => *pos,
+            Self::EditMdat(pos, len, _) => *pos + *len,
         }
     }
 
@@ -50,7 +50,7 @@ impl ChangeBounds for Change<'_> {
             Self::Remove(c) => c.len_diff(),
             Self::Replace(c) => c.len_diff(),
             Self::Insert(c) => c.len_diff(),
-            Self::AppendMdat(_, d) => d.len() as i64,
+            Self::EditMdat(_, len, d) => d.len() as i64 - *len as i64,
         }
     }
 
@@ -61,7 +61,7 @@ impl ChangeBounds for Change<'_> {
             Self::Remove(c) => c.level(),
             Self::Replace(c) => c.level(),
             Self::Insert(c) => c.level(),
-            Self::AppendMdat(_, _) => u8::MAX,
+            Self::EditMdat(_, _, _) => u8::MAX,
         }
     }
 }
@@ -113,21 +113,63 @@ pub enum ChunkOffsets<'a> {
 }
 
 impl ChunkOffsets<'_> {
-    pub fn update_offsets(&self, writer: &mut impl Write, mdat_shift: i64) -> crate::Result<()> {
+    pub fn update_offsets(
+        &self,
+        writer: &mut impl Write,
+        changes: &[Change<'_>],
+    ) -> crate::Result<()> {
         match self {
-            Self::Stco(offsets) => {
-                for o in offsets.iter() {
-                    writer.write_be_u32((*o as i64 + mdat_shift) as u32)?;
-                }
-            }
-            Self::Co64(offsets) => {
-                for o in offsets.iter() {
-                    writer.write_be_u64((*o as i64 + mdat_shift) as u64)?;
-                }
-            }
+            ChunkOffsets::Stco(offsets) => write_shifted_offsets(writer, offsets, changes),
+            ChunkOffsets::Co64(offsets) => write_shifted_offsets(writer, offsets, changes),
         }
+    }
+}
+
+pub trait ChunkOffsetInt: Sized + Copy + Into<u64> {
+    fn shift(&self, shift: i64) -> Self;
+    fn write(&self, writer: &mut impl Write) -> crate::Result<()>;
+}
+
+impl ChunkOffsetInt for u32 {
+    fn shift(&self, shift: i64) -> Self {
+        (*self as i64 + shift) as u32
+    }
+
+    fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
+        writer.write_be_u32(*self)?;
         Ok(())
     }
+}
+impl ChunkOffsetInt for u64 {
+    fn shift(&self, shift: i64) -> Self {
+        (*self as i64 + shift) as u64
+    }
+
+    fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
+        writer.write_be_u64(*self)?;
+        Ok(())
+    }
+}
+
+pub fn write_shifted_offsets<T: ChunkOffsetInt>(
+    writer: &mut impl Write,
+    offsets: &[T],
+    changes: &[Change<'_>],
+) -> crate::Result<()> {
+    let mut changes_iter = changes.iter().peekable();
+
+    let mut mdat_shift = 0;
+    for o in offsets.iter().copied() {
+        if let Some(change) = changes_iter.peek() {
+            if change.old_pos() < o.into() {
+                mdat_shift += change.len_diff();
+                changes_iter.next();
+            }
+        }
+
+        o.shift(mdat_shift).write(writer)?;
+    }
+    Ok(())
 }
 
 impl ChangeBounds for UpdateChunkOffsets<'_> {
@@ -230,9 +272,9 @@ macro_rules! atom_ref {
         }
 
         impl AtomRef<'_> {
-            pub fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
+            pub fn write(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
                 match self {
-                    $(Self::$name(a) => a.write(writer)),+
+                    $(Self::$name(a) => a.write(writer, changes)),+
                 }
             }
 

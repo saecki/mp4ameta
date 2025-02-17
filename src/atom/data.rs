@@ -145,9 +145,9 @@ impl Atom for Data {
     const FOURCC: Fourcc = DATA;
 }
 
-impl ParseAtom for Data {
+impl Data {
     /// Parses data based on [Table 3-5 Well-known data types](https://developer.apple.com/documentation/quicktime-file-format/well-known_types).
-    fn parse_atom(
+    pub fn parse(
         reader: &mut (impl Read + Seek),
         cfg: &ParseConfig<'_>,
         size: Size,
@@ -178,11 +178,9 @@ impl ParseAtom for Data {
             }
         })
     }
-}
 
-impl WriteAtom for Data {
-    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
-        self.write_head(writer)?;
+    pub fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
+        write_head(writer, Head::new(false, self.len(), DATA))?;
 
         let datatype = match self {
             Self::Reserved(_) => RESERVED,
@@ -211,9 +209,8 @@ impl WriteAtom for Data {
         Ok(())
     }
 
-    fn size(&self) -> Size {
-        let content_len = 8 + self.data_len();
-        Size::from(content_len)
+    pub fn len(&self) -> u64 {
+        Head::NORMAL_SIZE + HEADER_SIZE + self.data_len()
     }
 }
 

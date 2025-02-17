@@ -38,7 +38,7 @@ impl ParseAtom for Stbl {
                 SAMPLE_TABLE_TIME_TO_SAMPLE if cfg.cfg.read_chapter_track => {
                     stbl.stts = Some(Stts::parse(reader, cfg, head.size())?)
                 }
-                SAMPLE_TABLE_SAMPLE_TO_COUNT if cfg.cfg.read_chapter_track => {
+                SAMPLE_TABLE_SAMPLE_TO_CHUNK if cfg.cfg.read_chapter_track => {
                     stbl.stsc = Some(Stsc::parse(reader, cfg, head.size())?)
                 }
                 SAMPLE_TABLE_SAMPLE_SIZE if cfg.cfg.read_chapter_track => {
@@ -61,25 +61,25 @@ impl ParseAtom for Stbl {
 }
 
 impl WriteAtom for Stbl {
-    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+    fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
         if let Some(a) = &self.stsd {
-            a.write(writer)?;
+            a.write(writer, changes)?;
         }
         if let Some(a) = &self.stts {
-            a.write(writer)?;
+            a.write(writer, changes)?;
         }
         if let Some(a) = &self.stsc {
-            a.write(writer)?;
+            a.write(writer, changes)?;
         }
         if let Some(a) = &self.stsz {
-            a.write(writer)?;
+            a.write(writer, changes)?;
         }
         if let Some(a) = &self.stco {
-            a.write(writer)?;
+            a.write(writer, changes)?;
         }
         if let Some(a) = &self.co64 {
-            a.write(writer)?;
+            a.write(writer, changes)?;
         }
         Ok(())
     }

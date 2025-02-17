@@ -47,16 +47,16 @@ impl ParseAtom for Minf {
 }
 
 impl WriteAtom for Minf {
-    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+    fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
         if let Some(a) = &self.gmhd {
-            a.write(writer)?;
+            a.write(writer, changes)?;
         }
         if let Some(a) = &self.dinf {
-            a.write(writer)?;
+            a.write(writer, changes)?;
         }
         if let Some(a) = &self.stbl {
-            a.write(writer)?;
+            a.write(writer, changes)?;
         }
         Ok(())
     }

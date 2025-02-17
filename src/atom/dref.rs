@@ -50,7 +50,7 @@ impl ParseAtom for Dref {
 }
 
 impl WriteAtom for Dref {
-    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+    fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
         write_full_head(writer, 0, [0; 3])?;
 
@@ -61,7 +61,7 @@ impl WriteAtom for Dref {
         }
 
         if let Some(a) = &self.url {
-            a.write(writer)?;
+            a.write(writer, changes)?;
         }
         Ok(())
     }

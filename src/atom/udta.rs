@@ -45,13 +45,13 @@ impl ParseAtom for Udta<'_> {
 }
 
 impl WriteAtom for Udta<'_> {
-    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+    fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
         if let Some(a) = &self.chpl {
-            a.write(writer)?;
+            a.write(writer, changes)?;
         }
         if let Some(a) = &self.meta {
-            a.write(writer)?;
+            a.write(writer, changes)?;
         }
         Ok(())
     }

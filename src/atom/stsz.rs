@@ -6,7 +6,8 @@ pub const ENTRY_SIZE: u64 = 4;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Stsz {
     pub state: State,
-    pub sample_size: u32,
+    /// If this field is set to zero, a list of sizes is read instead.
+    pub uniform_sample_size: u32,
     pub sizes: Vec<u32>,
 }
 
@@ -66,16 +67,16 @@ impl ParseAtom for Stsz {
             Vec::new()
         };
 
-        Ok(Self { state: State::Existing(bounds), sample_size, sizes })
+        Ok(Self { state: State::Existing(bounds), uniform_sample_size: sample_size, sizes })
     }
 }
 
 impl WriteAtom for Stsz {
-    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+    fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
         write_full_head(writer, 0, [0; 3])?;
 
-        writer.write_be_u32(self.sample_size)?;
+        writer.write_be_u32(self.uniform_sample_size)?;
         writer.write_be_u32(self.sizes.len() as u32)?;
         for s in self.sizes.iter() {
             writer.write_be_u32(*s)?;

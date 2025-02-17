@@ -49,14 +49,12 @@ impl ParseAtom for Stco {
 }
 
 impl WriteAtom for Stco {
-    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+    fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
         write_full_head(writer, 0, [0; 3])?;
 
         writer.write_be_u32(self.offsets.len() as u32)?;
-        for o in self.offsets.iter() {
-            writer.write_be_u32(*o)?;
-        }
+        write_shifted_offsets(writer, &self.offsets, changes)?;
 
         Ok(())
     }

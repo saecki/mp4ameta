@@ -55,14 +55,14 @@ impl ParseAtom for Moov<'_> {
 }
 
 impl WriteAtom for Moov<'_> {
-    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+    fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
-        self.mvhd.write(writer)?;
+        self.mvhd.write(writer, changes)?;
         for t in self.trak.iter() {
-            t.write(writer)?;
+            t.write(writer, changes)?;
         }
         if let Some(a) = &self.udta {
-            a.write(writer)?;
+            a.write(writer, changes)?;
         }
         Ok(())
     }

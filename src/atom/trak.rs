@@ -55,14 +55,14 @@ impl ParseAtom for Trak {
 }
 
 impl WriteAtom for Trak {
-    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+    fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
-        self.tkhd.write(writer)?;
+        self.tkhd.write(writer, changes)?;
         if let Some(a) = &self.tref {
-            a.write(writer)?;
+            a.write(writer, changes)?;
         }
         if let Some(a) = &self.mdia {
-            a.write(writer)?;
+            a.write(writer, changes)?;
         }
         Ok(())
     }

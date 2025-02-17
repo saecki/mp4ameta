@@ -70,7 +70,7 @@ impl ParseAtom for Ilst<'_> {
 }
 
 impl WriteAtom for Ilst<'_> {
-    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+    fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
         for a in self.iter() {
             a.write(writer)?;

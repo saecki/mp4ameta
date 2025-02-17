@@ -29,7 +29,9 @@ impl ParseAtom for Mdia {
 
             match head.fourcc() {
                 MEDIA_HEADER => mdhd = Some(Mdhd::parse(reader, cfg, head.size())?),
-                HANDLER_REFERENCE if cfg.write => hdlr = Some(Hdlr::parse(reader, cfg, head.size())?),
+                HANDLER_REFERENCE if cfg.write => {
+                    hdlr = Some(Hdlr::parse(reader, cfg, head.size())?)
+                }
                 MEDIA_INFORMATION => minf = Some(Minf::parse(reader, cfg, head.size())?),
                 _ => reader.skip(head.content_len() as i64)?,
             }
@@ -51,14 +53,14 @@ impl ParseAtom for Mdia {
 }
 
 impl WriteAtom for Mdia {
-    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+    fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
-        self.mdhd.write(writer)?;
+        self.mdhd.write(writer, changes)?;
         if let Some(a) = &self.hdlr {
-            a.write(writer)?;
+            a.write(writer, changes)?;
         }
         if let Some(a) = &self.minf {
-            a.write(writer)?;
+            a.write(writer, changes)?;
         }
         Ok(())
     }

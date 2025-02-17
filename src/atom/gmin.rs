@@ -48,7 +48,7 @@ impl ParseAtom for Gmin {
 }
 
 impl WriteAtom for Gmin {
-    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+    fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
         write_full_head(writer, self.version, self.flags)?;
 

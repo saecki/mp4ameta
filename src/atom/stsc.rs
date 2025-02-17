@@ -17,7 +17,7 @@ pub struct StscItem {
 }
 
 impl Atom for Stsc {
-    const FOURCC: Fourcc = SAMPLE_TABLE_SAMPLE_TO_COUNT;
+    const FOURCC: Fourcc = SAMPLE_TABLE_SAMPLE_TO_CHUNK;
 }
 
 impl ParseAtom for Stsc {
@@ -42,7 +42,7 @@ impl ParseAtom for Stsc {
             return Err(crate::Error::new(
                 crate::ErrorKind::Parsing,
                 format!(
-                    "Sample table sample to count (stsc) table size {} doesn't match atom content length {}",
+                    "Sample table sample to chunk (stsc) table size {} doesn't match atom content length {}",
                     table_size,
                     size.content_len(),
                 ),
@@ -63,7 +63,7 @@ impl ParseAtom for Stsc {
 }
 
 impl WriteAtom for Stsc {
-    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+    fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
         write_full_head(writer, 0, [0; 3])?;
 

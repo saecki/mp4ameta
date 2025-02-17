@@ -39,7 +39,7 @@ impl ParseAtom for Text {
 }
 
 impl WriteAtom for Text {
-    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+    fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
         writer.write_all(self)?;
         Ok(())

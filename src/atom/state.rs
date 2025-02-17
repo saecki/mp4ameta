@@ -20,6 +20,10 @@ impl Default for State {
 }
 
 impl State {
+    pub fn is_existing(&self) -> bool {
+        matches!(self, Self::Existing(_))
+    }
+
     pub fn replace_existing(&mut self) {
         if let Self::Existing(b) = self {
             *self = Self::Replace(b.clone())

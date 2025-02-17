@@ -76,7 +76,7 @@ impl ParseAtom for Chpl<'_> {
 }
 
 impl WriteAtom for Chpl<'_> {
-    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+    fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
         write_full_head(writer, 0, [0; 3])?;
 

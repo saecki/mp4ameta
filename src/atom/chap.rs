@@ -29,7 +29,7 @@ impl ParseAtom for Chap {
 }
 
 impl WriteAtom for Chap {
-    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
+    fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
         for c in self.chapter_ids.iter() {
             writer.write_be_u32(*c)?;

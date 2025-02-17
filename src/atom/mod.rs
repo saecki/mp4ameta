@@ -163,8 +163,8 @@ trait ParseAtom: Atom {
 }
 
 trait WriteAtom: Atom {
-    fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
-        match self.write_atom(writer) {
+    fn write(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
+        match self.write_atom(writer, changes) {
             Err(mut e) => {
                 let mut d = e.description.into_owned();
                 insert_str(&mut d, "Error writing ", Self::FOURCC);
@@ -184,7 +184,7 @@ trait WriteAtom: Atom {
         self.size().len()
     }
 
-    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()>;
+    fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()>;
 
     fn size(&self) -> Size;
 }
@@ -232,23 +232,23 @@ impl<T: SimpleCollectChanges> CollectChanges for T {
         changes: &mut Vec<Change<'a>>,
     ) -> i64 {
         match &self.state() {
-            State::Existing(b) => {
-                let len_diff = self.existing(level + 1, b, changes);
+            State::Existing(bounds) => {
+                let len_diff = self.existing(level + 1, bounds, changes);
                 if len_diff != 0 {
                     changes.push(Change::UpdateLen(UpdateAtomLen {
-                        bounds: b,
+                        bounds,
                         fourcc: Self::FOURCC,
                         len_diff,
                     }));
                 }
                 len_diff
             }
-            State::Remove(b) => {
-                changes.push(Change::Remove(RemoveAtom { bounds: b, level: level + 1 }));
-                -(b.len() as i64)
+            State::Remove(bounds) => {
+                changes.push(Change::Remove(RemoveAtom { bounds, level: level + 1 }));
+                -(bounds.len() as i64)
             }
-            State::Replace(b) => {
-                let r = ReplaceAtom { bounds: b, atom: self.atom_ref(), level: level + 1 };
+            State::Replace(bounds) => {
+                let r = ReplaceAtom { bounds, atom: self.atom_ref(), level: level + 1 };
                 let len_diff = r.len_diff();
                 changes.push(Change::Replace(r));
                 len_diff
@@ -355,7 +355,7 @@ impl Default for ReadConfig {
     }
 }
 
-pub(crate) struct ParseConfig<'a> {
+pub struct ParseConfig<'a> {
     cfg: &'a ReadConfig,
     write: bool,
 }
@@ -665,22 +665,14 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
     };
 
     // update atom hierarchy
-    let mut append_mdat = Vec::new();
+    let mut changes = Vec::new();
     if cfg.write_item_list || cfg.write_chapter_list || cfg.write_chapter_track {
-        update_userdata(&mut moov, &mdat_bounds, &mut append_mdat, userdata, cfg);
+        update_userdata(&mut changes, &mut moov, &mdat_bounds, userdata, cfg)?;
     }
 
     // collect changes
-    let mut changes = Vec::<Change<'_>>::new();
+    // TODO: implement missing trak and sample table change collection
     moov.collect_changes(0, 0, &mut changes);
-    if !append_mdat.is_empty() {
-        changes.push(Change::UpdateLen(UpdateAtomLen {
-            bounds: &mdat_bounds,
-            fourcc: MEDIA_DATA,
-            len_diff: append_mdat.len() as i64,
-        }));
-        changes.push(Change::AppendMdat(mdat_bounds.end(), &append_mdat));
-    }
 
     changes.sort_by(|a, b| {
         a.old_pos().cmp(&b.old_pos()).then_with(|| {
@@ -700,15 +692,6 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
             }
         })
     });
-
-    // calculate mdat position shift
-    let mut mdat_shift: i64 = 0;
-    for c in changes.iter() {
-        if matches!(c, Change::AppendMdat(..)) {
-            break;
-        }
-        mdat_shift += c.len_diff();
-    }
 
     // read moved data
     let old_file_len = reader.seek(SeekFrom::End(0))?;
@@ -756,11 +739,11 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
 
         match c {
             Change::UpdateLen(u) => u.update_len(writer)?,
-            Change::UpdateChunkOffset(u) => u.offsets.update_offsets(writer, mdat_shift)?,
+            Change::UpdateChunkOffset(u) => u.offsets.update_offsets(writer, &changes)?,
             Change::Remove(_) => (),
-            Change::Replace(r) => r.atom.write(writer)?,
-            Change::Insert(i) => i.atom.write(writer)?,
-            Change::AppendMdat(_, d) => writer.write_all(d)?,
+            Change::Replace(r) => r.atom.write(writer, &changes)?,
+            Change::Insert(i) => i.atom.write(writer, &changes)?,
+            Change::EditMdat(_, _, d) => writer.write_all(d)?,
         }
 
         pos_shift += c.len_diff();
@@ -772,12 +755,12 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
 }
 
 fn update_userdata<'a>(
+    changes: &mut Vec<Change<'a>>,
     moov: &mut Moov<'a>,
-    mdat_bounds: &AtomBounds,
-    append_mdat: &mut Vec<u8>,
+    mdat_bounds: &'a AtomBounds,
     userdata: &'a Userdata,
     cfg: &WriteConfig,
-) {
+) -> crate::Result<()> {
     let udta = moov.udta.get_or_insert_default();
 
     // item list (ilst)
@@ -831,6 +814,7 @@ fn update_userdata<'a>(
         }
 
         // generate chapter track sample table
+        let mut new_chapter_media_data = Vec::new();
         let duration = moov.mvhd.duration;
         let mut chunk_offsets = Vec::with_capacity(userdata.chapter_list.len());
         let mut sample_sizes = Vec::with_capacity(userdata.chapter_list.len());
@@ -851,24 +835,34 @@ fn update_userdata<'a>(
             // only done if the `stco` or `co64` already exists
             chunk_offsets.push(mdat_bounds.end());
 
-            append_mdat.write_be_u16(c.title.len() as u16).ok();
-            append_mdat.write_utf8(&c.title).ok();
+            new_chapter_media_data.write_be_u16(c.title.len() as u16).ok();
+            new_chapter_media_data.write_utf8(&c.title).ok();
         }
 
-        // TODO: check more than the first chapter track?
+        // https://developer.apple.com/documentation/quicktime-file-format/chapter_lists
+        // > If more than one enabled track includes a 'chap' track reference,
+        // > QuickTime uses the first chapter list that it finds.
         let chapter_trak =
             match moov.trak.iter_mut().find(|a| chapter_trak_ids.contains(&a.tkhd.id)) {
                 Some(trak) => trak,
                 None => {
-                    // TODO: is this correct?
                     let new_id = moov.trak.iter().map(|t| t.tkhd.id).max().unwrap() + 1;
 
-                    // TODO: add trak reference to content track
+                    // add track reference to content track
+                    let tref = content_trak.tref.get_or_insert_default();
+                    let chap = tref.chap.get_or_insert_default();
+                    chap.state.replace_existing();
+                    chap.chapter_ids = vec![new_id];
+
+                    // add chapter track
                     moov.trak.push_and_get(Trak {
                         state: State::Insert,
                         tkhd: Tkhd {
                             state: State::Insert,
+                            version: 0,
+                            flags: [0, 0, 2], // the track cannot be disabled
                             id: new_id,
+                            duration: moov.mvhd.duration,
                             ..Default::default()
                         },
                         ..Default::default()
@@ -902,25 +896,112 @@ fn update_userdata<'a>(
         stsd.text.get_or_insert_with(Text::media_chapter);
 
         let stts = stbl.stts.get_or_insert_default();
+        stts.state.replace_existing();
         stts.items = time_to_samples;
 
         let stsc = stbl.stsc.get_or_insert_default();
-        stsc.items = vec![StscItem {
-            first_chunk: 1,
-            samples_per_chunk: 1,
-            sample_description_id: 1,
-        }];
+        stsc.state.replace_existing();
+        let prev_stsc = std::mem::replace(
+            &mut stsc.items,
+            vec![StscItem {
+                first_chunk: 1,
+                samples_per_chunk: 1,
+                sample_description_id: 1,
+            }],
+        );
 
         let stsz = stbl.stsz.get_or_insert_default();
-        stsz.sample_size = 0;
-        stsz.sizes = sample_sizes;
+        stsz.state.replace_existing();
+        let prev_stsz_uniform_sample_size = std::mem::replace(&mut stsz.uniform_sample_size, 0);
+        let prev_stsz_sizes = std::mem::replace(&mut stsz.sizes, sample_sizes);
+
+        let prev_stco = stbl.stco.as_mut().map(|stco| {
+            stco.state.remove_existing();
+            std::mem::take(&mut stco.offsets)
+        });
 
         let co64 = stbl.co64.get_or_insert_default();
-        co64.offsets = chunk_offsets;
+        co64.state.replace_existing();
+        let prev_co64 = std::mem::replace(&mut co64.offsets, chunk_offsets);
 
-        // TODO: remove previous chapter track data in the mdat atom
-        // TODO: how to handle shift
+        // remove previous chapter data from the mdat atom
+        if co64.state.is_existing() {
+            remove_chapter_media_data(
+                changes,
+                &prev_co64,
+                &prev_stsc,
+                prev_stsz_uniform_sample_size,
+                &prev_stsz_sizes,
+            )?;
+        } else if let Some(prev_stco) = prev_stco {
+            remove_chapter_media_data(
+                changes,
+                &prev_stco,
+                &prev_stsc,
+                prev_stsz_uniform_sample_size,
+                &prev_stsz_sizes,
+            )?;
+        }
+
+        changes.push(Change::EditMdat(mdat_bounds.end(), 0, new_chapter_media_data));
+
+        let len_diff = changes.iter().map(|c| c.len_diff()).sum();
+        if len_diff != 0 {
+            changes.push(Change::UpdateLen(UpdateAtomLen {
+                bounds: mdat_bounds,
+                fourcc: MEDIA_DATA,
+                len_diff,
+            }));
+        }
     }
+
+    Ok(())
+}
+
+fn remove_chapter_media_data<T: ChunkOffsetInt>(
+    changes: &mut Vec<Change<'_>>,
+    offsets: &[T],
+    stsc: &[StscItem],
+    stsz_uniform_size: u32,
+    stsz_sizes: &[u32],
+) -> crate::Result<()> {
+    let mut stco_idx = 0;
+    let mut stsz_iter = stsz_sizes.iter();
+
+    for (stsc_idx, stsc_item) in stsc.iter().enumerate() {
+        let stco_end_idx = match stsc.get(stsc_idx + 1) {
+            Some(next_stsc_item) => {
+                let end_idx = next_stsc_item.first_chunk as usize;
+                if end_idx > offsets.len() {
+                    todo!("error out of bounds");
+                }
+                end_idx
+            }
+            None => offsets.len(),
+        };
+
+        for o in offsets[stco_idx..stco_end_idx].iter().copied() {
+            let offset = o.into();
+            let chunk_size = if stsz_uniform_size != 0 {
+                stsc_item.samples_per_chunk as u64 * stsz_uniform_size as u64
+            } else {
+                let mut chunk_size = 0;
+                for _ in 0..stsc_item.samples_per_chunk {
+                    let Some(size) = stsz_iter.next() else {
+                        todo!("error");
+                    };
+                    chunk_size += *size as u64;
+                }
+                chunk_size
+            };
+
+            changes.push(Change::EditMdat(offset, chunk_size, Vec::new()));
+        }
+
+        stco_idx = stco_end_idx;
+    }
+
+    Ok(())
 }
 
 /// Attempts to dump the metadata atoms to the writer. This doesn't include a complete MPEG-4
@@ -1050,7 +1131,7 @@ pub(crate) fn dump_tag(
                         }),
                         stsz: Some(Stsz {
                             state: State::Insert,
-                            sample_size: 0,
+                            uniform_sample_size: 0,
                             sizes: sample_sizes,
                         }),
                         co64: Some(Co64 { state: State::Insert, offsets: chunk_offsets }),
@@ -1063,8 +1144,8 @@ pub(crate) fn dump_tag(
     }
 
     ftyp.write(writer)?;
-    mdat.write(writer)?;
-    moov.write(writer)?;
+    mdat.write(writer, &[])?;
+    moov.write(writer, &[])?;
 
     Ok(())
 }

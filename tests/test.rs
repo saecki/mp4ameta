@@ -245,6 +245,12 @@ fn assert_readonly(tag: &Tag) {
 }
 
 #[test]
+fn chaptered() {
+    let tag = Tag::read_from_path("files/chaptered.m4a").unwrap();
+    println!("{}", tag);
+}
+
+#[test]
 fn collection() {
     if let Some(path) = std::env::args().skip_while(|a| a != "collection").skip(1).next() {
         println!("Testing collection at {}", &path);
