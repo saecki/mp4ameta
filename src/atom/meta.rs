@@ -80,7 +80,7 @@ impl SimpleCollectChanges for Meta<'_> {
         bounds: &AtomBounds,
         changes: &mut Vec<Change<'a>>,
     ) -> i64 {
-        self.hdlr.collect_changes(bounds.end(), level, changes)
+        self.hdlr.collect_changes(bounds.content_pos() + HEADER_SIZE, level, changes)
             + self.ilst.collect_changes(bounds.end(), level, changes)
     }
 
