@@ -669,6 +669,10 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
     }
 
     // write changes
+    let append_idx = changes.iter().position(|c| matches!(c, Change::AppendMdat(..)));
+    let end = append_idx.unwrap_or(changes.len());
+    let shifting_changes = &changes[..end];
+
     let mut pos_shift = 0;
     for c in changes.iter() {
         let new_pos = c.old_pos() as i64 + pos_shift;
@@ -676,11 +680,12 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
 
         match c {
             Change::UpdateLen(u) => u.update_len(writer)?,
-            Change::UpdateChunkOffset(u) => u.offsets.update_offsets(writer, &changes)?,
+            Change::UpdateChunkOffset(u) => u.offsets.update_offsets(writer, shifting_changes)?,
             Change::Remove(_) => (),
-            Change::Replace(r) => r.atom.write(writer, &changes)?,
-            Change::Insert(i) => i.atom.write(writer, &changes)?,
+            Change::Replace(r) => r.atom.write(writer, shifting_changes)?,
+            Change::Insert(i) => i.atom.write(writer, shifting_changes)?,
             Change::EditMdat(_, _, d) => writer.write_all(d)?,
+            Change::AppendMdat(_, d) => writer.write_all(d)?,
         }
 
         pos_shift += c.len_diff();
@@ -876,7 +881,7 @@ fn update_userdata<'a>(
         }
 
         if !new_chapter_media_data.is_empty() {
-            changes.push(Change::EditMdat(mdat_bounds.end(), 0, new_chapter_media_data));
+            changes.push(Change::AppendMdat(mdat_bounds.end(), new_chapter_media_data));
         }
 
         let len_diff = changes.iter().map(|c| c.len_diff()).sum();

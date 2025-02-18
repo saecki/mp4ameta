@@ -119,6 +119,7 @@ pub enum Change<'a> {
     Replace(ReplaceAtom<'a>),
     Insert(InsertAtom<'a>),
     EditMdat(u64, u64, Vec<u8>),
+    AppendMdat(u64, Vec<u8>),
 }
 
 impl ChangeBounds for Change<'_> {
@@ -130,6 +131,7 @@ impl ChangeBounds for Change<'_> {
             Self::Replace(c) => c.old_pos(),
             Self::Insert(c) => c.old_pos(),
             Self::EditMdat(pos, _, _) => *pos,
+            Self::AppendMdat(pos, _) => *pos,
         }
     }
 
@@ -141,6 +143,7 @@ impl ChangeBounds for Change<'_> {
             Self::Replace(c) => c.old_end(),
             Self::Insert(c) => c.old_end(),
             Self::EditMdat(pos, len, _) => *pos + *len,
+            Self::AppendMdat(pos, _) => *pos,
         }
     }
 
@@ -152,6 +155,7 @@ impl ChangeBounds for Change<'_> {
             Self::Replace(c) => c.len_diff(),
             Self::Insert(c) => c.len_diff(),
             Self::EditMdat(_, len, d) => d.len() as i64 - *len as i64,
+            Self::AppendMdat(_, d) => d.len() as i64,
         }
     }
 
@@ -163,6 +167,7 @@ impl ChangeBounds for Change<'_> {
             Self::Replace(c) => c.level(),
             Self::Insert(c) => c.level(),
             Self::EditMdat(_, _, _) => u8::MAX,
+            Self::AppendMdat(_, _) => u8::MAX,
         }
     }
 }
@@ -261,11 +266,15 @@ pub fn write_shifted_offsets<T: ChunkOffsetInt>(
 
     let mut mdat_shift = 0;
     for o in offsets.iter().copied() {
-        if let Some(change) = changes_iter.peek() {
-            if change.old_pos() <= o.into() {
-                mdat_shift += change.len_diff();
-                changes_iter.next();
+        loop {
+            if let Some(change) = changes_iter.peek() {
+                if change.old_pos() <= o.into() {
+                    mdat_shift += change.len_diff();
+                    changes_iter.next();
+                    continue;
+                }
             }
+            break;
         }
 
         o.shift(mdat_shift).write(writer)?;
