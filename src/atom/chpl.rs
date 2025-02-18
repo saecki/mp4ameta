@@ -2,6 +2,9 @@ use super::*;
 
 pub const DEFAULT_TIMESCALE: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(10_000_000) };
 
+pub const HEADER_SIZE: u64 = 5;
+pub const ITEM_HEADER_SIZE: u64 = 9;
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Chpl<'a> {
     pub state: State,
@@ -38,7 +41,7 @@ impl ParseAtom for Chpl<'_> {
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
         let (version, _) = head::parse_full(reader)?;
-        let mut parsed_bytes = 5;
+        let mut parsed_bytes = HEADER_SIZE;
 
         match version {
             0 => (),
@@ -65,7 +68,7 @@ impl ParseAtom for Chpl<'_> {
 
             chpl.push(ChplItem { start, title });
 
-            parsed_bytes += 9 + str_len as u64;
+            parsed_bytes += ITEM_HEADER_SIZE + str_len as u64;
         }
 
         Ok(Self {
@@ -104,9 +107,9 @@ impl WriteAtom for Chpl<'_> {
     }
 
     fn size(&self) -> Size {
-        let content_len = 5 + match &self.data {
-            ChplData::Owned(v) => v.iter().map(|c| 9 + c.title.len() as u64).sum::<u64>(),
-            ChplData::Borrowed(_, v) => v.iter().map(|c| 9 + c.title.len() as u64).sum::<u64>(),
+        let content_len = HEADER_SIZE + match &self.data {
+            ChplData::Owned(v) => v.iter().map(|c| ITEM_HEADER_SIZE + c.title.len() as u64).sum::<u64>(),
+            ChplData::Borrowed(_, v) => v.iter().map(|c| ITEM_HEADER_SIZE + c.title.len() as u64).sum::<u64>(),
         };
         Size::from(content_len)
     }

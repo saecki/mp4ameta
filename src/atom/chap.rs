@@ -1,5 +1,7 @@
 use super::*;
 
+pub const ENTRY_SIZE: u64 = 4;
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Chap {
     pub state: State,
@@ -17,8 +19,8 @@ impl ParseAtom for Chap {
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
-        let num_entries = size.content_len() as usize / 4;
-        let mut chapter_ids = Vec::with_capacity(num_entries);
+        let num_entries = size.content_len() / ENTRY_SIZE;
+        let mut chapter_ids = Vec::with_capacity(num_entries as usize);
 
         for _ in 0..num_entries {
             chapter_ids.push(reader.read_be_u32()?);
@@ -38,7 +40,7 @@ impl WriteAtom for Chap {
     }
 
     fn size(&self) -> Size {
-        let content_len = 4 * self.chapter_ids.len() as u64;
+        let content_len = ENTRY_SIZE * self.chapter_ids.len() as u64;
         Size::from(content_len)
     }
 }

@@ -15,12 +15,12 @@ pub struct Size {
 
 impl Size {
     pub const fn new(ext: bool, content_len: u64) -> Self {
-        let len = if ext { content_len + 16 } else { content_len + 8 };
+        let len = if ext { content_len + Head::EXT_SIZE } else { content_len + Head::NORMAL_SIZE };
         Self { ext, len }
     }
 
     pub const fn from(content_len: u64) -> Self {
-        let ext = content_len + 8 > u32::MAX as u64;
+        let ext = content_len + Head::NORMAL_SIZE > u32::MAX as u64;
         Self::new(ext, content_len)
     }
 
@@ -45,10 +45,7 @@ impl Size {
 
     /// The length excluding the atom's head.
     pub const fn content_len(&self) -> u64 {
-        match self.ext {
-            true => self.len - 16,
-            false => self.len - 8,
-        }
+        self.len - self.head_len()
     }
 }
 

@@ -26,7 +26,7 @@ impl MetaItem {
 
     /// Returns the external length of the atom in bytes.
     pub fn len(&self) -> u64 {
-        let parent_len = 8;
+        let parent_len = Head::NORMAL_SIZE;
         let data_len: u64 = self.data.iter().map(Data::len).sum();
 
         match &self.ident {

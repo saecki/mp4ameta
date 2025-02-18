@@ -1,5 +1,7 @@
 use super::*;
 
+pub const HEADER_SIZE: u64 = 4;
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Meta<'a> {
     pub state: State,
@@ -31,7 +33,7 @@ impl ParseAtom for Meta<'_> {
             state: State::Existing(bounds),
             ..Default::default()
         };
-        let mut parsed_bytes = 4;
+        let mut parsed_bytes = HEADER_SIZE;
 
         while parsed_bytes < size.content_len() {
             let head = head::parse(reader)?;
@@ -62,8 +64,8 @@ impl WriteAtom for Meta<'_> {
     }
 
     fn size(&self) -> Size {
-        let content_len = self.hdlr.len_or_zero() + self.ilst.len_or_zero();
-        Size::from(content_len + 4)
+        let content_len = HEADER_SIZE + self.hdlr.len_or_zero() + self.ilst.len_or_zero();
+        Size::from(content_len)
     }
 }
 
