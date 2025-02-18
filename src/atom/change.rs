@@ -59,8 +59,8 @@ impl<T: SimpleCollectChanges> CollectChanges for T {
                 -(bounds.len() as i64)
             }
             State::Replace(bounds) => {
+                let len_diff = (self.len() as i64) - (bounds.len() as i64);
                 let r = ReplaceAtom { bounds, atom: self.atom_ref(), level: level + 1 };
-                let len_diff = r.len_diff();
                 changes.push(Change::Replace(r));
                 len_diff
             }
@@ -101,16 +101,6 @@ impl<T: LeafAtomCollectChanges> SimpleCollectChanges for T {
     }
 }
 
-pub trait ChangeBounds {
-    fn old_pos(&self) -> u64;
-
-    fn old_end(&self) -> u64;
-
-    fn len_diff(&self) -> i64;
-
-    fn level(&self) -> u8;
-}
-
 #[derive(Debug)]
 pub enum Change<'a> {
     UpdateLen(UpdateAtomLen<'a>),
@@ -145,50 +135,50 @@ impl std::fmt::Display for Change<'_> {
     }
 }
 
-impl ChangeBounds for Change<'_> {
-    fn old_pos(&self) -> u64 {
+impl Change<'_> {
+    pub fn old_pos(&self) -> u64 {
         match self {
-            Self::UpdateLen(c) => c.old_pos(),
-            Self::UpdateChunkOffset(c) => c.old_pos(),
-            Self::Remove(c) => c.old_pos(),
-            Self::Replace(c) => c.old_pos(),
-            Self::Insert(c) => c.old_pos(),
+            Self::UpdateLen(c) => c.bounds.pos(),
+            Self::UpdateChunkOffset(c) => c.bounds.content_pos() + stco::HEADER_SIZE,
+            Self::Remove(c) => c.bounds.pos(),
+            Self::Replace(c) => c.bounds.pos(),
+            Self::Insert(c) => c.pos,
             Self::EditMdat(pos, _, _) => *pos,
             Self::AppendMdat(pos, _) => *pos,
         }
     }
 
-    fn old_end(&self) -> u64 {
+    pub fn old_end(&self) -> u64 {
         match self {
-            Self::UpdateLen(c) => c.old_end(),
-            Self::UpdateChunkOffset(c) => c.old_end(),
-            Self::Remove(c) => c.old_end(),
-            Self::Replace(c) => c.old_end(),
-            Self::Insert(c) => c.old_end(),
+            Self::UpdateLen(c) => c.bounds.content_pos(),
+            Self::UpdateChunkOffset(c) => c.bounds.end(),
+            Self::Remove(c) => c.bounds.end(),
+            Self::Replace(c) => c.bounds.end(),
+            Self::Insert(c) => c.pos,
             Self::EditMdat(pos, len, _) => *pos + *len,
             Self::AppendMdat(pos, _) => *pos,
         }
     }
 
-    fn len_diff(&self) -> i64 {
+    pub fn len_diff(&self) -> i64 {
         match self {
-            Self::UpdateLen(c) => c.len_diff(),
-            Self::UpdateChunkOffset(c) => c.len_diff(),
-            Self::Remove(c) => c.len_diff(),
-            Self::Replace(c) => c.len_diff(),
-            Self::Insert(c) => c.len_diff(),
-            Self::EditMdat(_, len, d) => d.len() as i64 - *len as i64,
+            Self::UpdateLen(_) => 0,
+            Self::UpdateChunkOffset(_) => 0,
+            Self::Remove(c) => -(c.bounds.len() as i64),
+            Self::Replace(c) => (c.atom.len() as i64) - (c.bounds.len() as i64),
+            Self::Insert(c) => c.atom.len() as i64,
+            Self::EditMdat(_, len, d) => (d.len() as i64) - (*len as i64),
             Self::AppendMdat(_, d) => d.len() as i64,
         }
     }
 
-    fn level(&self) -> u8 {
+    pub fn level(&self) -> u8 {
         match self {
-            Self::UpdateLen(c) => c.level(),
-            Self::UpdateChunkOffset(c) => c.level(),
-            Self::Remove(c) => c.level(),
-            Self::Replace(c) => c.level(),
-            Self::Insert(c) => c.level(),
+            Self::UpdateLen(_) => 0,
+            Self::UpdateChunkOffset(_) => 6,
+            Self::Remove(c) => c.level,
+            Self::Replace(c) => c.level,
+            Self::Insert(c) => c.level,
             Self::EditMdat(_, _, _) => u8::MAX,
             Self::AppendMdat(_, _) => u8::MAX,
         }
@@ -211,22 +201,24 @@ impl UpdateAtomLen<'_> {
     }
 }
 
-impl ChangeBounds for UpdateAtomLen<'_> {
-    fn old_pos(&self) -> u64 {
-        self.bounds.pos()
-    }
+#[derive(Debug)]
+pub struct RemoveAtom<'a> {
+    pub bounds: &'a AtomBounds,
+    pub level: u8,
+}
 
-    fn old_end(&self) -> u64 {
-        self.bounds.content_pos()
-    }
+#[derive(Debug)]
+pub struct ReplaceAtom<'a> {
+    pub bounds: &'a AtomBounds,
+    pub atom: AtomRef<'a>,
+    pub level: u8,
+}
 
-    fn len_diff(&self) -> i64 {
-        0
-    }
-
-    fn level(&self) -> u8 {
-        0
-    }
+#[derive(Debug)]
+pub struct InsertAtom<'a> {
+    pub pos: u64,
+    pub atom: AtomRef<'a>,
+    pub level: u8,
 }
 
 #[derive(Debug)]
@@ -303,98 +295,6 @@ pub fn write_shifted_offsets<T: ChunkOffsetInt>(
         o.shift(mdat_shift).write(writer)?;
     }
     Ok(())
-}
-
-impl ChangeBounds for UpdateChunkOffsets<'_> {
-    fn old_pos(&self) -> u64 {
-        self.bounds.content_pos() + stco::HEADER_SIZE
-    }
-
-    fn old_end(&self) -> u64 {
-        self.bounds.end()
-    }
-
-    fn len_diff(&self) -> i64 {
-        0
-    }
-
-    fn level(&self) -> u8 {
-        6
-    }
-}
-
-#[derive(Debug)]
-pub struct RemoveAtom<'a> {
-    pub bounds: &'a AtomBounds,
-    pub level: u8,
-}
-
-impl ChangeBounds for RemoveAtom<'_> {
-    fn old_pos(&self) -> u64 {
-        self.bounds.pos()
-    }
-
-    fn old_end(&self) -> u64 {
-        self.bounds.end()
-    }
-
-    fn len_diff(&self) -> i64 {
-        -(self.bounds.len() as i64)
-    }
-
-    fn level(&self) -> u8 {
-        self.level
-    }
-}
-
-#[derive(Debug)]
-pub struct ReplaceAtom<'a> {
-    pub bounds: &'a AtomBounds,
-    pub atom: AtomRef<'a>,
-    pub level: u8,
-}
-
-impl ChangeBounds for ReplaceAtom<'_> {
-    fn old_pos(&self) -> u64 {
-        self.bounds.pos()
-    }
-
-    fn old_end(&self) -> u64 {
-        self.bounds.end()
-    }
-
-    fn len_diff(&self) -> i64 {
-        self.atom.len() as i64 - self.bounds.len() as i64
-    }
-
-    fn level(&self) -> u8 {
-        self.level
-    }
-}
-
-#[derive(Debug)]
-pub struct InsertAtom<'a> {
-    pub pos: u64,
-    pub atom: AtomRef<'a>,
-    pub level: u8,
-}
-
-impl ChangeBounds for InsertAtom<'_> {
-    fn old_pos(&self) -> u64 {
-        self.pos
-    }
-
-    fn old_end(&self) -> u64 {
-        self.pos
-    }
-
-    fn len_diff(&self) -> i64 {
-        self.atom.len() as i64
-    }
-
-    fn level(&self) -> u8 {
-        self.level
-    }
 }
 
 macro_rules! atom_ref {

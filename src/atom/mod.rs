@@ -52,8 +52,8 @@ use std::ops::{Deref, DerefMut};
 use crate::{AudioInfo, Chapter, ErrorKind, Tag, Userdata};
 
 use change::{
-    AtomRef, Change, ChangeBounds, ChunkOffsetInt, ChunkOffsets, CollectChanges,
-    LeafAtomCollectChanges, SimpleCollectChanges, UpdateAtomLen, UpdateChunkOffsets,
+    AtomRef, Change, ChunkOffsetInt, ChunkOffsets, CollectChanges, LeafAtomCollectChanges,
+    SimpleCollectChanges, UpdateAtomLen, UpdateChunkOffsets,
 };
 use head::{find_bounds, seek_to_end, AtomBounds, Head, Size};
 use ident::*;
