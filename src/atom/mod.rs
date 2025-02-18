@@ -843,15 +843,16 @@ fn update_userdata<'a>(
 
         // generate chapter track sample table
         let mut new_chapter_media_data = Vec::new();
+        let duration = moov.mvhd.duration;
         let chapter_timescale = moov.mvhd.timescale;
         let chunk_offsets = vec![mdat_bounds.end()];
-        let mut sample_sizes = Vec::with_capacity(userdata.chapter_list.len());
-        let mut time_to_samples = Vec::with_capacity(userdata.chapter_list.len());
+        let mut sample_sizes = Vec::with_capacity(userdata.chapter_track.len());
+        let mut time_to_samples = Vec::with_capacity(userdata.chapter_track.len());
         let mut chapters_iter = userdata.chapter_list.iter().peekable();
         while let Some(c) = chapters_iter.next() {
             let c_duration = match chapters_iter.peek() {
                 Some(next) => unscale_duration(chapter_timescale, next.start - c.start),
-                None => unscale_duration(chapter_timescale, c.start) - moov.mvhd.duration,
+                None => unscale_duration(chapter_timescale, c.start) - duration,
             };
 
             time_to_samples.push(SttsItem {
@@ -891,9 +892,9 @@ fn update_userdata<'a>(
                     tkhd: Tkhd {
                         state: State::Insert,
                         version: 0,
-                        flags: [0, 0, 2], // the track cannot be disabled
+                        flags: [0, 0, 0],
                         id: new_id,
-                        duration: moov.mvhd.duration,
+                        duration,
                         ..Default::default()
                     },
                     ..Default::default()
@@ -906,6 +907,7 @@ fn update_userdata<'a>(
             mdhd: Mdhd {
                 state: State::Insert,
                 timescale: chapter_timescale,
+                duration,
                 ..Default::default()
             },
             ..Default::default()
