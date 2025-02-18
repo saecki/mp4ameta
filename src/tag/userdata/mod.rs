@@ -11,9 +11,10 @@ use crate::{
 
 pub use genre::*;
 
+#[rustfmt::skip]
+mod generated;
 mod genre;
 mod tuple;
-mod generated;
 
 /// A struct that holds user defined data.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]

@@ -107,10 +107,15 @@ impl WriteAtom for Chpl<'_> {
     }
 
     fn size(&self) -> Size {
-        let content_len = HEADER_SIZE + match &self.data {
-            ChplData::Owned(v) => v.iter().map(|c| ITEM_HEADER_SIZE + c.title.len() as u64).sum::<u64>(),
-            ChplData::Borrowed(_, v) => v.iter().map(|c| ITEM_HEADER_SIZE + c.title.len() as u64).sum::<u64>(),
+        let data_len = match &self.data {
+            ChplData::Owned(v) => {
+                v.iter().map(|c| ITEM_HEADER_SIZE + c.title.len() as u64).sum::<u64>()
+            }
+            ChplData::Borrowed(_, v) => {
+                v.iter().map(|c| ITEM_HEADER_SIZE + c.title.len() as u64).sum::<u64>()
+            }
         };
+        let content_len = HEADER_SIZE + data_len;
         Size::from(content_len)
     }
 }

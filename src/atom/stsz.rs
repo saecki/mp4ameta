@@ -31,10 +31,10 @@ impl ParseAtom for Stsz {
             ));
         }
 
-        let sample_size = reader.read_be_u32()?;
+        let uniform_sample_size = reader.read_be_u32()?;
 
         let num_entries = reader.read_be_u32()?;
-        let sizes = if sample_size == 0 {
+        let sizes = if uniform_sample_size == 0 {
             let table_size = HEADER_SIZE + ENTRY_SIZE * num_entries as u64;
             if table_size != size.content_len() {
                 return Err(crate::Error::new(
@@ -67,7 +67,11 @@ impl ParseAtom for Stsz {
             Vec::new()
         };
 
-        Ok(Self { state: State::Existing(bounds), uniform_sample_size: sample_size, sizes })
+        Ok(Self {
+            state: State::Existing(bounds),
+            uniform_sample_size,
+            sizes,
+        })
     }
 }
 
