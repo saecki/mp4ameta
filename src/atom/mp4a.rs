@@ -82,7 +82,7 @@ impl ParseAtom for Mp4a {
 
         reader.skip(28)?;
 
-        let head = parse_head(reader)?;
+        let head = head::parse(reader)?;
         if head.fourcc() != ELEMENTARY_STREAM_DESCRIPTION {
             return Err(crate::Error::new(
                 crate::ErrorKind::AtomNotFound(ELEMENTARY_STREAM_DESCRIPTION),
@@ -117,7 +117,7 @@ impl ParseAtom for Mp4a {
 ///    └──sl config descriptor
 /// ```
 fn parse_esds(reader: &mut (impl Read + Seek), info: &mut Mp4a, size: Size) -> crate::Result<()> {
-    let (version, _) = parse_full_head(reader)?;
+    let (version, _) = head::parse_full(reader)?;
 
     if version != 0 {
         return Err(crate::Error::new(

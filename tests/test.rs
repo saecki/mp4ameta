@@ -110,6 +110,7 @@ fn get_tag_2() -> Tag {
     tag
 }
 
+#[track_caller]
 fn assert_tag_1(tag: &Tag) {
     assert_eq!(tag.advisory_rating(), Some(AdvisoryRating::Explicit));
     assert_eq!(tag.album(), Some("TEST ALBUM"));
@@ -142,6 +143,7 @@ fn assert_tag_1(tag: &Tag) {
     assert_eq!(tag.lyricist(), Some("TEST LYRICIST"));
 }
 
+#[track_caller]
 fn assert_tag_2(tag: &Tag) {
     assert_eq!(tag.advisory_rating(), Some(AdvisoryRating::Inoffensive));
     assert_eq!(tag.album(), Some("NEW ALBUM"));
@@ -174,7 +176,15 @@ fn assert_tag_2(tag: &Tag) {
     assert_eq!(tag.lyricist(), Some("NEW LYRICIST"));
 
     assert_eq!(
-        tag.chapters(),
+        tag.chapter_list(),
+        [
+            Chapter::new(Duration::ZERO, "CHAPTER 1"),
+            Chapter::new(Duration::new(234, 324_000_000), "CHAPTER 2"),
+            Chapter::new(Duration::new(553, 946_000_000), "CHAPTER 3"),
+        ]
+    );
+    assert_eq!(
+        tag.chapter_track(),
         [
             Chapter::new(Duration::ZERO, "CHAPTER 1"),
             Chapter::new(Duration::new(234, 324_000_000), "CHAPTER 2"),
@@ -183,6 +193,7 @@ fn assert_tag_2(tag: &Tag) {
     );
 }
 
+#[track_caller]
 fn assert_tag_3(tag: &Tag) {
     assert_eq!(tag.advisory_rating(), Some(AdvisoryRating::Explicit));
     assert_eq!(tag.album(), Some("TEST ALBUM"));
@@ -235,6 +246,7 @@ fn assert_tag_3(tag: &Tag) {
     assert_eq!(lyricists.next(), None);
 }
 
+#[track_caller]
 fn assert_readonly(tag: &Tag) {
     assert_eq!(tag.duration(), Duration::from_millis(486));
     assert_eq!(tag.filetype(), "M4A \u{0}\u{0}\u{2}\u{0}isomiso2");

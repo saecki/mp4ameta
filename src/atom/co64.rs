@@ -21,7 +21,7 @@ impl ParseAtom for Co64 {
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
-        let (version, _) = parse_full_head(reader)?;
+        let (version, _) = head::parse_full(reader)?;
 
         if version != 0 {
             return Err(crate::Error::new(
@@ -51,10 +51,10 @@ impl ParseAtom for Co64 {
 impl WriteAtom for Co64 {
     fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
-        write_full_head(writer, 0, [0; 3])?;
+        head::write_full(writer, 0, [0; 3])?;
 
         writer.write_be_u32(self.offsets.len() as u32)?;
-        write_shifted_offsets(writer, &self.offsets, changes)?;
+        change::write_shifted_offsets(writer, &self.offsets, changes)?;
 
         Ok(())
     }

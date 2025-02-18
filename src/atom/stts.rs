@@ -26,7 +26,7 @@ impl ParseAtom for Stts {
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
-        let (version, _) = parse_full_head(reader)?;
+        let (version, _) = head::parse_full(reader)?;
 
         if version != 0 {
             return Err(crate::Error::new(
@@ -58,7 +58,7 @@ impl ParseAtom for Stts {
 impl WriteAtom for Stts {
     fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
-        write_full_head(writer, 0, [0; 3])?;
+        head::write_full(writer, 0, [0; 3])?;
 
         writer.write_be_u32(self.items.len() as u32)?;
         for i in self.items.iter() {
@@ -72,5 +72,15 @@ impl WriteAtom for Stts {
     fn size(&self) -> Size {
         let content_len = HEADER_SIZE + ENTRY_SIZE * self.items.len() as u64;
         Size::from(content_len)
+    }
+}
+
+impl LeafAtomCollectChanges for Stts {
+    fn state(&self) -> &State {
+        &self.state
+    }
+
+    fn atom_ref(&self) -> AtomRef<'_> {
+        AtomRef::Stts(self)
     }
 }

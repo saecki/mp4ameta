@@ -50,18 +50,9 @@ impl WriteAtom for Hdlr {
     }
 }
 
-impl SimpleCollectChanges for Hdlr {
+impl LeafAtomCollectChanges for Hdlr {
     fn state(&self) -> &State {
         &self.state
-    }
-
-    fn existing<'a>(
-        &'a self,
-        _level: u8,
-        _bounds: &AtomBounds,
-        _changes: &mut Vec<Change<'a>>,
-    ) -> i64 {
-        0
     }
 
     fn atom_ref(&self) -> AtomRef<'_> {
@@ -78,21 +69,6 @@ impl Hdlr {
                 0x00, 0x00, 0x00, 0x00, // component type
                 0x6d, 0x64, 0x69, 0x72, // component subtype
                 0x61, 0x70, 0x70, 0x6c, // component manufacturer
-                0x00, 0x00, 0x00, 0x00, // component flags
-                0x00, 0x00, 0x00, 0x00, // component flags mask
-                0x00, // component name
-            ],
-        }
-    }
-
-    pub fn mp4a_mdia() -> Self {
-        Self {
-            state: State::Insert,
-            data: vec![
-                0x00, 0x00, 0x00, 0x00, // version + flags
-                0x00, 0x00, 0x00, 0x00, // component type
-                0x73, 0x6f, 0x75, 0x6e, // component subtype
-                0x00, 0x00, 0x00, 0x00, // component manufacturer
                 0x00, 0x00, 0x00, 0x00, // component flags
                 0x00, 0x00, 0x00, 0x00, // component flags mask
                 0x00, // component name

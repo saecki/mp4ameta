@@ -48,45 +48,47 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use std::num::NonZeroU32;
 use std::ops::{Deref, DerefMut};
-use std::time::Duration;
 
 use crate::{AudioInfo, Chapter, ErrorKind, Tag, Userdata};
 
-use head::*;
+use change::{
+    AtomRef, Change, ChangeBounds, ChunkOffsetInt, ChunkOffsets, InsertAtom, RemoveAtom,
+    ReplaceAtom, UpdateAtomLen, UpdateChunkOffsets,
+};
+use head::{find_bounds, seek_to_end, AtomBounds, Head, Size};
 use ident::*;
+use state::State;
 use util::*;
 
-use change::*;
-use chap::*;
-use chpl::*;
-use co64::*;
-use dinf::*;
-use dref::*;
-use ftyp::*;
-use gmhd::*;
-use gmin::*;
-use hdlr::*;
-use ilst::*;
-use mdat::*;
-use mdhd::*;
-use mdia::*;
-use meta::*;
-use minf::*;
-use moov::*;
-use mp4a::*;
-use mvhd::*;
-use state::*;
-use stbl::*;
-use stco::*;
-use stsc::*;
-use stsd::*;
-use stsz::*;
-use stts::*;
-use text::*;
-use tkhd::*;
-use trak::*;
-use tref::*;
-use udta::*;
+use chap::Chap;
+use chpl::{Chpl, ChplData};
+use co64::Co64;
+use dinf::Dinf;
+use dref::Dref;
+use ftyp::Ftyp;
+use gmhd::Gmhd;
+use gmin::Gmin;
+use hdlr::Hdlr;
+use ilst::{Ilst, IlstData};
+use mdat::Mdat;
+use mdhd::Mdhd;
+use mdia::Mdia;
+use meta::Meta;
+use minf::Minf;
+use moov::Moov;
+use mp4a::Mp4a;
+use mvhd::Mvhd;
+use stbl::Stbl;
+use stco::Stco;
+use stsc::{Stsc, StscItem};
+use stsd::Stsd;
+use stsz::Stsz;
+use stts::{Stts, SttsItem};
+use text::Text;
+use tkhd::Tkhd;
+use trak::Trak;
+use tref::Tref;
+use udta::Udta;
 use url::*;
 
 pub use data::Data;
@@ -177,7 +179,7 @@ trait WriteAtom: Atom {
 
     fn write_head(&self, writer: &mut impl Write) -> crate::Result<()> {
         let head = Head::from(self.size(), Self::FOURCC);
-        write_head(writer, head)
+        head::write(writer, head)
     }
 
     fn len(&self) -> u64 {
@@ -265,6 +267,31 @@ impl<T: SimpleCollectChanges> CollectChanges for T {
     }
 }
 
+trait LeafAtomCollectChanges: SimpleCollectChanges {
+    fn state(&self) -> &State;
+
+    fn atom_ref(&self) -> AtomRef<'_>;
+}
+
+impl<T: LeafAtomCollectChanges> SimpleCollectChanges for T {
+    fn state(&self) -> &State {
+        LeafAtomCollectChanges::state(self)
+    }
+
+    fn existing<'a>(
+        &'a self,
+        _level: u8,
+        _bounds: &'a AtomBounds,
+        _changes: &mut Vec<Change<'a>>,
+    ) -> i64 {
+        0
+    }
+
+    fn atom_ref(&self) -> AtomRef<'_> {
+        LeafAtomCollectChanges::atom_ref(self)
+    }
+}
+
 fn insert_str(description: &mut String, msg: &str, fourcc: Fourcc) {
     description.reserve(msg.len() + 6);
     description.insert_str(0, ": ");
@@ -345,7 +372,7 @@ impl ReadConfig {
         read_chapter_list: true,
         read_chapter_track: true,
         read_audio_info: true,
-        chpl_timescale: ChplTimescale::Fixed(DEFAULT_CHPL_TIMESCALE),
+        chpl_timescale: ChplTimescale::Fixed(chpl::DEFAULT_TIMESCALE),
     };
 }
 
@@ -375,7 +402,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
             ));
         }
 
-        let head = parse_head(reader)?;
+        let head = head::parse(reader)?;
         if head.fourcc() == MOVIE {
             break Moov::parse(reader, &parse_cfg, head.size())?;
         }
@@ -416,73 +443,85 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
     // chapter tracks
     let mut chapter_track = Vec::new();
     if cfg.read_chapter_track {
-        for chap in moov.trak.iter().filter_map(|a| a.tref.as_ref().and_then(|a| a.chap.as_ref())) {
-            for c_id in chap.chapter_ids.iter() {
-                let trak = moov.trak.iter().find(|a| a.tkhd.id == *c_id);
+        // https://developer.apple.com/documentation/quicktime-file-format/chapter_lists
+        // > If more than one enabled track includes a 'chap' track reference,
+        // > QuickTime uses the first chapter list that it finds.
+        let traks = &moov.trak;
+        let chapter_trak = traks.iter().find_map(|trak| {
+            let chap = trak.tref.as_ref().and_then(|tref| tref.chap.as_ref())?;
+            traks.iter().find(|trak| chap.chapter_ids.contains(&trak.tkhd.id))
+        });
+        if let Some(trak) = chapter_trak {
+            let Some(mdia) = &trak.mdia else {
+                return Err(crate::Error::new(
+                    ErrorKind::AtomNotFound(MEDIA),
+                    "Media (mdia) atom of chapter track not found",
+                ));
+            };
+            let Some(stbl) = mdia.minf.as_ref().and_then(|a| a.stbl.as_ref()) else {
+                return Err(crate::Error::new(
+                    ErrorKind::AtomNotFound(SAMPLE_TABLE),
+                    "Sample table (stbl) of chapter track not found",
+                ));
+            };
+            let Some(stsc) = &stbl.stsc else {
+                return Err(crate::Error::new(
+                    ErrorKind::AtomNotFound(SAMPLE_TABLE_SAMPLE_TO_CHUNK),
+                    "Sample table sample to chunk (stsc) atom of chapter track not found",
+                ));
+            };
+            let Some(stsz) = &stbl.stsz else {
+                return Err(crate::Error::new(
+                    ErrorKind::AtomNotFound(SAMPLE_TABLE_SAMPLE_SIZE),
+                    "Sample table sample size (stsz) atom of chapter track not found",
+                ));
+            };
+            let Some(stts) = &stbl.stts else {
+                return Err(crate::Error::new(
+                    ErrorKind::AtomNotFound(SAMPLE_TABLE_TIME_TO_SAMPLE),
+                    "Sample table time to sample (stts) atom of chapter track not found",
+                ));
+            };
+            let timescale = mdia.mdhd.timescale;
 
-                let Some(trak) = trak else {
-                    continue; // TODO maybe log warning: referenced chapter track not found
-                };
-
-                let Some(mdia) = &trak.mdia else {
-                    return Err(crate::Error::new(
-                        ErrorKind::AtomNotFound(MEDIA),
-                        "Media (mdia) atom of chapter track not found",
-                    ));
-                };
-                let Some(stbl) = mdia.minf.as_ref().and_then(|a| a.stbl.as_ref()) else {
-                    return Err(crate::Error::new(
-                        ErrorKind::AtomNotFound(SAMPLE_TABLE),
-                        "Sample table (stbl) of chapter track not found",
-                    ));
-                };
-                let Some(stsc) = &stbl.stsc else {
-                    return Err(crate::Error::new(
-                        ErrorKind::AtomNotFound(SAMPLE_TABLE_SAMPLE_TO_CHUNK),
-                        "Sample table sample to chunk (stsc) atom of chapter track not found",
-                    ));
-                };
-                let Some(stsz) = &stbl.stsz else {
-                    return Err(crate::Error::new(
-                        ErrorKind::AtomNotFound(SAMPLE_TABLE_SAMPLE_SIZE),
-                        "Sample table sample size (stsz) atom of chapter track not found",
-                    ));
-                };
-                let Some(stts) = &stbl.stts else {
-                    return Err(crate::Error::new(
-                        ErrorKind::AtomNotFound(SAMPLE_TABLE_TIME_TO_SAMPLE),
-                        "Sample table time to sample (stts) atom of chapter track not found",
-                    ));
-                };
-                let timescale = mdia.mdhd.timescale;
-
-                if let Some(co64) = &stbl.co64 {
-                    chapter_track.reserve(co64.offsets.len());
-                    read_chapters(
-                        reader,
-                        &mut chapter_track,
-                        timescale,
-                        &co64.offsets,
-                        &stsc.items,
-                        stsz.uniform_sample_size,
-                        &stsz.sizes,
-                        &stts.items,
-                    )?;
-                } else if let Some(stco) = &stbl.stco {
-                    chapter_track.reserve(stco.offsets.len());
-                    read_chapters(
-                        reader,
-                        &mut chapter_track,
-                        timescale,
-                        &stco.offsets,
-                        &stsc.items,
-                        stsz.uniform_sample_size,
-                        &stsz.sizes,
-                        &stts.items,
-                    )?;
-                } else {
-                    todo!("error missing chunk offsets")
-                }
+            if let Some(co64) = &stbl.co64 {
+                chapter_track.reserve(co64.offsets.len());
+                read_chapters(
+                    reader,
+                    &mut chapter_track,
+                    timescale,
+                    &co64.offsets,
+                    &stsc.items,
+                    stsz.uniform_sample_size,
+                    &stsz.sizes,
+                    &stts.items,
+                )
+                .map_err(|mut e| {
+                    let mut desc = e.description.into_owned();
+                    desc.insert_str(0, "Error reading chapters: ");
+                    e.description = desc.into();
+                    e
+                })?;
+            } else if let Some(stco) = &stbl.stco {
+                chapter_track.reserve(stco.offsets.len());
+                read_chapters(
+                    reader,
+                    &mut chapter_track,
+                    timescale,
+                    &stco.offsets,
+                    &stsc.items,
+                    stsz.uniform_sample_size,
+                    &stsz.sizes,
+                    &stts.items,
+                )
+                .map_err(|mut e| {
+                    let mut desc = e.description.into_owned();
+                    desc.insert_str(0, "Error reading chapters: ");
+                    e.description = desc.into();
+                    e
+                })?;
+            } else {
+                todo!("error missing chunk offsets")
             }
         }
     }
@@ -603,7 +642,7 @@ impl WriteConfig {
         write_item_list: true,
         write_chapter_list: true,
         write_chapter_track: true,
-        chpl_timescale: ChplTimescale::Fixed(DEFAULT_CHPL_TIMESCALE),
+        chpl_timescale: ChplTimescale::Fixed(chpl::DEFAULT_TIMESCALE),
     };
 }
 
@@ -630,7 +669,7 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
         let len = reader.remaining_stream_len()?;
         let mut parsed_bytes = 0;
         while parsed_bytes < len {
-            let head = parse_head(reader)?;
+            let head = head::parse(reader)?;
 
             let read_cfg = ReadConfig {
                 read_item_list: cfg.write_item_list,
@@ -671,7 +710,6 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
     }
 
     // collect changes
-    // TODO: implement missing trak and sample table change collection
     moov.collect_changes(0, 0, &mut changes);
 
     changes.sort_by(|a, b| {
@@ -791,39 +829,29 @@ fn update_userdata<'a>(
 
     // chapter tracks
     if cfg.write_chapter_track {
-        let content_trak = &mut Trak::default(); // TODO: find content track
-        let chapter_timescale =
-            content_trak.mdia.as_ref().map(|a| a.mdhd.timescale).unwrap_or(moov.mvhd.timescale);
+        // https://developer.apple.com/documentation/quicktime-file-format/chapter_lists
+        // > If more than one enabled track includes a 'chap' track reference,
+        // > QuickTime uses the first chapter list that it finds.
+        let chapter_trak_idx = moov.trak.iter().find_map(|trak| {
+            let chap = trak.tref.as_ref().and_then(|tref| tref.chap.as_ref())?;
+            moov.trak.iter().position(|trak| chap.chapter_ids.contains(&trak.tkhd.id))
+        });
 
-        // find existing chapter tracks
-        let chapter_trak_ids = (moov.trak.iter())
-            .filter_map(|a| a.tref.as_ref().and_then(|a| a.chap.as_ref()))
-            .flat_map(|a| a.chapter_ids.iter().copied())
-            .collect::<Vec<_>>();
-
-        if userdata.chapter_track.is_empty() {
-            // TODO: remove entire track?
-            // TODO: if so also remove chap references in content tracks
-            // remove chapter tracks
-            //for trak in moov.trak.iter_mut() {
-            //    if chapter_trak_ids.contains(&trak.tkhd.id) {
-            //        trak.state.remove_existing();
-            //    }
-            //}
-            // TODO: remove media data
+        if userdata.chapter_track.is_empty() && chapter_trak_idx.is_none() {
+            return Ok(());
         }
 
         // generate chapter track sample table
         let mut new_chapter_media_data = Vec::new();
-        let duration = moov.mvhd.duration;
+        let chapter_timescale = moov.mvhd.timescale;
         let chunk_offsets = vec![mdat_bounds.end()];
         let mut sample_sizes = Vec::with_capacity(userdata.chapter_list.len());
         let mut time_to_samples = Vec::with_capacity(userdata.chapter_list.len());
-        let mut chapters_iter = userdata.chapter_list.iter().enumerate().peekable();
-        while let Some((i, c)) = chapters_iter.next() {
+        let mut chapters_iter = userdata.chapter_list.iter().peekable();
+        while let Some(c) = chapters_iter.next() {
             let c_duration = match chapters_iter.peek() {
-                Some((_, next)) => unscale_duration(chapter_timescale, next.start - c.start),
-                None => unscale_duration(chapter_timescale, c.start) - duration,
+                Some(next) => unscale_duration(chapter_timescale, next.start - c.start),
+                None => unscale_duration(chapter_timescale, c.start) - moov.mvhd.duration,
             };
 
             time_to_samples.push(SttsItem {
@@ -844,36 +872,34 @@ fn update_userdata<'a>(
             new_chapter_media_data.extend(ENCD);
         }
 
-        // https://developer.apple.com/documentation/quicktime-file-format/chapter_lists
-        // > If more than one enabled track includes a 'chap' track reference,
-        // > QuickTime uses the first chapter list that it finds.
-        let chapter_trak =
-            match moov.trak.iter_mut().find(|a| chapter_trak_ids.contains(&a.tkhd.id)) {
-                Some(trak) => trak,
-                None => {
-                    let new_id = moov.trak.iter().map(|t| t.tkhd.id).max().unwrap() + 1;
+        let chapter_trak = match chapter_trak_idx {
+            Some(idx) => &mut moov.trak[idx],
+            None => {
+                let new_id = moov.trak.iter().map(|t| t.tkhd.id).max().unwrap() + 1;
 
-                    // add track reference to content track
-                    let tref = content_trak.tref.get_or_insert_default();
+                // add chap track reference to all other tracks
+                for trak in moov.trak.iter_mut() {
+                    let tref = trak.tref.get_or_insert_default();
                     let chap = tref.chap.get_or_insert_default();
                     chap.state.replace_existing();
                     chap.chapter_ids = vec![new_id];
-
-                    // add chapter track
-                    moov.trak.push_and_get(Trak {
-                        state: State::Insert,
-                        tkhd: Tkhd {
-                            state: State::Insert,
-                            version: 0,
-                            flags: [0, 0, 2], // the track cannot be disabled
-                            id: new_id,
-                            duration: moov.mvhd.duration,
-                            ..Default::default()
-                        },
-                        ..Default::default()
-                    })
                 }
-            };
+
+                // add chapter track
+                moov.trak.push_and_get(Trak {
+                    state: State::Insert,
+                    tkhd: Tkhd {
+                        state: State::Insert,
+                        version: 0,
+                        flags: [0, 0, 2], // the track cannot be disabled
+                        id: new_id,
+                        duration: moov.mvhd.duration,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                })
+            }
+        };
 
         let mdia = chapter_trak.mdia.get_or_insert_with(|| Mdia {
             state: State::Insert,
@@ -1007,152 +1033,6 @@ fn remove_chapter_media_data<T: ChunkOffsetInt>(
 
         stco_idx = stco_end_idx;
     }
-
-    Ok(())
-}
-
-/// Attempts to dump the metadata atoms to the writer. This doesn't include a complete MPEG-4
-/// container hierarchy and won't result in a usable file.
-pub(crate) fn dump_tag(
-    writer: &mut impl Write,
-    cfg: &WriteConfig,
-    userdata: &Userdata,
-) -> crate::Result<()> {
-    const MVHD_TIMESCALE: u32 = 1000;
-
-    let duration = userdata.chapter_list.last().map_or(Duration::ZERO, |c| c.start);
-    let scaled_duration = unscale_duration(MVHD_TIMESCALE, duration);
-
-    let ftyp = Ftyp("M4A \u{0}\u{0}\u{2}\u{0}isomiso2".to_owned());
-    let mut mdat = Mdat::default();
-    let mut moov = Moov {
-        mvhd: Mvhd {
-            version: 1,
-            timescale: MVHD_TIMESCALE,
-            duration: scaled_duration,
-            ..Default::default()
-        },
-        udta: Some(Udta::default()),
-        ..Default::default()
-    };
-
-    if cfg.write_item_list {
-        let udta = moov.udta.get_or_insert_with(Udta::default);
-        udta.meta = Some(Meta {
-            state: State::Insert,
-            hdlr: Some(Hdlr::meta()),
-            ilst: Some(Ilst {
-                state: State::Insert,
-                data: IlstData::Borrowed(&userdata.metaitems),
-            }),
-        });
-    }
-
-    if cfg.write_chapter_list {
-        let chpl_timescale = cfg.chpl_timescale.fixed_or_mvhd(MVHD_TIMESCALE);
-
-        let udta = moov.udta.get_or_insert_with(Udta::default);
-        udta.chpl = Some(Chpl {
-            state: State::Insert,
-            data: ChplData::Borrowed(chpl_timescale, &userdata.chapter_list),
-        });
-    }
-
-    if cfg.write_chapter_track {
-        let mut chunk_offsets = Vec::with_capacity(userdata.chapter_list.len());
-        let mut sample_sizes = Vec::with_capacity(userdata.chapter_list.len());
-        let mut time_to_samples = Vec::with_capacity(userdata.chapter_list.len());
-
-        let mut chapters_iter = userdata.chapter_list.iter().enumerate().peekable();
-        while let Some((i, c)) = chapters_iter.next() {
-            let c_duration = match chapters_iter.peek() {
-                Some((_, next)) => next.start - c.start,
-                None => c.start - duration,
-            };
-            time_to_samples.push(SttsItem {
-                sample_count: i as u32,
-                sample_duration: unscale_duration(MVHD_TIMESCALE, c_duration) as u32,
-            });
-            sample_sizes.push(c.title.len() as u32 + 2);
-            chunk_offsets.push(ftyp.len() + mdat.len());
-
-            mdat.data.write_be_u16(c.title.len() as u16).ok();
-            mdat.data.write_utf8(&c.title).ok();
-        }
-
-        // audio track
-        moov.trak.push(Trak {
-            state: State::Insert,
-            tkhd: Tkhd { id: 1, ..Default::default() },
-            tref: Some(Tref {
-                state: State::Insert,
-                chap: Some(Chap { state: State::Insert, chapter_ids: vec![2] }),
-            }),
-            mdia: Some(Mdia {
-                mdhd: Mdhd {
-                    version: 1,
-                    timescale: MVHD_TIMESCALE,
-                    duration: unscale_duration(MVHD_TIMESCALE, duration),
-                    ..Default::default()
-                },
-                hdlr: Some(Hdlr::mp4a_mdia()),
-                ..Default::default()
-            }),
-        });
-
-        // chapter track
-        moov.trak.push(Trak {
-            tkhd: Tkhd { id: 2, ..Default::default() },
-            mdia: Some(Mdia {
-                state: State::Insert,
-                mdhd: Mdhd {
-                    version: 1,
-                    timescale: MVHD_TIMESCALE,
-                    ..Default::default()
-                },
-                hdlr: Some(Hdlr::text_mdia()),
-                minf: Some(Minf {
-                    state: State::Insert,
-                    gmhd: Some(Gmhd {
-                        state: State::Insert,
-                        gmin: Some(Gmin::chapter()),
-                        text: Some(Text::media_information_chapter()),
-                    }),
-                    dinf: Some(Dinf {
-                        state: State::Insert,
-                        dref: Some(Dref { state: State::Insert, url: Some(Url::track()) }),
-                    }),
-                    stbl: Some(Stbl {
-                        stsd: Some(Stsd {
-                            text: Some(Text::media_chapter()),
-                            ..Default::default()
-                        }),
-                        stts: Some(Stts { state: State::Insert, items: time_to_samples }),
-                        stsc: Some(Stsc {
-                            state: State::Insert,
-                            items: vec![StscItem {
-                                first_chunk: 1,
-                                samples_per_chunk: 1,
-                                sample_description_id: 1,
-                            }],
-                        }),
-                        stsz: Some(Stsz {
-                            state: State::Insert,
-                            uniform_sample_size: 0,
-                            sizes: sample_sizes,
-                        }),
-                        co64: Some(Co64 { state: State::Insert, offsets: chunk_offsets }),
-                        ..Default::default()
-                    }),
-                }),
-            }),
-            ..Default::default()
-        });
-    }
-
-    ftyp.write(writer)?;
-    mdat.write(writer, &[])?;
-    moov.write(writer, &[])?;
 
     Ok(())
 }

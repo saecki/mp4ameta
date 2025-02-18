@@ -1,4 +1,4 @@
-use super::*;
+use crate::atom::head::AtomBounds;
 
 /// The state of an atom.
 #[derive(Clone, Debug, Eq, PartialEq)]

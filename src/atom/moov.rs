@@ -25,7 +25,7 @@ impl ParseAtom for Moov<'_> {
         let mut udta = None;
 
         while parsed_bytes < size.content_len() {
-            let head = parse_head(reader)?;
+            let head = head::parse(reader)?;
 
             match head.fourcc() {
                 MOVIE_HEADER => mvhd = Some(Mvhd::parse(reader, cfg, head.size())?),
@@ -86,7 +86,8 @@ impl SimpleCollectChanges for Moov<'_> {
         bounds: &'a AtomBounds,
         changes: &mut Vec<Change<'a>>,
     ) -> i64 {
-        self.trak.iter().map(|a| a.collect_changes(bounds.end(), level, changes)).sum::<i64>()
+        self.mvhd.collect_changes(bounds.end(), level, changes)
+            + self.trak.iter().map(|a| a.collect_changes(bounds.end(), level, changes)).sum::<i64>()
             + self.udta.collect_changes(bounds.end(), level, changes)
     }
 

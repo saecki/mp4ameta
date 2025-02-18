@@ -24,7 +24,7 @@ impl ParseAtom for Tref {
         let mut parsed_bytes = 0;
 
         while parsed_bytes < size.content_len() {
-            let head = parse_head(reader)?;
+            let head = head::parse(reader)?;
 
             match head.fourcc() {
                 CHAPTER => tref.chap = Some(Chap::parse(reader, cfg, head.size())?),
@@ -50,5 +50,24 @@ impl WriteAtom for Tref {
     fn size(&self) -> Size {
         let content_len = self.chap.len_or_zero();
         Size::from(content_len)
+    }
+}
+
+impl SimpleCollectChanges for Tref {
+    fn state(&self) -> &State {
+        &self.state
+    }
+
+    fn existing<'a>(
+        &'a self,
+        level: u8,
+        bounds: &'a AtomBounds,
+        changes: &mut Vec<Change<'a>>,
+    ) -> i64 {
+        self.chap.collect_changes(bounds.end(), level, changes)
+    }
+
+    fn atom_ref(&self) -> AtomRef<'_> {
+        AtomRef::Tref(self)
     }
 }

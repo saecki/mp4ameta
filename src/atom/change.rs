@@ -77,7 +77,7 @@ impl UpdateAtomLen<'_> {
     pub fn update_len(&self, writer: &mut impl Write) -> crate::Result<()> {
         let len = (self.bounds.len() as i64 + self.len_diff) as u64;
         let head = Head::new(self.bounds.ext(), len, self.fourcc);
-        write_head(writer, head)?;
+        head::write(writer, head)?;
         Ok(())
     }
 }
@@ -289,15 +289,30 @@ macro_rules! atom_ref {
 
 atom_ref!(
     Moov<'a>,
+    Mvhd,
     Udta<'a>,
     Chpl<'a>,
     Meta<'a>,
     Hdlr,
     Ilst<'a>,
     Trak,
+    Tkhd,
+    Tref,
+    Chap,
     Mdia,
+    Mdhd,
     Minf,
+    Dinf,
+    Dref,
+    Url,
+    Gmhd,
+    Gmin,
+    Text,
     Stbl,
+    Stsd,
+    Stts,
+    Stsc,
+    Stsz,
     Stco,
     Co64,
 );

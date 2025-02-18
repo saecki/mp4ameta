@@ -29,7 +29,7 @@ impl ParseAtom for Stbl {
         let mut parsed_bytes = 0;
 
         while parsed_bytes < size.content_len() {
-            let head = parse_head(reader)?;
+            let head = head::parse(reader)?;
 
             match head.fourcc() {
                 SAMPLE_TABLE_SAMPLE_DESCRIPTION if cfg.cfg.read_audio_info => {
@@ -106,8 +106,11 @@ impl SimpleCollectChanges for Stbl {
         bounds: &'a AtomBounds,
         changes: &mut Vec<Change<'a>>,
     ) -> i64 {
-        // TODO: check other child atoms
-        self.stco.collect_changes(bounds.end(), level, changes)
+        self.stsd.collect_changes(bounds.end(), level, changes)
+            + self.stts.collect_changes(bounds.end(), level, changes)
+            + self.stsc.collect_changes(bounds.end(), level, changes)
+            + self.stsz.collect_changes(bounds.end(), level, changes)
+            + self.stco.collect_changes(bounds.end(), level, changes)
             + self.co64.collect_changes(bounds.end(), level, changes)
     }
 

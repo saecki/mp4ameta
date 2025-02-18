@@ -200,7 +200,11 @@ impl Userdata {
 /// ### Chapters
 impl Userdata {
     pub fn chapters(&self) -> &[Chapter] {
-        todo!()
+        if !self.chapter_list.is_empty() {
+            self.chapter_list()
+        } else {
+            self.chapter_track()
+        }
     }
 
     pub fn chapters_mut(&mut self) -> &mut Vec<Chapter> {

@@ -103,7 +103,7 @@ impl Head {
 /// 4 bytes identifier
 /// 8 bytes optional extended length
 /// ```
-pub fn parse_head(reader: &mut impl Read) -> crate::Result<Head> {
+pub fn parse(reader: &mut impl Read) -> crate::Result<Head> {
     let len = match reader.read_be_u32() {
         Ok(l) => l as u64,
         Err(e) => {
@@ -138,7 +138,7 @@ pub fn parse_head(reader: &mut impl Read) -> crate::Result<Head> {
     }
 }
 
-pub fn write_head(writer: &mut impl Write, head: Head) -> crate::Result<()> {
+pub fn write(writer: &mut impl Write, head: Head) -> crate::Result<()> {
     if head.ext {
         writer.write_be_u32(1)?;
         writer.write_all(&*head.fourcc)?;
@@ -156,7 +156,7 @@ pub fn write_head(writer: &mut impl Write, head: Head) -> crate::Result<()> {
 /// 1 byte version
 /// 3 bytes flags
 /// ```
-pub fn parse_full_head(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
+pub fn parse_full(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
     let version = match reader.read_u8() {
         Ok(v) => v,
         Err(e) => {
@@ -178,7 +178,7 @@ pub fn parse_full_head(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
     Ok((version, flags))
 }
 
-pub fn write_full_head(writer: &mut impl Write, version: u8, flags: [u8; 3]) -> crate::Result<()> {
+pub fn write_full(writer: &mut impl Write, version: u8, flags: [u8; 3]) -> crate::Result<()> {
     writer.write_all(&[version])?;
     writer.write_all(&flags)?;
     Ok(())

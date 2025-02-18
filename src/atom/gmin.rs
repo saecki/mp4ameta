@@ -26,7 +26,7 @@ impl ParseAtom for Gmin {
             ..Default::default()
         };
 
-        let (version, flags) = parse_full_head(reader)?;
+        let (version, flags) = head::parse_full(reader)?;
         gmin.version = version;
         gmin.flags = flags;
         if version != 0 {
@@ -50,7 +50,7 @@ impl ParseAtom for Gmin {
 impl WriteAtom for Gmin {
     fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
-        write_full_head(writer, self.version, self.flags)?;
+        head::write_full(writer, self.version, self.flags)?;
 
         writer.write_be_u16(self.graphics_mode)?;
         for c in self.op_color {
@@ -64,6 +64,16 @@ impl WriteAtom for Gmin {
 
     fn size(&self) -> Size {
         Size::from(16)
+    }
+}
+
+impl LeafAtomCollectChanges for Gmin {
+    fn state(&self) -> &State {
+        &self.state
+    }
+
+    fn atom_ref(&self) -> AtomRef<'_> {
+        AtomRef::Gmin(self)
     }
 }
 

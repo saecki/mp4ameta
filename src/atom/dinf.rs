@@ -24,7 +24,7 @@ impl ParseAtom for Dinf {
         let mut parsed_bytes = 0;
 
         while parsed_bytes < size.content_len() {
-            let head = parse_head(reader)?;
+            let head = head::parse(reader)?;
 
             match head.fourcc() {
                 DATA_REFERENCE => dinf.dref = Some(Dref::parse(reader, cfg, head.size())?),
@@ -50,5 +50,24 @@ impl WriteAtom for Dinf {
     fn size(&self) -> Size {
         let content_len = self.dref.len_or_zero();
         Size::from(content_len)
+    }
+}
+
+impl SimpleCollectChanges for Dinf {
+    fn state(&self) -> &State {
+        &self.state
+    }
+
+    fn existing<'a>(
+        &'a self,
+        level: u8,
+        bounds: &'a AtomBounds,
+        changes: &mut Vec<Change<'a>>,
+    ) -> i64 {
+        self.dref.collect_changes(bounds.end(), level, changes)
+    }
+
+    fn atom_ref(&self) -> AtomRef<'_> {
+        AtomRef::Dinf(self)
     }
 }

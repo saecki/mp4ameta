@@ -25,7 +25,7 @@ impl ParseAtom for Gmhd {
         let mut parsed_bytes = 0;
 
         while parsed_bytes < size.content_len() {
-            let head = parse_head(reader)?;
+            let head = head::parse(reader)?;
 
             match head.fourcc() {
                 BASE_MEDIA_INFORMATION => gmhd.gmin = Some(Gmin::parse(reader, cfg, head.size())?),
@@ -56,5 +56,25 @@ impl WriteAtom for Gmhd {
     fn size(&self) -> Size {
         let content_len = self.gmin.len_or_zero() + self.text.len_or_zero();
         Size::from(content_len)
+    }
+}
+
+impl SimpleCollectChanges for Gmhd {
+    fn state(&self) -> &State {
+        &self.state
+    }
+
+    fn existing<'a>(
+        &'a self,
+        level: u8,
+        bounds: &'a AtomBounds,
+        changes: &mut Vec<Change<'a>>,
+    ) -> i64 {
+        self.gmin.collect_changes(bounds.end(), level, changes)
+            + self.text.collect_changes(bounds.end(), level, changes)
+    }
+
+    fn atom_ref(&self) -> AtomRef<'_> {
+        AtomRef::Gmhd(self)
     }
 }

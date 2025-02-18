@@ -20,7 +20,7 @@ impl ParseAtom for Stsd {
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
-        let (version, _) = parse_full_head(reader)?;
+        let (version, _) = head::parse_full(reader)?;
 
         if version != 0 {
             return Err(crate::Error::new(
@@ -38,7 +38,7 @@ impl ParseAtom for Stsd {
         let mut parsed_bytes = HEADER_SIZE;
 
         while parsed_bytes < size.content_len() {
-            let head = parse_head(reader)?;
+            let head = head::parse(reader)?;
 
             match head.fourcc() {
                 MP4_AUDIO => stsd.mp4a = Some(Mp4a::parse(reader, cfg, head.size())?),
@@ -56,7 +56,7 @@ impl ParseAtom for Stsd {
 impl WriteAtom for Stsd {
     fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
-        write_full_head(writer, 0, [0; 3])?;
+        head::write_full(writer, 0, [0; 3])?;
 
         if self.text.is_some() {
             writer.write_be_u32(1)?;
@@ -73,5 +73,15 @@ impl WriteAtom for Stsd {
     fn size(&self) -> Size {
         let content_len = HEADER_SIZE + self.text.len_or_zero();
         Size::from(content_len)
+    }
+}
+
+impl LeafAtomCollectChanges for Stsd {
+    fn state(&self) -> &State {
+        &self.state
+    }
+
+    fn atom_ref(&self) -> AtomRef<'_> {
+        AtomRef::Stsd(self)
     }
 }

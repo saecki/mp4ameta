@@ -25,7 +25,7 @@ impl ParseAtom for Udta<'_> {
         let mut parsed_bytes = 0;
 
         while parsed_bytes < size.content_len() {
-            let head = parse_head(reader)?;
+            let head = head::parse(reader)?;
 
             match head.fourcc() {
                 CHAPTER_LIST if cfg.cfg.read_chapter_list => {

@@ -58,3 +58,13 @@ impl Url {
         }
     }
 }
+
+impl LeafAtomCollectChanges for Url {
+    fn state(&self) -> &State {
+        &self.state
+    }
+
+    fn atom_ref(&self) -> AtomRef<'_> {
+        AtomRef::Url(self)
+    }
+}

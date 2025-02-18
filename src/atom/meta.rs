@@ -18,7 +18,7 @@ impl ParseAtom for Meta<'_> {
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
-        let (version, _) = parse_full_head(reader)?;
+        let (version, _) = head::parse_full(reader)?;
 
         if version != 0 {
             return Err(crate::Error::new(
@@ -34,7 +34,7 @@ impl ParseAtom for Meta<'_> {
         let mut parsed_bytes = 4;
 
         while parsed_bytes < size.content_len() {
-            let head = parse_head(reader)?;
+            let head = head::parse(reader)?;
 
             match head.fourcc() {
                 ITEM_LIST => meta.ilst = Some(Ilst::parse(reader, cfg, head.size())?),
@@ -51,7 +51,7 @@ impl ParseAtom for Meta<'_> {
 impl WriteAtom for Meta<'_> {
     fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
-        write_full_head(writer, 0, [0; 3])?;
+        head::write_full(writer, 0, [0; 3])?;
         if let Some(a) = &self.hdlr {
             a.write(writer, changes)?;
         }
@@ -78,8 +78,8 @@ impl SimpleCollectChanges for Meta<'_> {
         bounds: &AtomBounds,
         changes: &mut Vec<Change<'a>>,
     ) -> i64 {
-        self.ilst.collect_changes(bounds.end(), level, changes)
-            + self.hdlr.collect_changes(bounds.end(), level, changes)
+        self.hdlr.collect_changes(bounds.end(), level, changes)
+            + self.ilst.collect_changes(bounds.end(), level, changes)
     }
 
     fn atom_ref(&self) -> AtomRef<'_> {

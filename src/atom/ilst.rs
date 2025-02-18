@@ -44,7 +44,7 @@ impl ParseAtom for Ilst<'_> {
         let mut parsed_bytes = 0;
 
         while parsed_bytes < size.content_len() {
-            let head = parse_head(reader)?;
+            let head = head::parse(reader)?;
 
             match head.fourcc() {
                 FREE => reader.skip(head.content_len() as i64)?,
@@ -84,18 +84,10 @@ impl WriteAtom for Ilst<'_> {
     }
 }
 
-impl SimpleCollectChanges for Ilst<'_> {
+// Not really a leaf atom, but it is treated like one.
+impl LeafAtomCollectChanges for Ilst<'_> {
     fn state(&self) -> &State {
         &self.state
-    }
-
-    fn existing<'a>(
-        &'a self,
-        _level: u8,
-        _bounds: &AtomBounds,
-        _changes: &mut Vec<Change<'a>>,
-    ) -> i64 {
-        0
     }
 
     fn atom_ref(&self) -> AtomRef<'_> {

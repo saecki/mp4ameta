@@ -42,3 +42,13 @@ impl WriteAtom for Chap {
         Size::from(content_len)
     }
 }
+
+impl LeafAtomCollectChanges for Chap {
+    fn state(&self) -> &State {
+        &self.state
+    }
+
+    fn atom_ref(&self) -> AtomRef<'_> {
+        AtomRef::Chap(self)
+    }
+}

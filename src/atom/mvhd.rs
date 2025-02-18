@@ -37,7 +37,7 @@ impl ParseAtom for Mvhd {
             ..Default::default()
         };
 
-        let (version, flags) = parse_full_head(reader)?;
+        let (version, flags) = head::parse_full(reader)?;
         mvhd.version = version;
         mvhd.flags = flags;
         match version {
@@ -83,7 +83,7 @@ impl ParseAtom for Mvhd {
 impl WriteAtom for Mvhd {
     fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
-        write_full_head(writer, self.version, self.flags)?;
+        head::write_full(writer, self.version, self.flags)?;
 
         match self.version {
             0 => {
@@ -130,5 +130,15 @@ impl WriteAtom for Mvhd {
             1 => Size::from(112),
             _ => Size::from(0),
         }
+    }
+}
+
+impl LeafAtomCollectChanges for Mvhd {
+    fn state(&self) -> &State {
+        &self.state
+    }
+
+    fn atom_ref(&self) -> AtomRef<'_> {
+        AtomRef::Mvhd(self)
     }
 }

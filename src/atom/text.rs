@@ -50,6 +50,16 @@ impl WriteAtom for Text {
     }
 }
 
+impl LeafAtomCollectChanges for Text {
+    fn state(&self) -> &State {
+        &self.state
+    }
+
+    fn atom_ref(&self) -> AtomRef<'_> {
+        AtomRef::Text(self)
+    }
+}
+
 impl Text {
     pub fn media_chapter() -> Self {
         Self {

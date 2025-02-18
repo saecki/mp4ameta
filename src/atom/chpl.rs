@@ -1,6 +1,6 @@
 use super::*;
 
-pub const DEFAULT_CHPL_TIMESCALE: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(10_000_000) };
+pub const DEFAULT_TIMESCALE: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(10_000_000) };
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Chpl<'a> {
@@ -37,7 +37,7 @@ impl ParseAtom for Chpl<'_> {
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
-        let (version, _) = parse_full_head(reader)?;
+        let (version, _) = head::parse_full(reader)?;
         let mut parsed_bytes = 5;
 
         match version {
@@ -78,7 +78,7 @@ impl ParseAtom for Chpl<'_> {
 impl WriteAtom for Chpl<'_> {
     fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
-        write_full_head(writer, 0, [0; 3])?;
+        head::write_full(writer, 0, [0; 3])?;
 
         match &self.data {
             ChplData::Owned(v) => {
@@ -112,18 +112,9 @@ impl WriteAtom for Chpl<'_> {
     }
 }
 
-impl SimpleCollectChanges for Chpl<'_> {
+impl LeafAtomCollectChanges for Chpl<'_> {
     fn state(&self) -> &State {
         &self.state
-    }
-
-    fn existing<'a>(
-        &'a self,
-        _level: u8,
-        _bounds: &AtomBounds,
-        _changes: &mut Vec<Change<'a>>,
-    ) -> i64 {
-        0
     }
 
     fn atom_ref(&self) -> AtomRef<'_> {

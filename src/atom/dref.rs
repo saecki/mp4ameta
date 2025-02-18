@@ -17,7 +17,7 @@ impl ParseAtom for Dref {
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
-        let (version, _) = parse_full_head(reader)?;
+        let (version, _) = head::parse_full(reader)?;
 
         if version != 0 {
             return Err(crate::Error::new(
@@ -35,7 +35,7 @@ impl ParseAtom for Dref {
         let mut parsed_bytes = 8;
 
         while parsed_bytes < size.content_len() {
-            let head = parse_head(reader)?;
+            let head = head::parse(reader)?;
 
             match head.fourcc() {
                 URL_MEDIA => dref.url = Some(Url::parse(reader, cfg, head.size())?),
@@ -52,7 +52,7 @@ impl ParseAtom for Dref {
 impl WriteAtom for Dref {
     fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
-        write_full_head(writer, 0, [0; 3])?;
+        head::write_full(writer, 0, [0; 3])?;
 
         if self.url.is_some() {
             writer.write_be_u32(1)?;
@@ -69,5 +69,24 @@ impl WriteAtom for Dref {
     fn size(&self) -> Size {
         let content_len = 8 + self.url.len_or_zero();
         Size::from(content_len)
+    }
+}
+
+impl SimpleCollectChanges for Dref {
+    fn state(&self) -> &State {
+        &self.state
+    }
+
+    fn existing<'a>(
+        &'a self,
+        level: u8,
+        bounds: &'a AtomBounds,
+        changes: &mut Vec<Change<'a>>,
+    ) -> i64 {
+        self.url.collect_changes(bounds.end(), level, changes)
+    }
+
+    fn atom_ref(&self) -> AtomRef<'_> {
+        AtomRef::Dref(self)
     }
 }

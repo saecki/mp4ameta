@@ -6,6 +6,7 @@ use crate::Fourcc;
 /// Type alias for the result of tag operations.
 pub type Result<T> = std::result::Result<T, Error>;
 
+// TODO: cleanup
 /// Kinds of errors that may occur while performing metadata operations.
 #[derive(Debug)]
 pub enum ErrorKind {
@@ -16,11 +17,9 @@ pub enum ErrorKind {
     /// An error kind indicating that an IO error has occurred. Contains the original `io::Error`.
     Io(io::Error),
     /// An error kind indicating that the reader does not contain mp4 metadata.
-    NoTag,
+    NoTag, // TODO: better name
     /// An error kind indicating that something wasn't found,
-    Parsing,
-    /// An error kind indicating that a track could not be found. Contains the tracks id.
-    TrackNotFound(u32),
+    Parsing, // TODO: use more meaningful error kinds instead
     /// An error kind indicating that the channel configuration index is unknown. Contains the
     /// unknown channel configuration index.
     UnknownChannelConfig(u8),
@@ -89,7 +88,7 @@ impl fmt::Debug for Error {
         if self.description.is_empty() {
             write!(f, "{:?}", self.kind)
         } else {
-            write!(f, "{:?}: {}", self.kind, self.description)
+            write!(f, "{}:\n{:?}", self.description, self.kind)
         }
     }
 }
@@ -99,7 +98,7 @@ impl fmt::Display for Error {
         if self.description.is_empty() {
             write!(f, "{:?}", self.kind)
         } else {
-            write!(f, "{:?}: {}", self.kind, self.description)
+            write!(f, "{}:\n{:?}", self.description, self.kind)
         }
     }
 }

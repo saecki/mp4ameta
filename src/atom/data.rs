@@ -152,7 +152,7 @@ impl Data {
         cfg: &ParseConfig<'_>,
         size: Size,
     ) -> crate::Result<Data> {
-        let (version, [b2, b1, b0]) = parse_full_head(reader)?;
+        let (version, [b2, b1, b0]) = head::parse_full(reader)?;
         if version != 0 {
             return Err(crate::Error::new(
                 crate::ErrorKind::UnknownVersion(version),
@@ -180,7 +180,7 @@ impl Data {
     }
 
     pub fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
-        write_head(writer, Head::new(false, self.len(), DATA))?;
+        head::write(writer, Head::new(false, self.len(), DATA))?;
 
         let datatype = match self {
             Self::Reserved(_) => RESERVED,

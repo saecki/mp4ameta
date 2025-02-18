@@ -34,7 +34,7 @@ impl ParseAtom for Tkhd {
             ..Default::default()
         };
 
-        let (version, flags) = parse_full_head(reader)?;
+        let (version, flags) = head::parse_full(reader)?;
         tkhd.version = version;
         tkhd.flags = flags;
         match version {
@@ -79,7 +79,7 @@ impl ParseAtom for Tkhd {
 impl WriteAtom for Tkhd {
     fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
-        write_full_head(writer, self.version, self.flags)?;
+        head::write_full(writer, self.version, self.flags)?;
 
         match self.version {
             0 => {
@@ -125,5 +125,15 @@ impl WriteAtom for Tkhd {
             1 => Size::from(96),
             _ => Size::from(0),
         }
+    }
+}
+
+impl LeafAtomCollectChanges for Tkhd {
+    fn state(&self) -> &State {
+        &self.state
+    }
+
+    fn atom_ref(&self) -> AtomRef<'_> {
+        AtomRef::Tkhd(self)
     }
 }

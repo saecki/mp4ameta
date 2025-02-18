@@ -26,7 +26,7 @@ impl ParseAtom for Minf {
         let mut parsed_bytes = 0;
 
         while parsed_bytes < size.content_len() {
-            let head = parse_head(reader)?;
+            let head = head::parse(reader)?;
 
             match head.fourcc() {
                 BASE_MEDIA_INFORMATION_HEADER if cfg.write => {
@@ -79,8 +79,9 @@ impl SimpleCollectChanges for Minf {
         bounds: &'a AtomBounds,
         changes: &mut Vec<Change<'a>>,
     ) -> i64 {
-        // TODO: check other child atoms
-        self.stbl.collect_changes(bounds.end(), level, changes)
+        self.gmhd.collect_changes(bounds.end(), level, changes)
+            + self.dinf.collect_changes(bounds.end(), level, changes)
+            + self.stbl.collect_changes(bounds.end(), level, changes)
     }
 
     fn atom_ref(&self) -> AtomRef<'_> {

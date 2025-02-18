@@ -25,7 +25,7 @@ impl ParseAtom for Trak {
         let mut mdia = None;
 
         while parsed_bytes < size.content_len() {
-            let head = parse_head(reader)?;
+            let head = head::parse(reader)?;
 
             match head.fourcc() {
                 TRACK_HEADER => tkhd = Some(Tkhd::parse(reader, cfg, head.size())?),
@@ -84,7 +84,9 @@ impl SimpleCollectChanges for Trak {
         bounds: &'a AtomBounds,
         changes: &mut Vec<Change<'a>>,
     ) -> i64 {
-        self.mdia.collect_changes(bounds.end(), level, changes)
+        self.tkhd.collect_changes(bounds.end(), level, changes)
+            + self.tref.collect_changes(bounds.end(), level, changes)
+            + self.mdia.collect_changes(bounds.end(), level, changes)
     }
 
     fn atom_ref(&self) -> AtomRef<'_> {

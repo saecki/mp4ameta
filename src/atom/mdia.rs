@@ -25,7 +25,7 @@ impl ParseAtom for Mdia {
         let mut minf = None;
 
         while parsed_bytes < size.content_len() {
-            let head = parse_head(reader)?;
+            let head = head::parse(reader)?;
 
             match head.fourcc() {
                 MEDIA_HEADER => mdhd = Some(Mdhd::parse(reader, cfg, head.size())?),
@@ -82,8 +82,9 @@ impl SimpleCollectChanges for Mdia {
         bounds: &'a AtomBounds,
         changes: &mut Vec<Change<'a>>,
     ) -> i64 {
-        // TODO: check other child atoms
-        self.minf.collect_changes(bounds.end(), level, changes)
+        self.mdhd.collect_changes(bounds.end(), level, changes)
+            + self.hdlr.collect_changes(bounds.end(), level, changes)
+            + self.minf.collect_changes(bounds.end(), level, changes)
     }
 
     fn atom_ref(&self) -> AtomRef<'_> {
