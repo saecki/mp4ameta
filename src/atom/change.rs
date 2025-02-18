@@ -423,6 +423,30 @@ macro_rules! atom_ref {
                 }
             }
         }
+
+        #[cfg(test)]
+        mod verify_written_length {
+            use super::*;
+
+            $(
+            #[test]
+            #[allow(non_snake_case)]
+            fn $name() {
+                let atom = $name::default();
+                let changes = [];
+
+                let mut buf: Vec<u8> = Vec::new();
+                let mut cursor = std::io::Cursor::new(&mut buf);
+                atom.write(&mut cursor, &changes).unwrap();
+
+                cursor.seek(SeekFrom::Start(0)).unwrap();
+                let head = head::parse(&mut cursor).unwrap();
+
+                assert_eq!(atom.len(), head.len());
+                assert_eq!(atom.len(), buf.len() as u64);
+            }
+            )+
+        }
     };
 }
 
