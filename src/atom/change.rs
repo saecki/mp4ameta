@@ -1,5 +1,106 @@
 use super::*;
 
+pub trait CollectChanges {
+    /// Recursively collect changes and return the length difference when applied.
+    fn collect_changes<'a>(
+        &'a self,
+        insert_pos: u64,
+        level: u8,
+        changes: &mut Vec<Change<'a>>,
+    ) -> i64;
+}
+
+impl<T: CollectChanges> CollectChanges for Option<T> {
+    fn collect_changes<'a>(
+        &'a self,
+        insert_pos: u64,
+        level: u8,
+        changes: &mut Vec<Change<'a>>,
+    ) -> i64 {
+        self.as_ref().map_or(0, |a| a.collect_changes(insert_pos, level, changes))
+    }
+}
+
+pub trait SimpleCollectChanges: WriteAtom {
+    fn state(&self) -> &State;
+
+    /// Add changes, if any, and return the length difference when applied.
+    fn existing<'a>(
+        &'a self,
+        level: u8,
+        bounds: &'a AtomBounds,
+        changes: &mut Vec<Change<'a>>,
+    ) -> i64;
+
+    fn atom_ref(&self) -> AtomRef<'_>;
+}
+
+impl<T: SimpleCollectChanges> CollectChanges for T {
+    fn collect_changes<'a>(
+        &'a self,
+        insert_pos: u64,
+        level: u8,
+        changes: &mut Vec<Change<'a>>,
+    ) -> i64 {
+        match &self.state() {
+            State::Existing(bounds) => {
+                let len_diff = self.existing(level + 1, bounds, changes);
+                if len_diff != 0 {
+                    changes.push(Change::UpdateLen(UpdateAtomLen {
+                        bounds,
+                        fourcc: Self::FOURCC,
+                        len_diff,
+                    }));
+                }
+                len_diff
+            }
+            State::Remove(bounds) => {
+                changes.push(Change::Remove(RemoveAtom { bounds, level: level + 1 }));
+                -(bounds.len() as i64)
+            }
+            State::Replace(bounds) => {
+                let r = ReplaceAtom { bounds, atom: self.atom_ref(), level: level + 1 };
+                let len_diff = r.len_diff();
+                changes.push(Change::Replace(r));
+                len_diff
+            }
+            State::Insert => {
+                changes.push(Change::Insert(InsertAtom {
+                    pos: insert_pos,
+                    atom: self.atom_ref(),
+                    level: level + 1,
+                }));
+                self.len() as i64
+            }
+        }
+    }
+}
+
+pub trait LeafAtomCollectChanges: SimpleCollectChanges {
+    fn state(&self) -> &State;
+
+    fn atom_ref(&self) -> AtomRef<'_>;
+}
+
+impl<T: LeafAtomCollectChanges> SimpleCollectChanges for T {
+    fn state(&self) -> &State {
+        LeafAtomCollectChanges::state(self)
+    }
+
+    fn existing<'a>(
+        &'a self,
+        _level: u8,
+        _bounds: &'a AtomBounds,
+        _changes: &mut Vec<Change<'a>>,
+    ) -> i64 {
+        0
+    }
+
+    fn atom_ref(&self) -> AtomRef<'_> {
+        LeafAtomCollectChanges::atom_ref(self)
+    }
+}
+
 pub trait ChangeBounds {
     fn old_pos(&self) -> u64;
 
