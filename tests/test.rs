@@ -10,6 +10,30 @@ use walkdir::WalkDir;
 
 const EXTENSIONS: [&str; 6] = [".m4a", ".m4b", ".m4p", ".m4v", ".mp4", ".3gp"];
 
+/// Allows for some rounding issues of the start duration. These issues appear when chapters are
+/// written because the timescale of the file is used.
+#[derive(Debug)]
+struct CmpChapter {
+    /// The start of the chapter.
+    pub start: Duration,
+    /// The title of the chapter.
+    pub title: String,
+}
+
+impl CmpChapter {
+    fn new(start: Duration, title: impl Into<String>) -> Self {
+        Self { start, title: title.into() }
+    }
+}
+
+impl PartialEq<Chapter> for CmpChapter {
+    fn eq(&self, other: &Chapter) -> bool {
+        const EPSILON: f32 = 0.01;
+        (self.start.as_secs_f32() - other.start.as_secs_f32()) < EPSILON
+            && self.title == other.title
+    }
+}
+
 fn read_dir(path: &str, fun: impl Fn(&Path, &Tag)) {
     for d in WalkDir::new(path)
         .follow_links(true)
@@ -176,20 +200,20 @@ fn assert_tag_2(tag: &Tag) {
     assert_eq!(tag.lyricist(), Some("NEW LYRICIST"));
 
     assert_eq!(
-        tag.chapter_list(),
         [
-            Chapter::new(Duration::ZERO, "CHAPTER 1"),
-            Chapter::new(Duration::new(234, 324_000_000), "CHAPTER 2"),
-            Chapter::new(Duration::new(553, 946_000_000), "CHAPTER 3"),
-        ]
+            CmpChapter::new(Duration::ZERO, "CHAPTER 1"),
+            CmpChapter::new(Duration::new(234, 324_000_000), "CHAPTER 2"),
+            CmpChapter::new(Duration::new(553, 946_000_000), "CHAPTER 3"),
+        ],
+        tag.chapter_list(),
     );
     assert_eq!(
-        tag.chapter_track(),
         [
-            Chapter::new(Duration::ZERO, "CHAPTER 1"),
-            Chapter::new(Duration::new(234, 324_000_000), "CHAPTER 2"),
-            Chapter::new(Duration::new(553, 946_000_000), "CHAPTER 3"),
-        ]
+            CmpChapter::new(Duration::ZERO, "CHAPTER 1"),
+            CmpChapter::new(Duration::new(234, 324_000_000), "CHAPTER 2"),
+            CmpChapter::new(Duration::new(553, 946_000_000), "CHAPTER 3"),
+        ],
+        tag.chapter_track(),
     );
 }
 
