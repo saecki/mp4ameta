@@ -1,7 +1,6 @@
 use std::convert::TryFrom;
 use std::fmt;
 use std::fs::{File, OpenOptions};
-use std::io::Write;
 use std::path::Path;
 use std::rc::Rc;
 
@@ -48,27 +47,6 @@ impl Userdata {
     /// previously present on the file.
     pub fn write_to_path(&self, path: impl AsRef<Path>) -> crate::Result<()> {
         self.write_with_path(path, &WriteConfig::DEFAULT)
-    }
-
-    /// Attempts to dump the MPEG-4 audio tag to the writer.
-    pub fn dump_with(&self, writer: &mut impl Write, cfg: &WriteConfig) -> crate::Result<()> {
-        atom::dump_tag(writer, cfg, self)
-    }
-
-    /// Attempts to dump the MPEG-4 audio tag to the writer.
-    pub fn dump_to(&self, writer: &mut impl Write) -> crate::Result<()> {
-        self.dump_with(writer, &WriteConfig::DEFAULT)
-    }
-
-    /// Attempts to dump the MPEG-4 audio tag to the writer.
-    pub fn dump_with_path(&self, path: impl AsRef<Path>, cfg: &WriteConfig) -> crate::Result<()> {
-        let mut file = File::create(path)?;
-        self.dump_with(&mut file, cfg)
-    }
-
-    /// Attempts to dump the MPEG-4 audio tag to the writer.
-    pub fn dump_to_path(&self, path: impl AsRef<Path>) -> crate::Result<()> {
-        self.dump_with_path(path, &WriteConfig::DEFAULT)
     }
 }
 

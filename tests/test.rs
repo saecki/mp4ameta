@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use mp4ameta::{
     AdvisoryRating, ChannelConfig, Chapter, Data, Fourcc, Img, MediaType, SampleRate, Tag,
-    WriteConfig, STANDARD_GENRES,
+    STANDARD_GENRES,
 };
 use walkdir::WalkDir;
 
@@ -381,73 +381,6 @@ fn write_empty() {
     let tag = Tag::read_from_path("target/write_empty.m4a").unwrap();
     assert!(tag.is_empty());
     assert_readonly(&tag);
-}
-
-#[test]
-fn dump_1() {
-    let tag = get_tag_1();
-
-    let _ = std::fs::remove_file("target/dump_1.m4a");
-    println!("dumping to target/dump_1.m4a...");
-    tag.dump_to_path("target/dump_1.m4a").unwrap();
-
-    println!("reading target/dump_1.m4a....");
-    let tag = Tag::read_from_path("target/dump_1.m4a").unwrap();
-    assert_tag_1(&tag);
-}
-
-#[test]
-fn dump_2() {
-    let tag = get_tag_2();
-
-    let _ = std::fs::remove_file("target/dump_2.m4a");
-    println!("dumping to target/dump_2.m4a...");
-    tag.dump_to_path("target/dump_2.m4a").unwrap();
-
-    println!("reading target/dump_2.m4a...");
-    let tag = Tag::read_from_path("target/dump_2.m4a").unwrap();
-    assert_tag_2(&tag);
-}
-
-#[test]
-fn dump_chapter_list() {
-    let mut tag = Tag::default();
-    let chapters = [
-        Chapter::new(Duration::ZERO, "CHAPTER 1"),
-        Chapter::new(Duration::new(234, 324_000_000), "CHAPTER 2"),
-        Chapter::new(Duration::new(553, 946_000_000), "CHAPTER 3"),
-    ];
-
-    tag.chapter_list_mut().extend(chapters.clone());
-
-    let _ = std::fs::remove_file("target/dump_chapter_list.m4a");
-    println!("dumping to target/dump_chapter_list.m4a...");
-    tag.dump_with_path("target/dump_chapter_list.m4a", &WriteConfig::DEFAULT).unwrap();
-
-    println!("reading target/dump_chapter_list.m4a...");
-    let tag = Tag::read_from_path("target/dump_chapter_list.m4a").unwrap();
-    assert_eq!(tag.chapters(), chapters.as_slice());
-}
-
-#[test]
-fn dump_chapter_track() {
-    let mut tag = Tag::default();
-    let chapters = [
-        Chapter::new(Duration::ZERO, "CHAPTER 1"),
-        Chapter::new(Duration::new(234, 324_000_000), "CHAPTER 2"),
-        Chapter::new(Duration::new(553, 946_000_000), "CHAPTER 3"),
-    ];
-
-    tag.chapter_track_mut().extend(chapters.clone());
-
-    let _ = std::fs::remove_file("target/dump_chapter_track.m4a");
-    println!("dumping to target/dump_chapter_track.m4a...");
-    tag.dump_with_path("target/dump_chapter_track.m4a", &WriteConfig::DEFAULT).unwrap();
-
-    println!("reading target/dump_chapter_track.m4a...");
-    let tag = Tag::read_from_path("target/dump_chapter_track.m4a").unwrap();
-
-    assert_eq!(tag.chapters(), chapters);
 }
 
 #[test]
