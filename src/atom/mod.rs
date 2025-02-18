@@ -755,8 +755,14 @@ fn update_userdata<'a>(
         let mut chapters_iter = userdata.chapter_list.iter().peekable();
         while let Some(c) = chapters_iter.next() {
             let c_duration = match chapters_iter.peek() {
-                Some(next) => unscale_duration(chapter_timescale, next.start - c.start),
-                None => unscale_duration(chapter_timescale, c.start) - duration,
+                Some(next) => {
+                    let c_duration = next.start.saturating_sub(c.start);
+                    unscale_duration(chapter_timescale, c_duration)
+                }
+                None => {
+                    let start = unscale_duration(chapter_timescale, c.start);
+                    duration.saturating_sub(start)
+                }
             };
 
             time_to_samples.push(SttsItem {
