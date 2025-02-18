@@ -161,7 +161,7 @@ pub fn write_shifted_offsets<T: ChunkOffsetInt>(
     let mut mdat_shift = 0;
     for o in offsets.iter().copied() {
         if let Some(change) = changes_iter.peek() {
-            if change.old_pos() < o.into() {
+            if change.old_pos() <= o.into() {
                 mdat_shift += change.len_diff();
                 changes_iter.next();
             }
