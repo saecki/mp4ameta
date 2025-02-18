@@ -12,7 +12,7 @@ pub enum IlstData<'a> {
     Borrowed(&'a [MetaItem]),
 }
 
-impl<'a> Default for IlstData<'a> {
+impl Default for IlstData<'_> {
     fn default() -> Self {
         IlstData::Owned(Vec::new())
     }

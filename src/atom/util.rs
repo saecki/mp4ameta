@@ -179,7 +179,7 @@ macro_rules! set_be_int {
 mod test {
     #[test]
     fn be_int() {
-        let bytes = vec![0x00, 0x00, 0x00, 0x00, 0x2D, 0x34, 0xD0, 0x5E];
+        let bytes = [0x00, 0x00, 0x00, 0x00, 0x2D, 0x34, 0xD0, 0x5E];
         let int = be_int!(bytes, 4, u32);
         assert_eq!(int, Some(758435934u32));
     }

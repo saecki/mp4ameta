@@ -288,7 +288,7 @@ fn chaptered() {
 
 #[test]
 fn collection() {
-    if let Some(path) = std::env::args().skip_while(|a| a != "collection").skip(1).next() {
+    if let Some(path) = std::env::args().skip_while(|a| a != "collection").nth(1) {
         println!("Testing collection at {}", &path);
         read_dir(&path, |_, _| {});
     } else {

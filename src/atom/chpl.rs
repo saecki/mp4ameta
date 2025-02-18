@@ -17,7 +17,7 @@ pub enum ChplData<'a> {
     Borrowed(u32, &'a [Chapter]),
 }
 
-impl<'a> Default for ChplData<'a> {
+impl Default for ChplData<'_> {
     fn default() -> Self {
         ChplData::Owned(Vec::new())
     }
