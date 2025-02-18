@@ -260,7 +260,7 @@ impl Userdata {
     /// tag.set_data(test, Data::BeSigned(b"data".to_vec()));
     /// assert_eq!(tag.bytes_of(&test).next().unwrap(), b"data");
     /// ```
-    pub fn bytes_of<'a>(&'a self, ident: &'a impl Ident) -> impl Iterator<Item = &[u8]> {
+    pub fn bytes_of<'a>(&'a self, ident: &impl Ident) -> impl Iterator<Item = &'a [u8]> {
         self.data_of(ident).filter_map(Data::bytes)
     }
 
@@ -277,10 +277,7 @@ impl Userdata {
     /// tag.bytes_mut_of(&test).next().unwrap().push('1' as u8);
     /// assert_eq!(tag.bytes_of(&test).next().unwrap(), b"data1");
     /// ```
-    pub fn bytes_mut_of<'a>(
-        &'a mut self,
-        ident: &'a impl Ident,
-    ) -> impl Iterator<Item = &mut Vec<u8>> {
+    pub fn bytes_mut_of(&mut self, ident: &impl Ident) -> impl Iterator<Item = &mut Vec<u8>> {
         self.data_mut_of(ident).filter_map(Data::bytes_mut)
     }
 
@@ -297,10 +294,7 @@ impl Userdata {
     /// assert_eq!(tag.take_bytes_of(&test).next().unwrap(), b"data");
     /// assert_eq!(tag.bytes_of(&test).next(), None);
     /// ```
-    pub fn take_bytes_of<'a>(
-        &'a mut self,
-        ident: &'a impl Ident,
-    ) -> impl Iterator<Item = Vec<u8>> + '_ {
+    pub fn take_bytes_of(&mut self, ident: &impl Ident) -> impl Iterator<Item = Vec<u8>> {
         self.take_data_of(ident).filter_map(Data::into_bytes)
     }
 
@@ -316,7 +310,7 @@ impl Userdata {
     /// tag.set_data(test, Data::Utf8("data".into()));
     /// assert_eq!(tag.strings_of(&test).next().unwrap(), "data");
     /// ```
-    pub fn strings_of<'a>(&'a self, ident: &'a impl Ident) -> impl Iterator<Item = &str> {
+    pub fn strings_of<'a>(&'a self, ident: &impl Ident) -> impl Iterator<Item = &'a str> {
         self.data_of(ident).filter_map(Data::string)
     }
 
@@ -333,10 +327,7 @@ impl Userdata {
     /// tag.strings_mut_of(&test).next().unwrap().push('1');
     /// assert_eq!(tag.strings_of(&test).next().unwrap(), "string1");
     /// ```
-    pub fn strings_mut_of<'a>(
-        &'a mut self,
-        ident: &'a impl Ident,
-    ) -> impl Iterator<Item = &mut String> {
+    pub fn strings_mut_of(&mut self, ident: &impl Ident) -> impl Iterator<Item = &mut String> {
         self.data_mut_of(ident).filter_map(Data::string_mut)
     }
 
@@ -353,10 +344,7 @@ impl Userdata {
     /// assert_eq!(tag.take_strings_of(&test).next().unwrap(), "string");
     /// assert_eq!(tag.strings_of(&test).next(), None);
     /// ```
-    pub fn take_strings_of<'a>(
-        &'a mut self,
-        ident: &'a impl Ident,
-    ) -> impl Iterator<Item = String> {
+    pub fn take_strings_of(&mut self, ident: &impl Ident) -> impl Iterator<Item = String> {
         self.take_data_of(ident).filter_map(Data::into_string)
     }
 
@@ -373,7 +361,7 @@ impl Userdata {
     /// let img = tag.images_of(&test).next().unwrap();
     /// assert_eq!(img.data, b"image");
     /// ```
-    pub fn images_of<'a>(&'a self, ident: &'a impl Ident) -> impl Iterator<Item = ImgRef<'_>> {
+    pub fn images_of<'a>(&'a self, ident: &impl Ident) -> impl Iterator<Item = ImgRef<'a>> {
         self.data_of(ident).filter_map(Data::image)
     }
 
@@ -393,10 +381,7 @@ impl Userdata {
     /// let img = tag.images_of(&test).next().unwrap();
     /// assert_eq!(img.data, b"image1");
     /// ```
-    pub fn images_mut_of<'a>(
-        &'a mut self,
-        ident: &'a impl Ident,
-    ) -> impl Iterator<Item = ImgMut<'a>> {
+    pub fn images_mut_of<'a>(&'a mut self, ident: &impl Ident) -> impl Iterator<Item = ImgMut<'a>> {
         self.data_mut_of(ident).filter_map(Data::image_mut)
     }
 
@@ -429,7 +414,7 @@ impl Userdata {
     /// tag.set_data(test, Data::Utf8("data".into()));
     /// assert_eq!(tag.data_of(&test).next().unwrap().string(), Some("data"));
     /// ```
-    pub fn data_of<'a>(&'a self, ident: &'a impl Ident) -> impl Iterator<Item = &Data> {
+    pub fn data_of<'a>(&'a self, ident: &impl Ident) -> impl Iterator<Item = &'a Data> {
         match self.metaitems.iter().find(|a| ident == &a.ident) {
             Some(a) => a.data.iter(),
             None => [].iter(),
