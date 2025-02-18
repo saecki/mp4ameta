@@ -122,6 +122,29 @@ pub enum Change<'a> {
     AppendMdat(u64, Vec<u8>),
 }
 
+impl std::fmt::Display for Change<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        #[rustfmt::skip]
+        match self {
+            Change::UpdateLen(UpdateAtomLen { fourcc, .. }) => write!(f, "UpdateLen   {fourcc}  "),
+            Change::UpdateChunkOffset(_)                    => write!(f, "UpdateChunkOffset "),
+            Change::Remove(_)                               => write!(f, "RemoveAtom        "),
+            Change::Replace(r)                              => write!(f, "ReplaceAtom {}  ", r.atom.fourcc()),
+            Change::Insert(i)                               => write!(f, "InsertAtom  {}  ", i.atom.fourcc()),
+            Change::EditMdat(..)                            => write!(f, "EditMdat          "),
+            Change::AppendMdat(..)                          => write!(f, "AppendMdat        "),
+        }?;
+        write!(
+            f,
+            "old_pos: {:6}, old_end: {:6}, len_diff: {:6}, level: {}",
+            self.old_pos(),
+            self.old_end(),
+            self.len_diff(),
+            self.level()
+        )
+    }
+}
+
 impl ChangeBounds for Change<'_> {
     fn old_pos(&self) -> u64 {
         match self {
@@ -384,13 +407,19 @@ macro_rules! atom_ref {
         impl AtomRef<'_> {
             pub fn write(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
                 match self {
-                    $(Self::$name(a) => a.write(writer, changes)),+
+                    $(Self::$name(a) => a.write(writer, changes),)+
+                }
+            }
+
+            pub fn fourcc(&self) -> Fourcc {
+                match self {
+                    $(Self::$name(_) => $name::FOURCC,)+
                 }
             }
 
             fn len(&self) -> u64 {
                 match self {
-                    $(Self::$name(a) => a.len()),+
+                    $(Self::$name(a) => a.len(),)+
                 }
             }
         }
