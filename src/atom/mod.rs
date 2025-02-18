@@ -99,9 +99,10 @@ pub mod ident;
 
 #[macro_use]
 mod util;
-mod head;
-
 mod change;
+mod head;
+mod state;
+
 mod chap;
 mod chpl;
 mod co64;
@@ -122,7 +123,6 @@ mod minf;
 mod moov;
 mod mp4a;
 mod mvhd;
-mod state;
 mod stbl;
 mod stco;
 mod stsc;
