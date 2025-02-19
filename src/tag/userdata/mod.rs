@@ -16,7 +16,7 @@ mod generated;
 mod genre;
 mod tuple;
 
-/// A struct that holds user defined data.
+/// User defined MPEG-4 audio metadata that can be modified.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Userdata {
     // TODO: maybe use indexmap for metaitems?

@@ -245,12 +245,12 @@ impl ChplTimescale {
     }
 }
 
-/// A struct that configures parsing behavior.
+/// Configure what kind of data should be rad
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ReadConfig {
-    /// Wheter item list metadata will be read.
+    /// Wheter the metatdata item list will be read.
     pub read_item_list: bool,
-    /// Wheter image data will be read.
+    /// Wheter image data will be read. Mostly for performance reasons.
     pub read_image_data: bool,
     /// Wheter chapter list information will be read.
     pub read_chapter_list: bool,

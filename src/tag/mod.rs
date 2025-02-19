@@ -11,15 +11,13 @@ pub use userdata::*;
 mod readonly;
 mod userdata;
 
-/// A MPEG-4 audio tag containing metadata atoms
+/// A tag containing MPEG-4 audio metadata.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Tag {
-    /// The `ftyp` atom.
-    pub(crate) ftyp: String,
-    /// Readonly audio information.
-    pub(crate) info: AudioInfo,
-    /// User data.
-    pub(crate) userdata: Userdata,
+    /// The filetype (`ftyp`) atom.
+    pub ftyp: String,
+    pub info: AudioInfo,
+    pub userdata: Userdata,
 }
 
 impl Deref for Tag {

@@ -4,110 +4,39 @@ use std::time::Duration;
 
 use crate::ErrorKind;
 
-// iTunes media type indices
-/// A media type code stored in the `stik` atom.
-const MOVIE: u8 = 0;
-/// A media type code stored in the `stik` atom.
-const NORMAL: u8 = 1;
-/// A media type code stored in the `stik` atom.
-const AUDIOBOOK: u8 = 2;
-/// A media type code stored in the `stik` atom.
-const WHACKED_BOOKMARK: u8 = 5;
-/// A media type code stored in the `stik` atom.
-const MUSIC_VIDEO: u8 = 6;
-/// A media type code stored in the `stik` atom.
-const SHORT_FILM: u8 = 9;
-/// A media type code stored in the `stik` atom.
-const TV_SHOW: u8 = 10;
-/// A media type code stored in the `stik` atom.
-const BOOKLET: u8 = 11;
-
-// iTunes advisory rating indices
-/// An advisory rating code stored in the `rtng` atom.
-const CLEAN: u8 = 2;
-/// An advisory rating code stored in the `rtng` atom.
-const INOFFENSIVE: u8 = 0;
-/// An advisory rating code stored in the `rtng` atom.
-const EXPLICIT: u8 = 4;
-
-// channnel configuration indices
-/// Mono
-const MONO: u8 = 1;
-/// Stereo
-const STEREO: u8 = 2;
-/// 3.0
-const THREE: u8 = 3;
-/// 4.0
-const FOUR: u8 = 4;
-/// 5.0
-const FIVE: u8 = 5;
-/// 5.1
-const FIVE_ONE: u8 = 6;
-/// 7.1
-const SEVEN_ONE: u8 = 7;
-
-// sample rate indices
-/// Sample rate index for 96000Hz.
-const HZ_96000: u8 = 0;
-/// Sample rate index for 882000Hz.
-const HZ_88200: u8 = 1;
-/// Sample rate index for 640000Hz.
-const HZ_64000: u8 = 2;
-/// Sample rate index for 480000Hz.
-const HZ_48000: u8 = 3;
-/// Sample rate index for 44100Hz.
-const HZ_44100: u8 = 4;
-/// Sample rate index for 32000Hz.
-const HZ_32000: u8 = 5;
-/// Sample rate index for 242000Hz.
-const HZ_24000: u8 = 6;
-/// Sample rate index for 22050Hz.
-const HZ_22050: u8 = 7;
-/// Sample rate index for 16000Hz.
-const HZ_16000: u8 = 8;
-/// Sample rate index for 12000Hz.
-const HZ_12000: u8 = 9;
-/// Sample rate index for 11025Hz.
-const HZ_11025: u8 = 10;
-/// Sample rate index for 8000Hz.
-const HZ_8000: u8 = 11;
-/// Sample rate index for 7350Hz.
-const HZ_7350: u8 = 12;
-
-/// An enum describing the media type of a file stored in the `stik` atom.
+/// The iTunes media type of a file. This is stored in the `stik` atom.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MediaType {
     /// A media type stored as 0 in the `stik` atom.
-    Movie,
+    Movie = 0,
     /// A media type stored as 1 in the `stik` atom.
-    Normal,
+    Normal = 1,
     /// A media type stored as 2 in the `stik` atom.
-    AudioBook,
+    AudioBook = 2,
     /// A media type stored as 5 in the `stik` atom.
-    WhackedBookmark,
+    WhackedBookmark = 5,
     /// A media type stored as 6 in the `stik` atom.
-    MusicVideo,
+    MusicVideo = 6,
     /// A media type stored as 9 in the `stik` atom.
-    ShortFilm,
+    ShortFilm = 9,
     /// A media type stored as 10 in the `stik` atom.
-    TvShow,
+    TvShow = 10,
     /// A media type stored as 11 in the `stik` atom.
-    Booklet,
+    Booklet = 11,
 }
 
 impl MediaType {
-    /// Returns the media type code.
-    pub(crate) fn code(&self) -> u8 {
-        match self {
-            Self::Movie => MOVIE,
-            Self::Normal => NORMAL,
-            Self::AudioBook => AUDIOBOOK,
-            Self::WhackedBookmark => WHACKED_BOOKMARK,
-            Self::MusicVideo => MUSIC_VIDEO,
-            Self::ShortFilm => SHORT_FILM,
-            Self::TvShow => TV_SHOW,
-            Self::Booklet => BOOKLET,
-        }
+    const MOVIE: u8 = Self::Movie as u8;
+    const NORMAL: u8 = Self::Normal as u8;
+    const AUDIO_BOOK: u8 = Self::AudioBook as u8;
+    const WHACKED_BOOKMARK: u8 = Self::WhackedBookmark as u8;
+    const MUSIC_VIDEO: u8 = Self::MusicVideo as u8;
+    const SHORT_FILM: u8 = Self::ShortFilm as u8;
+    const TV_SHOW: u8 = Self::TvShow as u8;
+    const BOOKLET: u8 = Self::Booklet as u8;
+
+    pub fn code(&self) -> u8 {
+        *self as u8
     }
 }
 
@@ -116,14 +45,14 @@ impl TryFrom<u8> for MediaType {
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            MOVIE => Ok(Self::Movie),
-            NORMAL => Ok(Self::Normal),
-            AUDIOBOOK => Ok(Self::AudioBook),
-            WHACKED_BOOKMARK => Ok(Self::WhackedBookmark),
-            MUSIC_VIDEO => Ok(Self::MusicVideo),
-            SHORT_FILM => Ok(Self::ShortFilm),
-            TV_SHOW => Ok(Self::TvShow),
-            BOOKLET => Ok(Self::Booklet),
+            Self::MOVIE => Ok(Self::Movie),
+            Self::NORMAL => Ok(Self::Normal),
+            Self::AUDIO_BOOK => Ok(Self::AudioBook),
+            Self::WHACKED_BOOKMARK => Ok(Self::WhackedBookmark),
+            Self::MUSIC_VIDEO => Ok(Self::MusicVideo),
+            Self::SHORT_FILM => Ok(Self::ShortFilm),
+            Self::TV_SHOW => Ok(Self::TvShow),
+            Self::BOOKLET => Ok(Self::Booklet),
             _ => Err(Self::Error::new(ErrorKind::UnknownMediaType(value), "Unknown media type")),
         }
     }
@@ -144,33 +73,31 @@ impl fmt::Display for MediaType {
     }
 }
 
-/// An enum describing the rating of a file stored in the `rtng` atom.
+/// The iTunes advisory rating of a file. This is stored in the `rtng` atom.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum AdvisoryRating {
     /// An advisory rating stored as 2 in the `rtng` atom.
-    Clean,
+    Clean = 2,
     /// An advisory rating stored as 0 in the `rtng` atom.
-    Inoffensive,
+    Inoffensive = 0,
     /// An advisory rating indicated by any other value than 0 or 2 in the `rtng` atom.
-    Explicit,
+    Explicit = 4,
 }
 
 impl AdvisoryRating {
-    /// Returns the advisory rating code.
-    pub(crate) fn code(&self) -> u8 {
-        match self {
-            Self::Clean => CLEAN,
-            Self::Inoffensive => INOFFENSIVE,
-            Self::Explicit => EXPLICIT,
-        }
+    const CLEAN: u8 = Self::Clean as u8;
+    const INOFFENSIVE: u8 = Self::Inoffensive as u8;
+
+    pub fn code(&self) -> u8 {
+        *self as u8
     }
 }
 
 impl From<u8> for AdvisoryRating {
     fn from(rating: u8) -> Self {
         match rating {
-            CLEAN => Self::Clean,
-            INOFFENSIVE => Self::Inoffensive,
+            Self::CLEAN => Self::Clean,
+            Self::INOFFENSIVE => Self::Inoffensive,
             _ => Self::Explicit,
         }
     }
@@ -186,46 +113,34 @@ impl fmt::Display for AdvisoryRating {
     }
 }
 
-/// An enum representing the channel configuration of an MPEG-4 audio track.
+/// The channel configuration of an MPEG-4 audio track.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ChannelConfig {
     /// 1.0, channel: front-center.
-    Mono,
+    Mono = 1,
     /// 2.0, channels: front-left, front-right.
-    Stereo,
+    Stereo = 2,
     /// 3.0, channels: front-center, front-left, front-right.
-    Three,
+    Three = 3,
     /// 4.0, channels: front-center, front-left, front-right, back-center.
-    Four,
+    Four = 4,
     /// 5.0, channels: front-center, front-left, front-right, back-left, back-right.
-    Five,
+    Five = 5,
     /// 5.1, channels: front-center, front-left, front-right, back-left, back-right, LFE-channel.
-    FiveOne,
+    FiveOne = 6,
     /// 7.1, channels: front-center, front-left, front-right, side-left, side-right, back-left, back-right, LFE-channel.
-    SevenOne,
-}
-
-impl TryFrom<u8> for ChannelConfig {
-    type Error = crate::Error;
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        match value {
-            MONO => Ok(Self::Mono),
-            STEREO => Ok(Self::Stereo),
-            THREE => Ok(Self::Three),
-            FOUR => Ok(Self::Four),
-            FIVE => Ok(Self::Five),
-            FIVE_ONE => Ok(Self::FiveOne),
-            SEVEN_ONE => Ok(Self::SevenOne),
-            _ => Err(Self::Error::new(
-                crate::ErrorKind::UnknownChannelConfig(value),
-                "Unknown channel config index",
-            )),
-        }
-    }
+    SevenOne = 7,
 }
 
 impl ChannelConfig {
+    const MONO: u8 = Self::Mono as u8;
+    const STEREO: u8 = Self::Stereo as u8;
+    const THREE: u8 = Self::Three as u8;
+    const FOUR: u8 = Self::Four as u8;
+    const FIVE: u8 = Self::Five as u8;
+    const FIVE_ONE: u8 = Self::FiveOne as u8;
+    const SEVEN_ONE: u8 = Self::SevenOne as u8;
+
     /// Returns the number of channels.
     pub const fn channel_count(&self) -> u8 {
         match self {
@@ -236,6 +151,26 @@ impl ChannelConfig {
             Self::Five => 5,
             Self::FiveOne => 6,
             Self::SevenOne => 8,
+        }
+    }
+}
+
+impl TryFrom<u8> for ChannelConfig {
+    type Error = crate::Error;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            Self::MONO => Ok(Self::Mono),
+            Self::STEREO => Ok(Self::Stereo),
+            Self::THREE => Ok(Self::Three),
+            Self::FOUR => Ok(Self::Four),
+            Self::FIVE => Ok(Self::Five),
+            Self::FIVE_ONE => Ok(Self::FiveOne),
+            Self::SEVEN_ONE => Ok(Self::SevenOne),
+            _ => Err(Self::Error::new(
+                crate::ErrorKind::UnknownChannelConfig(value),
+                "Unknown channel config index",
+            )),
         }
     }
 }
@@ -258,66 +193,48 @@ impl fmt::Display for ChannelConfig {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SampleRate {
     /// A Sample rate of 96000Hz
-    Hz96000,
+    Hz96000 = 0,
     /// A Sample rate of 88200Hz
-    Hz88200,
+    Hz88200 = 1,
     /// A Sample rate of 64000Hz
-    Hz64000,
+    Hz64000 = 2,
     /// A Sample rate of 48000Hz
-    Hz48000,
+    Hz48000 = 3,
     /// A Sample rate of 44100Hz
-    Hz44100,
+    Hz44100 = 4,
     /// A Sample rate of 32000Hz
-    Hz32000,
+    Hz32000 = 5,
     /// A Sample rate of 24000Hz
-    Hz24000,
+    Hz24000 = 6,
     /// A Sample rate of 24050Hz
-    Hz22050,
+    Hz22050 = 7,
     /// A Sample rate of 16000Hz
-    Hz16000,
+    Hz16000 = 8,
     /// A Sample rate of 12000Hz
-    Hz12000,
+    Hz12000 = 9,
     /// A Sample rate of 11050Hz
-    Hz11025,
+    Hz11025 = 10,
     /// A Sample rate of 8000Hz
-    Hz8000,
+    Hz8000 = 11,
     /// A Sample rate of 7350Hz
-    Hz7350,
-}
-
-impl TryFrom<u8> for SampleRate {
-    type Error = crate::Error;
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        match value {
-            HZ_96000 => Ok(Self::Hz96000),
-            HZ_88200 => Ok(Self::Hz88200),
-            HZ_64000 => Ok(Self::Hz64000),
-            HZ_48000 => Ok(Self::Hz48000),
-            HZ_44100 => Ok(Self::Hz44100),
-            HZ_32000 => Ok(Self::Hz32000),
-            HZ_24000 => Ok(Self::Hz24000),
-            HZ_22050 => Ok(Self::Hz22050),
-            HZ_16000 => Ok(Self::Hz16000),
-            HZ_12000 => Ok(Self::Hz12000),
-            HZ_11025 => Ok(Self::Hz11025),
-            HZ_8000 => Ok(Self::Hz8000),
-            HZ_7350 => Ok(Self::Hz7350),
-            _ => Err(Self::Error::new(
-                crate::ErrorKind::UnknownSampleRate(value),
-                "Unknown sample rate index",
-            )),
-        }
-    }
-}
-
-impl fmt::Display for SampleRate {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}Hz", self.hz())
-    }
+    Hz7350 = 12,
 }
 
 impl SampleRate {
+    const HZ_96000: u8 = Self::Hz96000 as u8;
+    const HZ_88200: u8 = Self::Hz88200 as u8;
+    const HZ_64000: u8 = Self::Hz64000 as u8;
+    const HZ_48000: u8 = Self::Hz48000 as u8;
+    const HZ_44100: u8 = Self::Hz44100 as u8;
+    const HZ_32000: u8 = Self::Hz32000 as u8;
+    const HZ_24000: u8 = Self::Hz24000 as u8;
+    const HZ_22050: u8 = Self::Hz22050 as u8;
+    const HZ_16000: u8 = Self::Hz16000 as u8;
+    const HZ_12000: u8 = Self::Hz12000 as u8;
+    const HZ_11025: u8 = Self::Hz11025 as u8;
+    const HZ_8000: u8 = Self::Hz8000 as u8;
+    const HZ_7350: u8 = Self::Hz7350 as u8;
+
     /// Returns the sample rate in Hz.
     pub const fn hz(&self) -> u32 {
         match self {
@@ -338,7 +255,39 @@ impl SampleRate {
     }
 }
 
-/// A struct containing information about a mp4 track.
+impl TryFrom<u8> for SampleRate {
+    type Error = crate::Error;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            Self::HZ_96000 => Ok(Self::Hz96000),
+            Self::HZ_88200 => Ok(Self::Hz88200),
+            Self::HZ_64000 => Ok(Self::Hz64000),
+            Self::HZ_48000 => Ok(Self::Hz48000),
+            Self::HZ_44100 => Ok(Self::Hz44100),
+            Self::HZ_32000 => Ok(Self::Hz32000),
+            Self::HZ_24000 => Ok(Self::Hz24000),
+            Self::HZ_22050 => Ok(Self::Hz22050),
+            Self::HZ_16000 => Ok(Self::Hz16000),
+            Self::HZ_12000 => Ok(Self::Hz12000),
+            Self::HZ_11025 => Ok(Self::Hz11025),
+            Self::HZ_8000 => Ok(Self::Hz8000),
+            Self::HZ_7350 => Ok(Self::Hz7350),
+            _ => Err(Self::Error::new(
+                crate::ErrorKind::UnknownSampleRate(value),
+                "Unknown sample rate index",
+            )),
+        }
+    }
+}
+
+impl fmt::Display for SampleRate {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}Hz", self.hz())
+    }
+}
+
+/// Audio information of an mp4 track.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct AudioInfo {
     /// The duration of the track.
@@ -353,14 +302,14 @@ pub struct AudioInfo {
     pub avg_bitrate: Option<u32>,
 }
 
-/// An alias for an image reference.
+/// Type alias for an image reference.
 pub type ImgRef<'a> = Img<&'a [u8]>;
-/// An alias for a mutable image reference.
+/// Type alias for a mutable image reference.
 pub type ImgMut<'a> = Img<&'a mut Vec<u8>>;
-/// An alias for an owned image buffer.
+/// Type alias for an owned image buffer.
 pub type ImgBuf = Img<Vec<u8>>;
 
-/// A struct representing an image.
+/// Image data with an associated format.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Img<T> {
     /// The image format.
@@ -370,28 +319,24 @@ pub struct Img<T> {
 }
 
 impl<T> Img<T> {
-    /// Creates a new image.
     pub const fn new(fmt: ImgFmt, data: T) -> Self {
         Self { fmt, data }
     }
 
-    /// Creates a new image with the bmp format.
     pub const fn bmp(data: T) -> Self {
         Self::new(ImgFmt::Bmp, data)
     }
 
-    /// Creates a new image with the jpeg format.
     pub const fn jpeg(data: T) -> Self {
         Self::new(ImgFmt::Jpeg, data)
     }
 
-    /// Creates a new image with the png format.
     pub const fn png(data: T) -> Self {
         Self::new(ImgFmt::Png, data)
     }
 }
 
-/// An enum representing image formats.
+/// The image format used to store images inside the userdata of an MPEG-4 file.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ImgFmt {
     /// Bmp.
@@ -403,23 +348,32 @@ pub enum ImgFmt {
 }
 
 impl ImgFmt {
-    /// Returns true if `self` is of type [`Self::Bmp`] false otherwise.
+    /// Returns `true` if the img fmt is [`Bmp`].
+    ///
+    /// [`Bmp`]: ImgFmt::Bmp
+    #[must_use]
     pub fn is_bmp(&self) -> bool {
         matches!(self, Self::Bmp)
     }
 
-    /// Returns true if `self` is of type [`Self::Jpeg`] false otherwise.
+    /// Returns `true` if the img fmt is [`Jpeg`].
+    ///
+    /// [`Jpeg`]: ImgFmt::Jpeg
+    #[must_use]
     pub fn is_jpeg(&self) -> bool {
         matches!(self, Self::Jpeg)
     }
 
-    /// Returns true if `self` is of type [`Self::Png`] false otherwise.
+    /// Returns `true` if the img fmt is [`Png`].
+    ///
+    /// [`Png`]: ImgFmt::Png
+    #[must_use]
     pub fn is_png(&self) -> bool {
         matches!(self, Self::Png)
     }
 }
 
-/// A struct representing a chapter.
+/// A chapter.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Chapter {
     /// The start of the chapter.
@@ -429,7 +383,6 @@ pub struct Chapter {
 }
 
 impl Chapter {
-    /// Creates a new chapter.
     pub fn new(start: Duration, title: impl Into<String>) -> Self {
         Self { start, title: title.into() }
     }
