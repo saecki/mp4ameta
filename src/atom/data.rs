@@ -220,7 +220,7 @@ impl Data {
         (match self {
             Self::Reserved(v) => v.len(),
             Self::Utf8(s) => s.len(),
-            Self::Utf16(s) => s.encode_utf16().count(),
+            Self::Utf16(s) => 2 * s.encode_utf16().count(),
             Self::Jpeg(v) => v.len(),
             Self::Png(v) => v.len(),
             Self::BeSigned(v) => v.len(),
