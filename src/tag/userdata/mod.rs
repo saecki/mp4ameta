@@ -198,7 +198,12 @@ impl Userdata {
 }
 
 /// ### Chapters
+///
+/// These are convenience methods that operate on values of both, the chapter list and track.
+/// The chapter list is preferred.
 impl Userdata {
+    /// Returns either the chapter list or the chapter track.
+    /// The chapter list is preferred.
     pub fn chapters(&self) -> &[Chapter] {
         if !self.chapter_list.is_empty() {
             self.chapter_list()
@@ -207,25 +212,40 @@ impl Userdata {
         }
     }
 
+    /// Returns either the chapter list or the chapter track.
+    /// The chapter list is preferred.
     pub fn chapters_mut(&mut self) -> &mut Vec<Chapter> {
-        todo!()
+        if !self.chapter_list.is_empty() || self.chapter_track.is_empty() {
+            self.chapter_list_mut()
+        } else {
+            self.chapter_track_mut()
+        }
     }
 
+    /// Removes and returns either the chapter list or the chapter track.
+    /// The chapter list is preferred.
     pub fn take_chapters(&mut self) -> Vec<Chapter> {
-        todo!()
+        if !self.chapter_list.is_empty() {
+            self.take_chapter_list()
+        } else {
+            self.take_chapter_track()
+        }
     }
 }
 
 /// ### Chapter list
 impl Userdata {
+    /// Returns the chapter list.
     pub fn chapter_list(&self) -> &[Chapter] {
         &self.chapter_list
     }
 
+    /// Returns the chapter list.
     pub fn chapter_list_mut(&mut self) -> &mut Vec<Chapter> {
         &mut self.chapter_list
     }
 
+    /// Removes and returns the chapter list.
     pub fn take_chapter_list(&mut self) -> Vec<Chapter> {
         std::mem::take(&mut self.chapter_list)
     }
@@ -233,14 +253,17 @@ impl Userdata {
 
 /// ### Chapter track
 impl Userdata {
+    /// Returns the chapter track.
     pub fn chapter_track(&self) -> &[Chapter] {
         &self.chapter_track
     }
 
+    /// Returns the chapter track.
     pub fn chapter_track_mut(&mut self) -> &mut Vec<Chapter> {
         &mut self.chapter_track
     }
 
+    /// Removes and returns the chapter track.
     pub fn take_chapter_track(&mut self) -> Vec<Chapter> {
         std::mem::take(&mut self.chapter_track)
     }
