@@ -374,7 +374,12 @@ impl ImgFmt {
 }
 
 /// A chapter.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+///
+/// Note that chapter titles have a relatively small maximum size.
+/// For chapter lists this limit is 255 ([`u8::MAX`]);
+/// For chapter tracks this limit is 65535 ([`u16::MAX`]);
+/// If this limit is exceeded the title is truncated.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Chapter {
     /// The start of the chapter.
     pub start: Duration,

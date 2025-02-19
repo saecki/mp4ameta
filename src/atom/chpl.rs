@@ -88,8 +88,10 @@ impl WriteAtom for Chpl<'_> {
                 writer.write_u8(v.len() as u8)?;
                 for c in v.iter() {
                     writer.write_be_u64(c.start)?;
-                    writer.write_u8(c.title.len() as u8)?;
-                    writer.write_utf8(&c.title)?;
+
+                    let title_len = c.title.len().min(u8::MAX as usize);
+                    writer.write_u8(title_len as u8)?;
+                    writer.write_utf8(&c.title[..title_len])?;
                 }
             }
             ChplData::Borrowed(timescale, chapters) => {

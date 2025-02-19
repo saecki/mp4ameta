@@ -385,7 +385,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
 
             if let Some(co64) = &stbl.co64 {
                 chapter_track.reserve(co64.offsets.len());
-                read_chapters(
+                read_track_chapters(
                     reader,
                     &mut chapter_track,
                     timescale,
@@ -403,7 +403,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
                 })?;
             } else if let Some(stco) = &stbl.stco {
                 chapter_track.reserve(stco.offsets.len());
-                read_chapters(
+                read_track_chapters(
                     reader,
                     &mut chapter_track,
                     timescale,
@@ -446,7 +446,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
     Ok(Tag { ftyp, info, userdata })
 }
 
-fn read_chapters<T: ChunkOffsetInt>(
+fn read_track_chapters<T: ChunkOffsetInt>(
     reader: &mut (impl Read + Seek),
     chapters: &mut Vec<Chapter>,
     timescale: u32,
@@ -778,8 +778,9 @@ fn update_userdata<'a>(
             let sample_size = 2 + c.title.len() + ENCD.len();
             sample_sizes.push(sample_size as u32);
 
-            new_chapter_media_data.write_be_u16(c.title.len() as u16).ok();
-            new_chapter_media_data.write_utf8(&c.title).ok();
+            let title_len = c.title.len().min(u16::MAX as usize);
+            new_chapter_media_data.write_be_u16(title_len as u16).ok();
+            new_chapter_media_data.write_utf8(&c.title[..title_len]).ok();
             new_chapter_media_data.extend(ENCD);
         }
 
