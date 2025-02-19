@@ -84,7 +84,7 @@ impl MetaItem {
         }
 
         let ident = match (head.fourcc(), mean, name) {
-            (FREEFORM, Some(mean), Some(name)) => DataIdent::Freeform { mean, name },
+            (FREEFORM, Some(mean), Some(name)) => DataIdent::freeform(mean, name),
             (fourcc, _, _) => DataIdent::Fourcc(fourcc),
         };
 
@@ -99,7 +99,7 @@ impl MetaItem {
             DataIdent::Fourcc(ident) => writer.write_all(ident.deref())?,
             _ => {
                 let (mean, name) = match &self.ident {
-                    DataIdent::Freeform { mean, name } => (mean.as_str(), name.as_str()),
+                    DataIdent::Freeform { mean, name } => (mean.as_ref(), name.as_ref()),
                     DataIdent::Fourcc(_) => unreachable!(),
                 };
                 writer.write_all(FREEFORM.deref())?;

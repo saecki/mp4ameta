@@ -339,11 +339,8 @@ impl<T> Img<T> {
 /// The image format used to store images inside the userdata of an MPEG-4 file.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ImgFmt {
-    /// Bmp.
     Bmp,
-    /// Jpeg.
     Jpeg,
-    /// Png.
     Png,
 }
 

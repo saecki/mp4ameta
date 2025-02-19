@@ -41,8 +41,8 @@
 //! ```
 #![deny(rust_2018_idioms)]
 
-pub use crate::atom::ident::*;
-pub use crate::atom::{ident, ChplTimescale, Data, ReadConfig, WriteConfig};
+pub use crate::atom::ident::{self, DataIdent, Fourcc, FreeformIdent, Ident};
+pub use crate::atom::{ChplTimescale, Data, ReadConfig, WriteConfig};
 pub use crate::error::{Error, ErrorKind, Result};
 pub use crate::tag::{Tag, Userdata, STANDARD_GENRES};
 pub use crate::types::*;

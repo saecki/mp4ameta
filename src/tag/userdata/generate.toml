@@ -1,4 +1,4 @@
-# This file is used to genreate the `generated.rs` file with userdata accessors.
+# This file is used to generate the `generated.rs` file with userdata accessors.
 
 [accessors.single_strings]
 "album"           = "©alb"

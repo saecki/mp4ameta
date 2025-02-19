@@ -38,7 +38,7 @@ impl ParseAtom for Stsz {
             let table_size = HEADER_SIZE + ENTRY_SIZE * num_entries as u64;
             if table_size != size.content_len() {
                 return Err(crate::Error::new(
-                    crate::ErrorKind::Parsing,
+                    crate::ErrorKind::SizeMismatch,
                     format!(
                         "Sample table sample size (stsz) table size {} doesn't match atom content length {}",
                         table_size,
@@ -56,7 +56,7 @@ impl ParseAtom for Stsz {
         } else {
             if size.content_len() != HEADER_SIZE {
                 return Err(crate::Error::new(
-                    crate::ErrorKind::Parsing,
+                    crate::ErrorKind::SizeMismatch,
                     format!(
                         "Sample table sample size (stsz) uniform sample size set, but content length {} doesn't match",
                         size.content_len(),

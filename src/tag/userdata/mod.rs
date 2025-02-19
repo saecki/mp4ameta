@@ -20,7 +20,6 @@ mod tuple;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Userdata {
     // TODO: maybe use indexmap for metaitems?
-    /// A list of Metadata item atoms.
     pub(crate) metaitems: Vec<MetaItem>,
     pub(crate) chapter_list: Vec<Chapter>,
     pub(crate) chapter_track: Vec<Chapter>,
@@ -249,7 +248,8 @@ impl Userdata {
 
 /// ## Data accessors
 impl Userdata {
-    /// Returns references to all byte data corresponding to the identifier.
+    /// Returns references to all byte data corresponding to the identifier.\
+    /// See [`Data::bytes`].
     ///
     /// # Example
     /// ```
@@ -265,7 +265,8 @@ impl Userdata {
         self.data_of(ident).filter_map(Data::bytes)
     }
 
-    /// Returns mutable references to all byte data corresponding to the identifier.
+    /// Returns mutable references to all byte data corresponding to the identifier.\
+    /// See [`Data::bytes_mut`].
     ///
     /// # Example
     /// ```
@@ -282,7 +283,8 @@ impl Userdata {
         self.data_mut_of(ident).filter_map(Data::bytes_mut)
     }
 
-    /// Removes the atom corresponding to the identifier and returns all of it's byte data.
+    /// Removes the atom corresponding to the identifier and returns all of it's byte data.\
+    /// See [`Data::into_bytes`].
     ///
     /// # Example
     /// ```
@@ -299,7 +301,8 @@ impl Userdata {
         self.take_data_of(ident).filter_map(Data::into_bytes)
     }
 
-    /// Returns references to all strings corresponding to the identifier.
+    /// Returns references to all strings corresponding to the identifier.\
+    /// See [`Data::string`].
     ///
     /// # Example
     /// ```
@@ -315,7 +318,8 @@ impl Userdata {
         self.data_of(ident).filter_map(Data::string)
     }
 
-    /// Returns all mutable string references corresponding to the identifier.
+    /// Returns all mutable string references corresponding to the identifier.\
+    /// See [`Data::string_mut`].
     ///
     /// # Example
     /// ```
@@ -332,7 +336,8 @@ impl Userdata {
         self.data_mut_of(ident).filter_map(Data::string_mut)
     }
 
-    /// Removes the atom corresponding to the identifier and returns all of it's strings.
+    /// Removes the atom corresponding to the identifier and returns all of it's strings.\
+    /// See [`Data::into_string`].
     ///
     /// # Example
     /// ```
@@ -349,7 +354,8 @@ impl Userdata {
         self.take_data_of(ident).filter_map(Data::into_string)
     }
 
-    /// Returns references to all images corresponding to the identifier.
+    /// Returns references to all images corresponding to the identifier.\
+    /// See [`Data::image`].
     ///
     /// # Example
     /// ```
@@ -366,7 +372,8 @@ impl Userdata {
         self.data_of(ident).filter_map(Data::image)
     }
 
-    /// Returns mutable references to all images corresponding to the identifier.
+    /// Returns mutable references to all images corresponding to the identifier.\
+    /// See [`Data::image_mut`].
     ///
     /// # Example
     /// ```
@@ -386,7 +393,8 @@ impl Userdata {
         self.data_mut_of(ident).filter_map(Data::image_mut)
     }
 
-    /// Removes the atom corresponding to the identifier and returns all of it's images.
+    /// Removes the atom corresponding to the identifier and returns all of it's images.\
+    /// See [`Data::into_image`].
     ///
     /// # Example
     /// ```
@@ -753,7 +761,8 @@ impl Userdata {
         })
     }
 
-    /// Removes all byte data corresponding to the identifier. Other data will remain unaffected.
+    /// Removes all byte data corresponding to the identifier. Other data will remain unaffected.\
+    /// See [`Data::is_bytes`]
     ///
     /// # Example
     /// ```

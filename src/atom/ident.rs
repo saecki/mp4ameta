@@ -1,4 +1,5 @@
 use std::array::TryFromSliceError;
+use std::borrow::Cow;
 use std::convert::TryInto;
 use std::fmt::{self, Write};
 use std::ops::{Deref, DerefMut};
@@ -258,10 +259,12 @@ impl fmt::Display for Fourcc {
     }
 }
 
-/// An identifier of a freeform (`----`) atom containing borrowd mean and name strings.
+/// An identifier of a freeform (`----`) atom containing owned mean and name strings.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FreeformIdent<'a> {
     /// The mean string, typically in reverse domain notation.
+    ///
+    /// Most commonly this is `"com.apple.iTunes"`. See [`APPLE_ITUNES_MEAN`].
     pub mean: &'a str,
     /// The name string used to identify the freeform atom.
     pub name: &'a str,
@@ -299,7 +302,8 @@ impl<'a> FreeformIdent<'a> {
     }
 }
 
-/// An identifier for data.
+/// The identifier used to store metadata inside an item list.
+/// Either a [`Fourcc`] or an freeform identifier.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DataIdent {
     /// A standard identifier containing a 4 byte atom identifier.
@@ -307,9 +311,11 @@ pub enum DataIdent {
     /// An identifier of a freeform (`----`) atom containing owned mean and name strings.
     Freeform {
         /// The mean string, typically in reverse domain notation.
-        mean: String,
+        ///
+        /// Most commonly this is `"com.apple.iTunes"`. See [`APPLE_ITUNES_MEAN`].
+        mean: std::borrow::Cow<'static, str>,
         /// The name string used to identify the freeform atom.
-        name: String,
+        name: std::borrow::Cow<'static, str>,
     },
 }
 
@@ -324,7 +330,7 @@ impl Ident for DataIdent {
     fn freeform(&self) -> Option<FreeformIdent<'_>> {
         match self {
             Self::Fourcc(_) => None,
-            Self::Freeform { mean, name } => Some(FreeformIdent::new(mean.as_str(), name.as_str())),
+            Self::Freeform { mean, name } => Some(FreeformIdent::new(mean.as_ref(), name.as_ref())),
         }
     }
 }
@@ -344,14 +350,14 @@ impl From<Fourcc> for DataIdent {
     }
 }
 
-impl From<FreeformIdent<'_>> for DataIdent {
-    fn from(value: FreeformIdent<'_>) -> Self {
+impl From<FreeformIdent<'static>> for DataIdent {
+    fn from(value: FreeformIdent<'static>) -> Self {
         Self::freeform(value.mean, value.name)
     }
 }
 
-impl From<&FreeformIdent<'_>> for DataIdent {
-    fn from(value: &FreeformIdent<'_>) -> Self {
+impl From<&FreeformIdent<'static>> for DataIdent {
+    fn from(value: &FreeformIdent<'static>) -> Self {
         Self::freeform(value.mean, value.name)
     }
 }
@@ -359,7 +365,10 @@ impl From<&FreeformIdent<'_>> for DataIdent {
 impl DataIdent {
     /// Creates a new identifier of type [`DataIdent::Freeform`] containing the owned mean, and
     /// name string.
-    pub fn freeform(mean: impl Into<String>, name: impl Into<String>) -> Self {
+    pub fn freeform(
+        mean: impl Into<Cow<'static, str>>,
+        name: impl Into<Cow<'static, str>>,
+    ) -> Self {
         Self::Freeform { mean: mean.into(), name: name.into() }
     }
 

@@ -38,7 +38,7 @@ impl ParseAtom for Stts {
         let num_entries = reader.read_be_u32()?;
         if HEADER_SIZE + ENTRY_SIZE * num_entries as u64 != size.content_len() {
             return Err(crate::Error::new(
-                crate::ErrorKind::Parsing,
+                crate::ErrorKind::SizeMismatch,
                 "Sample table time to sample (stts) table size doesn't match atom length",
             ));
         }

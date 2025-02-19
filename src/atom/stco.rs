@@ -33,7 +33,7 @@ impl ParseAtom for Stco {
         let num_entries = reader.read_be_u32()?;
         if HEADER_SIZE + ENTRY_SIZE * num_entries as u64 != size.content_len() {
             return Err(crate::Error::new(
-                crate::ErrorKind::Parsing,
+                crate::ErrorKind::SizeMismatch,
                 "Sample table chunk offset (stco) table size doesn't match atom length",
             ));
         }

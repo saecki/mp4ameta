@@ -115,7 +115,7 @@ pub fn parse(reader: &mut impl Read) -> crate::Result<Head> {
     if len == 1 {
         match reader.read_be_u64() {
             Ok(ext_len) if ext_len < 16 => Err(crate::Error::new(
-                crate::ErrorKind::Parsing,
+                crate::ErrorKind::InvalidAtomSize,
                 format!(
                     "Read extended length of '{fourcc}' which is less than 16 bytes: {ext_len}"
                 ),
@@ -127,7 +127,7 @@ pub fn parse(reader: &mut impl Read) -> crate::Result<Head> {
         }
     } else if len < 8 {
         Err(crate::Error::new(
-            crate::ErrorKind::Parsing,
+            crate::ErrorKind::InvalidAtomSize,
             format!("Read length of '{fourcc}' which is less than 8 bytes: {len}"),
         ))
     } else {

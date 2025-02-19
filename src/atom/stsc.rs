@@ -40,7 +40,7 @@ impl ParseAtom for Stsc {
         let table_size = HEADER_SIZE + ENTRY_SIZE * num_entries as u64;
         if table_size != size.content_len() {
             return Err(crate::Error::new(
-                crate::ErrorKind::Parsing,
+                crate::ErrorKind::SizeMismatch,
                 format!(
                     "Sample table sample to chunk (stsc) table size {} doesn't match atom content length {}",
                     table_size,

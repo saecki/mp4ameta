@@ -236,7 +236,15 @@ pub enum ChplTimescale {
     Mvhd,
 }
 
+impl Default for ChplTimescale {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
 impl ChplTimescale {
+    pub const DEFAULT: Self = Self::Fixed(chpl::DEFAULT_TIMESCALE);
+
     fn fixed_or_mvhd(self, mvhd_timescale: u32) -> u32 {
         match self {
             Self::Fixed(v) => v.get(),
@@ -246,6 +254,11 @@ impl ChplTimescale {
 }
 
 /// Configure what kind of data should be rad
+///
+/// The item list stores tags such as the artist, album, title, and also the cover art of a song.
+/// And there are two separate ways of storing chapter information:
+/// - A chapter list
+/// - A chapter track
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ReadConfig {
     /// Wheter the metatdata item list will be read.
@@ -271,7 +284,7 @@ impl ReadConfig {
         read_chapter_list: true,
         read_chapter_track: true,
         read_audio_info: true,
-        chpl_timescale: ChplTimescale::Fixed(chpl::DEFAULT_TIMESCALE),
+        chpl_timescale: ChplTimescale::DEFAULT,
     };
 }
 
@@ -522,7 +535,12 @@ fn read_chapter_title(reader: &mut (impl Read + Seek), offset: u64) -> crate::Re
     Ok(title)
 }
 
-/// A struct that configures parsing behavior.
+/// Configure which metadata is (over-)written.
+///
+/// The item list stores tags such as the artist, album, title, and also the cover art of a song.
+/// And there are two separate ways of storing chapter information:
+/// - A chapter list
+/// - A chapter track
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WriteConfig {
     /// Whether to overwrite item list metadata.
@@ -541,7 +559,7 @@ impl WriteConfig {
         write_item_list: true,
         write_chapter_list: true,
         write_chapter_track: true,
-        chpl_timescale: ChplTimescale::Fixed(chpl::DEFAULT_TIMESCALE),
+        chpl_timescale: ChplTimescale::DEFAULT,
     };
 }
 
