@@ -39,7 +39,9 @@ impl ParseAtom for Meta<'_> {
             let head = head::parse(reader)?;
 
             match head.fourcc() {
-                HANDLER_REFERENCE if cfg.write => meta.hdlr = Some(Hdlr::parse(reader, cfg, head.size())?),
+                HANDLER_REFERENCE if cfg.write => {
+                    meta.hdlr = Some(Hdlr::parse(reader, cfg, head.size())?)
+                }
                 ITEM_LIST => meta.ilst = Some(Ilst::parse(reader, cfg, head.size())?),
                 _ => reader.skip(head.content_len() as i64)?,
             }
