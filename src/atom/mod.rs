@@ -78,7 +78,7 @@ use minf::Minf;
 use moov::Moov;
 use mp4a::Mp4a;
 use mvhd::Mvhd;
-use stbl::Stbl;
+use stbl::{Stbl, Table};
 use stco::Stco;
 use stsc::{Stsc, StscItem};
 use stsd::Stsd;
@@ -206,7 +206,7 @@ trait LenOrZero {
     fn len_or_zero(&self) -> u64;
 }
 
-impl<T: WriteAtom> LenOrZero for Option<T> {
+impl<T: AtomSize> LenOrZero for Option<T> {
     fn len_or_zero(&self) -> u64 {
         self.as_ref().map_or(0, |a| a.len())
     }
@@ -398,17 +398,24 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
             };
             let timescale = mdia.mdhd.timescale;
 
+            let stsc_items = stsc.items.get_or_read(reader)?;
+            let stsz_sizes = stsz.sizes.get_or_read(reader)?;
+            let stts_items = stts.items.get_or_read(reader)?;
+
+            chapter_track.reserve(stsz_sizes.len());
+
             if let Some(co64) = &stbl.co64 {
-                chapter_track.reserve(co64.offsets.len());
+                let co64_offsets = co64.offsets.get_or_read(reader)?;
+
                 read_track_chapters(
                     reader,
                     &mut chapter_track,
                     timescale,
-                    &co64.offsets,
-                    &stsc.items,
+                    &co64_offsets,
+                    &stsc_items,
                     stsz.uniform_sample_size,
-                    &stsz.sizes,
-                    &stts.items,
+                    &stsz_sizes,
+                    &stts_items,
                 )
                 .map_err(|mut e| {
                     let mut desc = e.description.into_owned();
@@ -417,16 +424,18 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
                     e
                 })?;
             } else if let Some(stco) = &stbl.stco {
+                let stco_offsets = stco.offsets.get_or_read(reader)?;
+
                 chapter_track.reserve(stco.offsets.len());
                 read_track_chapters(
                     reader,
                     &mut chapter_track,
                     timescale,
-                    &stco.offsets,
-                    &stsc.items,
+                    &stco_offsets,
+                    stsc_items.as_ref(),
                     stsz.uniform_sample_size,
-                    &stsz.sizes,
-                    &stts.items,
+                    stsz_sizes.as_ref(),
+                    stts_items.as_ref(),
                 )
                 .map_err(|mut e| {
                     let mut desc = e.description.into_owned();
@@ -578,9 +587,9 @@ struct MovedData {
 }
 
 pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> crate::Result<()> {
-    let reader = &mut BufReader::new(file);
+    let mut reader = BufReader::new(file);
 
-    Ftyp::parse(reader)?;
+    Ftyp::parse(&mut reader)?;
 
     let mut moov = None;
     let mut mdat_bounds = None;
@@ -588,7 +597,7 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
         let len = reader.remaining_stream_len()?;
         let mut parsed_bytes = 0;
         while parsed_bytes < len {
-            let head = head::parse(reader)?;
+            let head = head::parse(&mut reader)?;
 
             let read_cfg = ReadConfig {
                 read_item_list: cfg.write_item_list,
@@ -600,8 +609,8 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
             };
             let parse_cfg = ParseConfig { cfg: &read_cfg, write: true };
             match head.fourcc() {
-                MOVIE => moov = Some(Moov::parse(reader, &parse_cfg, head.size())?),
-                MEDIA_DATA => mdat_bounds = Some(Mdat::read_bounds(reader, head.size())?),
+                MOVIE => moov = Some(Moov::parse(&mut reader, &parse_cfg, head.size())?),
+                MEDIA_DATA => mdat_bounds = Some(Mdat::read_bounds(&mut reader, head.size())?),
                 _ => reader.skip(head.content_len() as i64)?,
             }
 
@@ -625,7 +634,33 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
     // update atom hierarchy
     let mut changes = Vec::new();
     if cfg.write_item_list || cfg.write_chapter_list || cfg.write_chapter_track {
-        update_userdata(&mut changes, &mut moov, &mdat_bounds, userdata, cfg)?;
+        update_userdata(&mut reader, &mut changes, &mut moov, &mdat_bounds, userdata, cfg)?;
+    }
+
+    for trak in moov.trak.iter() {
+        let Some(stbl) = (trak.mdia.as_ref())
+            .and_then(|mdia| mdia.minf.as_ref())
+            .and_then(|minf| minf.stbl.as_ref())
+        else {
+            continue;
+        };
+
+        if let Some(co64) = &stbl.co64 {
+            if let State::Existing(bounds) = &co64.state {
+                let offsets = co64.offsets.get_or_read(&mut reader)?;
+                let offsets = ChunkOffsets::Co64(offsets);
+                let update = UpdateChunkOffsets { bounds, offsets };
+                changes.push(Change::UpdateChunkOffset(update));
+            }
+        }
+        if let Some(stco) = &stbl.stco {
+            if let State::Existing(bounds) = &stco.state {
+                let offsets = stco.offsets.get_or_read(&mut reader)?;
+                let offsets = ChunkOffsets::Stco(offsets);
+                let update = UpdateChunkOffsets { bounds, offsets };
+                changes.push(Change::UpdateChunkOffset(update));
+            }
+        }
     }
 
     // collect changes
@@ -676,6 +711,9 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
         current_shift
     };
 
+    // no more reading from here on
+    drop(reader);
+
     // adjust the file length
     let new_file_len = (old_file_len as i64 + len_diff) as u64;
     file.set_len(new_file_len)?;
@@ -717,6 +755,7 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
 }
 
 fn update_userdata<'a>(
+    reader: &mut (impl Read + Seek),
     changes: &mut Vec<Change<'a>>,
     moov: &mut Moov<'a>,
     mdat_bounds: &'a AtomBounds,
@@ -859,23 +898,26 @@ fn update_userdata<'a>(
 
         let stts = stbl.stts.get_or_insert_default();
         stts.state.replace_existing();
-        stts.items = time_to_samples;
+        stts.items = Table::Full(time_to_samples);
 
         let stsc = stbl.stsc.get_or_insert_default();
         stsc.state.replace_existing();
         let prev_stsc = std::mem::replace(
             &mut stsc.items,
-            vec![StscItem {
+            Table::Full(vec![StscItem {
                 first_chunk: 1,
                 samples_per_chunk: sample_sizes.len() as u32,
                 sample_description_id: 1,
-            }],
+            }]),
         );
 
         let stsz = stbl.stsz.get_or_insert_default();
         stsz.state.replace_existing();
         let prev_stsz_uniform_sample_size = std::mem::replace(&mut stsz.uniform_sample_size, 0);
-        let prev_stsz_sizes = std::mem::replace(&mut stsz.sizes, sample_sizes);
+        let prev_stsz_sizes = std::mem::replace(&mut stsz.sizes, Table::Full(sample_sizes));
+
+        let prev_stsc = prev_stsc.get_or_read(reader)?;
+        let prev_stsz_sizes = prev_stsz_sizes.get_or_read(reader)?;
 
         let prev_stco = stbl.stco.as_mut().map(|stco| {
             stco.state.remove_existing();
@@ -884,10 +926,11 @@ fn update_userdata<'a>(
 
         let co64 = stbl.co64.get_or_insert_default();
         co64.state.replace_existing();
-        let prev_co64 = std::mem::replace(&mut co64.offsets, chunk_offsets);
+        let prev_co64 = std::mem::replace(&mut co64.offsets, Table::Full(chunk_offsets));
 
         // remove previous chapter data from the mdat atom
         if co64.state.is_existing() {
+            let prev_co64 = prev_co64.get_or_read(reader)?;
             remove_chapter_media_data(
                 changes,
                 &prev_co64,
@@ -896,6 +939,7 @@ fn update_userdata<'a>(
                 &prev_stsz_sizes,
             )?;
         } else if let Some(prev_stco) = prev_stco {
+            let prev_stco = prev_stco.get_or_read(reader)?;
             remove_chapter_media_data(
                 changes,
                 &prev_stco,

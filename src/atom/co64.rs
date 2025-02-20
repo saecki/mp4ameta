@@ -7,7 +7,7 @@ pub const ENTRY_SIZE: u64 = 8;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Co64 {
     pub state: State,
-    pub offsets: Vec<u64>,
+    pub offsets: Table<u64>,
 }
 
 impl Atom for Co64 {
@@ -17,7 +17,7 @@ impl Atom for Co64 {
 impl ParseAtom for Co64 {
     fn parse_atom(
         reader: &mut (impl Read + Seek),
-        _cfg: &ParseConfig<'_>,
+        cfg: &ParseConfig<'_>,
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
@@ -31,18 +31,24 @@ impl ParseAtom for Co64 {
         }
 
         let num_entries = reader.read_be_u32()?;
-        if HEADER_SIZE + ENTRY_SIZE * num_entries as u64 != size.content_len() {
+        let table_size = ENTRY_SIZE * num_entries as u64;
+        if HEADER_SIZE + table_size != size.content_len() {
             return Err(crate::Error::new(
                 crate::ErrorKind::SizeMismatch,
                 "Sample table chunk offset 64 (co64) offset table size doesn't match atom length",
             ));
         }
 
-        let mut offsets = Vec::with_capacity(num_entries as usize);
-        for _ in 0..num_entries {
-            let offset = reader.read_be_u64()?;
-            offsets.push(offset);
-        }
+        let offsets = if cfg.write {
+            let offsets = Table::read_items(reader, num_entries)?;
+            Table::Full(offsets)
+        } else {
+            reader.skip(table_size as i64)?;
+            Table::Shallow {
+                pos: bounds.content_pos() + HEADER_SIZE,
+                num_entries,
+            }
+        };
 
         Ok(Self { state: State::Existing(bounds), offsets })
     }
@@ -61,28 +67,20 @@ impl WriteAtom for Co64 {
         head::write_full(writer, 0, [0; 3])?;
 
         writer.write_be_u32(self.offsets.len() as u32)?;
-        change::write_shifted_offsets(writer, &self.offsets, changes)?;
+        match &self.offsets {
+            Table::Shallow { .. } => unreachable!(),
+            Table::Full(offsets) => {
+                change::write_shifted_offsets(writer, offsets, changes)?;
+            }
+        }
 
         Ok(())
     }
 }
 
-impl SimpleCollectChanges for Co64 {
+impl LeafAtomCollectChanges for Co64 {
     fn state(&self) -> &State {
         &self.state
-    }
-
-    fn existing<'a>(
-        &'a self,
-        _level: u8,
-        bounds: &'a AtomBounds,
-        changes: &mut Vec<Change<'a>>,
-    ) -> i64 {
-        changes.push(Change::UpdateChunkOffset(UpdateChunkOffsets {
-            bounds,
-            offsets: ChunkOffsets::Co64(&self.offsets),
-        }));
-        0
     }
 
     fn atom_ref(&self) -> AtomRef<'_> {

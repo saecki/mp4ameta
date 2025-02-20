@@ -6,7 +6,7 @@ pub const ENTRY_SIZE: u64 = 8;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Stts {
     pub state: State,
-    pub items: Vec<SttsItem>,
+    pub items: Table<SttsItem>,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -36,20 +36,19 @@ impl ParseAtom for Stts {
         }
 
         let num_entries = reader.read_be_u32()?;
-        if HEADER_SIZE + ENTRY_SIZE * num_entries as u64 != size.content_len() {
+        let table_size = ENTRY_SIZE * num_entries as u64;
+        if HEADER_SIZE + table_size != size.content_len() {
             return Err(crate::Error::new(
                 crate::ErrorKind::SizeMismatch,
                 "Sample table time to sample (stts) table size doesn't match atom length",
             ));
         }
 
-        let mut items = Vec::with_capacity(num_entries as usize);
-        for _ in 0..num_entries {
-            items.push(SttsItem {
-                sample_count: reader.read_be_u32()?,
-                sample_duration: reader.read_be_u32()?,
-            });
-        }
+        reader.skip(table_size as i64)?;
+        let items = Table::Shallow {
+            pos: bounds.content_pos() + HEADER_SIZE,
+            num_entries,
+        };
 
         Ok(Self { state: State::Existing(bounds), items })
     }
@@ -68,9 +67,14 @@ impl WriteAtom for Stts {
         head::write_full(writer, 0, [0; 3])?;
 
         writer.write_be_u32(self.items.len() as u32)?;
-        for i in self.items.iter() {
-            writer.write_be_u32(i.sample_count)?;
-            writer.write_be_u32(i.sample_duration)?;
+        match &self.items {
+            Table::Shallow { .. } => unreachable!(),
+            Table::Full(items) => {
+                for i in items.iter() {
+                    writer.write_be_u32(i.sample_count)?;
+                    writer.write_be_u32(i.sample_duration)?;
+                }
+            }
         }
 
         Ok(())

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use super::*;
 
 pub trait CollectChanges {
@@ -229,8 +231,8 @@ pub struct UpdateChunkOffsets<'a> {
 
 #[derive(Debug)]
 pub enum ChunkOffsets<'a> {
-    Stco(&'a [u32]),
-    Co64(&'a [u64]),
+    Stco(Cow<'a, [u32]>),
+    Co64(Cow<'a, [u64]>),
 }
 
 impl ChunkOffsets<'_> {

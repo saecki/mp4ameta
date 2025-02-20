@@ -6,7 +6,7 @@ pub const ENTRY_SIZE: u64 = 12;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Stsc {
     pub state: State,
-    pub items: Vec<StscItem>,
+    pub items: Table<StscItem>,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -37,26 +37,24 @@ impl ParseAtom for Stsc {
         }
 
         let num_entries = reader.read_be_u32()?;
-        let table_size = HEADER_SIZE + ENTRY_SIZE * num_entries as u64;
-        if table_size != size.content_len() {
+        let table_size = ENTRY_SIZE * num_entries as u64;
+        let content_size = HEADER_SIZE + table_size;
+        if content_size != size.content_len() {
             return Err(crate::Error::new(
                 crate::ErrorKind::SizeMismatch,
                 format!(
                     "Sample table sample to chunk (stsc) table size {} doesn't match atom content length {}",
-                    table_size,
+                    content_size,
                     size.content_len(),
                 ),
             ));
         }
 
-        let mut items = Vec::with_capacity(num_entries as usize);
-        for _ in 0..num_entries {
-            items.push(StscItem {
-                first_chunk: reader.read_be_u32()?,
-                samples_per_chunk: reader.read_be_u32()?,
-                sample_description_id: reader.read_be_u32()?,
-            });
-        }
+        reader.skip(table_size as i64)?;
+        let items = Table::Shallow {
+            pos: bounds.content_pos() + HEADER_SIZE,
+            num_entries,
+        };
 
         Ok(Self { state: State::Existing(bounds), items })
     }
@@ -75,10 +73,15 @@ impl WriteAtom for Stsc {
         head::write_full(writer, 0, [0; 3])?;
 
         writer.write_be_u32(self.items.len() as u32)?;
-        for i in self.items.iter() {
-            writer.write_be_u32(i.first_chunk)?;
-            writer.write_be_u32(i.samples_per_chunk)?;
-            writer.write_be_u32(i.sample_description_id)?;
+        match &self.items {
+            Table::Shallow { .. } => unreachable!(),
+            Table::Full(items) => {
+                for i in items.iter() {
+                    writer.write_be_u32(i.first_chunk)?;
+                    writer.write_be_u32(i.samples_per_chunk)?;
+                    writer.write_be_u32(i.sample_description_id)?;
+                }
+            }
         }
 
         Ok(())

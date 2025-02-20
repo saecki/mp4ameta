@@ -42,7 +42,7 @@ impl ParseAtom for Stsd {
 
             match head.fourcc() {
                 MP4_AUDIO if !cfg.write => stsd.mp4a = Some(Mp4a::parse(reader, cfg, head.size())?),
-                TEXT_MEDIA => stsd.text = Some(Text::parse(reader, cfg, head.size())?),
+                TEXT_MEDIA if cfg.write => stsd.text = Some(Text::parse(reader, cfg, head.size())?),
                 _ => reader.skip(head.content_len() as i64)?,
             }
 

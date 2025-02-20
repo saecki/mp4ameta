@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -9,6 +11,89 @@ pub struct Stbl {
     pub stsz: Option<Stsz>,
     pub stco: Option<Stco>,
     pub co64: Option<Co64>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Table<T> {
+    Shallow { pos: u64, num_entries: u32 },
+    Full(Vec<T>),
+}
+
+impl<T> Default for Table<T> {
+    fn default() -> Self {
+        Self::Full(Vec::new())
+    }
+}
+
+impl<T> Table<T> {
+    pub fn len(&self) -> usize {
+        match self {
+            Table::Shallow { num_entries, .. } => *num_entries as usize,
+            Table::Full(items) => items.len(),
+        }
+    }
+}
+
+impl<T: ReadItem> Table<T> {
+    pub fn get_or_read<'a>(
+        &'a self,
+        reader: &mut (impl Read + Seek),
+    ) -> Result<Cow<'a, [T]>, crate::Error> {
+        match self {
+            &Table::Shallow { pos, num_entries } => {
+                reader.seek(SeekFrom::Start(pos))?;
+                let items = Self::read_items(reader, num_entries)?;
+                Ok(Cow::Owned(items))
+            }
+            Table::Full(items) => Ok(Cow::Borrowed(items)),
+        }
+    }
+
+    pub fn read_items<'a>(
+        reader: &mut impl Read,
+        num_entries: u32,
+    ) -> Result<Vec<T>, crate::Error> {
+        let mut items = Vec::with_capacity(num_entries as usize);
+        for _ in 0..num_entries {
+            items.push(T::read_item(reader)?);
+        }
+        Ok(items)
+    }
+}
+
+pub trait ReadItem: Sized + Clone {
+    fn read_item(reader: &mut impl Read) -> std::io::Result<Self>;
+}
+
+impl ReadItem for u32 {
+    fn read_item(reader: &mut impl Read) -> std::io::Result<Self> {
+        reader.read_be_u32()
+    }
+}
+
+impl ReadItem for u64 {
+    fn read_item(reader: &mut impl Read) -> std::io::Result<Self> {
+        reader.read_be_u64()
+    }
+}
+
+impl ReadItem for SttsItem {
+    fn read_item(reader: &mut impl Read) -> std::io::Result<Self> {
+        Ok(SttsItem {
+            sample_count: reader.read_be_u32()?,
+            sample_duration: reader.read_be_u32()?,
+        })
+    }
+}
+
+impl ReadItem for StscItem {
+    fn read_item(reader: &mut impl Read) -> std::io::Result<Self> {
+        Ok(StscItem {
+            first_chunk: reader.read_be_u32()?,
+            samples_per_chunk: reader.read_be_u32()?,
+            sample_description_id: reader.read_be_u32()?,
+        })
+    }
 }
 
 impl Atom for Stbl {

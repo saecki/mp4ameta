@@ -8,7 +8,7 @@ pub struct Stsz {
     pub state: State,
     /// If this field is set to zero, a list of sizes is read instead.
     pub uniform_sample_size: u32,
-    pub sizes: Vec<u32>,
+    pub sizes: Table<u32>,
 }
 
 impl Atom for Stsz {
@@ -35,24 +35,25 @@ impl ParseAtom for Stsz {
 
         let num_entries = reader.read_be_u32()?;
         let sizes = if uniform_sample_size == 0 {
-            let table_size = HEADER_SIZE + ENTRY_SIZE * num_entries as u64;
-            if table_size != size.content_len() {
+            let table_size = ENTRY_SIZE * num_entries as u64;
+            let content_size = HEADER_SIZE + table_size;
+            if content_size != size.content_len() {
                 return Err(crate::Error::new(
                     crate::ErrorKind::SizeMismatch,
                     format!(
                         "Sample table sample size (stsz) table size {} doesn't match atom content length {}",
-                        table_size,
+                        content_size,
                         size.content_len(),
                     ),
                 ));
             }
 
-            let mut sizes = Vec::with_capacity(num_entries as usize);
-            for _ in 0..num_entries {
-                let offset = reader.read_be_u32()?;
-                sizes.push(offset);
+            reader.skip(table_size as i64)?;
+
+            Table::Shallow {
+                pos: bounds.content_pos() + HEADER_SIZE,
+                num_entries,
             }
-            sizes
         } else {
             if size.content_len() != HEADER_SIZE {
                 return Err(crate::Error::new(
@@ -64,7 +65,7 @@ impl ParseAtom for Stsz {
                 ));
             }
 
-            Vec::new()
+            Table::Full(Vec::new())
         };
 
         Ok(Self {
@@ -89,8 +90,14 @@ impl WriteAtom for Stsz {
 
         writer.write_be_u32(self.uniform_sample_size)?;
         writer.write_be_u32(self.sizes.len() as u32)?;
-        for s in self.sizes.iter() {
-            writer.write_be_u32(*s)?;
+
+        match &self.sizes {
+            Table::Shallow { .. } => unreachable!(),
+            Table::Full(sizes) => {
+                for s in sizes.iter() {
+                    writer.write_be_u32(*s)?;
+                }
+            }
         }
 
         Ok(())
