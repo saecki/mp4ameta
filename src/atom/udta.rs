@@ -44,6 +44,13 @@ impl ParseAtom for Udta<'_> {
     }
 }
 
+impl AtomSize for Udta<'_> {
+    fn size(&self) -> Size {
+        let content_len = self.meta.len_or_zero() + self.chpl.len_or_zero();
+        Size::from(content_len)
+    }
+}
+
 impl WriteAtom for Udta<'_> {
     fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
@@ -54,11 +61,6 @@ impl WriteAtom for Udta<'_> {
             a.write(writer, changes)?;
         }
         Ok(())
-    }
-
-    fn size(&self) -> Size {
-        let content_len = self.meta.len_or_zero() + self.chpl.len_or_zero();
-        Size::from(content_len)
     }
 }
 

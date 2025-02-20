@@ -52,6 +52,13 @@ impl ParseAtom for Mdia {
     }
 }
 
+impl AtomSize for Mdia {
+    fn size(&self) -> Size {
+        let content_len = self.mdhd.len() + self.hdlr.len_or_zero() + self.minf.len_or_zero();
+        Size::from(content_len)
+    }
+}
+
 impl WriteAtom for Mdia {
     fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
@@ -63,11 +70,6 @@ impl WriteAtom for Mdia {
             a.write(writer, changes)?;
         }
         Ok(())
-    }
-
-    fn size(&self) -> Size {
-        let content_len = self.mdhd.len() + self.hdlr.len_or_zero() + self.minf.len_or_zero();
-        Size::from(content_len)
     }
 }
 
@@ -82,8 +84,7 @@ impl SimpleCollectChanges for Mdia {
         bounds: &'a AtomBounds,
         changes: &mut Vec<Change<'a>>,
     ) -> i64 {
-        self.mdhd.collect_changes(bounds.end(), level, changes)
-            + self.hdlr.collect_changes(bounds.end(), level, changes)
+        self.hdlr.collect_changes(bounds.end(), level, changes)
             + self.minf.collect_changes(bounds.end(), level, changes)
     }
 

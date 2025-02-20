@@ -54,6 +54,13 @@ impl ParseAtom for Trak {
     }
 }
 
+impl AtomSize for Trak {
+    fn size(&self) -> Size {
+        let content_len = self.tkhd.len() + self.tref.len_or_zero() + self.mdia.len_or_zero();
+        Size::from(content_len)
+    }
+}
+
 impl WriteAtom for Trak {
     fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
@@ -65,11 +72,6 @@ impl WriteAtom for Trak {
             a.write(writer, changes)?;
         }
         Ok(())
-    }
-
-    fn size(&self) -> Size {
-        let content_len = self.tkhd.len() + self.tref.len_or_zero() + self.mdia.len_or_zero();
-        Size::from(content_len)
     }
 }
 
@@ -84,8 +86,7 @@ impl SimpleCollectChanges for Trak {
         bounds: &'a AtomBounds,
         changes: &mut Vec<Change<'a>>,
     ) -> i64 {
-        self.tkhd.collect_changes(bounds.end(), level, changes)
-            + self.tref.collect_changes(bounds.end(), level, changes)
+        self.tref.collect_changes(bounds.end(), level, changes)
             + self.mdia.collect_changes(bounds.end(), level, changes)
     }
 

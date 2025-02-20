@@ -38,6 +38,13 @@ impl ParseAtom for Tref {
     }
 }
 
+impl AtomSize for Tref {
+    fn size(&self) -> Size {
+        let content_len = self.chap.len_or_zero();
+        Size::from(content_len)
+    }
+}
+
 impl WriteAtom for Tref {
     fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
@@ -45,11 +52,6 @@ impl WriteAtom for Tref {
             a.write(writer, changes)?;
         }
         Ok(())
-    }
-
-    fn size(&self) -> Size {
-        let content_len = self.chap.len_or_zero();
-        Size::from(content_len)
     }
 }
 

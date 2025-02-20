@@ -69,6 +69,13 @@ impl ParseAtom for Ilst<'_> {
     }
 }
 
+impl AtomSize for Ilst<'_> {
+    fn size(&self) -> Size {
+        let content_len = self.iter().map(|a| a.len()).sum();
+        Size::from(content_len)
+    }
+}
+
 impl WriteAtom for Ilst<'_> {
     fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
@@ -76,11 +83,6 @@ impl WriteAtom for Ilst<'_> {
             a.write(writer)?;
         }
         Ok(())
-    }
-
-    fn size(&self) -> Size {
-        let content_len = self.iter().map(|a| a.len()).sum();
-        Size::from(content_len)
     }
 }
 

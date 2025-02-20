@@ -164,7 +164,15 @@ trait ParseAtom: Atom {
     ) -> crate::Result<Self>;
 }
 
-trait WriteAtom: Atom {
+trait AtomSize {
+    fn len(&self) -> u64 {
+        self.size().len()
+    }
+
+    fn size(&self) -> Size;
+}
+
+trait WriteAtom: AtomSize + Atom {
     fn write(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         match self.write_atom(writer, changes) {
             Err(mut e) => {
@@ -182,13 +190,7 @@ trait WriteAtom: Atom {
         head::write(writer, head)
     }
 
-    fn len(&self) -> u64 {
-        self.size().len()
-    }
-
     fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()>;
-
-    fn size(&self) -> Size;
 }
 
 fn insert_str(description: &mut String, msg: &str, fourcc: Fourcc) {
@@ -819,7 +821,6 @@ fn update_userdata<'a>(
                 moov.trak.push_and_get(Trak {
                     state: State::Insert,
                     tkhd: Tkhd {
-                        state: State::Insert,
                         version: 0,
                         flags: [0, 0, 0],
                         id: new_id,
@@ -834,7 +835,6 @@ fn update_userdata<'a>(
         let mdia = chapter_trak.mdia.get_or_insert_with(|| Mdia {
             state: State::Insert,
             mdhd: Mdhd {
-                state: State::Insert,
                 timescale: chapter_timescale,
                 duration,
                 ..Default::default()

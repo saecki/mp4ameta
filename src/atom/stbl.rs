@@ -60,6 +60,18 @@ impl ParseAtom for Stbl {
     }
 }
 
+impl AtomSize for Stbl {
+    fn size(&self) -> Size {
+        let content_len = self.stsd.len_or_zero()
+            + self.stts.len_or_zero()
+            + self.stsc.len_or_zero()
+            + self.stsz.len_or_zero()
+            + self.stco.len_or_zero()
+            + self.co64.len_or_zero();
+        Size::from(content_len)
+    }
+}
+
 impl WriteAtom for Stbl {
     fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
@@ -82,16 +94,6 @@ impl WriteAtom for Stbl {
             a.write(writer, changes)?;
         }
         Ok(())
-    }
-
-    fn size(&self) -> Size {
-        let content_len = self.stsd.len_or_zero()
-            + self.stts.len_or_zero()
-            + self.stsc.len_or_zero()
-            + self.stsz.len_or_zero()
-            + self.stco.len_or_zero()
-            + self.co64.len_or_zero();
-        Size::from(content_len)
     }
 }
 

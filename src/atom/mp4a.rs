@@ -60,7 +60,6 @@ const DECODER_SPECIFIC_DESCRIPTOR: u8 = 0x05;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Mp4a {
-    pub state: State,
     pub channel_config: Option<ChannelConfig>,
     pub sample_rate: Option<SampleRate>,
     pub max_bitrate: Option<u32>,
@@ -93,8 +92,6 @@ impl ParseAtom for Mp4a {
         parse_esds(reader, &mut mp4a, head.size())?;
 
         seek_to_end(reader, &bounds)?;
-
-        mp4a.state = State::Existing(bounds);
 
         Ok(mp4a)
     }

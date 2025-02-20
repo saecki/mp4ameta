@@ -49,6 +49,13 @@ impl ParseAtom for Dref {
     }
 }
 
+impl AtomSize for Dref {
+    fn size(&self) -> Size {
+        let content_len = 8 + self.url.len_or_zero();
+        Size::from(content_len)
+    }
+}
+
 impl WriteAtom for Dref {
     fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
@@ -64,11 +71,6 @@ impl WriteAtom for Dref {
             a.write(writer, changes)?;
         }
         Ok(())
-    }
-
-    fn size(&self) -> Size {
-        let content_len = 8 + self.url.len_or_zero();
-        Size::from(content_len)
     }
 }
 

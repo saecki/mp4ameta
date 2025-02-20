@@ -30,6 +30,13 @@ impl ParseAtom for Chap {
     }
 }
 
+impl AtomSize for Chap {
+    fn size(&self) -> Size {
+        let content_len = ENTRY_SIZE * self.chapter_ids.len() as u64;
+        Size::from(content_len)
+    }
+}
+
 impl WriteAtom for Chap {
     fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
@@ -37,11 +44,6 @@ impl WriteAtom for Chap {
             writer.write_be_u32(*c)?;
         }
         Ok(())
-    }
-
-    fn size(&self) -> Size {
-        let content_len = ENTRY_SIZE * self.chapter_ids.len() as u64;
-        Size::from(content_len)
     }
 }
 

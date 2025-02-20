@@ -47,6 +47,12 @@ impl ParseAtom for Gmin {
     }
 }
 
+impl AtomSize for Gmin {
+    fn size(&self) -> Size {
+        Size::from(16)
+    }
+}
+
 impl WriteAtom for Gmin {
     fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
@@ -60,10 +66,6 @@ impl WriteAtom for Gmin {
         writer.write_be_u16(0)?; // reserved
 
         Ok(())
-    }
-
-    fn size(&self) -> Size {
-        Size::from(16)
     }
 }
 

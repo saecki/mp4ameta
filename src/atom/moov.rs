@@ -54,19 +54,7 @@ impl ParseAtom for Moov<'_> {
     }
 }
 
-impl WriteAtom for Moov<'_> {
-    fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
-        self.write_head(writer)?;
-        self.mvhd.write(writer, changes)?;
-        for t in self.trak.iter() {
-            t.write(writer, changes)?;
-        }
-        if let Some(a) = &self.udta {
-            a.write(writer, changes)?;
-        }
-        Ok(())
-    }
-
+impl AtomSize for Moov<'_> {
     fn size(&self) -> Size {
         let content_len = self.mvhd.len()
             + self.trak.iter().map(Trak::len).sum::<u64>()
@@ -86,8 +74,7 @@ impl SimpleCollectChanges for Moov<'_> {
         bounds: &'a AtomBounds,
         changes: &mut Vec<Change<'a>>,
     ) -> i64 {
-        self.mvhd.collect_changes(bounds.end(), level, changes)
-            + self.trak.iter().map(|a| a.collect_changes(bounds.end(), level, changes)).sum::<i64>()
+        self.trak.iter().map(|a| a.collect_changes(bounds.end(), level, changes)).sum::<i64>()
             + self.udta.collect_changes(bounds.end(), level, changes)
     }
 

@@ -38,15 +38,17 @@ impl ParseAtom for Hdlr {
     }
 }
 
+impl AtomSize for Hdlr {
+    fn size(&self) -> Size {
+        Size::from(self.data.len() as u64)
+    }
+}
+
 impl WriteAtom for Hdlr {
     fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
         writer.write_all(self)?;
         Ok(())
-    }
-
-    fn size(&self) -> Size {
-        Size::from(self.data.len() as u64)
     }
 }
 

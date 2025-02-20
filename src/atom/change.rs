@@ -21,7 +21,7 @@ impl<T: CollectChanges> CollectChanges for Option<T> {
     }
 }
 
-pub trait SimpleCollectChanges: WriteAtom {
+pub trait SimpleCollectChanges: AtomSize + Atom {
     fn state(&self) -> &State;
 
     /// Add changes, if any, and return the length difference when applied.
@@ -297,8 +297,26 @@ pub fn write_shifted_offsets<T: ChunkOffsetInt>(
     Ok(())
 }
 
+macro_rules! write_or_ignore {
+    (nowrite, $($write:tt)*) => {
+        Ok(())
+    };
+    (, $($write:tt)*) => {
+        $($write)*
+    };
+}
+
+// false positive
+#[allow(unused)]
+macro_rules! test_or_ignore {
+    (nowrite, $($write:tt)*) => {};
+    (, $($write:tt)*) => {
+        $($write)*
+    };
+}
+
 macro_rules! atom_ref {
-    ($($name:ident $(<$lifetime:lifetime>)?,)+) => {
+    ($($name:ident $(<$lifetime:lifetime>)? $($nowrite:ident)? ,)+) => {
         #[derive(Debug)]
         pub enum AtomRef<'a> {
             $($name(&'a $name $(<$lifetime>)?)),+
@@ -307,7 +325,8 @@ macro_rules! atom_ref {
         impl AtomRef<'_> {
             pub fn write(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
                 match self {
-                    $(Self::$name(a) => a.write(writer, changes),)+
+                    #[allow(unused)]
+                    $(Self::$name(a) => write_or_ignore!($($nowrite)?, {a.write(writer, changes)}),)+
                 }
             }
 
@@ -329,41 +348,40 @@ macro_rules! atom_ref {
             use super::*;
 
             $(
-            #[test]
-            #[allow(non_snake_case)]
-            fn $name() {
-                let atom = $name::default();
-                let changes = [];
+                test_or_ignore! { $($nowrite)?,
+                    #[test]
+                    #[allow(non_snake_case)]
+                    fn $name() {
+                        let atom = $name::default();
+                        let changes = [];
 
-                let mut buf: Vec<u8> = Vec::new();
-                let mut cursor = std::io::Cursor::new(&mut buf);
-                atom.write(&mut cursor, &changes).unwrap();
+                        let mut buf: Vec<u8> = Vec::new();
+                        let mut cursor = std::io::Cursor::new(&mut buf);
+                        atom.write(&mut cursor, &changes).unwrap();
 
-                cursor.seek(SeekFrom::Start(0)).unwrap();
-                let head = head::parse(&mut cursor).unwrap();
+                        cursor.seek(SeekFrom::Start(0)).unwrap();
+                        let head = head::parse(&mut cursor).unwrap();
 
-                assert_eq!(atom.len(), head.len());
-                assert_eq!(atom.len(), buf.len() as u64);
-            }
+                        assert_eq!(atom.len(), head.len());
+                        assert_eq!(atom.len(), buf.len() as u64);
+                    }
+                }
             )+
         }
     };
 }
 
 atom_ref!(
-    Moov<'a>,
-    Mvhd,
+    Moov<'a> nowrite,
     Udta<'a>,
     Chpl<'a>,
     Meta<'a>,
     Hdlr,
     Ilst<'a>,
     Trak,
-    Tkhd,
     Tref,
     Chap,
     Mdia,
-    Mdhd,
     Minf,
     Dinf,
     Dref,

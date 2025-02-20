@@ -48,6 +48,13 @@ impl ParseAtom for Co64 {
     }
 }
 
+impl AtomSize for Co64 {
+    fn size(&self) -> Size {
+        let content_len = HEADER_SIZE + ENTRY_SIZE * self.offsets.len() as u64;
+        Size::from(content_len)
+    }
+}
+
 impl WriteAtom for Co64 {
     fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
@@ -57,11 +64,6 @@ impl WriteAtom for Co64 {
         change::write_shifted_offsets(writer, &self.offsets, changes)?;
 
         Ok(())
-    }
-
-    fn size(&self) -> Size {
-        let content_len = HEADER_SIZE + ENTRY_SIZE * self.offsets.len() as u64;
-        Size::from(content_len)
     }
 }
 

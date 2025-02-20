@@ -1177,6 +1177,8 @@ impl Userdata {
     /// ```
     pub fn clear(&mut self) {
         self.metaitems.clear();
+        self.chapter_list.clear();
+        self.chapter_track.clear();
     }
 
     /// If an atom corresponding to the identifier exists, it's data will be replaced by the new

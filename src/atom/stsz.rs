@@ -75,6 +75,13 @@ impl ParseAtom for Stsz {
     }
 }
 
+impl AtomSize for Stsz {
+    fn size(&self) -> Size {
+        let content_len = HEADER_SIZE + ENTRY_SIZE * self.sizes.len() as u64;
+        Size::from(content_len)
+    }
+}
+
 impl WriteAtom for Stsz {
     fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
@@ -87,11 +94,6 @@ impl WriteAtom for Stsz {
         }
 
         Ok(())
-    }
-
-    fn size(&self) -> Size {
-        let content_len = HEADER_SIZE + ENTRY_SIZE * self.sizes.len() as u64;
-        Size::from(content_len)
     }
 }
 

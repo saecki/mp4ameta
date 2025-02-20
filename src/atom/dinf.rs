@@ -38,6 +38,13 @@ impl ParseAtom for Dinf {
     }
 }
 
+impl AtomSize for Dinf {
+    fn size(&self) -> Size {
+        let content_len = self.dref.len_or_zero();
+        Size::from(content_len)
+    }
+}
+
 impl WriteAtom for Dinf {
     fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
@@ -45,11 +52,6 @@ impl WriteAtom for Dinf {
             a.write(writer, changes)?;
         }
         Ok(())
-    }
-
-    fn size(&self) -> Size {
-        let content_len = self.dref.len_or_zero();
-        Size::from(content_len)
     }
 }
 

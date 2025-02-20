@@ -53,6 +53,13 @@ impl ParseAtom for Stsd {
     }
 }
 
+impl AtomSize for Stsd {
+    fn size(&self) -> Size {
+        let content_len = HEADER_SIZE + self.text.len_or_zero();
+        Size::from(content_len)
+    }
+}
+
 impl WriteAtom for Stsd {
     fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
@@ -68,11 +75,6 @@ impl WriteAtom for Stsd {
             a.write(writer, changes)?;
         }
         Ok(())
-    }
-
-    fn size(&self) -> Size {
-        let content_len = HEADER_SIZE + self.text.len_or_zero();
-        Size::from(content_len)
     }
 }
 

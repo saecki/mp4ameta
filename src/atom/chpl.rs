@@ -78,6 +78,21 @@ impl ParseAtom for Chpl<'_> {
     }
 }
 
+impl AtomSize for Chpl<'_> {
+    fn size(&self) -> Size {
+        let data_len = match &self.data {
+            ChplData::Owned(v) => {
+                v.iter().map(|c| ITEM_HEADER_SIZE + c.title.len() as u64).sum::<u64>()
+            }
+            ChplData::Borrowed(_, v) => {
+                v.iter().map(|c| ITEM_HEADER_SIZE + c.title.len() as u64).sum::<u64>()
+            }
+        };
+        let content_len = HEADER_SIZE + data_len;
+        Size::from(content_len)
+    }
+}
+
 impl WriteAtom for Chpl<'_> {
     fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
@@ -106,19 +121,6 @@ impl WriteAtom for Chpl<'_> {
         }
 
         Ok(())
-    }
-
-    fn size(&self) -> Size {
-        let data_len = match &self.data {
-            ChplData::Owned(v) => {
-                v.iter().map(|c| ITEM_HEADER_SIZE + c.title.len() as u64).sum::<u64>()
-            }
-            ChplData::Borrowed(_, v) => {
-                v.iter().map(|c| ITEM_HEADER_SIZE + c.title.len() as u64).sum::<u64>()
-            }
-        };
-        let content_len = HEADER_SIZE + data_len;
-        Size::from(content_len)
     }
 }
 

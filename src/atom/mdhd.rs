@@ -2,15 +2,10 @@ use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Mdhd {
-    pub state: State,
     pub version: u8,
     pub flags: [u8; 3],
-    pub creation_time: u64,
-    pub modification_time: u64,
     pub timescale: u32,
     pub duration: u64,
-    pub language: u16,
-    pub quality: u16,
 }
 
 impl Atom for Mdhd {
@@ -21,27 +16,23 @@ impl ParseAtom for Mdhd {
     fn parse_atom(
         reader: &mut (impl Read + Seek),
         _cfg: &ParseConfig<'_>,
-        size: Size,
+        _size: Size,
     ) -> crate::Result<Self> {
-        let bounds = find_bounds(reader, size)?;
-        let mut mdhd = Self {
-            state: State::Existing(bounds),
-            ..Default::default()
-        };
+        let mut mdhd = Self::default();
 
         let (version, flags) = head::parse_full(reader)?;
         mdhd.version = version;
         mdhd.flags = flags;
         match version {
             0 => {
-                mdhd.creation_time = reader.read_be_u32()? as u64;
-                mdhd.modification_time = reader.read_be_u32()? as u64;
+                reader.skip(4)?; // creation time
+                reader.skip(4)?; // modification time
                 mdhd.timescale = reader.read_be_u32()?;
                 mdhd.duration = reader.read_be_u32()? as u64;
             }
             1 => {
-                mdhd.creation_time = reader.read_be_u64()?;
-                mdhd.modification_time = reader.read_be_u64()?;
+                reader.skip(8)?; // creation time
+                reader.skip(8)?; // modification time
                 mdhd.timescale = reader.read_be_u32()?;
                 mdhd.duration = reader.read_be_u64()?;
             }
@@ -52,10 +43,20 @@ impl ParseAtom for Mdhd {
                 ));
             }
         }
-        mdhd.language = reader.read_be_u16()?;
-        mdhd.quality = reader.read_be_u16()?;
+        reader.skip(2)?; // language
+        reader.skip(2)?; // quality
 
         Ok(mdhd)
+    }
+}
+
+impl AtomSize for Mdhd {
+    fn size(&self) -> Size {
+        match self.version {
+            0 => Size::from(24),
+            1 => Size::from(36),
+            _ => Size::from(0),
+        }
     }
 }
 
@@ -66,14 +67,14 @@ impl WriteAtom for Mdhd {
 
         match self.version {
             0 => {
-                writer.write_be_u32(self.creation_time as u32)?;
-                writer.write_be_u32(self.modification_time as u32)?;
+                writer.write_be_u32(0)?; // creation time
+                writer.write_be_u32(0)?; // modification time
                 writer.write_be_u32(self.timescale)?;
                 writer.write_be_u32(self.duration as u32)?;
             }
             1 => {
-                writer.write_be_u64(self.creation_time)?;
-                writer.write_be_u64(self.modification_time)?;
+                writer.write_be_u64(0)?; // creation time
+                writer.write_be_u64(0)?; // modification time
                 writer.write_be_u32(self.timescale)?;
                 writer.write_be_u64(self.duration)?;
             }
@@ -84,27 +85,9 @@ impl WriteAtom for Mdhd {
                 ));
             }
         }
-        writer.write_be_u16(self.language)?;
-        writer.write_be_u16(self.quality)?;
+        writer.write_be_u16(0)?; // language
+        writer.write_be_u16(0)?; // quality
 
         Ok(())
-    }
-
-    fn size(&self) -> Size {
-        match self.version {
-            0 => Size::from(24),
-            1 => Size::from(36),
-            _ => Size::from(0),
-        }
-    }
-}
-
-impl LeafAtomCollectChanges for Mdhd {
-    fn state(&self) -> &State {
-        &self.state
-    }
-
-    fn atom_ref(&self) -> AtomRef<'_> {
-        AtomRef::Mdhd(self)
     }
 }

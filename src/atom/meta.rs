@@ -53,6 +53,13 @@ impl ParseAtom for Meta<'_> {
     }
 }
 
+impl AtomSize for Meta<'_> {
+    fn size(&self) -> Size {
+        let content_len = HEADER_SIZE + self.hdlr.len_or_zero() + self.ilst.len_or_zero();
+        Size::from(content_len)
+    }
+}
+
 impl WriteAtom for Meta<'_> {
     fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
@@ -64,11 +71,6 @@ impl WriteAtom for Meta<'_> {
             a.write(writer, changes)?;
         }
         Ok(())
-    }
-
-    fn size(&self) -> Size {
-        let content_len = HEADER_SIZE + self.hdlr.len_or_zero() + self.ilst.len_or_zero();
-        Size::from(content_len)
     }
 }
 

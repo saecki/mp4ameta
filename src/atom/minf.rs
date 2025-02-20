@@ -46,6 +46,14 @@ impl ParseAtom for Minf {
     }
 }
 
+impl AtomSize for Minf {
+    fn size(&self) -> Size {
+        let content_len =
+            self.gmhd.len_or_zero() + self.dinf.len_or_zero() + self.stbl.len_or_zero();
+        Size::from(content_len)
+    }
+}
+
 impl WriteAtom for Minf {
     fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
@@ -59,12 +67,6 @@ impl WriteAtom for Minf {
             a.write(writer, changes)?;
         }
         Ok(())
-    }
-
-    fn size(&self) -> Size {
-        let content_len =
-            self.gmhd.len_or_zero() + self.dinf.len_or_zero() + self.stbl.len_or_zero();
-        Size::from(content_len)
     }
 }
 
