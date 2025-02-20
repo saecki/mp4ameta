@@ -156,7 +156,10 @@ impl Data {
         cfg: &ParseConfig<'_>,
         size: Size,
     ) -> crate::Result<Data> {
-        let (version, [b2, b1, b0]) = head::parse_full(reader)?;
+        let mut buf = [0; 8];
+        reader.read_exact(&mut buf)?;
+
+        let [version, b2, b1, b0, _locale @ ..] = buf;
         if version != 0 {
             return Err(crate::Error::new(
                 crate::ErrorKind::UnknownVersion(version),
@@ -164,8 +167,6 @@ impl Data {
             ));
         }
         let datatype = u32::from_be_bytes([0, b2, b1, b0]);
-
-        reader.skip(4)?; // locale indicator
 
         let len = size.content_len() - HEADER_SIZE;
         Ok(match datatype {
