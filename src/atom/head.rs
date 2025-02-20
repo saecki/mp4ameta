@@ -155,24 +155,14 @@ pub fn write(writer: &mut impl Write, head: Head) -> crate::Result<()> {
 /// 3 bytes flags
 /// ```
 pub fn parse_full(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
-    let version = match reader.read_u8() {
-        Ok(v) => v,
-        Err(e) => {
-            return Err(crate::Error::new(
-                crate::ErrorKind::Io(e),
-                "Error reading version of full atom head",
-            ));
-        }
-    };
-
-    let mut flags = [0; 3];
-    if let Err(e) = reader.read_exact(&mut flags) {
-        return Err(crate::Error::new(
+    let mut buf = [0; 4];
+    reader.read_exact(&mut buf).map_err(|e| {
+        crate::Error::new(
             crate::ErrorKind::Io(e),
-            "Error reading flags of full atom head",
-        ));
-    };
-
+            "Error reading version and flags of full atom head",
+        )
+    })?;
+    let [version, flags @ ..] = buf;
     Ok((version, flags))
 }
 
