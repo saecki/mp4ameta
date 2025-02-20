@@ -101,16 +101,17 @@ impl Head {
 /// 8 bytes optional extended length
 /// ```
 pub fn parse(reader: &mut impl Read) -> crate::Result<Head> {
-    let len = match reader.read_be_u32() {
-        Ok(l) => l as u64,
-        Err(e) => {
-            return Err(crate::Error::new(ErrorKind::Io(e), "Error reading atom length"));
-        }
-    };
-    let mut fourcc = Fourcc::default();
-    if let Err(e) = reader.read_exact(&mut *fourcc) {
-        return Err(crate::Error::new(ErrorKind::Io(e), "Error reading atom identifier"));
-    }
+    let mut buf = [[0u8; 4]; 2];
+
+    // SAFETY: the buffer has the same size and alignment
+    let byte_buf: &mut [u8; 8] = unsafe { std::mem::transmute(&mut buf) };
+
+    reader
+        .read_exact(byte_buf)
+        .map_err(|e| crate::Error::new(ErrorKind::Io(e), "Error reading atom head"))?;
+
+    let len = u32::from_be_bytes(buf[0]) as u64;
+    let fourcc = Fourcc(buf[1]);
 
     if len == 1 {
         match reader.read_be_u64() {
