@@ -216,8 +216,6 @@ pub fn find_bounds(reader: &mut impl Seek, size: Size) -> crate::Result<AtomBoun
 }
 
 pub fn seek_to_end(reader: &mut impl Seek, bounds: &AtomBounds) -> crate::Result<()> {
-    let current = reader.stream_position()?;
-    let diff = bounds.end() - current;
-    reader.skip(diff as i64)?;
+    reader.seek(SeekFrom::Start(bounds.end()))?;
     Ok(())
 }
