@@ -1,11 +1,59 @@
 use super::*;
 
+pub const HEADER_SIZE_V0: usize = 100;
+pub const HEADER_SIZE_V1: usize = 112;
+const BUF_SIZE_V0: usize = HEADER_SIZE_V0 - 4;
+const BUF_SIZE_V1: usize = HEADER_SIZE_V1 - 4;
+
+const_assert!(std::mem::size_of::<MvhdBufV0>() == BUF_SIZE_V0);
+const_assert!(std::mem::size_of::<MvhdBufV1>() == BUF_SIZE_V1);
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Mvhd {
     pub version: u8,
     pub flags: [u8; 3],
     pub timescale: u32,
     pub duration: u64,
+}
+
+#[derive(Default)]
+#[repr(C)]
+struct MvhdBufV0 {
+    creation_time: [u8; 4],
+    modification_time: [u8; 4],
+    timescale: [u8; 4],
+    duration: [u8; 4],
+    preferred_rate: [u8; 4],
+    preferred_volume: [u8; 2],
+    reserved: [u8; 10],
+    matrix: [[[u8; 4]; 3]; 3],
+    preview_time: [u8; 4],
+    preview_duration: [u8; 4],
+    poster_time: [u8; 4],
+    selection_time: [u8; 4],
+    selection_duration: [u8; 4],
+    current_time: [u8; 4],
+    next_track_id: [u8; 4],
+}
+
+#[derive(Default)]
+#[repr(C)]
+struct MvhdBufV1 {
+    creation_time: [u8; 8],
+    modification_time: [u8; 8],
+    timescale: [u8; 4],
+    duration: [u8; 8],
+    preferred_rate: [u8; 4],
+    preferred_volume: [u8; 2],
+    reserved: [u8; 10],
+    matrix: [[[u8; 4]; 3]; 3],
+    preview_time: [u8; 4],
+    preview_duration: [u8; 4],
+    poster_time: [u8; 4],
+    selection_time: [u8; 4],
+    selection_duration: [u8; 4],
+    current_time: [u8; 4],
+    next_track_id: [u8; 4],
 }
 
 impl Atom for Mvhd {
@@ -23,18 +71,27 @@ impl ParseAtom for Mvhd {
         let (version, flags) = head::parse_full(reader)?;
         mvhd.version = version;
         mvhd.flags = flags;
+
         match version {
             0 => {
-                reader.skip(4)?; // creation time
-                reader.skip(4)?; // modification time
-                mvhd.timescale = reader.read_be_u32()?;
-                mvhd.duration = reader.read_be_u32()? as u64;
+                let mut buf = MvhdBufV0::default();
+
+                // SAFETY: alignment and size match because all fields are byte arrays
+                let byte_buf: &mut [u8; BUF_SIZE_V0] = unsafe { std::mem::transmute(&mut buf) };
+                reader.read_exact(byte_buf)?;
+
+                mvhd.timescale = u32::from_be_bytes(buf.timescale);
+                mvhd.duration = u32::from_be_bytes(buf.duration) as u64;
             }
             1 => {
-                reader.skip(8)?; // creation time
-                reader.skip(8)?; // modification time
-                mvhd.timescale = reader.read_be_u32()?;
-                mvhd.duration = reader.read_be_u64()?;
+                let mut buf = MvhdBufV1::default();
+
+                // SAFETY: alignment and size match because all fields are byte arrays
+                let byte_buf: &mut [u8; BUF_SIZE_V1] = unsafe { std::mem::transmute(&mut buf) };
+                reader.read_exact(byte_buf)?;
+
+                mvhd.timescale = u32::from_be_bytes(buf.timescale);
+                mvhd.duration = u64::from_be_bytes(buf.duration);
             }
             v => {
                 return Err(crate::Error::new(
@@ -43,17 +100,6 @@ impl ParseAtom for Mvhd {
                 ))
             }
         }
-        reader.skip(4)?; // preferred rate
-        reader.skip(2)?; // preferred volume
-        reader.skip(10)?; // reserved
-        reader.skip(4 * 9)?; // matrix
-        reader.skip(4)?; // preview time
-        reader.skip(4)?; // preview duration
-        reader.skip(4)?; // poster time
-        reader.skip(4)?; // selection time
-        reader.skip(4)?; // selection duration
-        reader.skip(4)?; // current time
-        reader.skip(4)?; // next track id
 
         Ok(mvhd)
     }
@@ -62,8 +108,8 @@ impl ParseAtom for Mvhd {
 impl AtomSize for Mvhd {
     fn size(&self) -> Size {
         match self.version {
-            0 => Size::from(100),
-            1 => Size::from(112),
+            0 => Size::from(HEADER_SIZE_V0 as u64),
+            1 => Size::from(HEADER_SIZE_V1 as u64),
             _ => Size::from(0),
         }
     }

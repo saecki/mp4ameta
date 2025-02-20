@@ -1,5 +1,13 @@
 use super::*;
 
+pub const HEADER_SIZE_V0: usize = 84;
+pub const HEADER_SIZE_V1: usize = 96;
+const BUF_SIZE_V0: usize = HEADER_SIZE_V0 - 4;
+const BUF_SIZE_V1: usize = HEADER_SIZE_V1 - 4;
+
+const_assert!(std::mem::size_of::<TkhdBufV0>() == BUF_SIZE_V0);
+const_assert!(std::mem::size_of::<TkhdBufV1>() == BUF_SIZE_V1);
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Tkhd {
     pub version: u8,
@@ -7,6 +15,42 @@ pub struct Tkhd {
     pub id: u32,
     /// The duration in mvhd timescale units
     pub duration: u64,
+}
+
+#[derive(Default)]
+#[repr(C)]
+struct TkhdBufV0 {
+    creation_time: [u8; 4],
+    modification_time: [u8; 4],
+    id: [u8; 4],
+    reserved0: [u8; 4],
+    duration: [u8; 4],
+    reserved1: [u8; 8],
+    layer: [u8; 2],
+    alternate_group: [u8; 2],
+    volume: [u8; 2],
+    reserved2: [u8; 2],
+    matrix: [[[u8; 4]; 3]; 3],
+    track_width: [u8; 4],
+    track_height: [u8; 4],
+}
+
+#[derive(Default)]
+#[repr(C)]
+struct TkhdBufV1 {
+    creation_time: [u8; 8],
+    modification_time: [u8; 8],
+    id: [u8; 4],
+    reserved0: [u8; 4],
+    duration: [u8; 8],
+    reserved1: [u8; 8],
+    layer: [u8; 2],
+    alternate_group: [u8; 2],
+    volume: [u8; 2],
+    reserved2: [u8; 2],
+    matrix: [[[u8; 4]; 3]; 3],
+    track_width: [u8; 4],
+    track_height: [u8; 4],
 }
 
 impl Atom for Tkhd {
@@ -24,20 +68,27 @@ impl ParseAtom for Tkhd {
         let (version, flags) = head::parse_full(reader)?;
         tkhd.version = version;
         tkhd.flags = flags;
+
         match version {
             0 => {
-                reader.skip(4)?; // creation time
-                reader.skip(4)?; // modification time
-                tkhd.id = reader.read_be_u32()?;
-                reader.skip(4)?; // reserved
-                tkhd.duration = reader.read_be_u32()? as u64;
+                let mut buf = TkhdBufV0::default();
+
+                // SAFETY: alignment and size match because all fields are byte arrays
+                let byte_buf: &mut [u8; BUF_SIZE_V0] = unsafe { std::mem::transmute(&mut buf) };
+                reader.read_exact(byte_buf)?;
+
+                tkhd.id = u32::from_be_bytes(buf.id);
+                tkhd.duration = u32::from_be_bytes(buf.duration) as u64;
             }
             1 => {
-                reader.skip(8)?; // creation time
-                reader.skip(8)?; // modification time
-                tkhd.id = reader.read_be_u32()?;
-                reader.skip(4)?; // reserved
-                tkhd.duration = reader.read_be_u64()?;
+                let mut buf = TkhdBufV1::default();
+
+                // SAFETY: alignment and size match because all fields are byte arrays
+                let byte_buf: &mut [u8; BUF_SIZE_V1] = unsafe { std::mem::transmute(&mut buf) };
+                reader.read_exact(byte_buf)?;
+
+                tkhd.id = u32::from_be_bytes(buf.id);
+                tkhd.duration = u64::from_be_bytes(buf.duration);
             }
             v => {
                 return Err(crate::Error::new(
@@ -46,14 +97,6 @@ impl ParseAtom for Tkhd {
                 ));
             }
         }
-        reader.skip(8)?; // reserved
-        reader.skip(2)?; // layer
-        reader.skip(2)?; // alternate group
-        reader.skip(2)?; // volume
-        reader.skip(2)?; // reserved
-        reader.skip(4 * 9)?; // matrix
-        reader.skip(4)?; // track width
-        reader.skip(4)?; // track width
 
         Ok(tkhd)
     }
@@ -62,8 +105,8 @@ impl ParseAtom for Tkhd {
 impl AtomSize for Tkhd {
     fn size(&self) -> Size {
         match self.version {
-            0 => Size::from(84),
-            1 => Size::from(96),
+            0 => Size::from(HEADER_SIZE_V0 as u64),
+            1 => Size::from(HEADER_SIZE_V1 as u64),
             _ => Size::from(0),
         }
     }
@@ -76,18 +119,22 @@ impl WriteAtom for Tkhd {
 
         match self.version {
             0 => {
-                writer.write_be_u32(0)?; // creation time
-                writer.write_be_u32(0)?; // modification time
-                writer.write_be_u32(self.id)?;
-                writer.write_all(&[0; 4])?; // reserved
-                writer.write_be_u32(self.duration as u32)?;
+                let mut buf = TkhdBufV0::default();
+                buf.id = u32::to_be_bytes(self.id);
+                buf.duration = u32::to_be_bytes(self.duration as u32);
+
+                // SAFETY: alignment and size match because all fields are byte arrays
+                let byte_buf: &[u8; BUF_SIZE_V0] = unsafe { std::mem::transmute(&buf) };
+                writer.write_all(byte_buf)?;
             }
             1 => {
-                writer.write_be_u64(0)?; // creation time
-                writer.write_be_u64(0)?; // modification time
-                writer.write_be_u32(self.id)?;
-                writer.write_all(&[0; 4])?; // reserved
-                writer.write_be_u64(self.duration)?;
+                let mut buf = TkhdBufV1::default();
+                buf.id = u32::to_be_bytes(self.id);
+                buf.duration = u64::to_be_bytes(self.duration);
+
+                // SAFETY: alignment and size match because all fields are byte arrays
+                let byte_buf: &[u8; BUF_SIZE_V1] = unsafe { std::mem::transmute(&buf) };
+                writer.write_all(byte_buf)?;
             }
             v => {
                 return Err(crate::Error::new(
@@ -96,14 +143,6 @@ impl WriteAtom for Tkhd {
                 ));
             }
         }
-        writer.write_all(&[0; 8])?; // reserved
-        writer.write_be_u16(0)?; // layer
-        writer.write_be_u16(0)?; // alternate group
-        writer.write_be_u16(0)?; // volume
-        writer.write_all(&[0; 2])?; // reserved
-        writer.write_all(&[0; 4 * 9])?; // matrix
-        writer.write_be_u32(0)?; // track width
-        writer.write_be_u32(0)?; // track height
 
         Ok(())
     }
