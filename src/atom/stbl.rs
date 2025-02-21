@@ -117,7 +117,7 @@ impl ParseAtom for Stbl {
             let head = head::parse(reader)?;
 
             match head.fourcc() {
-                SAMPLE_TABLE_SAMPLE_DESCRIPTION if cfg.cfg.read_audio_info => {
+                SAMPLE_TABLE_SAMPLE_DESCRIPTION if cfg.write || cfg.cfg.read_audio_info => {
                     stbl.stsd = Some(Stsd::parse(reader, cfg, head.size())?)
                 }
                 SAMPLE_TABLE_TIME_TO_SAMPLE if cfg.cfg.read_chapter_track => {
