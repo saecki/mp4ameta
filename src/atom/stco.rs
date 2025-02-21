@@ -4,7 +4,7 @@ pub const HEADER_SIZE: u64 = 8;
 pub const ENTRY_SIZE: u64 = 4;
 
 /// A struct representing of a sample table chunk offset atom (`stco`).
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Stco {
     pub state: State,
     pub offsets: Table<u32>,

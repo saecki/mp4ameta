@@ -5,13 +5,13 @@ pub const DEFAULT_TIMESCALE: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(10_
 pub const HEADER_SIZE: u64 = 5;
 pub const ITEM_HEADER_SIZE: u64 = 9;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Chpl<'a> {
     pub state: State,
     pub data: ChplData<'a>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ChplData<'a> {
     Owned(Vec<ChplItem>),
     Borrowed(u32, &'a [Chapter]),
@@ -23,7 +23,7 @@ impl Default for ChplData<'_> {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ChplItem {
     pub start: u64,
     pub title: String,

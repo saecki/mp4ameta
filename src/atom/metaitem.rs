@@ -10,7 +10,7 @@
 use super::*;
 
 /// A struct representing a metadata item, containing data that is associated with an identifier.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MetaItem {
     /// The identifier of the atom.
     pub ident: DataIdent,

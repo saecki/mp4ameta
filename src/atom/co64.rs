@@ -4,7 +4,7 @@ pub const HEADER_SIZE: u64 = 8;
 pub const ENTRY_SIZE: u64 = 8;
 
 /// A struct representing of a 64bit sample table chunk offset atom (`co64`).
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Co64 {
     pub state: State,
     pub offsets: Table<u64>,

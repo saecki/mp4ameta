@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Dref {
     pub state: State,
     pub url: Option<Url>,

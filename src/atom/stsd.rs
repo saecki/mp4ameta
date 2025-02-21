@@ -2,7 +2,7 @@ use super::*;
 
 pub const HEADER_SIZE: u64 = 8;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Stsd {
     pub state: State,
     pub mp4a: Option<Mp4a>,

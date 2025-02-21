@@ -2,7 +2,7 @@ use super::*;
 
 pub const HEADER_SIZE: u64 = 4;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Meta<'a> {
     pub state: State,
     pub hdlr: Option<Hdlr>,

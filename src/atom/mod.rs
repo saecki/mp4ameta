@@ -231,7 +231,7 @@ impl<T> PushAndGet<T> for Vec<T> {
 /// | FFMpeg (default) | 10,000,000 |
 /// | mp4v2            |      1,000 |
 /// | mutagen          |       mvhd |
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ChplTimescale {
     /// Use a fixed timescale.
     Fixed(NonZeroU32),
@@ -262,7 +262,7 @@ impl ChplTimescale {
 /// And there are two separate ways of storing chapter information:
 /// - A chapter list
 /// - A chapter track
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ReadConfig {
     /// Wheter the metatdata item list will be read.
     pub read_item_list: bool,
@@ -562,7 +562,7 @@ fn read_chapter_title(reader: &mut (impl Read + Seek), offset: u64) -> crate::Re
 /// And there are two separate ways of storing chapter information:
 /// - A chapter list
 /// - A chapter track
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WriteConfig {
     /// Whether to overwrite item list metadata.
     pub write_item_list: bool,

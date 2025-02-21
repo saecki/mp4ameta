@@ -16,7 +16,7 @@ mod genre;
 mod tuple;
 
 /// User defined MPEG-4 audio metadata that can be modified.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Userdata {
     // TODO: maybe use indexmap for metaitems?
     pub(crate) metaitems: Vec<MetaItem>,

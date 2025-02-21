@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Stbl {
     pub state: State,
     pub stsd: Option<Stsd>,
@@ -11,7 +11,7 @@ pub struct Stbl {
     pub co64: Option<Co64>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Table<T> {
     Shallow { pos: u64, num_entries: u32 },
     Full(Vec<T>),

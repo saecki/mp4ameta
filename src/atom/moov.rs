@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Moov<'a> {
     pub state: State,
     pub mvhd: Mvhd,

@@ -88,7 +88,7 @@ const BE_U64: u32 = 78;
 const AFFINE_TRANSFORM_F64: u32 = 79;
 
 /// Different types of data defined by [Table 3-5 Well-known data types](https://developer.apple.com/documentation/quicktime-file-format/well-known_types).
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Data {
     /// Reserved for use where no type needs to be indicated.
     /// This is opten used for track/disc numbers and standard genre codes.

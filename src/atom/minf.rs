@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Minf {
     pub state: State,
     pub gmhd: Option<Gmhd>,

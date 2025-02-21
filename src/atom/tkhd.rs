@@ -14,7 +14,7 @@ const MATRIX: [[[u8; 4]; 3]; 3] = [
     [u32::to_be_bytes(0), u32::to_be_bytes(0), u32::to_be_bytes(1 << 30)],
 ];
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Tkhd {
     pub version: u8,
     pub flags: [u8; 3],

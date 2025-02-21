@@ -10,7 +10,7 @@ const_assert!(std::mem::size_of::<MdhdBufV1>() == BUF_SIZE_V1);
 
 const UNSPECIFIED_LANGUAGE: u16 = i16::MAX as u16;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Mdhd {
     pub version: u8,
     pub flags: [u8; 3],

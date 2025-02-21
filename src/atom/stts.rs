@@ -3,13 +3,13 @@ use super::*;
 pub const HEADER_SIZE: u64 = 8;
 pub const ENTRY_SIZE: u64 = 8;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Stts {
     pub state: State,
     pub items: Table<SttsItem>,
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SttsItem {
     pub sample_count: u32,
     pub sample_duration: u32,

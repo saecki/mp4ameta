@@ -1,7 +1,7 @@
 use crate::atom::head::AtomBounds;
 
 /// The state of an atom.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum State {
     /// The atom already exists. Contains the current bounds the atom.
     Existing(AtomBounds),

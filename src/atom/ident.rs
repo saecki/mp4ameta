@@ -196,7 +196,7 @@ pub fn idents_match(a: &impl Ident, b: &impl Ident) -> bool {
 }
 
 /// A 4 byte atom identifier (four character code).
-#[derive(Clone, Copy, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
 pub struct Fourcc(pub [u8; 4]);
 
 impl Deref for Fourcc {
@@ -296,7 +296,7 @@ pub type FreeformIdentStatic = FreeformIdent<'static, StaticStr<'static>>;
 pub type FreeformIdentBorrowed<'a> = FreeformIdent<'a, BorrowedStr<'a>>;
 
 /// An identifier of a freeform (`----`) atom containing borrowed mean and name strings.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct FreeformIdent<'a, T> {
     /// The mean string, typically in reverse domain notation.
     ///
@@ -362,7 +362,7 @@ impl<'a> FreeformIdentBorrowed<'a> {
 
 /// The identifier used to store metadata inside an item list.
 /// Either a [`Fourcc`] or an freeform identifier.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DataIdent {
     /// A standard identifier containing a 4 byte atom identifier.
     Fourcc(Fourcc),

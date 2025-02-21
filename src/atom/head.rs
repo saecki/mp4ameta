@@ -7,7 +7,7 @@ use super::*;
 /// 4 bytes identifier
 /// 8 bytes optional extended length
 /// ```
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Size {
     ext: bool,
     len: u64,
@@ -56,7 +56,7 @@ impl Size {
 /// 4 bytes identifier
 /// 8 bytes optional extended length
 /// ```
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Head {
     size: Size,
     fourcc: Fourcc,
@@ -172,7 +172,7 @@ pub fn write_full(writer: &mut impl Write, version: u8, flags: [u8; 3]) -> crate
     Ok(())
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AtomBounds {
     pos: u64,
     size: Size,

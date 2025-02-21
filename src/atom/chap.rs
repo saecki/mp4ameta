@@ -2,7 +2,7 @@ use super::*;
 
 pub const ENTRY_SIZE: u64 = 4;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Chap {
     pub state: State,
     pub chapter_ids: Vec<u32>,

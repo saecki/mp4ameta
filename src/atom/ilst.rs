@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Ilst<'a> {
     pub state: State,
     pub data: Cow<'a, [MetaItem]>,

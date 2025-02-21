@@ -5,7 +5,7 @@ use std::time::Duration;
 use crate::ErrorKind;
 
 /// The iTunes media type of a file. This is stored in the `stik` atom.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MediaType {
     /// A media type stored as 0 in the `stik` atom.
     Movie = 0,
@@ -74,7 +74,7 @@ impl fmt::Display for MediaType {
 }
 
 /// The iTunes advisory rating of a file. This is stored in the `rtng` atom.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AdvisoryRating {
     /// An advisory rating stored as 2 in the `rtng` atom.
     Clean = 2,
@@ -114,7 +114,7 @@ impl fmt::Display for AdvisoryRating {
 }
 
 /// The channel configuration of an MPEG-4 audio track.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ChannelConfig {
     /// 1.0, channel: front-center.
     Mono = 1,
@@ -190,7 +190,7 @@ impl fmt::Display for ChannelConfig {
 }
 
 /// An enum representing the sample rate of an MPEG-4 audio track.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SampleRate {
     /// A Sample rate of 96000Hz
     Hz96000 = 0,
@@ -288,7 +288,7 @@ impl fmt::Display for SampleRate {
 }
 
 /// Audio information of an mp4 track.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AudioInfo {
     /// The duration of the track.
     pub duration: Duration,
@@ -310,7 +310,7 @@ pub type ImgMut<'a> = Img<&'a mut Vec<u8>>;
 pub type ImgBuf = Img<Vec<u8>>;
 
 /// Image data with an associated format.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Img<T> {
     /// The image format.
     pub fmt: ImgFmt,
@@ -337,7 +337,7 @@ impl<T> Img<T> {
 }
 
 /// The image format used to store images inside the userdata of an MPEG-4 file.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ImgFmt {
     Bmp,
     Jpeg,

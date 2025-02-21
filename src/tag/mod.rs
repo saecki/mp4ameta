@@ -12,7 +12,7 @@ mod readonly;
 mod userdata;
 
 /// A tag containing MPEG-4 audio metadata.
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Tag {
     /// The filetype (`ftyp`) atom.
     pub ftyp: String,

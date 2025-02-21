@@ -3,7 +3,7 @@ use super::*;
 pub const HEADER_SIZE: u64 = 12;
 pub const ENTRY_SIZE: u64 = 4;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Stsz {
     pub state: State,
     /// If this field is set to zero, a list of sizes is read instead.

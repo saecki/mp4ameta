@@ -58,7 +58,7 @@ const DECODER_CONFIG_DESCRIPTOR: u8 = 0x04;
 /// Decoder specific descriptor tag
 const DECODER_SPECIFIC_DESCRIPTOR: u8 = 0x05;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Mp4a {
     pub channel_config: Option<ChannelConfig>,
     pub sample_rate: Option<SampleRate>,
