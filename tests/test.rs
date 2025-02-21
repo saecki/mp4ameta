@@ -597,39 +597,6 @@ fn work_movement_handling() {
     assert_eq!(tag.work(), Some(work));
 }
 
-// TODO: should this be up to the user?
-//#[test]
-//fn chapter_handling() {
-//    let chapters = [
-//        Chapter::new(Duration::from_secs(0), "CHAPTER 1"),
-//        Chapter::new(Duration::from_secs(1), "CHAPTER 2"),
-//        Chapter::new(Duration::from_secs(2), "CHAPTER 3"),
-//    ];
-//
-//    let mut tag = Tag::default();
-//    assert_eq!(tag.chapters(), []);
-//
-//    tag.add_chapter(chapter2.clone());
-//    let mut chapters = tag.chapters();
-//    assert_eq!(chapters.next(), Some(&chapter2));
-//    assert_eq!(chapters.next(), None);
-//    drop(chapters);
-//
-//    tag.add_chapter(chapter1.clone());
-//    let mut chapters = tag.chapters();
-//    assert_eq!(chapters.next(), Some(&chapter1));
-//    assert_eq!(chapters.next(), Some(&chapter2));
-//    assert_eq!(chapters.next(), None);
-//    drop(chapters);
-//
-//    tag.add_chapter(chapter3.clone());
-//    let mut chapters = tag.chapters();
-//    assert_eq!(chapters.next(), Some(&chapter1));
-//    assert_eq!(chapters.next(), Some(&chapter2));
-//    assert_eq!(chapters.next(), Some(&chapter3));
-//    assert_eq!(chapters.next(), None);
-//}
-
 #[test]
 fn tag_destructuring() {
     let mut tag = Tag::default();
