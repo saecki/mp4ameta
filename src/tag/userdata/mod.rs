@@ -2,7 +2,6 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::fs::{File, OpenOptions};
 use std::path::Path;
-use std::rc::Rc;
 
 use crate::{
     atom, ident, AdvisoryRating, Chapter, Data, DataIdent, Ident, Img, ImgBuf, ImgFmt, ImgMut,
@@ -562,12 +561,12 @@ impl Userdata {
     /// tag.add_data(test, Data::Utf8("string".into()));
     ///
     /// let test = DataIdent::Fourcc(test);
-    /// let (ident, data) = tag.take_bytes().next().unwrap();
-    /// assert_eq!(ident.as_ref(), &test);
+    /// let (ident, data) = tag.into_bytes().next().unwrap();
+    /// assert_eq!(ident, test);
     /// assert_eq!(data, b"data".to_vec());
     /// ```
-    pub fn take_bytes(self) -> impl Iterator<Item = (Rc<DataIdent>, Vec<u8>)> {
-        self.take_data().filter_map(|(i, d)| Some((i, d.into_bytes()?)))
+    pub fn into_bytes(self) -> impl Iterator<Item = (DataIdent, Vec<u8>)> {
+        self.into_data().filter_map(|(i, d)| Some((i, d.into_bytes()?)))
     }
 
     /// Returns an iterator over references to all strings.
@@ -631,12 +630,12 @@ impl Userdata {
     /// tag.add_data(test, Data::Utf8("string".into()));
     ///
     /// let test = DataIdent::Fourcc(test);
-    /// let (ident, data) = tag.take_strings().next().unwrap();
-    /// assert_eq!(ident.as_ref(), &test);
+    /// let (ident, data) = tag.into_strings().next().unwrap();
+    /// assert_eq!(ident, test);
     /// assert_eq!(data, "string".to_string());
     /// ```
-    pub fn take_strings(self) -> impl Iterator<Item = (Rc<DataIdent>, String)> {
-        self.take_data().filter_map(|(i, d)| Some((i, d.into_string()?)))
+    pub fn into_strings(self) -> impl Iterator<Item = (DataIdent, String)> {
+        self.into_data().filter_map(|(i, d)| Some((i, d.into_string()?)))
     }
 
     /// Returns an iterator over references to all images.
@@ -700,12 +699,12 @@ impl Userdata {
     /// tag.add_data(test, Data::Utf8("string".into()));
     ///
     /// let test = DataIdent::Fourcc(test);
-    /// let (ident, image) = tag.take_images().next().unwrap();
-    /// assert_eq!(ident.as_ref(), &test);
+    /// let (ident, image) = tag.into_images().next().unwrap();
+    /// assert_eq!(ident, test);
     /// assert_eq!(image, Img::jpeg(b"data".to_vec()));
     /// ```
-    pub fn take_images(self) -> impl Iterator<Item = (Rc<DataIdent>, ImgBuf)> {
-        self.take_data().filter_map(|(i, d)| Some((i, d.into_image()?)))
+    pub fn into_images(self) -> impl Iterator<Item = (DataIdent, ImgBuf)> {
+        self.into_data().filter_map(|(i, d)| Some((i, d.into_image()?)))
     }
 
     /// Returns an iterator over references to all data.
@@ -772,13 +771,13 @@ impl Userdata {
     /// tag.add_data(test, Data::Jpeg(b"data".to_vec()));
     ///
     /// let test = DataIdent::Fourcc(test);
-    /// let (ident, image) = tag.take_data().next().unwrap();
-    /// assert_eq!(ident.as_ref(), &test);
+    /// let (ident, image) = tag.into_data().next().unwrap();
+    /// assert_eq!(ident, test);
     /// assert_eq!(image, Data::Jpeg(b"data".to_vec()));
     /// ```
-    pub fn take_data(self) -> impl Iterator<Item = (Rc<DataIdent>, Data)> {
+    pub fn into_data(self) -> impl Iterator<Item = (DataIdent, Data)> {
         self.metaitems.into_iter().flat_map(move |a| {
-            let ident = Rc::new(a.ident);
+            let ident = a.ident;
             let data = a.data;
             data.into_iter().map(move |d| (ident.clone(), d))
         })
