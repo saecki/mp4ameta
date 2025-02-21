@@ -35,6 +35,13 @@ struct TkhdBufV0 {
     track_height: [u8; 4],
 }
 
+impl TkhdBufV0 {
+    fn bytes_mut(&mut self) -> &mut [u8; BUF_SIZE_V0] {
+        // SAFETY: alignment and size match because all fields are byte arrays
+        unsafe { std::mem::transmute(self) }
+    }
+}
+
 #[derive(Default)]
 #[repr(C)]
 struct TkhdBufV1 {
@@ -51,6 +58,13 @@ struct TkhdBufV1 {
     matrix: [[[u8; 4]; 3]; 3],
     track_width: [u8; 4],
     track_height: [u8; 4],
+}
+
+impl TkhdBufV1 {
+    fn bytes_mut(&mut self) -> &mut [u8; BUF_SIZE_V1] {
+        // SAFETY: alignment and size match because all fields are byte arrays
+        unsafe { std::mem::transmute(self) }
+    }
 }
 
 impl Atom for Tkhd {
@@ -72,21 +86,13 @@ impl ParseAtom for Tkhd {
         match version {
             0 => {
                 let mut buf = TkhdBufV0::default();
-
-                // SAFETY: alignment and size match because all fields are byte arrays
-                let byte_buf: &mut [u8; BUF_SIZE_V0] = unsafe { std::mem::transmute(&mut buf) };
-                reader.read_exact(byte_buf)?;
-
+                reader.read_exact(buf.bytes_mut())?;
                 tkhd.id = u32::from_be_bytes(buf.id);
                 tkhd.duration = u32::from_be_bytes(buf.duration) as u64;
             }
             1 => {
                 let mut buf = TkhdBufV1::default();
-
-                // SAFETY: alignment and size match because all fields are byte arrays
-                let byte_buf: &mut [u8; BUF_SIZE_V1] = unsafe { std::mem::transmute(&mut buf) };
-                reader.read_exact(byte_buf)?;
-
+                reader.read_exact(buf.bytes_mut())?;
                 tkhd.id = u32::from_be_bytes(buf.id);
                 tkhd.duration = u64::from_be_bytes(buf.duration);
             }
@@ -122,19 +128,13 @@ impl WriteAtom for Tkhd {
                 let mut buf = TkhdBufV0::default();
                 buf.id = u32::to_be_bytes(self.id);
                 buf.duration = u32::to_be_bytes(self.duration as u32);
-
-                // SAFETY: alignment and size match because all fields are byte arrays
-                let byte_buf: &[u8; BUF_SIZE_V0] = unsafe { std::mem::transmute(&buf) };
-                writer.write_all(byte_buf)?;
+                writer.write_all(buf.bytes_mut())?;
             }
             1 => {
                 let mut buf = TkhdBufV1::default();
                 buf.id = u32::to_be_bytes(self.id);
                 buf.duration = u64::to_be_bytes(self.duration);
-
-                // SAFETY: alignment and size match because all fields are byte arrays
-                let byte_buf: &[u8; BUF_SIZE_V1] = unsafe { std::mem::transmute(&buf) };
-                writer.write_all(byte_buf)?;
+                writer.write_all(buf.bytes_mut())?;
             }
             v => {
                 return Err(crate::Error::new(

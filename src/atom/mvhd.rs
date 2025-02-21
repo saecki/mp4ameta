@@ -36,6 +36,13 @@ struct MvhdBufV0 {
     next_track_id: [u8; 4],
 }
 
+impl MvhdBufV0 {
+    fn bytes_mut(&mut self) -> &mut [u8; BUF_SIZE_V0] {
+        // SAFETY: alignment and size match because all fields are byte arrays
+        unsafe { std::mem::transmute(self) }
+    }
+}
+
 #[derive(Default)]
 #[repr(C)]
 struct MvhdBufV1 {
@@ -54,6 +61,13 @@ struct MvhdBufV1 {
     selection_duration: [u8; 4],
     current_time: [u8; 4],
     next_track_id: [u8; 4],
+}
+
+impl MvhdBufV1 {
+    fn bytes_mut(&mut self) -> &mut [u8; BUF_SIZE_V1] {
+        // SAFETY: alignment and size match because all fields are byte arrays
+        unsafe { std::mem::transmute(self) }
+    }
 }
 
 impl Atom for Mvhd {
@@ -75,21 +89,13 @@ impl ParseAtom for Mvhd {
         match version {
             0 => {
                 let mut buf = MvhdBufV0::default();
-
-                // SAFETY: alignment and size match because all fields are byte arrays
-                let byte_buf: &mut [u8; BUF_SIZE_V0] = unsafe { std::mem::transmute(&mut buf) };
-                reader.read_exact(byte_buf)?;
-
+                reader.read_exact(buf.bytes_mut())?;
                 mvhd.timescale = u32::from_be_bytes(buf.timescale);
                 mvhd.duration = u32::from_be_bytes(buf.duration) as u64;
             }
             1 => {
                 let mut buf = MvhdBufV1::default();
-
-                // SAFETY: alignment and size match because all fields are byte arrays
-                let byte_buf: &mut [u8; BUF_SIZE_V1] = unsafe { std::mem::transmute(&mut buf) };
-                reader.read_exact(byte_buf)?;
-
+                reader.read_exact(buf.bytes_mut())?;
                 mvhd.timescale = u32::from_be_bytes(buf.timescale);
                 mvhd.duration = u64::from_be_bytes(buf.duration);
             }

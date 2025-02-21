@@ -27,6 +27,13 @@ struct MdhdBufV0 {
     quality: [u8; 2],
 }
 
+impl MdhdBufV0 {
+    fn bytes_mut(&mut self) -> &mut [u8; BUF_SIZE_V0] {
+        // SAFETY: alignment and size match because all fields are byte arrays
+        unsafe { std::mem::transmute(self) }
+    }
+}
+
 #[derive(Default)]
 #[repr(C)]
 struct MdhdBufV1 {
@@ -36,6 +43,13 @@ struct MdhdBufV1 {
     duration: [u8; 8],
     language: [u8; 2],
     quality: [u8; 2],
+}
+
+impl MdhdBufV1 {
+    fn bytes_mut(&mut self) -> &mut [u8; BUF_SIZE_V1] {
+        // SAFETY: alignment and size match because all fields are byte arrays
+        unsafe { std::mem::transmute(self) }
+    }
 }
 
 impl Atom for Mdhd {
@@ -57,21 +71,13 @@ impl ParseAtom for Mdhd {
         match version {
             0 => {
                 let mut buf = MdhdBufV0::default();
-
-                // SAFETY: alignment and size match because all fields are byte arrays
-                let byte_buf: &mut [u8; BUF_SIZE_V0] = unsafe { std::mem::transmute(&mut buf) };
-                reader.read_exact(byte_buf)?;
-
+                reader.read_exact(buf.bytes_mut())?;
                 mdhd.timescale = u32::from_be_bytes(buf.timescale);
                 mdhd.duration = u32::from_be_bytes(buf.duration) as u64;
             }
             1 => {
                 let mut buf = MdhdBufV1::default();
-
-                // SAFETY: alignment and size match because all fields are byte arrays
-                let byte_buf: &mut [u8; BUF_SIZE_V1] = unsafe { std::mem::transmute(&mut buf) };
-                reader.read_exact(byte_buf)?;
-
+                reader.read_exact(buf.bytes_mut())?;
                 mdhd.timescale = u32::from_be_bytes(buf.timescale);
                 mdhd.duration = u64::from_be_bytes(buf.duration);
             }
@@ -107,19 +113,13 @@ impl WriteAtom for Mdhd {
                 let mut buf = MdhdBufV0::default();
                 buf.timescale = u32::to_be_bytes(self.timescale);
                 buf.duration = u32::to_be_bytes(self.duration as u32);
-
-                // SAFETY: alignment and size match because all fields are byte arrays
-                let byte_buf: &[u8; BUF_SIZE_V0] = unsafe { std::mem::transmute(&buf) };
-                writer.write_all(byte_buf)?;
+                writer.write_all(buf.bytes_mut())?;
             }
             1 => {
                 let mut buf = MdhdBufV1::default();
                 buf.timescale = u32::to_be_bytes(self.timescale);
                 buf.duration = u64::to_be_bytes(self.duration);
-
-                // SAFETY: alignment and size match because all fields are byte arrays
-                let byte_buf: &[u8; BUF_SIZE_V1] = unsafe { std::mem::transmute(&buf) };
-                writer.write_all(byte_buf)?;
+                writer.write_all(buf.bytes_mut())?;
             }
             v => {
                 return Err(crate::Error::new(
