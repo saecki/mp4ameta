@@ -334,6 +334,43 @@ fn sample_files() {
 }
 
 #[test]
+fn bench() {
+    let Some(in_file) = std::env::args().skip_while(|a| a != "bench").nth(1) else {
+        println!("Skipping bench test since no input file was provided.");
+        return;
+    };
+    println!("Running bench with file: {in_file}");
+
+    let in_file = "files/chaptered.m4a";
+    let target_file = "target/bench.m4a";
+
+    let in_tag = Tag::read_from_path(target_file).unwrap();
+
+    let start = std::time::Instant::now();
+    for _ in 0..300 {
+        std::fs::copy(in_file, target_file).unwrap();
+
+        Tag::default().write_to_path(target_file).unwrap();
+        let tag = Tag::read_from_path(target_file).unwrap();
+        assert!(tag.is_empty());
+        assert_eq!(tag.audio_info(), in_tag.audio_info());
+
+        get_tag_1().write_to_path(target_file).unwrap();
+        let tag = Tag::read_from_path(target_file).unwrap();
+        assert_tag_1(&tag);
+        assert_eq!(tag.audio_info(), in_tag.audio_info());
+
+        get_tag_2().write_to_path(target_file).unwrap();
+        let tag = Tag::read_from_path(target_file).unwrap();
+        assert_tag_2(&tag);
+        assert_eq!(tag.audio_info(), in_tag.audio_info());
+    }
+    let end = std::time::Instant::now();
+    let millis = end.duration_since(start).as_millis();
+    println!("took: {millis}ms");
+}
+
+#[test]
 fn read_sample() {
     let tag = Tag::read_from_path("files/sample.m4a").unwrap();
 
