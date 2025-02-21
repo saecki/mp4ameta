@@ -1,23 +1,11 @@
+use std::borrow::Cow;
+
 use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Url {
     pub state: State,
-    pub data: Vec<u8>,
-}
-
-impl Deref for Url {
-    type Target = Vec<u8>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.data
-    }
-}
-
-impl DerefMut for Url {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.data
-    }
+    pub data: Cow<'static, [u8]>,
 }
 
 impl Atom for Url {
@@ -31,9 +19,10 @@ impl ParseAtom for Url {
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
+        let data = reader.read_u8_vec(size.content_len())?;
         Ok(Self {
             state: State::Existing(bounds),
-            data: reader.read_u8_vec(size.content_len())?,
+            data: Cow::Owned(data),
         })
     }
 }
@@ -47,7 +36,7 @@ impl AtomSize for Url {
 impl WriteAtom for Url {
     fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
-        writer.write_all(self)?;
+        writer.write_all(&self.data)?;
         Ok(())
     }
 }
@@ -56,7 +45,7 @@ impl Url {
     pub fn track() -> Self {
         Self {
             state: State::Insert,
-            data: vec![0x01, 0x00, 0x00, 0x00],
+            data: Cow::Borrowed(&[0x01, 0x00, 0x00, 0x00]),
         }
     }
 }

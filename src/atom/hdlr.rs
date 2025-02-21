@@ -1,23 +1,11 @@
+use std::borrow::Cow;
+
 use super::*;
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Hdlr {
     pub state: State,
-    pub data: Vec<u8>,
-}
-
-impl Deref for Hdlr {
-    type Target = Vec<u8>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.data
-    }
-}
-
-impl DerefMut for Hdlr {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.data
-    }
+    pub data: Cow<'static, [u8]>,
 }
 
 impl Atom for Hdlr {
@@ -31,9 +19,10 @@ impl ParseAtom for Hdlr {
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
+        let data = reader.read_u8_vec(size.content_len())?;
         Ok(Self {
             state: State::Existing(bounds),
-            data: reader.read_u8_vec(size.content_len())?,
+            data: Cow::Owned(data),
         })
     }
 }
@@ -47,7 +36,7 @@ impl AtomSize for Hdlr {
 impl WriteAtom for Hdlr {
     fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
-        writer.write_all(self)?;
+        writer.write_all(&self.data)?;
         Ok(())
     }
 }
@@ -66,7 +55,7 @@ impl Hdlr {
     pub fn meta() -> Self {
         Self {
             state: State::Insert,
-            data: vec![
+            data: Cow::Borrowed(&[
                 0x00, 0x00, 0x00, 0x00, // version + flags
                 0x00, 0x00, 0x00, 0x00, // component type
                 0x6d, 0x64, 0x69, 0x72, // component subtype
@@ -74,14 +63,14 @@ impl Hdlr {
                 0x00, 0x00, 0x00, 0x00, // component flags
                 0x00, 0x00, 0x00, 0x00, // component flags mask
                 0x00, // component name
-            ],
+            ]),
         }
     }
 
     pub fn text_mdia() -> Self {
         Self {
             state: State::Insert,
-            data: vec![
+            data: Cow::Borrowed(&[
                 0x00, 0x00, 0x00, 0x00, // version + flags
                 0x00, 0x00, 0x00, 0x00, // component type
                 0x74, 0x65, 0x78, 0x74, // component subtype
@@ -89,7 +78,7 @@ impl Hdlr {
                 0x00, 0x00, 0x00, 0x00, // component flags
                 0x00, 0x00, 0x00, 0x00, // component flags mask
                 0x00, // component name
-            ],
+            ]),
         }
     }
 }
