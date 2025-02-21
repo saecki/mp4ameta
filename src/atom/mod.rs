@@ -443,8 +443,6 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
                     e.description = desc.into();
                     e
                 })?;
-            } else {
-                todo!("error missing chunk offsets")
             }
         }
     }
@@ -492,7 +490,10 @@ fn read_track_chapters<T: ChunkOffsetInt>(
             Some(next_stsc_item) => {
                 let end_idx = next_stsc_item.first_chunk as usize;
                 if end_idx > offsets.len() {
-                    todo!("error out of bounds");
+                    return Err(crate::Error::new(
+                        ErrorKind::InvalidSampleTable,
+                        "Sample table sample to chunk (stsc) first chunk index is out of bounds",
+                    ));
                 }
                 end_idx
             }
@@ -507,11 +508,19 @@ fn read_track_chapters<T: ChunkOffsetInt>(
                     stsz_uniform_size
                 } else {
                     let Some(size) = stsz_iter.next() else {
-                        todo!("error");
+                        return Err(crate::Error::new(
+                            ErrorKind::InvalidSampleTable,
+                            "Missing sample table sample size (stsz) item",
+                        ));
                     };
                     *size
                 };
-                let Some(duration) = stts_iter.next() else { todo!("error") };
+                let Some(duration) = stts_iter.next() else {
+                    return Err(crate::Error::new(
+                        ErrorKind::InvalidSampleTable,
+                        "Missing sample time to sample (stts) duration",
+                    ));
+                };
 
                 let title = read_chapter_title(reader, current_offset)?;
                 chapters.push(Chapter { start: scale_duration(timescale, time), title });
@@ -981,7 +990,10 @@ fn remove_chapter_media_data<T: ChunkOffsetInt>(
             Some(next_stsc_item) => {
                 let end_idx = next_stsc_item.first_chunk as usize;
                 if end_idx > offsets.len() {
-                    todo!("error out of bounds");
+                    return Err(crate::Error::new(
+                        ErrorKind::InvalidSampleTable,
+                        "Sample table sample to chunk (stsc) first chunk index is out of bounds",
+                    ));
                 }
                 end_idx
             }
@@ -996,7 +1008,10 @@ fn remove_chapter_media_data<T: ChunkOffsetInt>(
                 let mut chunk_size = 0;
                 for _ in 0..stsc_item.samples_per_chunk {
                     let Some(size) = stsz_iter.next() else {
-                        todo!("error");
+                        return Err(crate::Error::new(
+                            ErrorKind::InvalidSampleTable,
+                            "Missing sample table sample size (stsz) item",
+                        ));
                     };
                     chunk_size += *size as u64;
                 }

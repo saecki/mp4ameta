@@ -19,6 +19,8 @@ pub enum ErrorKind {
     InvalidAtomSize,
     /// The content of an atom suggests another length than its header.
     SizeMismatch,
+    /// The sample table atom (`stbl`) contains inconsistent data.
+    InvalidSampleTable,
     /// The [`ChannelConfig`] code is unknown. Contains the unknown code.
     ///
     /// [`ChannelConfig`]: crate::ChannelConfig
@@ -31,7 +33,6 @@ pub enum ErrorKind {
     ///
     /// [`SampleRate`]: crate::SampleRate
     UnknownSampleRate(u8),
-    ChapterTitleTooLong(usize),
     /// Either the version byte of an atom or a descriptor is unknown. Contains the unknown version.
     UnknownVersion(u8),
     /// An invalid utf-8 string was found. Contains the invalid data.
