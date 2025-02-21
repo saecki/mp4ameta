@@ -204,14 +204,24 @@ fn total(vec: &[u8]) -> Option<u16> {
 
 fn set_number(vec: &mut Vec<u8>, number: u16) {
     set_be_int!(vec, 2, number, u16);
+    check_correct_size(vec);
 }
 
 fn set_total(vec: &mut Vec<u8>, total: u16) {
     set_be_int!(vec, 4, total, u16);
+    check_correct_size(vec);
+}
+
+// NOTE: iTunes/Apple Music requires the atom size to be 8 bytes for correct parsing.
+//       Smaller sizes 6 bytes for example will cause parsing issues.
+fn check_correct_size(vec: &mut Vec<u8>) {
+    if vec.len() < 8 {
+        vec.resize(8, 0);
+    }
 }
 
 fn new(number: u16, total: u16) -> Vec<u8> {
     let [n0, n1] = number.to_be_bytes();
     let [t0, t1] = total.to_be_bytes();
-    vec![0, 0, n0, n1, t0, t1]
+    vec![0, 0, n0, n1, t0, t1, 0, 0]
 }
