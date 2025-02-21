@@ -79,9 +79,14 @@ impl ParseAtom for Mp4a {
         let bounds = find_bounds(reader, size)?;
         let mut mp4a = Self::default();
 
-        reader.skip(28)?;
+        // use cursor over a buffer to avoid syscalls
+        let mut buf = vec![0; bounds.content_len() as usize];
+        reader.read_exact(&mut buf)?;
 
-        let head = head::parse(reader)?;
+        let mut cursor = std::io::Cursor::new(&mut buf);
+        cursor.skip(28)?;
+
+        let head = head::parse(&mut cursor)?;
         if head.fourcc() != ELEMENTARY_STREAM_DESCRIPTION {
             return Err(crate::Error::new(
                 crate::ErrorKind::AtomNotFound(ELEMENTARY_STREAM_DESCRIPTION),
@@ -89,9 +94,7 @@ impl ParseAtom for Mp4a {
             ));
         }
 
-        parse_esds(reader, &mut mp4a, head.size())?;
-
-        seek_to_end(reader, &bounds)?;
+        parse_esds(&mut cursor, &mut mp4a, head.size())?;
 
         Ok(mp4a)
     }
