@@ -10,7 +10,7 @@ impl Atom for Mdat {
 impl Mdat {
     pub fn read_bounds(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<AtomBounds> {
         let bounds = find_bounds(reader, size)?;
-        seek_to_end(reader, &bounds)?;
+        reader.seek(SeekFrom::Start(bounds.end()))?;
         Ok(bounds)
     }
 }

@@ -56,7 +56,7 @@ use change::{
     AtomRef, Change, ChunkOffsetInt, ChunkOffsets, CollectChanges, LeafAtomCollectChanges,
     SimpleCollectChanges, UpdateAtomLen, UpdateChunkOffsets,
 };
-use head::{find_bounds, seek_to_end, AtomBounds, Head, Size};
+use head::{find_bounds, AtomBounds, Head, Size};
 use ident::*;
 use state::State;
 use util::*;

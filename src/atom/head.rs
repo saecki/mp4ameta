@@ -204,8 +204,3 @@ pub fn find_bounds(reader: &mut impl Seek, size: Size) -> crate::Result<AtomBoun
     let pos = reader.stream_position()? - size.head_len();
     Ok(AtomBounds { pos, size })
 }
-
-pub fn seek_to_end(reader: &mut impl Seek, bounds: &AtomBounds) -> crate::Result<()> {
-    reader.seek(SeekFrom::Start(bounds.end()))?;
-    Ok(())
-}
