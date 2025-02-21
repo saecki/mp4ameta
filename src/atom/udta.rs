@@ -31,7 +31,7 @@ impl ParseAtom for Udta<'_> {
                 CHAPTER_LIST if cfg.cfg.read_chapter_list => {
                     udta.chpl = Some(Chpl::parse(reader, cfg, head.size())?);
                 }
-                METADATA if cfg.cfg.read_item_list => {
+                METADATA if cfg.cfg.read_meta_items => {
                     udta.meta = Some(Meta::parse(reader, cfg, head.size())?)
                 }
                 _ => reader.skip(head.content_len() as i64)?,

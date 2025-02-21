@@ -32,7 +32,7 @@ impl ParseAtom for Moov<'_> {
                 TRACK if cfg.write || cfg.cfg.read_chapter_track || cfg.cfg.read_audio_info => {
                     trak.push(Trak::parse(reader, cfg, head.size())?)
                 }
-                USER_DATA if cfg.cfg.read_item_list || cfg.cfg.read_chapter_list => {
+                USER_DATA if cfg.cfg.read_meta_items || cfg.cfg.read_chapter_list => {
                     udta = Some(Udta::parse(reader, cfg, head.size())?)
                 }
                 _ => reader.skip(head.content_len() as i64)?,

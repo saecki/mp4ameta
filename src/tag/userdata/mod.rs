@@ -18,8 +18,7 @@ mod tuple;
 /// User defined MPEG-4 audio metadata that can be modified.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Userdata {
-    // TODO: maybe use indexmap for metaitems?
-    pub(crate) metaitems: Vec<MetaItem>,
+    pub(crate) meta_items: Vec<MetaItem>,
     pub(crate) chapter_list: Vec<Chapter>,
     pub(crate) chapter_track: Vec<Chapter>,
 }
@@ -446,7 +445,7 @@ impl Userdata {
     /// assert_eq!(tag.data_of(&test).next().unwrap().string(), Some("data"));
     /// ```
     pub fn data_of<'a>(&'a self, ident: &impl Ident) -> impl Iterator<Item = &'a Data> {
-        match self.metaitems.iter().find(|a| ident == &a.ident) {
+        match self.meta_items.iter().find(|a| ident == &a.ident) {
             Some(a) => a.data.iter(),
             None => [].iter(),
         }
@@ -467,7 +466,7 @@ impl Userdata {
     /// assert_eq!(tag.strings_of(&test).next().unwrap(), "data1");
     /// ```
     pub fn data_mut_of(&mut self, ident: &impl Ident) -> impl Iterator<Item = &mut Data> {
-        match self.metaitems.iter_mut().find(|a| ident == &a.ident) {
+        match self.meta_items.iter_mut().find(|a| ident == &a.ident) {
             Some(a) => a.data.iter_mut(),
             None => [].iter_mut(),
         }
@@ -488,9 +487,9 @@ impl Userdata {
     /// ```
     pub fn take_data_of(&mut self, ident: &impl Ident) -> impl Iterator<Item = Data> {
         let mut i = 0;
-        while i < self.metaitems.len() {
-            if ident == &self.metaitems[i].ident {
-                let removed = self.metaitems.remove(i);
+        while i < self.meta_items.len() {
+            if ident == &self.meta_items[i].ident {
+                let removed = self.meta_items.remove(i);
                 return removed.data.into_iter();
             }
 
@@ -728,7 +727,7 @@ impl Userdata {
     /// assert_eq!(data.next(), None);
     /// ```
     pub fn data(&self) -> impl Iterator<Item = (&DataIdent, &Data)> {
-        self.metaitems.iter().flat_map(|a| a.data.iter().map(move |d| (&a.ident, d)))
+        self.meta_items.iter().flat_map(|a| a.data.iter().map(move |d| (&a.ident, d)))
     }
 
     /// Returns an iterator over mutable references to all data.
@@ -751,7 +750,7 @@ impl Userdata {
     /// assert_eq!(strings.next(), None);
     /// ```
     pub fn data_mut(&mut self) -> impl Iterator<Item = (&DataIdent, &mut Data)> {
-        self.metaitems.iter_mut().flat_map(|a| {
+        self.meta_items.iter_mut().flat_map(|a| {
             let ident = &a.ident;
             let data = &mut a.data;
             data.iter_mut().map(move |d| (ident, d))
@@ -776,7 +775,7 @@ impl Userdata {
     /// assert_eq!(image, Data::Jpeg(b"data".to_vec()));
     /// ```
     pub fn into_data(self) -> impl Iterator<Item = (DataIdent, Data)> {
-        self.metaitems.into_iter().flat_map(move |a| {
+        self.meta_items.into_iter().flat_map(move |a| {
             let ident = a.ident;
             let data = a.data;
             data.into_iter().map(move |d| (ident.clone(), d))
@@ -886,7 +885,7 @@ impl Userdata {
     /// assert!(tag.data_of(&test).next().is_none());
     /// ```
     pub fn remove_data_of(&mut self, ident: &impl Ident) {
-        self.metaitems.retain(|a| ident != &a.ident);
+        self.meta_items.retain(|a| ident != &a.ident);
     }
 
     /// Retains only the bytes, of the atom corresponding to the identifier, that match the
@@ -1005,12 +1004,12 @@ impl Userdata {
     /// assert_eq!(data.next(), None);
     /// ```
     pub fn retain_data_of(&mut self, ident: &impl Ident, predicate: impl Fn(&Data) -> bool) {
-        let pos = self.metaitems.iter().position(|a| ident == &a.ident);
+        let pos = self.meta_items.iter().position(|a| ident == &a.ident);
 
         if let Some(i) = pos {
-            self.metaitems[i].data.retain(predicate);
-            if self.metaitems[i].data.is_empty() {
-                self.metaitems.remove(i);
+            self.meta_items[i].data.retain(predicate);
+            if self.meta_items[i].data.is_empty() {
+                self.meta_items.remove(i);
             }
         }
     }
@@ -1138,8 +1137,8 @@ impl Userdata {
     /// ```
     pub fn retain_data(&mut self, predicate: impl Fn(&DataIdent, &Data) -> bool) {
         let mut i = 0;
-        while i < self.metaitems.len() {
-            let a = &mut self.metaitems[i];
+        while i < self.meta_items.len() {
+            let a = &mut self.meta_items[i];
             let mut j = 0;
             while j < a.data.len() {
                 if predicate(&a.ident, &a.data[j]) {
@@ -1150,34 +1149,56 @@ impl Userdata {
             }
 
             if a.data.is_empty() {
-                self.metaitems.remove(i);
+                self.meta_items.remove(i);
             } else {
                 i += 1;
             }
         }
     }
 
-    // TODO: clear chapters too
-    // TODO: also add clear_meta and clear_chapters?
-    /// Removes all metadata atoms of the tag.
+    /// Removes user data.
+    /// This includes the metadata item list as well as the chapter list and track.
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Userdata, Data, Fourcc};
+    /// use std::time::Duration;
+    /// use mp4ameta::{Userdata, Chapter, Data, Fourcc};
     ///
     /// let mut tag = Userdata::default();
     /// let test = Fourcc(*b"test");
     ///
-    /// assert!(tag.is_empty());
     /// tag.set_data(test, Data::Utf8("data".into()));
+    /// tag.chapter_list_mut().push(Chapter::new(Duration::ZERO, "first"));
     /// assert!(!tag.is_empty());
     /// tag.clear();
     /// assert!(tag.is_empty());
     /// ```
     pub fn clear(&mut self) {
-        self.metaitems.clear();
+        self.meta_items.clear();
         self.chapter_list.clear();
         self.chapter_track.clear();
+    }
+
+    /// Clear the metadata item list.
+    ///
+    /// # Example
+    /// ```
+    /// use std::time::Duration;
+    /// use mp4ameta::{Userdata, Chapter, Data, Fourcc};
+    ///
+    /// let mut tag = Userdata::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// tag.set_data(test, Data::Utf8("data".into()));
+    /// tag.chapter_list_mut().push(Chapter::new(Duration::ZERO, "first"));
+    /// assert!(!tag.is_empty());
+    /// assert!(!tag.meta_items_is_empty());
+    /// tag.clear_meta_items();
+    /// assert!(!tag.is_empty());
+    /// assert!(tag.meta_items_is_empty());
+    /// ```
+    pub fn clear_meta_items(&mut self) {
+        self.meta_items.clear();
     }
 
     /// If an atom corresponding to the identifier exists, it's data will be replaced by the new
@@ -1194,12 +1215,12 @@ impl Userdata {
     /// assert_eq!(tag.strings_of(&test).next().unwrap(), "data");
     /// ```
     pub fn set_data(&mut self, ident: (impl Ident + Into<DataIdent>), data: Data) {
-        match self.metaitems.iter_mut().find(|a| ident == a.ident) {
+        match self.meta_items.iter_mut().find(|a| ident == a.ident) {
             Some(a) => {
                 a.data.clear();
                 a.data.push(data);
             }
-            None => self.metaitems.push(MetaItem::new(ident.into(), vec![data])),
+            None => self.meta_items.push(MetaItem::new(ident.into(), vec![data])),
         }
     }
 
@@ -1229,13 +1250,13 @@ impl Userdata {
         ident: (impl Ident + Into<DataIdent>),
         data: impl IntoIterator<Item = Data>,
     ) {
-        match self.metaitems.iter_mut().find(|a| ident == a.ident) {
+        match self.meta_items.iter_mut().find(|a| ident == a.ident) {
             Some(a) => {
                 a.data.clear();
                 a.data.extend(data);
             }
             None => {
-                self.metaitems.push(MetaItem::new(ident.into(), data.into_iter().collect()));
+                self.meta_items.push(MetaItem::new(ident.into(), data.into_iter().collect()));
             }
         }
     }
@@ -1259,9 +1280,9 @@ impl Userdata {
     /// assert_eq!(strings.next(), None)
     /// ```
     pub fn add_data(&mut self, ident: (impl Ident + Into<DataIdent>), data: Data) {
-        match self.metaitems.iter_mut().find(|a| ident == a.ident) {
+        match self.meta_items.iter_mut().find(|a| ident == a.ident) {
             Some(a) => a.data.push(data),
-            None => self.metaitems.push(MetaItem::new(ident.into(), vec![data])),
+            None => self.meta_items.push(MetaItem::new(ident.into(), vec![data])),
         }
     }
 
@@ -1291,28 +1312,52 @@ impl Userdata {
         ident: (impl Ident + Into<DataIdent>),
         data: impl IntoIterator<Item = Data>,
     ) {
-        match self.metaitems.iter_mut().find(|a| ident == a.ident) {
+        match self.meta_items.iter_mut().find(|a| ident == a.ident) {
             Some(a) => a.data.extend(data),
-            None => self.metaitems.push(MetaItem::new(ident.into(), data.into_iter().collect())),
+            None => self.meta_items.push(MetaItem::new(ident.into(), data.into_iter().collect())),
         }
     }
 
-    /// Returns true if this tag contains any metadata atoms, false otherwise.
+    /// Returns true if there is any user data.\
+    /// This includes the metadata item list as well as the chapter list and track.
     ///
     /// # Example
     /// ```
-    /// use mp4ameta::{Userdata, Data, Fourcc};
+    /// use std::time::Duration;
+    /// use mp4ameta::{Userdata, Chapter, Data, Fourcc};
     ///
     /// let mut tag = Userdata::default();
     /// let test = Fourcc(*b"test");
     ///
-    /// assert!(tag.is_empty());
     /// tag.set_data(test, Data::Utf8("data".into()));
+    /// tag.chapter_list_mut().push(Chapter::new(Duration::ZERO, "first"));
     /// assert!(!tag.is_empty());
     /// tag.clear();
     /// assert!(tag.is_empty());
     /// ```
     pub fn is_empty(&self) -> bool {
-        self.metaitems.is_empty()
+        self.meta_items.is_empty() && self.chapter_list.is_empty() && self.chapter_track.is_empty()
+    }
+
+    /// Returns true if metadata item list contains any data.
+    ///
+    /// # Example
+    /// ```
+    /// use std::time::Duration;
+    /// use mp4ameta::{Userdata, Chapter, Data, Fourcc};
+    ///
+    /// let mut tag = Userdata::default();
+    /// let test = Fourcc(*b"test");
+    ///
+    /// tag.set_data(test, Data::Utf8("data".into()));
+    /// tag.chapter_list_mut().push(Chapter::new(Duration::ZERO, "first"));
+    /// assert!(!tag.is_empty());
+    /// assert!(!tag.meta_items_is_empty());
+    /// tag.clear_meta_items();
+    /// assert!(!tag.is_empty());
+    /// assert!(tag.meta_items_is_empty());
+    /// ```
+    pub fn meta_items_is_empty(&self) -> bool {
+        self.meta_items.is_empty()
     }
 }

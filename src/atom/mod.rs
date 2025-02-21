@@ -265,7 +265,7 @@ impl ChplTimescale {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ReadConfig {
     /// Wheter the metatdata item list will be read.
-    pub read_item_list: bool,
+    pub read_meta_items: bool,
     /// Wheter image data will be read. Mostly for performance reasons.
     pub read_image_data: bool,
     /// Wheter chapter list information will be read.
@@ -282,7 +282,7 @@ pub struct ReadConfig {
 impl ReadConfig {
     /// The default configuration for reading tags.
     pub const DEFAULT: ReadConfig = ReadConfig {
-        read_item_list: true,
+        read_meta_items: true,
         read_image_data: true,
         read_chapter_list: true,
         read_chapter_track: true,
@@ -329,7 +329,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
     let mvhd = moov.mvhd;
     let duration = scale_duration(mvhd.timescale, mvhd.duration);
 
-    let metaitems = moov
+    let meta_items = moov
         .udta
         .as_mut()
         .and_then(|a| a.meta.take())
@@ -465,7 +465,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
         }
     }
 
-    let userdata = Userdata { metaitems, chapter_list, chapter_track };
+    let userdata = Userdata { meta_items, chapter_list, chapter_track };
     Ok(Tag { ftyp, info, userdata })
 }
 
@@ -564,8 +564,8 @@ fn read_chapter_title(reader: &mut (impl Read + Seek), offset: u64) -> crate::Re
 /// - A chapter track
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WriteConfig {
-    /// Whether to overwrite item list metadata.
-    pub write_item_list: bool,
+    /// Whether to overwrite the metadata item list.
+    pub write_meta_items: bool,
     /// Whether to overwrite chapter list information.
     pub write_chapter_list: bool,
     /// Whether to overwrite chapter track information.
@@ -577,7 +577,7 @@ pub struct WriteConfig {
 impl WriteConfig {
     /// The default configuration for writing tags.
     pub const DEFAULT: WriteConfig = WriteConfig {
-        write_item_list: true,
+        write_meta_items: true,
         write_chapter_list: true,
         write_chapter_track: true,
         chpl_timescale: ChplTimescale::DEFAULT,
@@ -610,7 +610,7 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
             let head = head::parse(&mut reader)?;
 
             let read_cfg = ReadConfig {
-                read_item_list: cfg.write_item_list,
+                read_meta_items: cfg.write_meta_items,
                 read_chapter_list: cfg.write_chapter_list,
                 read_chapter_track: cfg.write_chapter_track,
                 read_audio_info: false,
@@ -643,7 +643,7 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
 
     // update atom hierarchy
     let mut changes = Vec::new();
-    if cfg.write_item_list || cfg.write_chapter_list || cfg.write_chapter_track {
+    if cfg.write_meta_items || cfg.write_chapter_list || cfg.write_chapter_track {
         update_userdata(&mut reader, &mut changes, &mut moov, &mdat_bounds, userdata, cfg)?;
     }
 
@@ -775,13 +775,13 @@ fn update_userdata<'a>(
     let udta = moov.udta.get_or_insert_default();
 
     // item list (ilst)
-    if cfg.write_item_list {
+    if cfg.write_meta_items {
         let meta = udta.meta.get_or_insert_default();
         meta.hdlr.get_or_insert_with(Hdlr::meta);
 
         let ilst = meta.ilst.get_or_insert_default();
         ilst.state.replace_existing();
-        ilst.data = Cow::Borrowed(&userdata.metaitems);
+        ilst.data = Cow::Borrowed(&userdata.meta_items);
     }
 
     // chapter list
