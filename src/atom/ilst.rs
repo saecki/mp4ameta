@@ -3,30 +3,7 @@ use super::*;
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Ilst<'a> {
     pub state: State,
-    pub data: IlstData<'a>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum IlstData<'a> {
-    Owned(Vec<MetaItem>),
-    Borrowed(&'a [MetaItem]),
-}
-
-impl Default for IlstData<'_> {
-    fn default() -> Self {
-        IlstData::Owned(Vec::new())
-    }
-}
-
-impl Deref for Ilst<'_> {
-    type Target = [MetaItem];
-
-    fn deref(&self) -> &Self::Target {
-        match &self.data {
-            IlstData::Owned(a) => a,
-            IlstData::Borrowed(a) => a,
-        }
-    }
+    pub data: Cow<'a, [MetaItem]>,
 }
 
 impl Atom for Ilst<'_> {
@@ -64,14 +41,14 @@ impl ParseAtom for Ilst<'_> {
 
         Ok(Self {
             state: State::Existing(bounds),
-            data: IlstData::Owned(ilst),
+            data: Cow::Owned(ilst),
         })
     }
 }
 
 impl AtomSize for Ilst<'_> {
     fn size(&self) -> Size {
-        let content_len = self.iter().map(|a| a.len()).sum();
+        let content_len = self.data.iter().map(|a| a.len()).sum();
         Size::from(content_len)
     }
 }
@@ -79,7 +56,7 @@ impl AtomSize for Ilst<'_> {
 impl WriteAtom for Ilst<'_> {
     fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
-        for a in self.iter() {
+        for a in self.data.iter() {
             a.write(writer)?;
         }
         Ok(())
@@ -94,14 +71,5 @@ impl LeafAtomCollectChanges for Ilst<'_> {
 
     fn atom_ref(&self) -> AtomRef<'_> {
         AtomRef::Ilst(self)
-    }
-}
-
-impl Ilst<'_> {
-    pub fn owned(self) -> Option<Vec<MetaItem>> {
-        match self.data {
-            IlstData::Owned(a) => Some(a),
-            IlstData::Borrowed(_) => None,
-        }
     }
 }

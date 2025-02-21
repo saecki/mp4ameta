@@ -372,9 +372,9 @@ pub enum DataIdent {
         /// The mean string, typically in reverse domain notation.
         ///
         /// Most commonly this is `"com.apple.iTunes"`. See [`APPLE_ITUNES_MEAN`].
-        mean: std::borrow::Cow<'static, str>,
+        mean: Cow<'static, str>,
         /// The name string used to identify the freeform atom.
-        name: std::borrow::Cow<'static, str>,
+        name: Cow<'static, str>,
     },
 }
 

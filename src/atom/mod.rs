@@ -42,12 +42,13 @@
 //!             └─ data
 //! ```
 
+use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use std::num::NonZeroU32;
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 
 use crate::{AudioInfo, Chapter, ErrorKind, Tag, Userdata};
 
@@ -69,7 +70,7 @@ use ftyp::Ftyp;
 use gmhd::Gmhd;
 use gmin::Gmin;
 use hdlr::Hdlr;
-use ilst::{Ilst, IlstData};
+use ilst::Ilst;
 use mdat::Mdat;
 use mdhd::Mdhd;
 use mdia::Mdia;
@@ -333,7 +334,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
         .as_mut()
         .and_then(|a| a.meta.take())
         .and_then(|a| a.ilst)
-        .and_then(|a| a.owned())
+        .map(|a| a.data.into_owned())
         .unwrap_or_default();
 
     // chapter list atom
@@ -780,7 +781,7 @@ fn update_userdata<'a>(
 
         let ilst = meta.ilst.get_or_insert_default();
         ilst.state.replace_existing();
-        ilst.data = IlstData::Borrowed(&userdata.metaitems);
+        ilst.data = Cow::Borrowed(&userdata.metaitems);
     }
 
     // chapter list
