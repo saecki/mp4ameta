@@ -2,6 +2,7 @@ use std::array::TryFromSliceError;
 use std::borrow::Cow;
 use std::convert::TryInto;
 use std::fmt::{self, Write};
+use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
@@ -176,16 +177,16 @@ pub const SHOW_MOVEMENT: Fourcc = Fourcc(*b"shwm");
 pub const APPLE_ITUNES_MEAN: &str = "com.apple.iTunes";
 
 /// (`----:com.apple.iTunes:ISRC`)
-pub const ISRC: FreeformIdent<'_> = FreeformIdent::new(APPLE_ITUNES_MEAN, "ISRC");
+pub const ISRC: FreeformIdentStatic = FreeformIdent::new_static(APPLE_ITUNES_MEAN, "ISRC");
 /// (`----:com.apple.iTunes:LYRICIST`)
-pub const LYRICIST: FreeformIdent<'_> = FreeformIdent::new(APPLE_ITUNES_MEAN, "LYRICIST");
+pub const LYRICIST: FreeformIdentStatic = FreeformIdent::new_static(APPLE_ITUNES_MEAN, "LYRICIST");
 
 /// A trait providing information about an identifier.
 pub trait Ident: PartialEq<DataIdent> {
     /// Returns a 4 byte atom identifier.
     fn fourcc(&self) -> Option<Fourcc>;
     /// Returns a freeform identifier.
-    fn freeform(&self) -> Option<FreeformIdent<'_>>;
+    fn freeform(&self) -> Option<FreeformIdentBorrowed<'_>>;
 }
 
 // TODO: figure out how to implement PartialEq for Ident or require an implementation as a trait bound.
@@ -226,7 +227,7 @@ impl Ident for Fourcc {
         Some(*self)
     }
 
-    fn freeform(&self) -> Option<FreeformIdent<'_>> {
+    fn freeform(&self) -> Option<FreeformIdentBorrowed<'_>> {
         None
     }
 }
@@ -259,18 +260,55 @@ impl fmt::Display for Fourcc {
     }
 }
 
-/// An identifier of a freeform (`----`) atom containing owned mean and name strings.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct FreeformIdent<'a> {
+pub trait StrLifetime<'a>: Clone {
+    type Str: AsRef<str>;
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct StaticStr<'a: 'static> {
+    _tag: PhantomData<&'a str>,
+}
+
+impl<'a> StrLifetime<'a> for StaticStr<'a> {
+    type Str = &'static str;
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BorrowedStr<'a: 'a> {
+    _tag: PhantomData<&'a str>,
+}
+
+impl<'a> StrLifetime<'a> for BorrowedStr<'a> {
+    type Str = &'a str;
+}
+
+/// A freeform (`----`) ident with a static lifetime. Using this type *will avoid* allocating
+/// the `mean` and `name` strings when inserting data into the [`Userdata`] struct.
+///
+/// [`Userdata`]: crate::Userdata
+pub type FreeformIdentStatic = FreeformIdent<'static, StaticStr<'static>>;
+
+/// A freeform (`----`) ident with a borrowed lifetime. Using this type *will* allocate
+/// the `mean` and `name` strings when inserting data into the [`Userdata`] struct.
+/// But it still avoids allocations when retrieving data from the [`Userdata`] struct.
+///
+/// [`Userdata`]: crate::Userdata
+pub type FreeformIdentBorrowed<'a> = FreeformIdent<'a, BorrowedStr<'a>>;
+
+/// An identifier of a freeform (`----`) atom containing borrowed mean and name strings.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct FreeformIdent<'a, T> {
     /// The mean string, typically in reverse domain notation.
     ///
     /// Most commonly this is `"com.apple.iTunes"`. See [`APPLE_ITUNES_MEAN`].
     pub mean: &'a str,
     /// The name string used to identify the freeform atom.
     pub name: &'a str,
+
+    _tag: PhantomData<T>,
 }
 
-impl PartialEq<DataIdent> for FreeformIdent<'_> {
+impl<'a, T: StrLifetime<'a>> PartialEq<DataIdent> for FreeformIdent<'a, T> {
     fn eq(&self, other: &DataIdent) -> bool {
         match other {
             DataIdent::Fourcc(_) => false,
@@ -279,26 +317,46 @@ impl PartialEq<DataIdent> for FreeformIdent<'_> {
     }
 }
 
-impl Ident for FreeformIdent<'_> {
+impl<'a, T: StrLifetime<'a>> Ident for FreeformIdent<'a, T> {
     fn fourcc(&self) -> Option<Fourcc> {
         None
     }
 
-    fn freeform(&self) -> Option<FreeformIdent<'_>> {
-        Some(self.clone())
+    fn freeform(&self) -> Option<FreeformIdentBorrowed<'a>> {
+        Some(FreeformIdent::new_borrowed(self.mean, self.name))
     }
 }
 
-impl fmt::Display for FreeformIdent<'_> {
+impl<'a, T: StrLifetime<'a>> fmt::Display for FreeformIdent<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "----:{}:{}", self.mean, self.name)
     }
 }
 
-impl<'a> FreeformIdent<'a> {
-    /// Creates a new freeform ident containing the mean and name as borrowed strings.
-    pub const fn new(mean: &'a str, name: &'a str) -> Self {
-        Self { mean, name }
+impl<'a> From<FreeformIdentStatic> for FreeformIdentBorrowed<'a> {
+    fn from(value: FreeformIdentStatic) -> Self {
+        FreeformIdent::new_borrowed(value.mean, value.name)
+    }
+}
+
+impl FreeformIdentStatic {
+    /// Creates a new freeform (`----`) ident with a static lifetime. Using this type *will avoid*
+    /// allocating the `mean` and `name` strings when inserting data into the [`Userdata`] struct.
+    ///
+    /// [`Userdata`]: crate::Userdata
+    pub const fn new_static(mean: &'static str, name: &'static str) -> Self {
+        Self { mean, name, _tag: PhantomData }
+    }
+}
+
+impl<'a> FreeformIdentBorrowed<'a> {
+    /// Creates a new freeform (`----`) ident with a borrowed lifetime. Using this type *will*
+    /// allocate the `mean` and `name` strings when inserting data into the [`Userdata`] struct.
+    /// But it still avoids allocations when retrieving data from the [`Userdata`] struct.
+    ///
+    /// [`Userdata`]: crate::Userdata
+    pub const fn new_borrowed(mean: &'a str, name: &'a str) -> Self {
+        Self { mean, name, _tag: PhantomData }
     }
 }
 
@@ -308,7 +366,8 @@ impl<'a> FreeformIdent<'a> {
 pub enum DataIdent {
     /// A standard identifier containing a 4 byte atom identifier.
     Fourcc(Fourcc),
-    /// An identifier of a freeform (`----`) atom containing owned mean and name strings.
+    /// An identifier of a freeform (`----`) atom containing either owned or static
+    /// mean and name strings.
     Freeform {
         /// The mean string, typically in reverse domain notation.
         ///
@@ -327,10 +386,12 @@ impl Ident for DataIdent {
         }
     }
 
-    fn freeform(&self) -> Option<FreeformIdent<'_>> {
+    fn freeform(&self) -> Option<FreeformIdentBorrowed<'_>> {
         match self {
             Self::Fourcc(_) => None,
-            Self::Freeform { mean, name } => Some(FreeformIdent::new(mean.as_ref(), name.as_ref())),
+            Self::Freeform { mean, name } => {
+                Some(FreeformIdent::new_borrowed(mean.as_ref(), name.as_ref()))
+            }
         }
     }
 }
@@ -350,15 +411,15 @@ impl From<Fourcc> for DataIdent {
     }
 }
 
-impl From<FreeformIdent<'static>> for DataIdent {
-    fn from(value: FreeformIdent<'static>) -> Self {
+impl From<FreeformIdentStatic> for DataIdent {
+    fn from(value: FreeformIdentStatic) -> Self {
         Self::freeform(value.mean, value.name)
     }
 }
 
-impl From<&FreeformIdent<'static>> for DataIdent {
-    fn from(value: &FreeformIdent<'static>) -> Self {
-        Self::freeform(value.mean, value.name)
+impl<'a> From<FreeformIdent<'a, BorrowedStr<'a>>> for DataIdent {
+    fn from(value: FreeformIdent<'a, BorrowedStr<'a>>) -> Self {
+        Self::freeform(value.mean.to_owned(), value.name.to_owned())
     }
 }
 
