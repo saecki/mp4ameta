@@ -8,6 +8,12 @@ const BUF_SIZE_V1: usize = HEADER_SIZE_V1 - 4;
 const_assert!(std::mem::size_of::<TkhdBufV0>() == BUF_SIZE_V0);
 const_assert!(std::mem::size_of::<TkhdBufV1>() == BUF_SIZE_V1);
 
+const MATRIX: [[[u8; 4]; 3]; 3] = [
+    [u32::to_be_bytes(1 << 16), u32::to_be_bytes(0), u32::to_be_bytes(0)],
+    [u32::to_be_bytes(0), u32::to_be_bytes(1 << 16), u32::to_be_bytes(0)],
+    [u32::to_be_bytes(0), u32::to_be_bytes(0), u32::to_be_bytes(1 << 30)],
+];
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Tkhd {
     pub version: u8,
@@ -128,12 +134,14 @@ impl WriteAtom for Tkhd {
                 let mut buf = TkhdBufV0::default();
                 buf.id = u32::to_be_bytes(self.id);
                 buf.duration = u32::to_be_bytes(self.duration as u32);
+                buf.matrix = MATRIX;
                 writer.write_all(buf.bytes_mut())?;
             }
             1 => {
                 let mut buf = TkhdBufV1::default();
                 buf.id = u32::to_be_bytes(self.id);
                 buf.duration = u64::to_be_bytes(self.duration);
+                buf.matrix = MATRIX;
                 writer.write_all(buf.bytes_mut())?;
             }
             v => {

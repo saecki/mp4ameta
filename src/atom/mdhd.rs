@@ -8,6 +8,8 @@ const BUF_SIZE_V1: usize = HEADER_SIZE_V1 - 4;
 const_assert!(std::mem::size_of::<MdhdBufV0>() == BUF_SIZE_V0);
 const_assert!(std::mem::size_of::<MdhdBufV1>() == BUF_SIZE_V1);
 
+const UNSPECIFIED_LANGUAGE: u16 = i16::MAX as u16;
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Mdhd {
     pub version: u8,
@@ -113,12 +115,14 @@ impl WriteAtom for Mdhd {
                 let mut buf = MdhdBufV0::default();
                 buf.timescale = u32::to_be_bytes(self.timescale);
                 buf.duration = u32::to_be_bytes(self.duration as u32);
+                buf.language = u16::to_be_bytes(UNSPECIFIED_LANGUAGE);
                 writer.write_all(buf.bytes_mut())?;
             }
             1 => {
                 let mut buf = MdhdBufV1::default();
                 buf.timescale = u32::to_be_bytes(self.timescale);
                 buf.duration = u64::to_be_bytes(self.duration);
+                buf.language = u16::to_be_bytes(UNSPECIFIED_LANGUAGE);
                 writer.write_all(buf.bytes_mut())?;
             }
             v => {
