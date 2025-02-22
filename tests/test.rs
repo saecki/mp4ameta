@@ -2,6 +2,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
+use mp4ameta::ident::TRACK_NUMBER;
 use mp4ameta::{
     AdvisoryRating, ChannelConfig, Chapter, Data, Fourcc, Img, MediaType, SampleRate, Tag,
     STANDARD_GENRES,
@@ -605,6 +606,15 @@ fn track_disc_handling() {
     assert_eq!(tag.disc(), (None, None));
     assert_eq!(tag.disc_number(), None);
     assert_eq!(tag.total_discs(), None);
+
+    // Test if track number atom is corrected to the right size when edited.
+    tag.set_data(TRACK_NUMBER, Data::Reserved(vec![0, 0, 0, 1]));
+    tag.set_total_tracks(2);
+    assert_eq!(tag.track(), (Some(1), Some(2)));
+    assert_eq!(
+        tag.data_of(&TRACK_NUMBER).next(),
+        Some(&Data::Reserved(vec![0, 0, 0, 1, 0, 2, 0, 0]))
+    );
 }
 
 #[test]
