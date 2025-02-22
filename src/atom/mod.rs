@@ -821,7 +821,7 @@ fn update_userdata<'a>(
         let chunk_offsets = vec![mdat_bounds.end()];
         let mut sample_sizes = Vec::with_capacity(userdata.chapter_track.len());
         let mut time_to_samples = Vec::with_capacity(userdata.chapter_track.len());
-        let mut chapters_iter = userdata.chapter_list.iter().peekable();
+        let mut chapters_iter = userdata.chapter_track.iter().peekable();
         while let Some(c) = chapters_iter.next() {
             let c_duration = match chapters_iter.peek() {
                 Some(next) => {
