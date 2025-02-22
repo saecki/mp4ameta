@@ -342,14 +342,13 @@ fn bench() {
     };
     println!("Running bench with file: {in_file}");
 
-    let in_file = "files/chaptered.m4a";
     let target_file = "target/bench.m4a";
 
-    let in_tag = Tag::read_from_path(target_file).unwrap();
+    let in_tag = Tag::read_from_path(&in_file).unwrap();
 
     let start = std::time::Instant::now();
     for _ in 0..300 {
-        std::fs::copy(in_file, target_file).unwrap();
+        std::fs::copy(&in_file, target_file).unwrap();
 
         Tag::default().write_to_path(target_file).unwrap();
         let tag = Tag::read_from_path(target_file).unwrap();
