@@ -803,7 +803,11 @@ fn update_userdata<'a>(
     }
 
     // chapter tracks
-    if cfg.write_chapter_track {
+    'chapter_track: {
+        if !cfg.write_chapter_track {
+            break 'chapter_track;
+        }
+
         // https://developer.apple.com/documentation/quicktime-file-format/chapter_lists
         // > If more than one enabled track includes a 'chap' track reference,
         // > QuickTime uses the first chapter list that it finds.
@@ -812,8 +816,32 @@ fn update_userdata<'a>(
             moov.trak.iter().position(|trak| chap.chapter_ids.contains(&trak.tkhd.id))
         });
 
-        if userdata.chapter_track.is_empty() && chapter_trak_idx.is_none() {
-            return Ok(());
+        if userdata.chapter_track.is_empty() {
+            let Some(idx) = chapter_trak_idx else {
+                // avoid doing redundant work
+                break 'chapter_track;
+            };
+
+            // remove chapter track
+            let chapter_trak = &mut moov.trak[idx];
+            chapter_trak.state.remove_existing();
+
+            // remove all chap track references
+            for trak in moov.trak.iter_mut() {
+                let Some(tref) = &mut trak.tref else { continue };
+                let State::Existing(tref_bounds) = &tref.state else { continue };
+
+                let Some(chap) = &mut tref.chap else { continue };
+                let State::Existing(chap_bounds) = &chap.state else { continue };
+
+                if tref_bounds.content_len() == chap_bounds.len() {
+                    tref.state.remove_existing();
+                } else {
+                    chap.state.remove_existing();
+                }
+            }
+
+            break 'chapter_track;
         }
 
         // generate chapter track sample table
