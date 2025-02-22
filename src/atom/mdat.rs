@@ -1,29 +1,16 @@
 use super::*;
 
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Mdat;
 
 impl Atom for Mdat {
     const FOURCC: Fourcc = MEDIA_DATA;
 }
 
-pub struct MdatBounds {
-    pub bounds: AtomBounds,
-}
-
-impl Deref for MdatBounds {
-    type Target = AtomBounds;
-
-    fn deref(&self) -> &Self::Target {
-        &self.bounds
-    }
-}
-
-impl FindAtom for Mdat {
-    type Bounds = MdatBounds;
-
-    fn find_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self::Bounds> {
+impl Mdat {
+    pub fn read_bounds(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<AtomBounds> {
         let bounds = find_bounds(reader, size)?;
-        seek_to_end(reader, &bounds)?;
-        Ok(Self::Bounds { bounds })
+        reader.seek(SeekFrom::Start(bounds.end()))?;
+        Ok(bounds)
     }
 }

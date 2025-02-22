@@ -1,6 +1,8 @@
 use std::array::TryFromSliceError;
+use std::borrow::Cow;
 use std::convert::TryInto;
-use std::fmt;
+use std::fmt::{self, Write};
+use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
@@ -14,24 +16,52 @@ pub(crate) const MOVIE: Fourcc = Fourcc(*b"moov");
 pub(crate) const MOVIE_HEADER: Fourcc = Fourcc(*b"mvhd");
 /// (`trak`) Identifier of an atom containing information about a single track.
 pub(crate) const TRACK: Fourcc = Fourcc(*b"trak");
+/// (`tkhd`)
+pub(crate) const TRACK_HEADER: Fourcc = Fourcc(*b"tkhd");
+/// (`tref`)
+pub(crate) const TRACK_REFERENCE: Fourcc = Fourcc(*b"tref");
+/// (`chap`)
+pub(crate) const CHAPTER: Fourcc = Fourcc(*b"chap");
 /// (`mdia`) Identifier of an atom containing information about a tracks media type and data.
 pub(crate) const MEDIA: Fourcc = Fourcc(*b"mdia");
+/// (`mdhd`)
+pub(crate) const MEDIA_HEADER: Fourcc = Fourcc(*b"mdhd");
 /// (`minf`)
 pub(crate) const MEDIA_INFORMATION: Fourcc = Fourcc(*b"minf");
+/// (`gmhd`)
+pub(crate) const BASE_MEDIA_INFORMATION_HEADER: Fourcc = Fourcc(*b"gmhd");
+/// (`gmin`)
+pub(crate) const BASE_MEDIA_INFORMATION: Fourcc = Fourcc(*b"gmin");
+/// (`dinf`)
+pub(crate) const DATA_INFORMATION: Fourcc = Fourcc(*b"dinf");
+/// (`dref`)
+pub(crate) const DATA_REFERENCE: Fourcc = Fourcc(*b"dref");
+/// (`url `)
+pub(crate) const URL_MEDIA: Fourcc = Fourcc(*b"url ");
 /// (`stbl`)
 pub(crate) const SAMPLE_TABLE: Fourcc = Fourcc(*b"stbl");
+/// (`stsz`)
+pub(crate) const SAMPLE_TABLE_SAMPLE_SIZE: Fourcc = Fourcc(*b"stsz");
+/// (`stsc`)
+pub(crate) const SAMPLE_TABLE_SAMPLE_TO_CHUNK: Fourcc = Fourcc(*b"stsc");
 /// (`stco`)
 pub(crate) const SAMPLE_TABLE_CHUNK_OFFSET: Fourcc = Fourcc(*b"stco");
 /// (`co64`)
 pub(crate) const SAMPLE_TABLE_CHUNK_OFFSET_64: Fourcc = Fourcc(*b"co64");
+/// (`stts`)
+pub(crate) const SAMPLE_TABLE_TIME_TO_SAMPLE: Fourcc = Fourcc(*b"stts");
 /// (`stsd`)
 pub(crate) const SAMPLE_TABLE_SAMPLE_DESCRIPTION: Fourcc = Fourcc(*b"stsd");
 /// (`mp4a`)
 pub(crate) const MP4_AUDIO: Fourcc = Fourcc(*b"mp4a");
+/// (`text`)
+pub(crate) const TEXT_MEDIA: Fourcc = Fourcc(*b"text");
 /// (`esds`)
 pub(crate) const ELEMENTARY_STREAM_DESCRIPTION: Fourcc = Fourcc(*b"esds");
 /// (`udta`) Identifier of an atom containing user metadata.
 pub(crate) const USER_DATA: Fourcc = Fourcc(*b"udta");
+/// (`chpl`)
+pub(crate) const CHAPTER_LIST: Fourcc = Fourcc(*b"chpl");
 /// (`meta`) Identifier of an atom containing a metadata item list.
 pub(crate) const METADATA: Fourcc = Fourcc(*b"meta");
 /// (`hdlr`) Identifier of an atom specifying the handler component that should interpret the medias data.
@@ -147,16 +177,16 @@ pub const SHOW_MOVEMENT: Fourcc = Fourcc(*b"shwm");
 pub const APPLE_ITUNES_MEAN: &str = "com.apple.iTunes";
 
 /// (`----:com.apple.iTunes:ISRC`)
-pub const ISRC: FreeformIdent<'_> = FreeformIdent::new(APPLE_ITUNES_MEAN, "ISRC");
+pub const ISRC: FreeformIdentStatic = FreeformIdent::new_static(APPLE_ITUNES_MEAN, "ISRC");
 /// (`----:com.apple.iTunes:LYRICIST`)
-pub const LYRICIST: FreeformIdent<'_> = FreeformIdent::new(APPLE_ITUNES_MEAN, "LYRICIST");
+pub const LYRICIST: FreeformIdentStatic = FreeformIdent::new_static(APPLE_ITUNES_MEAN, "LYRICIST");
 
 /// A trait providing information about an identifier.
 pub trait Ident: PartialEq<DataIdent> {
     /// Returns a 4 byte atom identifier.
     fn fourcc(&self) -> Option<Fourcc>;
     /// Returns a freeform identifier.
-    fn freeform(&self) -> Option<FreeformIdent<'_>>;
+    fn freeform(&self) -> Option<FreeformIdentBorrowed<'_>>;
 }
 
 // TODO: figure out how to implement PartialEq for Ident or require an implementation as a trait bound.
@@ -166,7 +196,7 @@ pub fn idents_match(a: &impl Ident, b: &impl Ident) -> bool {
 }
 
 /// A 4 byte atom identifier (four character code).
-#[derive(Clone, Copy, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
 pub struct Fourcc(pub [u8; 4]);
 
 impl Deref for Fourcc {
@@ -197,7 +227,7 @@ impl Ident for Fourcc {
         Some(*self)
     }
 
-    fn freeform(&self) -> Option<FreeformIdent<'_>> {
+    fn freeform(&self) -> Option<FreeformIdentBorrowed<'_>> {
         None
     }
 }
@@ -212,26 +242,73 @@ impl FromStr for Fourcc {
 
 impl fmt::Debug for Fourcc {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Fourcc({})", self.0.iter().map(|b| char::from(*b)).collect::<String>())
+        f.write_str("Fourcc(")?;
+        for c in self.0.iter().map(|b| char::from(*b)) {
+            f.write_char(c)?;
+        }
+        f.write_str(")")?;
+        Ok(())
     }
 }
 
 impl fmt::Display for Fourcc {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0.iter().map(|b| char::from(*b)).collect::<String>())
+        for c in self.0.iter().map(|b| char::from(*b)) {
+            f.write_char(c)?;
+        }
+        Ok(())
     }
 }
 
-/// An identifier of a freeform (`----`) atom containing borrowd mean and name strings.
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct FreeformIdent<'a> {
+pub trait StrLifetime<'a>: Clone {
+    type Str: AsRef<str>;
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct StaticStr<'a: 'static> {
+    _tag: PhantomData<&'a str>,
+}
+
+impl<'a> StrLifetime<'a> for StaticStr<'a> {
+    type Str = &'static str;
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BorrowedStr<'a: 'a> {
+    _tag: PhantomData<&'a str>,
+}
+
+impl<'a> StrLifetime<'a> for BorrowedStr<'a> {
+    type Str = &'a str;
+}
+
+/// A freeform (`----`) ident with a static lifetime. Using this type *will avoid* allocating
+/// the `mean` and `name` strings when inserting data into the [`Userdata`] struct.
+///
+/// [`Userdata`]: crate::Userdata
+pub type FreeformIdentStatic = FreeformIdent<'static, StaticStr<'static>>;
+
+/// A freeform (`----`) ident with a borrowed lifetime. Using this type *will* allocate
+/// the `mean` and `name` strings when inserting data into the [`Userdata`] struct.
+/// But it still avoids allocations when retrieving data from the [`Userdata`] struct.
+///
+/// [`Userdata`]: crate::Userdata
+pub type FreeformIdentBorrowed<'a> = FreeformIdent<'a, BorrowedStr<'a>>;
+
+/// An identifier of a freeform (`----`) atom containing borrowed mean and name strings.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FreeformIdent<'a, T> {
     /// The mean string, typically in reverse domain notation.
+    ///
+    /// Most commonly this is `"com.apple.iTunes"`. See [`APPLE_ITUNES_MEAN`].
     pub mean: &'a str,
     /// The name string used to identify the freeform atom.
     pub name: &'a str,
+
+    _tag: PhantomData<T>,
 }
 
-impl PartialEq<DataIdent> for FreeformIdent<'_> {
+impl<'a, T: StrLifetime<'a>> PartialEq<DataIdent> for FreeformIdent<'a, T> {
     fn eq(&self, other: &DataIdent) -> bool {
         match other {
             DataIdent::Fourcc(_) => false,
@@ -240,40 +317,64 @@ impl PartialEq<DataIdent> for FreeformIdent<'_> {
     }
 }
 
-impl Ident for FreeformIdent<'_> {
+impl<'a, T: StrLifetime<'a>> Ident for FreeformIdent<'a, T> {
     fn fourcc(&self) -> Option<Fourcc> {
         None
     }
 
-    fn freeform(&self) -> Option<FreeformIdent<'_>> {
-        Some(self.clone())
+    fn freeform(&self) -> Option<FreeformIdentBorrowed<'a>> {
+        Some(FreeformIdent::new_borrowed(self.mean, self.name))
     }
 }
 
-impl fmt::Display for FreeformIdent<'_> {
+impl<'a, T: StrLifetime<'a>> fmt::Display for FreeformIdent<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "----:{}:{}", self.mean, self.name)
     }
 }
 
-impl<'a> FreeformIdent<'a> {
-    /// Creates a new freeform ident containing the mean and name as borrowed strings.
-    pub const fn new(mean: &'a str, name: &'a str) -> Self {
-        Self { mean, name }
+impl<'a> From<FreeformIdentStatic> for FreeformIdentBorrowed<'a> {
+    fn from(value: FreeformIdentStatic) -> Self {
+        FreeformIdent::new_borrowed(value.mean, value.name)
     }
 }
 
-/// An identifier for data.
-#[derive(Clone, Debug, Eq, PartialEq)]
+impl FreeformIdentStatic {
+    /// Creates a new freeform (`----`) ident with a static lifetime. Using this type *will avoid*
+    /// allocating the `mean` and `name` strings when inserting data into the [`Userdata`] struct.
+    ///
+    /// [`Userdata`]: crate::Userdata
+    pub const fn new_static(mean: &'static str, name: &'static str) -> Self {
+        Self { mean, name, _tag: PhantomData }
+    }
+}
+
+impl<'a> FreeformIdentBorrowed<'a> {
+    /// Creates a new freeform (`----`) ident with a borrowed lifetime. Using this type *will*
+    /// allocate the `mean` and `name` strings when inserting data into the [`Userdata`] struct.
+    /// But it still avoids allocations when retrieving data from the [`Userdata`] struct.
+    ///
+    /// [`Userdata`]: crate::Userdata
+    pub const fn new_borrowed(mean: &'a str, name: &'a str) -> Self {
+        Self { mean, name, _tag: PhantomData }
+    }
+}
+
+/// The identifier used to store metadata inside an item list.
+/// Either a [`Fourcc`] or an freeform identifier.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DataIdent {
     /// A standard identifier containing a 4 byte atom identifier.
     Fourcc(Fourcc),
-    /// An identifier of a freeform (`----`) atom containing owned mean and name strings.
+    /// An identifier of a freeform (`----`) atom containing either owned or static
+    /// mean and name strings.
     Freeform {
         /// The mean string, typically in reverse domain notation.
-        mean: String,
+        ///
+        /// Most commonly this is `"com.apple.iTunes"`. See [`APPLE_ITUNES_MEAN`].
+        mean: Cow<'static, str>,
         /// The name string used to identify the freeform atom.
-        name: String,
+        name: Cow<'static, str>,
     },
 }
 
@@ -285,10 +386,12 @@ impl Ident for DataIdent {
         }
     }
 
-    fn freeform(&self) -> Option<FreeformIdent<'_>> {
+    fn freeform(&self) -> Option<FreeformIdentBorrowed<'_>> {
         match self {
             Self::Fourcc(_) => None,
-            Self::Freeform { mean, name } => Some(FreeformIdent::new(mean.as_str(), name.as_str())),
+            Self::Freeform { mean, name } => {
+                Some(FreeformIdent::new_borrowed(mean.as_ref(), name.as_ref()))
+            }
         }
     }
 }
@@ -308,22 +411,25 @@ impl From<Fourcc> for DataIdent {
     }
 }
 
-impl From<FreeformIdent<'_>> for DataIdent {
-    fn from(value: FreeformIdent<'_>) -> Self {
+impl From<FreeformIdentStatic> for DataIdent {
+    fn from(value: FreeformIdentStatic) -> Self {
         Self::freeform(value.mean, value.name)
     }
 }
 
-impl From<&FreeformIdent<'_>> for DataIdent {
-    fn from(value: &FreeformIdent<'_>) -> Self {
-        Self::freeform(value.mean, value.name)
+impl<'a> From<FreeformIdent<'a, BorrowedStr<'a>>> for DataIdent {
+    fn from(value: FreeformIdent<'a, BorrowedStr<'a>>) -> Self {
+        Self::freeform(value.mean.to_owned(), value.name.to_owned())
     }
 }
 
 impl DataIdent {
     /// Creates a new identifier of type [`DataIdent::Freeform`] containing the owned mean, and
     /// name string.
-    pub fn freeform(mean: impl Into<String>, name: impl Into<String>) -> Self {
+    pub fn freeform(
+        mean: impl Into<Cow<'static, str>>,
+        name: impl Into<Cow<'static, str>>,
+    ) -> Self {
         Self::Freeform { mean: mean.into(), name: name.into() }
     }
 

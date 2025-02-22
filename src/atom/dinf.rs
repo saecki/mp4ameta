@@ -1,24 +1,23 @@
 use super::*;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Udta<'a> {
+pub struct Dinf {
     pub state: State,
-    pub chpl: Option<Chpl<'a>>,
-    pub meta: Option<Meta<'a>>,
+    pub dref: Option<Dref>,
 }
 
-impl Atom for Udta<'_> {
-    const FOURCC: Fourcc = USER_DATA;
+impl Atom for Dinf {
+    const FOURCC: Fourcc = DATA_INFORMATION;
 }
 
-impl ParseAtom for Udta<'_> {
+impl ParseAtom for Dinf {
     fn parse_atom(
         reader: &mut (impl Read + Seek),
         cfg: &ParseConfig<'_>,
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
-        let mut udta = Self {
+        let mut dinf = Self {
             state: State::Existing(bounds),
             ..Default::default()
         };
@@ -28,43 +27,35 @@ impl ParseAtom for Udta<'_> {
             let head = head::parse(reader)?;
 
             match head.fourcc() {
-                CHAPTER_LIST if cfg.cfg.read_chapter_list => {
-                    udta.chpl = Some(Chpl::parse(reader, cfg, head.size())?);
-                }
-                METADATA if cfg.cfg.read_meta_items => {
-                    udta.meta = Some(Meta::parse(reader, cfg, head.size())?)
-                }
+                DATA_REFERENCE => dinf.dref = Some(Dref::parse(reader, cfg, head.size())?),
                 _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();
         }
 
-        Ok(udta)
+        Ok(dinf)
     }
 }
 
-impl AtomSize for Udta<'_> {
+impl AtomSize for Dinf {
     fn size(&self) -> Size {
-        let content_len = self.meta.len_or_zero() + self.chpl.len_or_zero();
+        let content_len = self.dref.len_or_zero();
         Size::from(content_len)
     }
 }
 
-impl WriteAtom for Udta<'_> {
+impl WriteAtom for Dinf {
     fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
-        if let Some(a) = &self.chpl {
-            a.write(writer, changes)?;
-        }
-        if let Some(a) = &self.meta {
+        if let Some(a) = &self.dref {
             a.write(writer, changes)?;
         }
         Ok(())
     }
 }
 
-impl SimpleCollectChanges for Udta<'_> {
+impl SimpleCollectChanges for Dinf {
     fn state(&self) -> &State {
         &self.state
     }
@@ -72,14 +63,13 @@ impl SimpleCollectChanges for Udta<'_> {
     fn existing<'a>(
         &'a self,
         level: u8,
-        bounds: &AtomBounds,
+        bounds: &'a AtomBounds,
         changes: &mut Vec<Change<'a>>,
     ) -> i64 {
-        self.chpl.collect_changes(bounds.end(), level, changes)
-            + self.meta.collect_changes(bounds.end(), level, changes)
+        self.dref.collect_changes(bounds.end(), level, changes)
     }
 
     fn atom_ref(&self) -> AtomRef<'_> {
-        AtomRef::Udta(self)
+        AtomRef::Dinf(self)
     }
 }

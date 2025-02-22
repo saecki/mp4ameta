@@ -1,4 +1,4 @@
-//! A meta item can either have a plain fourcc as it's identifier:
+//! A metadata item can either have a plain fourcc as it's identifier:
 //! **** (any fourcc)
 //! └─ data
 //!
@@ -10,7 +10,7 @@
 use super::*;
 
 /// A struct representing a metadata item, containing data that is associated with an identifier.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MetaItem {
     /// The identifier of the atom.
     pub ident: DataIdent,
@@ -19,15 +19,15 @@ pub struct MetaItem {
 }
 
 impl MetaItem {
-    /// Creates a meta item with the identifier and data.
+    /// Creates a metadata item with the identifier and data.
     pub const fn new(ident: DataIdent, data: Vec<Data>) -> Self {
         Self { ident, data }
     }
 
     /// Returns the external length of the atom in bytes.
     pub fn len(&self) -> u64 {
-        let parent_len = 8;
-        let data_len: u64 = self.data.iter().map(|d| d.size().len()).sum();
+        let parent_len = Head::NORMAL_SIZE;
+        let data_len: u64 = self.data.iter().map(Data::len).sum();
 
         match &self.ident {
             DataIdent::Fourcc(_) => parent_len + data_len,
@@ -40,91 +40,81 @@ impl MetaItem {
         }
     }
 
-    /// Returns whether the inner data atom is empty.
-    pub fn is_empty(&self) -> bool {
-        self.data.is_empty() || self.data.iter().all(|d| d.is_empty())
-    }
-
-    pub fn parse(reader: &mut (impl Read + Seek), parent: Fourcc, len: u64) -> crate::Result<Self> {
+    pub fn parse(
+        reader: &mut (impl Read + Seek),
+        cfg: &ParseConfig<'_>,
+        head: Head,
+    ) -> crate::Result<Self> {
         let mut data = Vec::new();
         let mut mean: Option<String> = None;
         let mut name: Option<String> = None;
         let mut parsed_bytes = 0;
 
-        while parsed_bytes < len {
-            let head = parse_head(reader)?;
+        while parsed_bytes < head.content_len() {
+            let head = head::parse(reader)?;
 
             match head.fourcc() {
-                DATA => data.push(Data::parse(reader, head.size())?),
+                DATA => data.push(Data::parse(reader, cfg, head.size())?),
                 MEAN => {
-                    let (version, _) = parse_full_head(reader)?;
+                    let (version, _) = head::parse_full(reader)?;
                     if version != 0 {
                         return Err(crate::Error::new(
                             crate::ErrorKind::UnknownVersion(version),
-                            "Error reading data atom (data)".to_owned(),
+                            "Error reading mean atom (mean)",
                         ));
                     }
 
                     mean = Some(reader.read_utf8(head.content_len() - 4)?);
                 }
                 NAME => {
-                    let (version, _) = parse_full_head(reader)?;
+                    let (version, _) = head::parse_full(reader)?;
                     if version != 0 {
                         return Err(crate::Error::new(
                             crate::ErrorKind::UnknownVersion(version),
-                            "Error reading data atom (data)".to_owned(),
+                            "Error reading name atom (name)",
                         ));
                     }
 
                     name = Some(reader.read_utf8(head.content_len() - 4)?);
                 }
-                _ => {
-                    reader.seek(SeekFrom::Current(head.content_len() as i64))?;
-                }
+                _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();
         }
 
-        let ident = match (parent, mean, name) {
-            (FREEFORM, Some(mean), Some(name)) => DataIdent::Freeform { mean, name },
+        let ident = match (head.fourcc(), mean, name) {
+            (FREEFORM, Some(mean), Some(name)) => DataIdent::freeform(mean, name),
             (fourcc, _, _) => DataIdent::Fourcc(fourcc),
         };
-
-        if data.is_empty() {
-            return Err(crate::Error::new(
-                crate::ErrorKind::AtomNotFound(DATA),
-                format!("Error constructing meta item '{parent}', missing data atom"),
-            ));
-        }
 
         Ok(MetaItem { ident, data })
     }
 
-    /// Attempts to write the meta item to the writer.
+    /// Attempts to write the metadata item to the writer.
     pub fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
-        writer.write_all(&u32::to_be_bytes(self.len() as u32))?;
+        writer.write_be_u32(self.len() as u32)?;
 
         match &self.ident {
             DataIdent::Fourcc(ident) => writer.write_all(ident.deref())?,
             _ => {
                 let (mean, name) = match &self.ident {
-                    DataIdent::Freeform { mean, name } => (mean.as_str(), name.as_str()),
+                    DataIdent::Freeform { mean, name } => (mean.as_ref(), name.as_ref()),
                     DataIdent::Fourcc(_) => unreachable!(),
                 };
                 writer.write_all(FREEFORM.deref())?;
 
                 let mean_len: u32 = 12 + mean.len() as u32;
-                writer.write_all(&u32::to_be_bytes(mean_len))?;
-                writer.write_all(MEAN.deref())?;
+                writer.write_be_u32(mean_len)?;
+                writer.write_all(&*MEAN)?;
                 writer.write_all(&[0; 4])?;
-                writer.write_all(mean.as_bytes())?;
+                writer.write_utf8(mean)?;
 
                 let name_len: u32 = 12 + name.len() as u32;
-                writer.write_all(&u32::to_be_bytes(name_len))?;
-                writer.write_all(NAME.deref())?;
+                writer.write_be_u32(name_len)?;
+                writer.write_all(&*NAME)?;
                 writer.write_all(&[0; 4])?;
-                writer.write_all(name.as_bytes())?;
+                writer.write_utf8(name)?;
             }
         }
 

@@ -1,12 +1,73 @@
-use std::io::{Read, Seek, SeekFrom};
-use std::time::Duration;
-
 use super::*;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub const HEADER_SIZE_V0: usize = 100;
+pub const HEADER_SIZE_V1: usize = 112;
+const BUF_SIZE_V0: usize = HEADER_SIZE_V0 - 4;
+const BUF_SIZE_V1: usize = HEADER_SIZE_V1 - 4;
+
+const_assert!(std::mem::size_of::<MvhdBufV0>() == BUF_SIZE_V0);
+const_assert!(std::mem::size_of::<MvhdBufV1>() == BUF_SIZE_V1);
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Mvhd {
-    /// The duration of the track.
-    pub duration: Duration,
+    pub version: u8,
+    pub flags: [u8; 3],
+    pub timescale: u32,
+    pub duration: u64,
+}
+
+#[derive(Default)]
+#[repr(C)]
+struct MvhdBufV0 {
+    creation_time: [u8; 4],
+    modification_time: [u8; 4],
+    timescale: [u8; 4],
+    duration: [u8; 4],
+    preferred_rate: [u8; 4],
+    preferred_volume: [u8; 2],
+    reserved: [u8; 10],
+    matrix: [[[u8; 4]; 3]; 3],
+    preview_time: [u8; 4],
+    preview_duration: [u8; 4],
+    poster_time: [u8; 4],
+    selection_time: [u8; 4],
+    selection_duration: [u8; 4],
+    current_time: [u8; 4],
+    next_track_id: [u8; 4],
+}
+
+impl MvhdBufV0 {
+    fn bytes_mut(&mut self) -> &mut [u8; BUF_SIZE_V0] {
+        // SAFETY: alignment and size match because all fields are byte arrays
+        unsafe { std::mem::transmute(self) }
+    }
+}
+
+#[derive(Default)]
+#[repr(C)]
+struct MvhdBufV1 {
+    creation_time: [u8; 8],
+    modification_time: [u8; 8],
+    timescale: [u8; 4],
+    duration: [u8; 8],
+    preferred_rate: [u8; 4],
+    preferred_volume: [u8; 2],
+    reserved: [u8; 10],
+    matrix: [[[u8; 4]; 3]; 3],
+    preview_time: [u8; 4],
+    preview_duration: [u8; 4],
+    poster_time: [u8; 4],
+    selection_time: [u8; 4],
+    selection_duration: [u8; 4],
+    current_time: [u8; 4],
+    next_track_id: [u8; 4],
+}
+
+impl MvhdBufV1 {
+    fn bytes_mut(&mut self) -> &mut [u8; BUF_SIZE_V1] {
+        // SAFETY: alignment and size match because all fields are byte arrays
+        unsafe { std::mem::transmute(self) }
+    }
 }
 
 impl Atom for Mvhd {
@@ -14,41 +75,29 @@ impl Atom for Mvhd {
 }
 
 impl ParseAtom for Mvhd {
-    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
-        let bounds = find_bounds(reader, size)?;
+    fn parse_atom(
+        reader: &mut (impl Read + Seek),
+        _cfg: &ParseConfig<'_>,
+        _size: Size,
+    ) -> crate::Result<Self> {
         let mut mvhd = Self::default();
 
-        let (version, _) = parse_full_head(reader)?;
+        let (version, flags) = head::parse_full(reader)?;
+        mvhd.version = version;
+        mvhd.flags = flags;
+
         match version {
             0 => {
-                // # Version 0
-                // 1 byte version
-                // 3 bytes flags
-                // 4 bytes creation time
-                // 4 bytes modification time
-                // 4 bytes time scale
-                // 4 bytes duration
-                // ...
-                reader.seek(SeekFrom::Current(8))?;
-                let timescale = reader.read_u32()? as u64;
-                let duration = reader.read_u32()? as u64;
-
-                mvhd.duration = Duration::from_nanos(duration * 1_000_000_000 / timescale);
+                let mut buf = MvhdBufV0::default();
+                reader.read_exact(buf.bytes_mut())?;
+                mvhd.timescale = u32::from_be_bytes(buf.timescale);
+                mvhd.duration = u32::from_be_bytes(buf.duration) as u64;
             }
             1 => {
-                // # Version 1
-                // 1 byte version
-                // 3 bytes flags
-                // 8 bytes creation time
-                // 8 bytes modification time
-                // 4 bytes time scale
-                // 8 bytes duration
-                // ...
-                reader.seek(SeekFrom::Current(16))?;
-                let timescale = reader.read_u32()? as u64;
-                let duration = reader.read_u64()?;
-
-                mvhd.duration = Duration::from_nanos(duration * 1_000_000_000 / timescale);
+                let mut buf = MvhdBufV1::default();
+                reader.read_exact(buf.bytes_mut())?;
+                mvhd.timescale = u32::from_be_bytes(buf.timescale);
+                mvhd.duration = u64::from_be_bytes(buf.duration);
             }
             v => {
                 return Err(crate::Error::new(
@@ -58,8 +107,16 @@ impl ParseAtom for Mvhd {
             }
         }
 
-        seek_to_end(reader, &bounds)?;
-
         Ok(mvhd)
+    }
+}
+
+impl AtomSize for Mvhd {
+    fn size(&self) -> Size {
+        match self.version {
+            0 => Size::from(HEADER_SIZE_V0 as u64),
+            1 => Size::from(HEADER_SIZE_V1 as u64),
+            _ => Size::from(0),
+        }
     }
 }

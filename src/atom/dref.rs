@@ -1,21 +1,18 @@
 use super::*;
 
-pub const HEADER_SIZE: u64 = 4;
-
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Meta<'a> {
+pub struct Dref {
     pub state: State,
-    pub hdlr: Option<Hdlr>,
-    pub ilst: Option<Ilst<'a>>,
+    pub url: Option<Url>,
 }
 
-impl Atom for Meta<'_> {
-    const FOURCC: Fourcc = METADATA;
+impl Atom for Dref {
+    const FOURCC: Fourcc = DATA_REFERENCE;
 }
 
-impl ParseAtom for Meta<'_> {
+impl ParseAtom for Dref {
     fn parse_atom(
-        reader: &'_ mut (impl Read + Seek),
+        reader: &mut (impl Read + Seek),
         cfg: &ParseConfig<'_>,
         size: Size,
     ) -> crate::Result<Self> {
@@ -25,56 +22,59 @@ impl ParseAtom for Meta<'_> {
         if version != 0 {
             return Err(crate::Error::new(
                 ErrorKind::UnknownVersion(version),
-                "Unknown metadata (meta) version",
+                "Unknown data reference (dref) atom version",
             ));
         }
 
-        let mut meta = Self {
+        reader.skip(4)?; // number of entries
+
+        let mut dref = Self {
             state: State::Existing(bounds),
             ..Default::default()
         };
-        let mut parsed_bytes = HEADER_SIZE;
+        let mut parsed_bytes = 8;
 
         while parsed_bytes < size.content_len() {
             let head = head::parse(reader)?;
 
             match head.fourcc() {
-                HANDLER_REFERENCE if cfg.write => {
-                    meta.hdlr = Some(Hdlr::parse(reader, cfg, head.size())?)
-                }
-                ITEM_LIST => meta.ilst = Some(Ilst::parse(reader, cfg, head.size())?),
+                URL_MEDIA => dref.url = Some(Url::parse(reader, cfg, head.size())?),
                 _ => reader.skip(head.content_len() as i64)?,
             }
 
             parsed_bytes += head.len();
         }
 
-        Ok(meta)
+        Ok(dref)
     }
 }
 
-impl AtomSize for Meta<'_> {
+impl AtomSize for Dref {
     fn size(&self) -> Size {
-        let content_len = HEADER_SIZE + self.hdlr.len_or_zero() + self.ilst.len_or_zero();
+        let content_len = 8 + self.url.len_or_zero();
         Size::from(content_len)
     }
 }
 
-impl WriteAtom for Meta<'_> {
+impl WriteAtom for Dref {
     fn write_atom(&self, writer: &mut impl Write, changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
         head::write_full(writer, 0, [0; 3])?;
-        if let Some(a) = &self.hdlr {
-            a.write(writer, changes)?;
+
+        if self.url.is_some() {
+            writer.write_be_u32(1)?;
+        } else {
+            writer.write_be_u32(0)?;
         }
-        if let Some(a) = &self.ilst {
+
+        if let Some(a) = &self.url {
             a.write(writer, changes)?;
         }
         Ok(())
     }
 }
 
-impl SimpleCollectChanges for Meta<'_> {
+impl SimpleCollectChanges for Dref {
     fn state(&self) -> &State {
         &self.state
     }
@@ -82,14 +82,13 @@ impl SimpleCollectChanges for Meta<'_> {
     fn existing<'a>(
         &'a self,
         level: u8,
-        bounds: &AtomBounds,
+        bounds: &'a AtomBounds,
         changes: &mut Vec<Change<'a>>,
     ) -> i64 {
-        self.hdlr.collect_changes(bounds.content_pos() + HEADER_SIZE, level, changes)
-            + self.ilst.collect_changes(bounds.end(), level, changes)
+        self.url.collect_changes(bounds.end(), level, changes)
     }
 
     fn atom_ref(&self) -> AtomRef<'_> {
-        AtomRef::Meta(self)
+        AtomRef::Dref(self)
     }
 }

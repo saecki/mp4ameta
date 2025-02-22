@@ -58,7 +58,7 @@ const DECODER_CONFIG_DESCRIPTOR: u8 = 0x04;
 /// Decoder specific descriptor tag
 const DECODER_SPECIFIC_DESCRIPTOR: u8 = 0x05;
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Mp4a {
     pub channel_config: Option<ChannelConfig>,
     pub sample_rate: Option<SampleRate>,
@@ -71,23 +71,30 @@ impl Atom for Mp4a {
 }
 
 impl ParseAtom for Mp4a {
-    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Self> {
+    fn parse_atom(
+        reader: &mut (impl Read + Seek),
+        _cfg: &ParseConfig<'_>,
+        size: Size,
+    ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
         let mut mp4a = Self::default();
 
-        reader.seek(SeekFrom::Current(28))?;
+        // use cursor over a buffer to avoid syscalls
+        let mut buf = vec![0; bounds.content_len() as usize];
+        reader.read_exact(&mut buf)?;
 
-        let head = parse_head(reader)?;
+        let mut cursor = std::io::Cursor::new(&mut buf);
+        cursor.skip(28)?;
+
+        let head = head::parse(&mut cursor)?;
         if head.fourcc() != ELEMENTARY_STREAM_DESCRIPTION {
             return Err(crate::Error::new(
                 crate::ErrorKind::AtomNotFound(ELEMENTARY_STREAM_DESCRIPTION),
-                "Missing esds atom".to_owned(),
+                "Missing esds atom",
             ));
         }
 
-        parse_esds(reader, &mut mp4a, head.size())?;
-
-        seek_to_end(reader, &bounds)?;
+        parse_esds(&mut cursor, &mut mp4a, head.size())?;
 
         Ok(mp4a)
     }
@@ -110,12 +117,12 @@ impl ParseAtom for Mp4a {
 ///    └──sl config descriptor
 /// ```
 fn parse_esds(reader: &mut (impl Read + Seek), info: &mut Mp4a, size: Size) -> crate::Result<()> {
-    let (version, _) = parse_full_head(reader)?;
+    let (version, _) = head::parse_full(reader)?;
 
     if version != 0 {
         return Err(crate::Error::new(
             crate::ErrorKind::UnknownVersion(version),
-            "Unknown MPEG-4 audio (mp4a) version".to_owned(),
+            "Unknown MPEG-4 audio (mp4a) version",
         ));
     }
 
@@ -123,7 +130,7 @@ fn parse_esds(reader: &mut (impl Read + Seek), info: &mut Mp4a, size: Size) -> c
     if tag != ELEMENTARY_STREAM_DESCRIPTOR {
         return Err(crate::Error::new(
             crate::ErrorKind::DescriptorNotFound(ELEMENTARY_STREAM_DESCRIPTOR),
-            "Missing elementary stream descriptor".to_owned(),
+            "Missing elementary stream descriptor",
         ));
     }
 
@@ -148,7 +155,7 @@ fn parse_esds(reader: &mut (impl Read + Seek), info: &mut Mp4a, size: Size) -> c
 /// └──sl config descriptor
 /// ```
 fn parse_es_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> crate::Result<()> {
-    reader.seek(SeekFrom::Current(3))?;
+    reader.skip(3)?;
 
     let mut parsed_bytes = 3;
     while parsed_bytes < len {
@@ -156,9 +163,7 @@ fn parse_es_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> 
 
         match tag {
             DECODER_CONFIG_DESCRIPTOR => parse_dc_desc(reader, info, desc_len)?,
-            _ => {
-                reader.seek(SeekFrom::Current(desc_len as i64))?;
-            }
+            _ => reader.skip(desc_len as i64)?,
         }
 
         parsed_bytes += head_len + desc_len;
@@ -181,9 +186,9 @@ fn parse_es_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> 
 /// └──decoder specific descriptor
 /// ```
 fn parse_dc_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> crate::Result<()> {
-    reader.seek(SeekFrom::Current(5))?;
-    info.max_bitrate = Some(reader.read_u32()?);
-    info.avg_bitrate = Some(reader.read_u32()?);
+    reader.skip(5)?;
+    info.max_bitrate = Some(reader.read_be_u32()?);
+    info.avg_bitrate = Some(reader.read_be_u32()?);
 
     let mut parsed_bytes = 13;
     while parsed_bytes < len {
@@ -192,7 +197,7 @@ fn parse_dc_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> 
         match tag {
             DECODER_SPECIFIC_DESCRIPTOR => parse_ds_desc(reader, info, desc_len)?,
             _ => {
-                reader.seek(SeekFrom::Current(desc_len as i64))?;
+                reader.skip(desc_len as i64)?;
             }
         }
 
@@ -213,7 +218,7 @@ fn parse_dc_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> 
 /// 3 bits ?
 /// ```
 fn parse_ds_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> crate::Result<()> {
-    let num = reader.read_u16()?;
+    let num = reader.read_be_u16()?;
 
     let freq_index = ((num >> 7) & 0x0F) as u8;
     info.sample_rate = SampleRate::try_from(freq_index).ok();
@@ -221,7 +226,7 @@ fn parse_ds_desc(reader: &mut (impl Read + Seek), info: &mut Mp4a, len: u64) -> 
     let channel_config = ((num >> 3) & 0x0F) as u8;
     info.channel_config = ChannelConfig::try_from(channel_config).ok();
 
-    reader.seek(SeekFrom::Current((len - 2) as i64))?;
+    reader.skip((len - 2) as i64)?;
     Ok(())
 }
 

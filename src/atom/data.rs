@@ -4,7 +4,9 @@ use crate::{Img, ImgBuf, ImgFmt, ImgMut, ImgRef};
 
 use super::*;
 
-// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34) codes
+pub const HEADER_SIZE: u64 = 8;
+
+// [Table 3-5 Well-known data types](https://developer.apple.com/documentation/quicktime-file-format/well-known_types) codes
 /// Reserved for use where no type needs to be indicated.
 const RESERVED: u32 = 0;
 /// UTF-8 without any count or NULL terminator.
@@ -48,7 +50,8 @@ const BE_I16: u32 = 66;
 #[allow(unused)]
 const BE_I32: u32 = 67;
 /// A block of data representing a two dimensional (2D) point with 32-bit big-endian floating point
-/// x and y coordinates. It has the structure:<br/> `{ BE_F32 x; BE_F32 y; }`
+/// x and y coordinates. It has the structure:<br/>
+/// `{ BE_F32 x; BE_F32 y; }`
 #[allow(unused)]
 const BE_POINT_F32: u32 = 70;
 /// A block of data representing 2D dimensions with 32-bit big-endian floating point width and
@@ -84,24 +87,28 @@ const BE_U64: u32 = 78;
 #[allow(unused)]
 const AFFINE_TRANSFORM_F64: u32 = 79;
 
-/// An enum that holds different types of data defined by
-/// [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
-#[derive(Clone, Eq, PartialEq)]
+/// Different types of data defined by [Table 3-5 Well-known data types](https://developer.apple.com/documentation/quicktime-file-format/well-known_types).
+#[derive(Clone, PartialEq, Eq)]
 pub enum Data {
-    /// A value containing reserved type data inside a `Vec<u8>`.
+    /// Reserved for use where no type needs to be indicated.
+    /// This is opten used for track/disc numbers and standard genre codes.
     Reserved(Vec<u8>),
-    /// A value containing a `String` decoded from, or to be encoded to utf-8.
+    /// A utf-8 encoded string.
     Utf8(String),
-    /// A value containing a `String` decoded from, or to be encoded to utf-16.
+    /// A utf-16 encoded string.
     Utf16(String),
-    /// A value containing jpeg byte data inside a `Vec<u8>`.
+    /// A JPEG image. Note that this type is more of a hint and many encoders use any of the image
+    /// formats for all kinds of image data.
     Jpeg(Vec<u8>),
-    /// A value containing png byte data inside a `Vec<u8>`.
+    /// A PNG image. Note that this type is more of a hint and many encoders use any of the image
+    /// formats for all kinds of image data.
     Png(Vec<u8>),
-    /// A value containing big endian signed integer inside a `Vec<u8>`.
-    BeSigned(Vec<u8>),
-    /// A value containing bmp byte data inside a `Vec<u8>`.
+    /// A BMP image. Note that this type is more of a hint and many encoders use any of the image
+    /// formats for all kinds of image data.
     Bmp(Vec<u8>),
+    /// A big-endian signed integer.
+    /// This is opten used for track/disc numbers and standard genre codes.
+    BeSigned(Vec<u8>),
     /// A value containing an unknown data type code and data.
     Unknown {
         /// The data type code.
@@ -142,43 +149,43 @@ impl Atom for Data {
     const FOURCC: Fourcc = DATA;
 }
 
-impl ParseAtom for Data {
-    /// Parses data based on [Table 3-5 Well-known data types](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html#//apple_ref/doc/uid/TP40000939-CH1-SW34).
-    fn parse_atom(reader: &mut (impl Read + Seek), size: Size) -> crate::Result<Data> {
-        let (version, flags) = parse_full_head(reader)?;
+impl Data {
+    /// Parses data based on [Table 3-5 Well-known data types](https://developer.apple.com/documentation/quicktime-file-format/well-known_types).
+    pub fn parse(
+        reader: &mut (impl Read + Seek),
+        cfg: &ParseConfig<'_>,
+        size: Size,
+    ) -> crate::Result<Data> {
+        let mut buf = [0; 8];
+        reader.read_exact(&mut buf)?;
+
+        let [version, b2, b1, b0, _locale @ ..] = buf;
         if version != 0 {
             return Err(crate::Error::new(
                 crate::ErrorKind::UnknownVersion(version),
-                "Error reading data atom (data)".to_owned(),
+                "Unknown data atom (data) version",
             ));
         }
-        let [b2, b1, b0] = flags;
         let datatype = u32::from_be_bytes([0, b2, b1, b0]);
 
-        // Skipping 4 byte locale indicator
-        reader.seek(SeekFrom::Current(4))?;
-
-        let data_len = size.content_len() - 8;
-
+        let len = size.content_len() - HEADER_SIZE;
         Ok(match datatype {
-            RESERVED => Data::Reserved(reader.read_u8_vec(data_len)?),
-            UTF8 => Data::Utf8(reader.read_utf8(data_len)?),
-            UTF16 => Data::Utf16(reader.read_utf16(data_len)?),
-            JPEG => Data::Jpeg(reader.read_u8_vec(data_len)?),
-            PNG => Data::Png(reader.read_u8_vec(data_len)?),
-            BE_SIGNED => Data::BeSigned(reader.read_u8_vec(data_len)?),
-            BMP => Data::Bmp(reader.read_u8_vec(data_len)?),
+            RESERVED => Data::Reserved(reader.read_u8_vec(len)?),
+            UTF8 => Data::Utf8(reader.read_utf8(len)?),
+            UTF16 => Data::Utf16(reader.read_be_utf16(len)?),
+            JPEG => Data::Jpeg(read_image(reader, cfg.cfg.read_image_data, len)?),
+            PNG => Data::Png(read_image(reader, cfg.cfg.read_image_data, len)?),
+            BE_SIGNED => Data::BeSigned(reader.read_u8_vec(len)?),
+            BMP => Data::Bmp(read_image(reader, cfg.cfg.read_image_data, len)?),
             _ => {
-                // TODO: maybe log warning
-                Data::Unknown { code: datatype, data: reader.read_u8_vec(data_len)? }
+                // TODO: maybe log warning (optional log dependency behind feature flag)
+                Data::Unknown { code: datatype, data: reader.read_u8_vec(len)? }
             }
         })
     }
-}
 
-impl WriteAtom for Data {
-    fn write_atom(&self, writer: &mut impl Write) -> crate::Result<()> {
-        self.write_head(writer)?;
+    pub fn write(&self, writer: &mut impl Write) -> crate::Result<()> {
+        head::write(writer, Head::new(false, self.len(), DATA))?;
 
         let datatype = match self {
             Self::Reserved(_) => RESERVED,
@@ -192,17 +199,11 @@ impl WriteAtom for Data {
         };
 
         writer.write_all(&datatype.to_be_bytes())?;
-        // Writing 4 byte locale indicator
-        writer.write_all(&[0; 4])?;
-
+        writer.write_all(&[0; 4])?; // locale indicator
         match self {
             Self::Reserved(v) => writer.write_all(v)?,
-            Self::Utf8(s) => writer.write_all(s.as_bytes())?,
-            Self::Utf16(s) => {
-                for c in s.encode_utf16() {
-                    writer.write_all(&c.to_be_bytes())?;
-                }
-            }
+            Self::Utf8(s) => writer.write_utf8(s)?,
+            Self::Utf16(s) => writer.write_be_utf16(s)?,
             Self::Jpeg(v) => writer.write_all(v)?,
             Self::Png(v) => writer.write_all(v)?,
             Self::BeSigned(v) => writer.write_all(v)?,
@@ -213,9 +214,8 @@ impl WriteAtom for Data {
         Ok(())
     }
 
-    fn size(&self) -> Size {
-        let content_len = 8 + self.data_len();
-        Size::from(content_len)
+    pub fn len(&self) -> u64 {
+        Head::NORMAL_SIZE + HEADER_SIZE + self.data_len()
     }
 }
 
@@ -225,7 +225,7 @@ impl Data {
         (match self {
             Self::Reserved(v) => v.len(),
             Self::Utf8(s) => s.len(),
-            Self::Utf16(s) => s.encode_utf16().count(),
+            Self::Utf16(s) => 2 * s.encode_utf16().count(),
             Self::Jpeg(v) => v.len(),
             Self::Png(v) => v.len(),
             Self::BeSigned(v) => v.len(),
@@ -239,59 +239,84 @@ impl Data {
         self.data_len() == 0
     }
 
-    /// Returns true if `self` is of type [`Self::Reserved`] or [`Self::BeSigned`], false otherwise.
+    /// Returns true if the data is of type [`Reserved`] or [`BeSigned`].
+    ///
+    /// [`Reserved`]: Data::Reserved
+    /// [`BeSigned`]: Data::BeSigned
     pub const fn is_bytes(&self) -> bool {
         matches!(self, Self::Reserved(_) | Self::BeSigned(_))
     }
 
-    /// Returns true if `self` is of type [`Self::Utf8`] or [`Self::Utf16`], false otherwise.
+    /// Returns true if the data is of type [`Utf8`] or [`Utf16`].
+    ///
+    /// [`Utf8`]: Data::Utf8
+    /// [`Utf16`]: Data::Utf16
     pub const fn is_string(&self) -> bool {
         matches!(self, Self::Utf8(_) | Self::Utf16(_))
     }
 
-    /// Returns true if `self` is of type [`Self::Jpeg`], [`Self::Png`] or [`Self::Bmp`] false
-    /// otherwise.
+    /// Returns true if the data is of type [`Jpeg`], [`Png`] or [`Bmp`].
+    ///
+    /// [`Jpeg`]: Data::Jpeg
+    /// [`Png`]: Data::Png
+    /// [`Bmp`]: Data::Bmp
     pub const fn is_image(&self) -> bool {
         matches!(self, Self::Jpeg(_) | Self::Png(_) | Self::Bmp(_))
     }
 
-    /// Returns true if `self` is of type [`Self::Reserved`] false otherwise.
+    /// Returns true if the data is of type [`Reserved`].
+    ///
+    /// [`Reserved`]: Data::Reserved
     pub const fn is_reserved(&self) -> bool {
         matches!(self, Self::Reserved(_))
     }
 
-    /// Returns true if `self` is of type [`Self::Utf8`] false otherwise.
+    /// Returns true if the data is of type [`Utf8`].
+    ///
+    /// [`Utf8`]: Data::Utf8
     pub const fn is_utf8(&self) -> bool {
         matches!(self, Self::Utf8(_))
     }
 
-    /// Returns true if `self` is of type [`Self::Utf16`] false otherwise.
+    /// Returns true if the data is of type [`Utf16`].
+    ///
+    /// [`Utf16`]: Data::Utf16
     pub const fn is_utf16(&self) -> bool {
         matches!(self, Self::Utf16(_))
     }
 
-    /// Returns true if `self` is of type [`Self::Jpeg`] false otherwise.
+    /// Returns true if the data is of type [`Jpeg`].
+    ///
+    /// [`Jpeg`]: Data::Jpeg
     pub const fn is_jpeg(&self) -> bool {
         matches!(self, Self::Jpeg(_))
     }
 
-    /// Returns true if `self` is of type [`Self::Png`] false otherwise.
+    /// Returns true if the data is of type [`Png`].
+    ///
+    /// [`Png`]: Data::Png
     pub const fn is_png(&self) -> bool {
         matches!(self, Self::Png(_))
     }
 
-    /// Returns true if `self` is of type [`Self::BeSigned`] false otherwise.
-    pub const fn is_be_signed(&self) -> bool {
-        matches!(self, Self::BeSigned(_))
-    }
-
-    /// Returns true if `self` is of type [`Self::Bmp`] false otherwise.
+    /// Returns true if the data is of type [`Bmp`].
+    ///
+    /// [`Bmp`]: Data::Bmp
     pub const fn is_bmp(&self) -> bool {
         matches!(self, Self::Bmp(_))
     }
 
-    /// Returns a reference to byte data if `self` is of type [`Self::Reserved`] or
-    /// [`Self::BeSigned`].
+    /// Returns true if the data is of type [`BeSigned`].
+    ///
+    /// [`BeSigned`]: Data::BeSigned
+    pub const fn is_be_signed(&self) -> bool {
+        matches!(self, Self::BeSigned(_))
+    }
+
+    /// Returns a byte reference if the data is of type [`Reserved`] or [`BeSigned`].
+    ///
+    /// [`Reserved`]: Data::Reserved
+    /// [`BeSigned`]: Data::BeSigned
     pub fn bytes(&self) -> Option<&[u8]> {
         match self {
             Self::Reserved(v) => Some(v),
@@ -300,8 +325,10 @@ impl Data {
         }
     }
 
-    /// Returns a mutable reference to byte data if `self` is of type [`Self::Reserved`] or
-    /// [`Self::BeSigned`].
+    /// Returns a mutable byte reference if the data is of type [`Reserved`] or [`BeSigned`].
+    ///
+    /// [`Reserved`]: Data::Reserved
+    /// [`BeSigned`]: Data::BeSigned
     pub fn bytes_mut(&mut self) -> Option<&mut Vec<u8>> {
         match self {
             Self::Reserved(v) => Some(v),
@@ -310,8 +337,10 @@ impl Data {
         }
     }
 
-    /// Consumes `self` and returns byte data if `self` is of type [`Self::Reserved`] or
-    /// [`Self::BeSigned`].
+    /// Returns the owned bytes if the data is of type [`Reserved`] or [`BeSigned`].
+    ///
+    /// [`Reserved`]: Data::Reserved
+    /// [`BeSigned`]: Data::BeSigned
     pub fn into_bytes(self) -> Option<Vec<u8>> {
         match self {
             Self::Reserved(v) => Some(v),
@@ -320,7 +349,10 @@ impl Data {
         }
     }
 
-    /// Returns a reference to a string if `self` is of type [`Self::Utf8`] or [`Self::Utf16`].
+    /// Returns a string reference if the data is of type [`Utf8`] or [`Utf16`].
+    ///
+    /// [`Utf8`]: Data::Utf8
+    /// [`Utf16`]: Data::Utf16
     pub fn string(&self) -> Option<&str> {
         match self {
             Self::Utf8(s) => Some(s.as_str()),
@@ -329,8 +361,10 @@ impl Data {
         }
     }
 
-    /// Returns a mutable reference to a string if `self` is of type [`Self::Utf8`] or
-    /// [`Self::Utf16`].
+    /// Returns a mutable string reference if the data is of type [`Utf8`] or [`Utf16`].
+    ///
+    /// [`Utf8`]: Data::Utf8
+    /// [`Utf16`]: Data::Utf16
     pub fn string_mut(&mut self) -> Option<&mut String> {
         match self {
             Self::Utf8(s) => Some(s),
@@ -339,7 +373,10 @@ impl Data {
         }
     }
 
-    /// Consumes `self` and returns a string if `self` is of type [`Self::Utf8`] or [`Self::Utf16`].
+    /// Returns the owned string if the data is of type [`Utf8`] or [`Utf16`].
+    ///
+    /// [`Utf8`]: Data::Utf8
+    /// [`Utf16`]: Data::Utf16
     pub fn into_string(self) -> Option<String> {
         match self {
             Self::Utf8(s) => Some(s),
@@ -348,8 +385,11 @@ impl Data {
         }
     }
 
-    /// Returns a reference to an image if `self` is of type [`Self::Jpeg`], [`Self::Png`] or
-    /// [`Self::Bmp`].
+    /// Returns an image reference the data is of type [`Jpeg`], [`Png`] or [`Bmp`].
+    ///
+    /// [`Jpeg`]: Data::Jpeg
+    /// [`Png`]: Data::Png
+    /// [`Bmp`]: Data::Bmp
     pub fn image(&self) -> Option<ImgRef<'_>> {
         match self {
             Self::Jpeg(v) => Some(Img::new(ImgFmt::Jpeg, v)),
@@ -359,8 +399,11 @@ impl Data {
         }
     }
 
-    /// Returns a mutable reference to an image if `self` is of type [`Self::Jpeg`], [`Self::Png`]
-    /// or [`Self::Bmp`].
+    /// Returns a mutable image reference if the data is of type [`Jpeg`], [`Png`] or [`Bmp`].
+    ///
+    /// [`Jpeg`]: Data::Jpeg
+    /// [`Png`]: Data::Png
+    /// [`Bmp`]: Data::Bmp
     pub fn image_mut(&mut self) -> Option<ImgMut<'_>> {
         match self {
             Self::Jpeg(v) => Some(Img::new(ImgFmt::Jpeg, v)),
@@ -370,8 +413,11 @@ impl Data {
         }
     }
 
-    /// Consumes `self` and returns an image if `self` is of type [`Self::Jpeg`], [`Self::Png`] or
-    /// [`Self::Bmp`].
+    /// Returns the owned image if the data is of type [`Jpeg`], [`Png`] or [`Bmp`].
+    ///
+    /// [`Jpeg`]: Data::Jpeg
+    /// [`Png`]: Data::Png
+    /// [`Bmp`]: Data::Bmp
     pub fn into_image(self) -> Option<ImgBuf> {
         match self {
             Self::Jpeg(v) => Some(Img::new(ImgFmt::Jpeg, v)),
@@ -381,25 +427,36 @@ impl Data {
         }
     }
 
-    /// Returns a reference to image data if `self` is of type [`Self::Jpeg`], [`Self::Png`] or
-    /// [`Self::Bmp`].
+    /// Returns an image data reference if the data is of type [`Jpeg`], [`Png`] or [`Bmp`].
+    ///
+    /// [`Jpeg`]: Data::Jpeg
+    /// [`Png`]: Data::Png
+    /// [`Bmp`]: Data::Bmp
     pub fn image_data(&self) -> Option<&[u8]> {
         self.image().map(|i| i.data)
     }
 
-    /// Returns a mutable reference to image data if `self` is of type [`Self::Jpeg`], [`Self::Png`]
-    /// or [`Self::Bmp`].
+    /// Returns a mutable image data reference if the data is of type [`Jpeg`], [`Png`] or [`Bmp`].
+    ///
+    /// [`Jpeg`]: Data::Jpeg
+    /// [`Png`]: Data::Png
+    /// [`Bmp`]: Data::Bmp
     pub fn image_data_mut(&mut self) -> Option<&mut Vec<u8>> {
         self.image_mut().map(|i| i.data)
     }
 
-    /// Consumes `self` and returns image data if `self` is of type [`Self::Jpeg`], [`Self::Png`]
-    /// or [`Self::Bmp`].
+    /// Returns the owned image data if the data is of type [`Jpeg`], [`Png`] or [`Bmp`].
+    ///
+    /// [`Jpeg`]: Data::Jpeg
+    /// [`Png`]: Data::Png
+    /// [`Bmp`]: Data::Bmp
     pub fn into_image_data(self) -> Option<Vec<u8>> {
         self.into_image().map(|i| i.data)
     }
 
-    /// Returns a reference to byte data if `self` is of type [`Self::Reserved`].
+    /// Returns a byte reference if the data is of type [`Reserved`].
+    ///
+    /// [`Reserved`]: Data::Reserved
     pub fn reserved(&self) -> Option<&[u8]> {
         match self {
             Self::Reserved(v) => Some(v),
@@ -407,7 +464,9 @@ impl Data {
         }
     }
 
-    /// Returns a reference to a string if `self` is of type [`Self::Utf8`].
+    /// Returns a string reference if the data is of type [`Utf8`].
+    ///
+    /// [`Utf8`]: Data::Utf8
     pub fn utf8(&self) -> Option<&str> {
         match self {
             Self::Utf8(s) => Some(s),
@@ -415,7 +474,9 @@ impl Data {
         }
     }
 
-    /// Returns a reference to a string if `self` is of type [`Self::Utf16`].
+    /// Returns a string reference if the data is of type [`Utf16`].
+    ///
+    /// [`Utf16`]: Data::Utf16
     pub fn utf16(&self) -> Option<&str> {
         match self {
             Self::Utf16(s) => Some(s),
@@ -423,7 +484,9 @@ impl Data {
         }
     }
 
-    /// Returns a reference to image data if `self` is of type [`Self::Jpeg`].
+    /// Returns an image data reference data if the data is of type [`Jpeg`].
+    ///
+    /// [`Jpeg`]: Data::Jpeg
     pub fn jpeg(&self) -> Option<&[u8]> {
         match self {
             Self::Jpeg(v) => Some(v),
@@ -431,7 +494,9 @@ impl Data {
         }
     }
 
-    /// Returns a reference to image data if `self` is of type [`Self::Png`].
+    /// Returns an image data reference if the data is of type [`Png`].
+    ///
+    /// [`Png`]: Data::Png
     pub fn png(&self) -> Option<&[u8]> {
         match self {
             Self::Png(v) => Some(v),
@@ -439,19 +504,32 @@ impl Data {
         }
     }
 
-    /// Returns a reference to byte data if `self` is of type [`Self::BeSigned`].
+    /// Returns an image data reference if the data is of type [`Bmp`].
+    ///
+    /// [`Bmp`]: Data::Bmp
+    pub fn bmp(&self) -> Option<&[u8]> {
+        match self {
+            Self::Bmp(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    /// Returns a byte reference if the data is of type [`BeSigned`].
+    ///
+    /// [`BeSigned`]: Data::BeSigned
     pub fn be_signed(&self) -> Option<&[u8]> {
         match self {
             Self::BeSigned(v) => Some(v),
             _ => None,
         }
     }
+}
 
-    /// Returns a reference to byte data if `self` is of type [`Self::Bmp`].
-    pub fn bmp(&self) -> Option<&[u8]> {
-        match self {
-            Self::Bmp(v) => Some(v),
-            _ => None,
-        }
+fn read_image(reader: &mut (impl Read + Seek), parse: bool, len: u64) -> crate::Result<Vec<u8>> {
+    if parse {
+        Ok(reader.read_u8_vec(len)?)
+    } else {
+        reader.skip(len as i64)?;
+        Ok(Vec::new())
     }
 }

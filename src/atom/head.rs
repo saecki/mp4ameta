@@ -7,45 +7,45 @@ use super::*;
 /// 4 bytes identifier
 /// 8 bytes optional extended length
 /// ```
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Size {
-    /// Whether the head is of standard size (8 bytes) with a 32 bit length or extended (16 bytes)
-    /// with a 64 bit length.
     ext: bool,
-    /// The length including this head.
     len: u64,
 }
 
 impl Size {
-    pub const fn from(content_len: u64) -> Self {
-        let mut len = content_len + 8;
-        let ext = len > u32::MAX as u64;
-        if ext {
-            len += 8;
-        }
+    pub const fn new(ext: bool, content_len: u64) -> Self {
+        let len = if ext { content_len + Head::EXT_SIZE } else { content_len + Head::NORMAL_SIZE };
         Self { ext, len }
     }
 
+    pub const fn from(content_len: u64) -> Self {
+        let ext = content_len + Head::NORMAL_SIZE > u32::MAX as u64;
+        Self::new(ext, content_len)
+    }
+
+    /// Whether the head is of standard size (8 bytes) with a 32 bit length or extended (16 bytes)
+    /// with a 64 bit length.
     pub const fn ext(&self) -> bool {
         self.ext
     }
 
+    /// The length including the atom's head.
     pub const fn len(&self) -> u64 {
         self.len
     }
 
+    /// The length of the atom's head.
     pub const fn head_len(&self) -> u64 {
         match self.ext {
-            true => 16,
-            false => 8,
+            true => Head::EXT_SIZE,
+            false => Head::NORMAL_SIZE,
         }
     }
 
+    /// The length excluding the atom's head.
     pub const fn content_len(&self) -> u64 {
-        match self.ext {
-            true => self.len - 16,
-            false => self.len - 8,
-        }
+        self.len - self.head_len()
     }
 }
 
@@ -56,10 +56,9 @@ impl Size {
 /// 4 bytes identifier
 /// 8 bytes optional extended length
 /// ```
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Head {
     size: Size,
-    /// The identifier.
     fourcc: Fourcc,
 }
 
@@ -72,6 +71,9 @@ impl Deref for Head {
 }
 
 impl Head {
+    pub const NORMAL_SIZE: u64 = 8;
+    pub const EXT_SIZE: u64 = 16;
+
     pub const fn new(ext: bool, len: u64, fourcc: Fourcc) -> Self {
         Self { size: Size { ext, len }, fourcc }
     }
@@ -98,49 +100,49 @@ impl Head {
 /// 4 bytes identifier
 /// 8 bytes optional extended length
 /// ```
-pub fn parse_head(reader: &mut impl Read) -> crate::Result<Head> {
-    let len = match reader.read_u32() {
-        Ok(l) => l as u64,
-        Err(e) => {
-            return Err(crate::Error::new(
-                ErrorKind::Io(e),
-                "Error reading atom length".to_owned(),
-            ));
-        }
-    };
-    let mut ident = Fourcc([0; 4]);
-    if let Err(e) = reader.read_exact(&mut *ident) {
-        return Err(crate::Error::new(
-            ErrorKind::Io(e),
-            "Error reading atom identifier".to_owned(),
-        ));
-    }
+pub fn parse(reader: &mut impl Read) -> crate::Result<Head> {
+    let mut buf = [[0u8; 4]; 2];
+
+    // SAFETY: the buffer has the same size and alignment
+    let byte_buf: &mut [u8; 8] = unsafe { std::mem::transmute(&mut buf) };
+
+    reader
+        .read_exact(byte_buf)
+        .map_err(|e| crate::Error::new(ErrorKind::Io(e), "Error reading atom head"))?;
+
+    let len = u32::from_be_bytes(buf[0]) as u64;
+    let fourcc = Fourcc(buf[1]);
 
     if len == 1 {
-        match reader.read_u64() {
-            Ok(l) => Ok(Head::new(true, l, ident)),
-            Err(e) => Err(crate::Error::new(
-                ErrorKind::Io(e),
-                "Error reading extended atom length".to_owned(),
+        match reader.read_be_u64() {
+            Ok(ext_len) if ext_len < 16 => Err(crate::Error::new(
+                crate::ErrorKind::InvalidAtomSize,
+                format!(
+                    "Read extended length of '{fourcc}' which is less than 16 bytes: {ext_len}"
+                ),
             )),
+            Ok(ext_len) => Ok(Head::new(true, ext_len, fourcc)),
+            Err(e) => {
+                Err(crate::Error::new(ErrorKind::Io(e), "Error reading extended atom length"))
+            }
         }
     } else if len < 8 {
         Err(crate::Error::new(
-            crate::ErrorKind::Parsing,
-            format!("Read length of '{ident}' which is less than 8 bytes: {len}"),
+            crate::ErrorKind::InvalidAtomSize,
+            format!("Read length of '{fourcc}' which is less than 8 bytes: {len}"),
         ))
     } else {
-        Ok(Head::new(false, len, ident))
+        Ok(Head::new(false, len, fourcc))
     }
 }
 
-pub fn write_head(writer: &mut impl Write, head: Head) -> crate::Result<()> {
+pub fn write(writer: &mut impl Write, head: Head) -> crate::Result<()> {
     if head.ext {
-        writer.write_all(&u32::to_be_bytes(1))?;
+        writer.write_be_u32(1)?;
         writer.write_all(&*head.fourcc)?;
-        writer.write_all(&u64::to_be_bytes(head.len()))?;
+        writer.write_be_u64(head.len())?;
     } else {
-        writer.write_all(&u32::to_be_bytes(head.len() as u32))?;
+        writer.write_be_u32(head.len() as u32)?;
         writer.write_all(&*head.fourcc)?;
     }
     Ok(())
@@ -152,35 +154,25 @@ pub fn write_head(writer: &mut impl Write, head: Head) -> crate::Result<()> {
 /// 1 byte version
 /// 3 bytes flags
 /// ```
-pub fn parse_full_head(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
-    let version = match reader.read_u8() {
-        Ok(v) => v,
-        Err(e) => {
-            return Err(crate::Error::new(
-                crate::ErrorKind::Io(e),
-                "Error reading version of full atom head".to_owned(),
-            ));
-        }
-    };
-
-    let mut flags = [0; 3];
-    if let Err(e) = reader.read_exact(&mut flags) {
-        return Err(crate::Error::new(
+pub fn parse_full(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
+    let mut buf = [0; 4];
+    reader.read_exact(&mut buf).map_err(|e| {
+        crate::Error::new(
             crate::ErrorKind::Io(e),
-            "Error reading flags of full atom head".to_owned(),
-        ));
-    };
-
+            "Error reading version and flags of full atom head",
+        )
+    })?;
+    let [version, flags @ ..] = buf;
     Ok((version, flags))
 }
 
-pub fn write_full_head(writer: &mut impl Write, version: u8, flags: [u8; 3]) -> crate::Result<()> {
+pub fn write_full(writer: &mut impl Write, version: u8, flags: [u8; 3]) -> crate::Result<()> {
     writer.write_all(&[version])?;
     writer.write_all(&flags)?;
     Ok(())
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AtomBounds {
     pos: u64,
     size: Size,
@@ -199,10 +191,6 @@ impl AtomBounds {
         self.pos
     }
 
-    pub const fn size(&self) -> Size {
-        self.size
-    }
-
     pub fn content_pos(&self) -> u64 {
         self.pos + self.head_len()
     }
@@ -215,11 +203,4 @@ impl AtomBounds {
 pub fn find_bounds(reader: &mut impl Seek, size: Size) -> crate::Result<AtomBounds> {
     let pos = reader.stream_position()? - size.head_len();
     Ok(AtomBounds { pos, size })
-}
-
-pub fn seek_to_end(reader: &mut impl Seek, bounds: &AtomBounds) -> crate::Result<()> {
-    let current = reader.stream_position()?;
-    let diff = bounds.end() - current;
-    reader.seek(SeekFrom::Current(diff as i64))?;
-    Ok(())
 }
