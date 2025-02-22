@@ -754,7 +754,7 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
             Change::Remove(_) => (),
             Change::Replace(r) => r.atom.write(writer, shifting_changes)?,
             Change::Insert(i) => i.atom.write(writer, shifting_changes)?,
-            Change::EditMdat(_, _, d) => writer.write_all(d)?,
+            Change::RemoveMdat(_, _) => (),
             Change::AppendMdat(_, d) => writer.write_all(d)?,
         }
 
@@ -969,7 +969,7 @@ fn update_userdata<'a>(
         let prev_co64 = std::mem::replace(&mut co64.offsets, Table::Full(chunk_offsets));
 
         // remove previous chapter data from the mdat atom
-        if co64.state.is_existing() {
+        if co64.state.has_existed() {
             let prev_co64 = prev_co64.get_or_read(reader)?;
             remove_chapter_media_data(
                 changes,
@@ -1049,7 +1049,7 @@ fn remove_chapter_media_data<T: ChunkOffsetInt>(
                 chunk_size
             };
 
-            changes.push(Change::EditMdat(offset, chunk_size, Vec::new()));
+            changes.push(Change::RemoveMdat(offset, chunk_size));
         }
 
         stco_idx = stco_end_idx;

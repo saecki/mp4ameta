@@ -110,7 +110,7 @@ pub enum Change<'a> {
     Remove(RemoveAtom<'a>),
     Replace(ReplaceAtom<'a>),
     Insert(InsertAtom<'a>),
-    EditMdat(u64, u64, Vec<u8>),
+    RemoveMdat(u64, u64),
     AppendMdat(u64, Vec<u8>),
 }
 
@@ -123,7 +123,7 @@ impl std::fmt::Display for Change<'_> {
             Change::Remove(_)                               => write!(f, "RemoveAtom        "),
             Change::Replace(r)                              => write!(f, "ReplaceAtom {}  ", r.atom.fourcc()),
             Change::Insert(i)                               => write!(f, "InsertAtom  {}  ", i.atom.fourcc()),
-            Change::EditMdat(..)                            => write!(f, "EditMdat          "),
+            Change::RemoveMdat(..)                          => write!(f, "RemoveMdat        "),
             Change::AppendMdat(..)                          => write!(f, "AppendMdat        "),
         }?;
         write!(
@@ -145,7 +145,7 @@ impl Change<'_> {
             Self::Remove(c) => c.bounds.pos(),
             Self::Replace(c) => c.bounds.pos(),
             Self::Insert(c) => c.pos,
-            Self::EditMdat(pos, _, _) => *pos,
+            Self::RemoveMdat(pos, _) => *pos,
             Self::AppendMdat(pos, _) => *pos,
         }
     }
@@ -157,7 +157,7 @@ impl Change<'_> {
             Self::Remove(c) => c.bounds.end(),
             Self::Replace(c) => c.bounds.end(),
             Self::Insert(c) => c.pos,
-            Self::EditMdat(pos, len, _) => *pos + *len,
+            Self::RemoveMdat(pos, len) => *pos + *len,
             Self::AppendMdat(pos, _) => *pos,
         }
     }
@@ -169,7 +169,7 @@ impl Change<'_> {
             Self::Remove(c) => -(c.bounds.len() as i64),
             Self::Replace(c) => (c.atom.len() as i64) - (c.bounds.len() as i64),
             Self::Insert(c) => c.atom.len() as i64,
-            Self::EditMdat(_, len, d) => (d.len() as i64) - (*len as i64),
+            Self::RemoveMdat(_, len) => -(*len as i64),
             Self::AppendMdat(_, d) => d.len() as i64,
         }
     }
@@ -181,7 +181,7 @@ impl Change<'_> {
             Self::Remove(c) => c.level,
             Self::Replace(c) => c.level,
             Self::Insert(c) => c.level,
-            Self::EditMdat(_, _, _) => u8::MAX,
+            Self::RemoveMdat(_, _) => u8::MAX,
             Self::AppendMdat(_, _) => u8::MAX,
         }
     }

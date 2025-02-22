@@ -1,4 +1,5 @@
 use std::fs;
+use std::os::unix::fs::MetadataExt as _;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -397,6 +398,34 @@ fn chapter_track_title_truncation() {
             Chapter::new(Duration::from_millis(20), "after"),
         ],
     );
+}
+
+#[test]
+fn previous_chapter_track_media_data_is_removed() {
+    let target_file = use_sample_file("files/sample.m4a", "target/chapter_track_doesnt_grow.m4a");
+
+    let chapters = [
+        Chapter::new(Duration::ZERO, "The Pledge"),
+        Chapter::new(Duration::from_millis(135), "The Turn"),
+        Chapter::new(Duration::from_millis(324), "The Prestige"),
+    ];
+
+    let mut tag = Userdata::default();
+    tag.chapter_track_mut().extend(chapters.clone());
+    write_tag(&tag, target_file);
+
+    let file = std::fs::File::open(target_file).unwrap();
+    let prev_size = file.metadata().unwrap().size();
+
+    write_tag(&tag, target_file);
+
+    let file = std::fs::File::open(target_file).unwrap();
+    let new_size = file.metadata().unwrap().size();
+
+    assert_eq!(prev_size, new_size);
+
+    let tag = read_tag(target_file);
+    assert_eq!(tag.chapter_track(), chapters);
 }
 
 #[test]

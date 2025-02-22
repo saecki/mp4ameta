@@ -20,6 +20,10 @@ impl Default for State {
 }
 
 impl State {
+    pub fn has_existed(&self) -> bool {
+        matches!(self, Self::Existing(_) | Self::Replace(_) | Self::Remove(_))
+    }
+
     pub fn is_existing(&self) -> bool {
         matches!(self, Self::Existing(_))
     }
