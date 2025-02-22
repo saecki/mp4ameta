@@ -788,13 +788,13 @@ fn update_userdata<'a>(
 
     // chapter list
     if cfg.write_chapter_list {
-        let chpl_timescale = cfg.chpl_timescale.fixed_or_mvhd(moov.mvhd.timescale);
-
         match udta.chpl.as_mut() {
+            None if userdata.chapter_list.is_empty() => (),
             Some(chpl) if userdata.chapter_list.is_empty() => {
                 chpl.state.remove_existing();
             }
             _ => {
+                let chpl_timescale = cfg.chpl_timescale.fixed_or_mvhd(moov.mvhd.timescale);
                 let chpl = udta.chpl.get_or_insert_default();
                 chpl.state.replace_existing();
                 chpl.data = ChplData::Borrowed(chpl_timescale, &userdata.chapter_list);
