@@ -82,10 +82,10 @@ impl AtomSize for Chpl<'_> {
     fn size(&self) -> Size {
         let data_len = match &self.data {
             ChplData::Owned(v) => {
-                v.iter().map(|c| ITEM_HEADER_SIZE + c.title.len() as u64).sum::<u64>()
+                v.iter().map(|c| ITEM_HEADER_SIZE + title_len(&c.title) as u64).sum::<u64>()
             }
             ChplData::Borrowed(_, v) => {
-                v.iter().map(|c| ITEM_HEADER_SIZE + c.title.len() as u64).sum::<u64>()
+                v.iter().map(|c| ITEM_HEADER_SIZE + title_len(&c.title) as u64).sum::<u64>()
             }
         };
         let content_len = HEADER_SIZE + data_len;
@@ -104,7 +104,7 @@ impl WriteAtom for Chpl<'_> {
                 for c in v.iter() {
                     writer.write_be_u64(c.start)?;
 
-                    let title_len = c.title.len().min(u8::MAX as usize);
+                    let title_len = title_len(&c.title);
                     writer.write_u8(title_len as u8)?;
                     writer.write_utf8(&c.title[..title_len])?;
                 }
@@ -114,8 +114,10 @@ impl WriteAtom for Chpl<'_> {
                 for c in chapters.iter() {
                     let start = unscale_duration(*timescale, c.start);
                     writer.write_be_u64(start)?;
-                    writer.write_u8(c.title.len() as u8)?;
-                    writer.write_utf8(&c.title)?;
+
+                    let title_len = title_len(&c.title);
+                    writer.write_u8(title_len as u8)?;
+                    writer.write_utf8(&c.title[..title_len])?;
                 }
             }
         }
@@ -141,4 +143,8 @@ impl Chpl<'_> {
             ChplData::Borrowed(_, _) => None,
         }
     }
+}
+
+fn title_len(title: &str) -> usize {
+    title.len().min(u8::MAX as usize)
 }

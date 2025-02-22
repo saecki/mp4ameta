@@ -5,7 +5,7 @@ use std::time::Duration;
 use mp4ameta::ident::TRACK_NUMBER;
 use mp4ameta::{
     AdvisoryRating, ChannelConfig, Chapter, Data, Fourcc, Img, MediaType, SampleRate, Tag,
-    STANDARD_GENRES,
+    Userdata, STANDARD_GENRES,
 };
 use walkdir::WalkDir;
 
@@ -332,6 +332,24 @@ fn sample_files() {
         assert_eq!(tag.audio_info(), t.audio_info());
         println!();
     });
+}
+
+#[test]
+fn chpl_title_length() {
+    let mut tag = Userdata::default();
+    tag.chapter_list_mut().extend([Chapter::new(Duration::ZERO, "a".repeat(255) + "truncated")]);
+
+    let _ = std::fs::remove_file("target/chapter_title.m4a");
+    println!("copying files/sample.m4a to target/chapter_title.m4a...");
+    std::fs::copy("files/sample.m4a", "target/chapter_title.m4a").unwrap();
+
+    println!("writing...");
+    tag.write_to_path("target/chapter_title.m4a").unwrap();
+
+    println!("reading...");
+    let tag = Tag::read_from_path("target/chapter_title.m4a").unwrap();
+
+    assert_eq!([Chapter::new(Duration::ZERO, "a".repeat(255))], tag.chapter_list());
 }
 
 #[test]
