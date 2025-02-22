@@ -223,8 +223,7 @@ impl<T> PushAndGet<T> for Vec<T> {
     }
 }
 
-/// A struct representing a timescale (the number of units that pass per second) that is used to
-/// scale time for chapter list (`chpl`) atoms.
+/// The timescale which is used for the chapter list (`chpl`).
 ///
 /// | library          | timescale  |
 /// |------------------|------------|
@@ -233,7 +232,7 @@ impl<T> PushAndGet<T> for Vec<T> {
 /// | mutagen          |       mvhd |
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ChplTimescale {
-    /// Use a fixed timescale.
+    /// Use a fixed timescale: the number of units that pass per second.
     Fixed(NonZeroU32),
     /// Use the timescale defined in the movie header (mvhd) atom.
     Mvhd,
@@ -266,14 +265,15 @@ impl ChplTimescale {
 pub struct ReadConfig {
     /// Wheter the metatdata item list will be read.
     pub read_meta_items: bool,
-    /// Wheter image data will be read. Mostly for performance reasons.
+    /// Wheter image data will be read, mostly for performance reasons.
+    /// If disabled, images will still show up as empty [`Data`].
     pub read_image_data: bool,
     /// Wheter chapter list information will be read.
     pub read_chapter_list: bool,
     /// Wheter chapter track information will be read.
     pub read_chapter_track: bool,
     /// Wheter audio information will be read.
-    /// The [`AudioInfo::duration`] will always be read.
+    /// Even if disabled, the [`AudioInfo::duration`] will be read.
     pub read_audio_info: bool,
     /// The timescale that is used to scale time for chapter list (chpl) atoms.
     pub chpl_timescale: ChplTimescale,
@@ -556,7 +556,7 @@ fn read_chapter_title(reader: &mut (impl Read + Seek), offset: u64) -> crate::Re
     Ok(title)
 }
 
-/// Configure which metadata is (over-)written.
+/// Configure which metadata is (over)written.
 ///
 /// The item list stores tags such as the artist, album, title, and also the cover art of a song.
 /// And there are two separate ways of storing chapter information:
