@@ -43,7 +43,6 @@
 //! ```
 
 use std::borrow::Cow;
-use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
@@ -648,9 +647,16 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
     }
 
     for trak in moov.trak.iter() {
+        if !trak.state.is_existing() {
+            continue;
+        }
+
         let Some(stbl) = (trak.mdia.as_ref())
+            .filter(|mdia| mdia.state.is_existing())
             .and_then(|mdia| mdia.minf.as_ref())
+            .filter(|minf| minf.state.is_existing())
             .and_then(|minf| minf.stbl.as_ref())
+            .filter(|stbl| stbl.state.is_existing())
         else {
             continue;
         };
@@ -687,11 +693,7 @@ pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> 
             // ```
             // Given the hierarchy above, if the changes would order the insertion of the `udta`
             // atom before the `tkhd` the hierarchy would be invalid.
-            if a.level() > b.level() {
-                Ordering::Less
-            } else {
-                Ordering::Greater
-            }
+            a.level().cmp(&b.level()).reverse()
         })
     });
 
