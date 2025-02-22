@@ -56,12 +56,8 @@ impl Text {
             data: Cow::Borrowed(&[
                 // Text Sample Entry
                 0x00, 0x00, 0x00, 0x01, // displayFlags
-                0x00, // horizontal justification
-                0x00, // vertical justification
-                0x00, // bg color red
-                0x00, // bg color green
-                0x00, // bg color blue
-                0x00, // bg color alpha
+                0x00, 0x00, // horizontal and vertical justification
+                0x00, 0x00, 0x00, 0x00, // bg color rgba
                 // Box Record
                 0x00, 0x00, // def text box top
                 0x00, 0x00, // def text box left
@@ -73,10 +69,7 @@ impl Text {
                 0x00, 0x01, // font ID
                 0x00, // font style flags
                 0x00, // font size
-                0x00, // fg color red
-                0x00, // fg color green
-                0x00, // fg color blue
-                0x00, // fg color alpha
+                0x00, 0x00, 0x00, 0x00, // fg color rgba
                 // Font Table Box
                 0x00, 0x00, 0x00, 0x0D, // box size
                 b'f', b't', b'a', b'b', // box atom name
@@ -92,15 +85,16 @@ impl Text {
         Self {
             state: State::Insert,
             data: Cow::Borrowed(&[
-                0x00, 0x01, 0x00, 0x00, //
+                0x00, 0x01, // ??
                 0x00, 0x00, 0x00, 0x00, //
                 0x00, 0x00, 0x00, 0x00, //
                 0x00, 0x00, 0x00, 0x00, //
-                0x00, 0x01, 0x00, 0x00, //
+                0x00, 0x00, 0x00, 0x01, // ??
                 0x00, 0x00, 0x00, 0x00, //
                 0x00, 0x00, 0x00, 0x00, //
                 0x00, 0x00, 0x00, 0x00, //
-                0x40, 0x00, 0x00, 0x00, //
+                0x00, 0x00, 0x40, 0x00, // ??
+                0x00, 0x00, //
             ]),
         }
     }
