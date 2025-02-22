@@ -844,10 +844,10 @@ fn update_userdata<'a>(
                 b'e', b'n', b'c', b'd', // fourcc
                 0, 0, 1, 0, // content
             ];
-            let sample_size = 2 + c.title.len() + ENCD.len();
+            let title_len = c.title.len().min(u16::MAX as usize);
+            let sample_size = 2 + title_len + ENCD.len();
             sample_sizes.push(sample_size as u32);
 
-            let title_len = c.title.len().min(u16::MAX as usize);
             new_chapter_media_data.write_be_u16(title_len as u16).ok();
             new_chapter_media_data.write_utf8(&c.title[..title_len]).ok();
             new_chapter_media_data.extend(ENCD);

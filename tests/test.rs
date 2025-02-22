@@ -335,9 +335,16 @@ fn sample_files() {
 }
 
 #[test]
-fn chpl_title_length() {
+fn chapter_title_truncation() {
     let mut tag = Userdata::default();
-    tag.chapter_list_mut().extend([Chapter::new(Duration::ZERO, "a".repeat(255) + "truncated")]);
+    tag.chapter_list_mut().extend([
+        Chapter::new(Duration::ZERO, "a".repeat(255) + "truncated"),
+        Chapter::new(Duration::from_millis(20), "after"),
+    ]);
+    tag.chapter_track_mut().extend([
+        Chapter::new(Duration::ZERO, "a".repeat(65535) + "truncated"),
+        Chapter::new(Duration::from_millis(20), "after"),
+    ]);
 
     let _ = std::fs::remove_file("target/chapter_title.m4a");
     println!("copying files/sample.m4a to target/chapter_title.m4a...");
@@ -349,7 +356,20 @@ fn chpl_title_length() {
     println!("reading...");
     let tag = Tag::read_from_path("target/chapter_title.m4a").unwrap();
 
-    assert_eq!([Chapter::new(Duration::ZERO, "a".repeat(255))], tag.chapter_list());
+    assert_eq!(
+        [
+            Chapter::new(Duration::ZERO, "a".repeat(255)),
+            Chapter::new(Duration::from_millis(20), "after"),
+        ],
+        tag.chapter_list()
+    );
+    assert_eq!(
+        [
+            Chapter::new(Duration::ZERO, "a".repeat(65535)),
+            Chapter::new(Duration::from_millis(20), "after"),
+        ],
+        tag.chapter_track()
+    );
 }
 
 #[test]
