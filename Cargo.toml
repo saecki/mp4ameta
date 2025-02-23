@@ -8,7 +8,7 @@ description = "A library for reading and writing iTunes style MPEG-4 audio metad
 categories = ["multimedia::audio", "parser-implementations"]
 keywords = ["mp4", "m4a", "audio", "metadata", "parser"]
 repository = "https://github.com/Saecki/rust-mp4ameta"
-edition = "2018"
+edition = "2021"
 include = ["src", "Cargo.toml", "LICENSE-APACHE", "LICENSE-MIT"]
 
 [dev-dependencies]
