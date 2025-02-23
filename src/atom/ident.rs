@@ -333,7 +333,7 @@ impl<'a, T: StrLifetime<'a>> fmt::Display for FreeformIdent<'a, T> {
     }
 }
 
-impl<'a> From<FreeformIdentStatic> for FreeformIdentBorrowed<'a> {
+impl From<FreeformIdentStatic> for FreeformIdentBorrowed<'_> {
     fn from(value: FreeformIdentStatic) -> Self {
         FreeformIdent::new_borrowed(value.mean, value.name)
     }

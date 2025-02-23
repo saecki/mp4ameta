@@ -47,10 +47,7 @@ impl<T: ReadItem> Table<T> {
         }
     }
 
-    pub fn read_items<'a>(
-        reader: &mut impl Read,
-        num_entries: u32,
-    ) -> Result<Vec<T>, crate::Error> {
+    pub fn read_items(reader: &mut impl Read, num_entries: u32) -> Result<Vec<T>, crate::Error> {
         let mut items = Vec::with_capacity(num_entries as usize);
         for _ in 0..num_entries {
             items.push(T::read_item(reader)?);

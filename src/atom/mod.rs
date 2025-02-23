@@ -899,13 +899,7 @@ fn update_userdata<'a>(
                 // add chapter track
                 moov.trak.push_and_get(Trak {
                     state: State::Insert,
-                    tkhd: Tkhd {
-                        version: 0,
-                        flags: [0, 0, 0],
-                        id: new_id,
-                        duration,
-                        ..Default::default()
-                    },
+                    tkhd: Tkhd { version: 0, flags: [0, 0, 0], id: new_id, duration },
                     ..Default::default()
                 })
             }

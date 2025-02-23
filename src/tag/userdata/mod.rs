@@ -915,7 +915,7 @@ impl Userdata {
     /// ```
     pub fn retain_bytes_of(&mut self, ident: &impl Ident, predicate: impl Fn(&[u8]) -> bool) {
         #[allow(clippy::redundant_closure)]
-        self.retain_data_of(ident, |d| d.bytes().map_or(true, |b| predicate(b)));
+        self.retain_data_of(ident, |d| d.bytes().is_none_or(|b| predicate(b)));
     }
 
     /// Retains only the strings, of the atom corresponding to the identifier, that match the
@@ -945,7 +945,7 @@ impl Userdata {
     /// ```
     pub fn retain_strings_of(&mut self, ident: &impl Ident, predicate: impl Fn(&str) -> bool) {
         #[allow(clippy::redundant_closure)]
-        self.retain_data_of(ident, |d| d.string().map_or(true, |s| predicate(s)));
+        self.retain_data_of(ident, |d| d.string().is_none_or(|s| predicate(s)));
     }
 
     /// Retains only the images, of the atom corresponding to the identifier, that match the
@@ -975,7 +975,7 @@ impl Userdata {
     /// ```
     pub fn retain_images_of(&mut self, ident: &impl Ident, predicate: impl Fn(ImgRef<'_>) -> bool) {
         #[allow(clippy::redundant_closure)]
-        self.retain_data_of(ident, |d| d.image().map_or(true, |i| predicate(i)));
+        self.retain_data_of(ident, |d| d.image().is_none_or(|i| predicate(i)));
     }
 
     /// Retains only the data, of the atom corresponding to the identifier, that matches the
@@ -1043,7 +1043,7 @@ impl Userdata {
     /// assert_eq!(data.next(), None);
     /// ```
     pub fn retain_bytes(&mut self, predicate: impl Fn(&DataIdent, &[u8]) -> bool) {
-        self.retain_data(|i, d| d.bytes().map_or(true, |s| predicate(i, s)));
+        self.retain_data(|i, d| d.bytes().is_none_or(|s| predicate(i, s)));
     }
 
     /// Retains only the strings matching the predicate. Other data will remain unaffected.
@@ -1075,7 +1075,7 @@ impl Userdata {
     /// assert_eq!(data.next(), None);
     /// ```
     pub fn retain_strings(&mut self, predicate: impl Fn(&DataIdent, &str) -> bool) {
-        self.retain_data(|i, d| d.string().map_or(true, |s| predicate(i, s)));
+        self.retain_data(|i, d| d.string().is_none_or(|s| predicate(i, s)));
     }
 
     /// Retains only the images matching the predicate. Other data will remain unaffected.
@@ -1107,7 +1107,7 @@ impl Userdata {
     /// assert_eq!(data.next(), None);
     /// ```
     pub fn retain_images(&mut self, predicate: impl Fn(&DataIdent, ImgRef<'_>) -> bool) {
-        self.retain_data(|i, d| d.image().map_or(true, |s| predicate(i, s)));
+        self.retain_data(|i, d| d.image().is_none_or(|s| predicate(i, s)));
     }
 
     /// Retains only the data matching the predicate.

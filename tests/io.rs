@@ -69,13 +69,13 @@ fn use_sample_file<'a>(in_file: &str, target_file: &'a str) -> &'a str {
 }
 
 #[track_caller]
-fn write_tag<'a>(tag: &Userdata, target_file: &str) {
+fn write_tag(tag: &Userdata, target_file: &str) {
     println!("writing to `{target_file}`...");
     tag.write_to_path(target_file).unwrap();
 }
 
 #[track_caller]
-fn read_tag<'a>(target_file: &str) -> Tag {
+fn read_tag(target_file: &str) -> Tag {
     println!("reading from `{target_file}`...");
     Tag::read_from_path(target_file).unwrap()
 }
