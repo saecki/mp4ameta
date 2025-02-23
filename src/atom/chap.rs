@@ -9,7 +9,7 @@ pub struct Chap {
 }
 
 impl Atom for Chap {
-    const FOURCC: Fourcc = CHAPTER;
+    const FOURCC: Fourcc = CHAPTER_REFERENCE;
 }
 
 impl ParseAtom for Chap {
@@ -19,9 +19,15 @@ impl ParseAtom for Chap {
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
+        if size.content_len() % 4 != 0 {
+            return Err(crate::Error::new(
+                ErrorKind::InvalidAtomSize,
+                "Chapter reference (chap) atom size is not a multiple of 4",
+            ));
+        }
+
         let num_entries = size.content_len() / ENTRY_SIZE;
         let mut chapter_ids = Vec::with_capacity(num_entries as usize);
-
         for _ in 0..num_entries {
             chapter_ids.push(reader.read_be_u32()?);
         }

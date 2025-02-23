@@ -25,7 +25,8 @@ impl ParseAtom for Trak {
         let mut mdia = None;
 
         while parsed_bytes < size.content_len() {
-            let head = head::parse(reader)?;
+            let remaining_bytes = size.content_len() - parsed_bytes;
+            let head = head::parse(reader, remaining_bytes)?;
 
             match head.fourcc() {
                 TRACK_HEADER => tkhd = Some(Tkhd::parse(reader, cfg, head.size())?),

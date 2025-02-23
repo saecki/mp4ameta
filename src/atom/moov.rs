@@ -25,7 +25,8 @@ impl ParseAtom for Moov<'_> {
         let mut udta = None;
 
         while parsed_bytes < size.content_len() {
-            let head = head::parse(reader)?;
+            let remaining_bytes = size.content_len() - parsed_bytes;
+            let head = head::parse(reader, remaining_bytes)?;
 
             match head.fourcc() {
                 MOVIE_HEADER => mvhd = Some(Mvhd::parse(reader, cfg, head.size())?),

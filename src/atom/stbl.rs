@@ -109,7 +109,8 @@ impl ParseAtom for Stbl {
         let mut parsed_bytes = 0;
 
         while parsed_bytes < size.content_len() {
-            let head = head::parse(reader)?;
+            let remaining_bytes = size.content_len() - parsed_bytes;
+            let head = head::parse(reader, remaining_bytes)?;
 
             match head.fourcc() {
                 SAMPLE_TABLE_SAMPLE_DESCRIPTION if cfg.write || cfg.cfg.read_audio_info => {

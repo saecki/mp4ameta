@@ -24,10 +24,11 @@ impl ParseAtom for Tref {
         let mut parsed_bytes = 0;
 
         while parsed_bytes < size.content_len() {
-            let head = head::parse(reader)?;
+            let remaining_bytes = size.content_len() - parsed_bytes;
+            let head = head::parse(reader, remaining_bytes)?;
 
             match head.fourcc() {
-                CHAPTER => tref.chap = Some(Chap::parse(reader, cfg, head.size())?),
+                CHAPTER_REFERENCE => tref.chap = Some(Chap::parse(reader, cfg, head.size())?),
                 _ => reader.skip(head.content_len() as i64)?,
             }
 

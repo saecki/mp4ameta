@@ -23,11 +23,10 @@ impl ParseAtom for Meta<'_> {
         let (version, _) = head::parse_full(reader)?;
 
         if version != 0 {
-            return Err(crate::Error::new(
-                ErrorKind::UnknownVersion(version),
-                "Unknown metadata (meta) version",
-            ));
+            return unknown_version("metadata (meta)", version);
         }
+
+        expect_min_size("Metadata (meta)", size, HEADER_SIZE)?;
 
         let mut meta = Self {
             state: State::Existing(bounds),
@@ -36,7 +35,8 @@ impl ParseAtom for Meta<'_> {
         let mut parsed_bytes = HEADER_SIZE;
 
         while parsed_bytes < size.content_len() {
-            let head = head::parse(reader)?;
+            let remaining_bytes = size.content_len() - parsed_bytes;
+            let head = head::parse(reader, remaining_bytes)?;
 
             match head.fourcc() {
                 HANDLER_REFERENCE if cfg.write => {

@@ -26,7 +26,8 @@ impl ParseAtom for Minf {
         let mut parsed_bytes = 0;
 
         while parsed_bytes < size.content_len() {
-            let head = head::parse(reader)?;
+            let remaining_bytes = size.content_len() - parsed_bytes;
+            let head = head::parse(reader, remaining_bytes)?;
 
             match head.fourcc() {
                 BASE_MEDIA_INFORMATION_HEADER if cfg.write => {

@@ -2,7 +2,8 @@ use super::*;
 
 pub const DEFAULT_TIMESCALE: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(10_000_000) };
 
-pub const HEADER_SIZE: u64 = 5;
+pub const HEADER_SIZE_V0: u64 = 5;
+pub const HEADER_SIZE_V1: u64 = 9;
 pub const ITEM_HEADER_SIZE: u64 = 9;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -41,34 +42,34 @@ impl ParseAtom for Chpl<'_> {
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
         let (version, _) = head::parse_full(reader)?;
-        let mut parsed_bytes = HEADER_SIZE;
-
-        match version {
-            0 => (),
+        let header_size = match version {
+            0 => HEADER_SIZE_V0,
             1 => {
                 reader.skip(4)?; // ???
-                parsed_bytes += 4;
+                HEADER_SIZE_V1
             }
             _ => {
-                return Err(crate::Error::new(
-                    crate::ErrorKind::UnknownVersion(version),
-                    "Unknown chapter list (chpl) version",
-                ));
+                return unknown_version("chapter list (chpl)", version);
             }
-        }
+        };
+
+        expect_min_size("Chapter list (chpl)", size, header_size)?;
 
         let num_entries = reader.read_u8()?;
+        let table_size = size.content_len() - header_size;
+        let mut buf = vec![0; table_size as usize];
+        reader.read_exact(&mut buf)?;
+
+        let mut cursor = std::io::Cursor::new(buf);
 
         let mut chpl = Vec::with_capacity(num_entries as usize);
-        while parsed_bytes < size.content_len() {
-            let start = reader.read_be_u64()?;
+        for _ in 0..num_entries {
+            let start = cursor.read_be_u64()?;
 
-            let str_len = reader.read_u8()?;
-            let title = reader.read_utf8(str_len as u64)?;
+            let str_len = cursor.read_u8()?;
+            let title = cursor.read_utf8(str_len as u64)?;
 
             chpl.push(ChplItem { start, title });
-
-            parsed_bytes += ITEM_HEADER_SIZE + str_len as u64;
         }
 
         Ok(Self {
@@ -88,7 +89,7 @@ impl AtomSize for Chpl<'_> {
                 v.iter().map(|c| ITEM_HEADER_SIZE + title_len(&c.title) as u64).sum::<u64>()
             }
         };
-        let content_len = HEADER_SIZE + data_len;
+        let content_len = HEADER_SIZE_V0 + data_len;
         Size::from(content_len)
     }
 }

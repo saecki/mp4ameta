@@ -25,7 +25,8 @@ impl ParseAtom for Mdia {
         let mut minf = None;
 
         while parsed_bytes < size.content_len() {
-            let head = head::parse(reader)?;
+            let remaining_bytes = size.content_len() - parsed_bytes;
+            let head = head::parse(reader, remaining_bytes)?;
 
             match head.fourcc() {
                 MEDIA_HEADER => mdhd = Some(Mdhd::parse(reader, cfg, head.size())?),

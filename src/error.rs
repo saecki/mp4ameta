@@ -15,10 +15,12 @@ pub enum ErrorKind {
     DescriptorNotFound(u8),
     /// No filetype (`ftyp`) atom, which indicates na MPEG-4 file, could be found.
     NoFtyp,
-    /// The size of an atom is smaller than its header.
+    /// The size of an atom is smaller than its header, or otherwise unsound.
     InvalidAtomSize,
     /// The content of an atom suggests another length than its header.
     SizeMismatch,
+    /// The header of an atom specifies a size that either exceeds the parent atom or the file.
+    AtomSizeOutOfBounds,
     /// The sample table atom (`stbl`) contains inconsistent data.
     InvalidSampleTable,
     /// The [`ChannelConfig`] code is unknown. Contains the unknown code.

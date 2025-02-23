@@ -81,7 +81,7 @@ impl ParseAtom for Tkhd {
     fn parse_atom(
         reader: &mut (impl Read + Seek),
         _cfg: &ParseConfig<'_>,
-        _size: Size,
+        size: Size,
     ) -> crate::Result<Self> {
         let mut tkhd = Self::default();
 
@@ -91,22 +91,23 @@ impl ParseAtom for Tkhd {
 
         match version {
             0 => {
+                expect_size("Track header (tkhd) version 0", size, HEADER_SIZE_V0 as u64)?;
+
                 let mut buf = TkhdBufV0::default();
                 reader.read_exact(buf.bytes_mut())?;
                 tkhd.id = u32::from_be_bytes(buf.id);
                 tkhd.duration = u32::from_be_bytes(buf.duration) as u64;
             }
             1 => {
+                expect_size("Track header (tkhd) version 1", size, HEADER_SIZE_V1 as u64)?;
+
                 let mut buf = TkhdBufV1::default();
                 reader.read_exact(buf.bytes_mut())?;
                 tkhd.id = u32::from_be_bytes(buf.id);
                 tkhd.duration = u64::from_be_bytes(buf.duration);
             }
-            v => {
-                return Err(crate::Error::new(
-                    crate::ErrorKind::UnknownVersion(version),
-                    format!("Unknown track header (tkhd) version {v}"),
-                ));
+            _ => {
+                return unknown_version("track header (tkhd)", version);
             }
         }
 

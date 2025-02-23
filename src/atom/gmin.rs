@@ -30,10 +30,7 @@ impl ParseAtom for Gmin {
         gmin.version = version;
         gmin.flags = flags;
         if version != 0 {
-            return Err(crate::Error::new(
-                crate::ErrorKind::UnknownVersion(version),
-                format!("Unknown base media information (gmin) version {version}"),
-            ));
+            return unknown_version("base media information (gmin)", version);
         }
 
         gmin.graphics_mode = reader.read_be_u16()?;

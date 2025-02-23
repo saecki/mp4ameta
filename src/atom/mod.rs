@@ -304,19 +304,22 @@ pub struct ParseConfig<'a> {
 pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> crate::Result<Tag> {
     let parse_cfg = ParseConfig { cfg, write: false };
 
-    let Ftyp(ftyp) = Ftyp::parse(reader)?;
+    let file_len = reader.seek(SeekFrom::End(0))?;
+    reader.seek(SeekFrom::Start(0))?;
 
-    let len = reader.remaining_stream_len()?;
-    let mut parsed_bytes = 0;
+    let ftyp = Ftyp::parse(reader, file_len)?;
+
+    let mut parsed_bytes = ftyp.size.len();
     let mut moov = loop {
-        if parsed_bytes >= len {
+        if parsed_bytes >= file_len {
             return Err(crate::Error::new(
                 ErrorKind::AtomNotFound(MOVIE),
                 "Missing necessary data, no movie (moov) atom found",
             ));
         }
 
-        let head = head::parse(reader)?;
+        let remaining_bytes = file_len - parsed_bytes;
+        let head = head::parse(reader, remaining_bytes)?;
         if head.fourcc() == MOVIE {
             break Moov::parse(reader, &parse_cfg, head.size())?;
         }
@@ -465,7 +468,7 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
     }
 
     let userdata = Userdata { meta_items, chapter_list, chapter_track };
-    Ok(Tag { ftyp, info, userdata })
+    Ok(Tag { ftyp: ftyp.string, info, userdata })
 }
 
 fn read_track_chapters<T: ChunkOffsetInt>(
@@ -598,24 +601,27 @@ struct MovedData {
 pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> crate::Result<()> {
     let mut reader = BufReader::new(file);
 
-    Ftyp::parse(&mut reader)?;
+    let old_file_len = reader.seek(SeekFrom::End(0))?;
+    reader.seek(SeekFrom::Start(0))?;
+
+    let ftyp = Ftyp::parse(&mut reader, old_file_len)?;
 
     let mut moov = None;
     let mut mdat_bounds = None;
     {
-        let len = reader.remaining_stream_len()?;
-        let mut parsed_bytes = 0;
-        while parsed_bytes < len {
-            let head = head::parse(&mut reader)?;
+        let read_cfg = ReadConfig {
+            read_meta_items: cfg.write_meta_items,
+            read_chapter_list: cfg.write_chapter_list,
+            read_chapter_track: cfg.write_chapter_track,
+            read_audio_info: false,
+            read_image_data: false,
+            chpl_timescale: ChplTimescale::default(),
+        };
 
-            let read_cfg = ReadConfig {
-                read_meta_items: cfg.write_meta_items,
-                read_chapter_list: cfg.write_chapter_list,
-                read_chapter_track: cfg.write_chapter_track,
-                read_audio_info: false,
-                read_image_data: false,
-                ..Default::default()
-            };
+        let mut parsed_bytes = ftyp.size.len();
+        while parsed_bytes < old_file_len {
+            let remaining_bytes = old_file_len - parsed_bytes;
+            let head = head::parse(&mut reader, remaining_bytes)?;
             let parse_cfg = ParseConfig { cfg: &read_cfg, write: true };
             match head.fourcc() {
                 MOVIE => moov = Some(Moov::parse(&mut reader, &parse_cfg, head.size())?),

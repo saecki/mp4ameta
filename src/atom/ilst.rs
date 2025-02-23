@@ -21,7 +21,8 @@ impl ParseAtom for Ilst<'_> {
         let mut parsed_bytes = 0;
 
         while parsed_bytes < size.content_len() {
-            let head = head::parse(reader)?;
+            let remaining_bytes = size.content_len() - parsed_bytes;
+            let head = head::parse(reader, remaining_bytes)?;
 
             match head.fourcc() {
                 FREE => reader.skip(head.content_len() as i64)?,
