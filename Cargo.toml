@@ -12,4 +12,4 @@ edition = "2024"
 include = ["src", "Cargo.toml", "LICENSE-APACHE", "LICENSE-MIT"]
 
 [dev-dependencies]
-walkdir = "2.3.2"
+walkdir = "2.5.0"
