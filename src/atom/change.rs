@@ -361,11 +361,14 @@ macro_rules! atom_ref {
                         let mut cursor = std::io::Cursor::new(&mut buf);
                         atom.write(&mut cursor, &changes).unwrap();
 
+                        let buf_size = buf.len() as u64;
+
+                        let mut cursor = std::io::Cursor::new(&buf);
                         cursor.seek(SeekFrom::Start(0)).unwrap();
-                        let head = head::parse(&mut cursor).unwrap();
+                        let head = head::parse(&mut cursor, buf_size).unwrap();
 
                         assert_eq!(atom.len(), head.len());
-                        assert_eq!(atom.len(), buf.len() as u64);
+                        assert_eq!(atom.len(), buf_size);
                     }
                 }
             )+

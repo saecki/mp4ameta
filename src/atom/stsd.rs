@@ -23,13 +23,11 @@ impl ParseAtom for Stsd {
         let (version, _) = head::parse_full(reader)?;
 
         if version != 0 {
-            return Err(crate::Error::new(
-                ErrorKind::UnknownVersion(version),
-                "Unknown sample table sample description (stsd) version",
-            ));
+            return unknown_version("sample table sample description (stsd)", version);
         }
-
         reader.skip(4)?; // number of entries
+
+        expect_min_size("Sample table sampel description (stsd)", size, HEADER_SIZE)?;
 
         let mut stsd = Self {
             state: State::Existing(bounds),
@@ -38,7 +36,8 @@ impl ParseAtom for Stsd {
         let mut parsed_bytes = HEADER_SIZE;
 
         while parsed_bytes < size.content_len() {
-            let head = head::parse(reader)?;
+            let remaining_bytes = size.content_len() - parsed_bytes;
+            let head = head::parse(reader, remaining_bytes)?;
 
             match head.fourcc() {
                 MP4_AUDIO if !cfg.write => stsd.mp4a = Some(Mp4a::parse(reader, cfg, head.size())?),

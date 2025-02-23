@@ -24,7 +24,8 @@ impl ParseAtom for Dinf {
         let mut parsed_bytes = 0;
 
         while parsed_bytes < size.content_len() {
-            let head = head::parse(reader)?;
+            let remaining_bytes = size.content_len() - parsed_bytes;
+            let head = head::parse(reader, remaining_bytes)?;
 
             match head.fourcc() {
                 DATA_REFERENCE => dinf.dref = Some(Dref::parse(reader, cfg, head.size())?),

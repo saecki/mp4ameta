@@ -168,6 +168,8 @@ impl Data {
         }
         let datatype = u32::from_be_bytes([0, b2, b1, b0]);
 
+        expect_min_size("Data (data)", size, HEADER_SIZE)?;
+
         let len = size.content_len() - HEADER_SIZE;
         Ok(match datatype {
             RESERVED => Data::Reserved(reader.read_u8_vec(len)?),

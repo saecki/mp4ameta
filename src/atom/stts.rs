@@ -29,20 +29,12 @@ impl ParseAtom for Stts {
         let (version, _) = head::parse_full(reader)?;
 
         if version != 0 {
-            return Err(crate::Error::new(
-                crate::ErrorKind::UnknownVersion(version),
-                "Unknown sample table time to sample (stts) version",
-            ));
+            return unknown_version("sample table time to sample (stts)", version);
         }
 
         let num_entries = reader.read_be_u32()?;
         let table_size = ENTRY_SIZE * num_entries as u64;
-        if HEADER_SIZE + table_size != size.content_len() {
-            return Err(crate::Error::new(
-                crate::ErrorKind::SizeMismatch,
-                "Sample table time to sample (stts) table size doesn't match atom length",
-            ));
-        }
+        expect_size("Sample table time to sample (stts)", size, HEADER_SIZE + table_size)?;
 
         reader.skip(table_size as i64)?;
         let items = Table::Shallow {

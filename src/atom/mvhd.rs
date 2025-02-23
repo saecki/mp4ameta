@@ -78,7 +78,7 @@ impl ParseAtom for Mvhd {
     fn parse_atom(
         reader: &mut (impl Read + Seek),
         _cfg: &ParseConfig<'_>,
-        _size: Size,
+        size: Size,
     ) -> crate::Result<Self> {
         let mut mvhd = Self::default();
 
@@ -88,22 +88,23 @@ impl ParseAtom for Mvhd {
 
         match version {
             0 => {
+                expect_size("Movie header (mvhd) version 0", size, HEADER_SIZE_V0 as u64)?;
+
                 let mut buf = MvhdBufV0::default();
                 reader.read_exact(buf.bytes_mut())?;
                 mvhd.timescale = u32::from_be_bytes(buf.timescale);
                 mvhd.duration = u32::from_be_bytes(buf.duration) as u64;
             }
             1 => {
+                expect_size("Movie header (mvhd) version 1", size, HEADER_SIZE_V1 as u64)?;
+
                 let mut buf = MvhdBufV1::default();
                 reader.read_exact(buf.bytes_mut())?;
                 mvhd.timescale = u32::from_be_bytes(buf.timescale);
                 mvhd.duration = u64::from_be_bytes(buf.duration);
             }
-            v => {
-                return Err(crate::Error::new(
-                    crate::ErrorKind::UnknownVersion(version),
-                    format!("Error unknown movie header (mvhd) version {v}"),
-                ));
+            _ => {
+                return unknown_version("movie header (mvhd)", version);
             }
         }
 

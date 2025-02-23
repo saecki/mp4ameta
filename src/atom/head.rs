@@ -100,7 +100,7 @@ impl Head {
 /// 4 bytes identifier
 /// 8 bytes optional extended length
 /// ```
-pub fn parse(reader: &mut impl Read) -> crate::Result<Head> {
+pub fn parse(reader: &mut impl Read, remaining_bytes: u64) -> crate::Result<Head> {
     let mut buf = [[0u8; 4]; 2];
 
     // SAFETY: the buffer has the same size and alignment
@@ -110,30 +110,47 @@ pub fn parse(reader: &mut impl Read) -> crate::Result<Head> {
         .read_exact(byte_buf)
         .map_err(|e| crate::Error::new(ErrorKind::Io(e), "Error reading atom head"))?;
 
-    let len = u32::from_be_bytes(buf[0]) as u64;
+    let mut len = u32::from_be_bytes(buf[0]) as u64;
     let fourcc = Fourcc(buf[1]);
 
-    if len == 1 {
+    let ext = if len == 1 {
         match reader.read_be_u64() {
-            Ok(ext_len) if ext_len < 16 => Err(crate::Error::new(
-                crate::ErrorKind::InvalidAtomSize,
-                format!(
-                    "Read extended length of '{fourcc}' which is less than 16 bytes: {ext_len}"
-                ),
-            )),
-            Ok(ext_len) => Ok(Head::new(true, ext_len, fourcc)),
+            Ok(ext_len) if ext_len < 16 => {
+                return Err(crate::Error::new(
+                    crate::ErrorKind::InvalidAtomSize,
+                    format!(
+                        "Read extended length of '{fourcc}' which is less than 16 bytes: {ext_len}"
+                    ),
+                ));
+            }
+            Ok(ext_len) => len = ext_len,
             Err(e) => {
-                Err(crate::Error::new(ErrorKind::Io(e), "Error reading extended atom length"))
+                return Err(crate::Error::new(
+                    ErrorKind::Io(e),
+                    "Error reading extended atom length",
+                ));
             }
         }
+        true
     } else if len < 8 {
-        Err(crate::Error::new(
+        return Err(crate::Error::new(
             crate::ErrorKind::InvalidAtomSize,
             format!("Read length of '{fourcc}' which is less than 8 bytes: {len}"),
-        ))
+        ));
     } else {
-        Ok(Head::new(false, len, fourcc))
+        false
+    };
+
+    if len > remaining_bytes {
+        return Err(crate::Error::new(
+            ErrorKind::AtomSizeOutOfBounds,
+            format!(
+                "Atom size {len} of {fourcc} out larger than the remaining number of bytes {remaining_bytes}"
+            ),
+        ));
     }
+
+    Ok(Head::new(ext, len, fourcc))
 }
 
 pub fn write(writer: &mut impl Write, head: Head) -> crate::Result<()> {

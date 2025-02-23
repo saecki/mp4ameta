@@ -24,20 +24,12 @@ impl ParseAtom for Stco {
         let (version, _) = head::parse_full(reader)?;
 
         if version != 0 {
-            return Err(crate::Error::new(
-                crate::ErrorKind::UnknownVersion(version),
-                "Unknown sample table chunk offset (stco) version",
-            ));
+            return unknown_version("sample table chunk offset (stco)", version);
         }
 
         let num_entries = reader.read_be_u32()?;
         let table_size = ENTRY_SIZE * num_entries as u64;
-        if HEADER_SIZE + table_size != size.content_len() {
-            return Err(crate::Error::new(
-                crate::ErrorKind::SizeMismatch,
-                "Sample table chunk offset (stco) table size doesn't match atom length",
-            ));
-        }
+        expect_size("Sample table chunk offset (stco)", size, HEADER_SIZE + table_size)?;
 
         let offsets = if cfg.write {
             let offsets = Table::read_items(reader, num_entries)?;

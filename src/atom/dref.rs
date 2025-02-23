@@ -1,5 +1,7 @@
 use super::*;
 
+pub const HEADER_SIZE: u64 = 8;
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Dref {
     pub state: State,
@@ -20,22 +22,20 @@ impl ParseAtom for Dref {
         let (version, _) = head::parse_full(reader)?;
 
         if version != 0 {
-            return Err(crate::Error::new(
-                ErrorKind::UnknownVersion(version),
-                "Unknown data reference (dref) atom version",
-            ));
+            return unknown_version("data reference (dref)", version);
         }
-
         reader.skip(4)?; // number of entries
+
+        expect_min_size("Data ", size, HEADER_SIZE)?;
 
         let mut dref = Self {
             state: State::Existing(bounds),
             ..Default::default()
         };
-        let mut parsed_bytes = 8;
-
+        let mut parsed_bytes = HEADER_SIZE;
         while parsed_bytes < size.content_len() {
-            let head = head::parse(reader)?;
+            let remaining_bytes = size.content_len() - parsed_bytes;
+            let head = head::parse(reader, remaining_bytes)?;
 
             match head.fourcc() {
                 URL_MEDIA => dref.url = Some(Url::parse(reader, cfg, head.size())?),

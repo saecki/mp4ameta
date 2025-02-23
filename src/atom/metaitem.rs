@@ -51,29 +51,26 @@ impl MetaItem {
         let mut parsed_bytes = 0;
 
         while parsed_bytes < head.content_len() {
-            let head = head::parse(reader)?;
+            let remaining_bytes = head.content_len() - parsed_bytes;
+            let head = head::parse(reader, remaining_bytes)?;
 
             match head.fourcc() {
                 DATA => data.push(Data::parse(reader, cfg, head.size())?),
                 MEAN => {
                     let (version, _) = head::parse_full(reader)?;
                     if version != 0 {
-                        return Err(crate::Error::new(
-                            crate::ErrorKind::UnknownVersion(version),
-                            "Error reading mean atom (mean)",
-                        ));
+                        return unknown_version("mean (mean)", version);
                     }
+                    expect_min_size("Mean (mean)", head.size(), 4)?;
 
                     mean = Some(reader.read_utf8(head.content_len() - 4)?);
                 }
                 NAME => {
                     let (version, _) = head::parse_full(reader)?;
                     if version != 0 {
-                        return Err(crate::Error::new(
-                            crate::ErrorKind::UnknownVersion(version),
-                            "Error reading name atom (name)",
-                        ));
+                        return unknown_version("name (name)", version);
                     }
+                    expect_min_size("Name (name)", head.size(), 4)?;
 
                     name = Some(reader.read_utf8(head.content_len() - 4)?);
                 }

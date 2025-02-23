@@ -21,7 +21,7 @@ pub(crate) const TRACK_HEADER: Fourcc = Fourcc(*b"tkhd");
 /// (`tref`)
 pub(crate) const TRACK_REFERENCE: Fourcc = Fourcc(*b"tref");
 /// (`chap`)
-pub(crate) const CHAPTER: Fourcc = Fourcc(*b"chap");
+pub(crate) const CHAPTER_REFERENCE: Fourcc = Fourcc(*b"chap");
 /// (`mdia`) Identifier of an atom containing information about a tracks media type and data.
 pub(crate) const MEDIA: Fourcc = Fourcc(*b"mdia");
 /// (`mdhd`)

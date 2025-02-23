@@ -51,6 +51,8 @@ use crate::{ChannelConfig, SampleRate};
 
 use super::*;
 
+pub const HEADER_SIZE: u64 = 28;
+
 /// Es descriptor  tag
 const ELEMENTARY_STREAM_DESCRIPTOR: u8 = 0x03;
 /// Decoder config descriptor tag
@@ -84,9 +86,10 @@ impl ParseAtom for Mp4a {
         reader.read_exact(&mut buf)?;
 
         let mut cursor = std::io::Cursor::new(&mut buf);
-        cursor.skip(28)?;
+        cursor.skip(HEADER_SIZE as i64)?;
 
-        let head = head::parse(&mut cursor)?;
+        let remaining_bytes = size.content_len() - HEADER_SIZE;
+        let head = head::parse(&mut cursor, remaining_bytes)?;
         if head.fourcc() != ELEMENTARY_STREAM_DESCRIPTION {
             return Err(crate::Error::new(
                 crate::ErrorKind::AtomNotFound(ELEMENTARY_STREAM_DESCRIPTION),

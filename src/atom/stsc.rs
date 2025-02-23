@@ -30,25 +30,12 @@ impl ParseAtom for Stsc {
         let (version, _) = head::parse_full(reader)?;
 
         if version != 0 {
-            return Err(crate::Error::new(
-                crate::ErrorKind::UnknownVersion(version),
-                "Unknown sample table sample size (stsz) version",
-            ));
+            return unknown_version("sample table sample size (stsz)", version);
         }
 
         let num_entries = reader.read_be_u32()?;
         let table_size = ENTRY_SIZE * num_entries as u64;
-        let content_size = HEADER_SIZE + table_size;
-        if content_size != size.content_len() {
-            return Err(crate::Error::new(
-                crate::ErrorKind::SizeMismatch,
-                format!(
-                    "Sample table sample to chunk (stsc) table size {} doesn't match atom content length {}",
-                    content_size,
-                    size.content_len(),
-                ),
-            ));
-        }
+        expect_size("Sample table sample to chunk (stsc)", size, HEADER_SIZE + table_size)?;
 
         reader.skip(table_size as i64)?;
         let items = Table::Shallow {

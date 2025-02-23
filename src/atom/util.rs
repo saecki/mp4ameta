@@ -1,6 +1,9 @@
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::time::Duration;
 
+use crate::ErrorKind;
+use crate::atom::head::Size;
+
 pub trait ReadUtil: Read {
     /// Attempts to read an unsigned 8 bit integer from the reader.
     fn read_u8(&mut self) -> io::Result<u8> {
@@ -72,17 +75,6 @@ pub trait ReadUtil: Read {
 impl<T: Read> ReadUtil for T {}
 
 pub trait SeekUtil: Seek {
-    /// Attempts to read the remaining stream length and returns to the starting position.
-    fn remaining_stream_len(&mut self) -> io::Result<u64> {
-        let current_pos = self.stream_position()?;
-        let complete_len = self.seek(SeekFrom::End(0))?;
-        let len = complete_len - current_pos;
-
-        self.seek(SeekFrom::Start(current_pos))?;
-
-        Ok(len)
-    }
-
     fn skip(&mut self, offset: i64) -> io::Result<()> {
         self.seek(SeekFrom::Current(offset))?;
         Ok(())
@@ -118,6 +110,39 @@ pub trait WriteUtil: Write {
         }
         Ok(())
     }
+}
+
+pub fn expect_size(name: &str, head_size: Size, content_size: u64) -> crate::Result<()> {
+    let head_content_size = head_size.content_len();
+    if content_size != head_content_size {
+        return Err(crate::Error::new(
+            ErrorKind::SizeMismatch,
+            format!(
+                "{name} size from atom head {head_content_size} differs from the content size {content_size}",
+            ),
+        ));
+    }
+    Ok(())
+}
+
+pub fn expect_min_size(name: &str, head_size: Size, min_size: u64) -> crate::Result<()> {
+    let head_content_size = head_size.content_len();
+    if head_content_size < min_size {
+        return Err(crate::Error::new(
+            ErrorKind::InvalidAtomSize,
+            format!(
+                "{name} size from atom head {head_content_size} is smaller than the minimum size {min_size}",
+            ),
+        ));
+    }
+    Ok(())
+}
+
+pub fn unknown_version<T>(name: &str, version: u8) -> crate::Result<T> {
+    Err(crate::Error::new(
+        crate::ErrorKind::UnknownVersion(version),
+        format!("Unknown {name} atom version {version}"),
+    ))
 }
 
 impl<T: Write> WriteUtil for T {}
