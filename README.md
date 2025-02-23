@@ -1,6 +1,5 @@
 # mp4ameta
 [![Build](https://github.com/Saecki/mp4ameta/actions/workflows/build.yml/badge.svg)](https://github.com/Saecki/mp4ameta/actions/workflows/build.yml)
-[![Style](https://github.com/Saecki/mp4ameta/actions/workflows/style.yml/badge.svg)](https://github.com/Saecki/mp4ameta/actions/workflows/style.yml)
 [![Crate](https://img.shields.io/crates/v/mp4ameta.svg)](https://crates.io/crates/mp4ameta)
 [![Documentation](https://img.shields.io/docsrs/mp4ameta?label=docs.rs)](https://docs.rs/mp4ameta)
 ![License](https://img.shields.io/crates/l/mp4ameta)
