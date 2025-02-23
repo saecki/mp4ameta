@@ -2,6 +2,7 @@ name: Build
 
 on:
   push:
+    branches: main
   pull_request:
   schedule:
   - cron:  '0 0 * * 1' # weekly
@@ -19,6 +20,6 @@ jobs:
     - uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: ${{ matrix.toolchain }}
-        components: clippy, rustfmt
+        components: rustfmt
     - run: cargo test
     - run: cargo fmt -- --check
