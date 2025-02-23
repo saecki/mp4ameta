@@ -1,4 +1,4 @@
-use mp4ameta::{ident, Data, Img, Tag, STANDARD_GENRES};
+use mp4ameta::{Data, Img, STANDARD_GENRES, Tag, ident};
 
 #[test]
 fn multiple_value_handling() {

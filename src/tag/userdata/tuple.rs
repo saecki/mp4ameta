@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::{ident, Data, Userdata};
+use crate::{Data, Userdata, ident};
 
 /// ### Track
 ///

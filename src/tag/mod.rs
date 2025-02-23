@@ -4,7 +4,7 @@ use std::io::{BufReader, Read, Seek};
 use std::ops::{Deref, DerefMut};
 use std::path::Path;
 
-use crate::{atom, util, AudioInfo, ReadConfig};
+use crate::{AudioInfo, ReadConfig, atom, util};
 
 pub use userdata::*;
 

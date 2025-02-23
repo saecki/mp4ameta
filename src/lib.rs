@@ -102,7 +102,7 @@
 pub use crate::atom::ident::{self, DataIdent, Fourcc, FreeformIdent, Ident};
 pub use crate::atom::{ChplTimescale, Data, ReadConfig, WriteConfig};
 pub use crate::error::{Error, ErrorKind, Result};
-pub use crate::tag::{Tag, Userdata, STANDARD_GENRES};
+pub use crate::tag::{STANDARD_GENRES, Tag, Userdata};
 pub use crate::types::*;
 
 pub(crate) use crate::atom::MetaItem;

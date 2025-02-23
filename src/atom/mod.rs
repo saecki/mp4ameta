@@ -55,7 +55,7 @@ use change::{
     AtomRef, Change, ChunkOffsetInt, ChunkOffsets, CollectChanges, LeafAtomCollectChanges,
     SimpleCollectChanges, UpdateAtomLen, UpdateChunkOffsets,
 };
-use head::{find_bounds, AtomBounds, Head, Size};
+use head::{AtomBounds, Head, Size, find_bounds};
 use ident::*;
 use state::State;
 use util::*;
@@ -828,11 +828,19 @@ fn update_userdata<'a>(
 
             // remove all chap track references
             for trak in moov.trak.iter_mut() {
-                let Some(tref) = &mut trak.tref else { continue };
-                let State::Existing(tref_bounds) = &tref.state else { continue };
+                let Some(tref) = &mut trak.tref else {
+                    continue;
+                };
+                let State::Existing(tref_bounds) = &tref.state else {
+                    continue;
+                };
 
-                let Some(chap) = &mut tref.chap else { continue };
-                let State::Existing(chap_bounds) = &chap.state else { continue };
+                let Some(chap) = &mut tref.chap else {
+                    continue;
+                };
+                let State::Existing(chap_bounds) = &chap.state else {
+                    continue;
+                };
 
                 if tref_bounds.content_len() == chap_bounds.len() {
                     tref.state.remove_existing();

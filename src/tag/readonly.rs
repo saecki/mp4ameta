@@ -1,7 +1,7 @@
 use std::fmt;
 use std::time::Duration;
 
-use crate::{util, AudioInfo, ChannelConfig, SampleRate, Tag};
+use crate::{AudioInfo, ChannelConfig, SampleRate, Tag, util};
 
 /// ### Audio information
 impl Tag {
