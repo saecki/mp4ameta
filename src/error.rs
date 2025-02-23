@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use std::{error, fmt, io, string};
+use std::{error, fmt, io};
 
 use crate::Fourcc;
 
@@ -37,10 +37,10 @@ pub enum ErrorKind {
     UnknownSampleRate(u8),
     /// Either the version byte of an atom or a descriptor is unknown. Contains the unknown version.
     UnknownVersion(u8),
-    /// An invalid utf-8 string was found. Contains the invalid data.
-    Utf8StringDecoding(string::FromUtf8Error),
+    /// An invalid utf-8 string was found.
+    Utf8StringDecoding,
     /// An invalid utf-16 string was found.
-    Utf16StringDecoding(string::FromUtf16Error),
+    Utf16StringDecoding,
     /// An IO error has occurred.
     Io(io::Error),
 }
@@ -72,18 +72,6 @@ impl From<io::Error> for Error {
     fn from(err: io::Error) -> Error {
         let description = format!("IO error: {err}");
         Error::new(ErrorKind::Io(err), description)
-    }
-}
-
-impl From<string::FromUtf8Error> for Error {
-    fn from(err: string::FromUtf8Error) -> Error {
-        Error::new(ErrorKind::Utf8StringDecoding(err), "Data is not valid utf-8.")
-    }
-}
-
-impl From<string::FromUtf16Error> for Error {
-    fn from(err: string::FromUtf16Error) -> Error {
-        Error::new(ErrorKind::Utf16StringDecoding(err), "Data is not valid utf-16.")
     }
 }
 

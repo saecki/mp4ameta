@@ -44,32 +44,38 @@ pub trait ReadUtil: Read {
     fn read_utf8(&mut self, len: u64) -> crate::Result<String> {
         let data = self.read_u8_vec(len)?;
 
-        Ok(String::from_utf8(data)?)
+        String::from_utf8(data)
+            .map_err(|_| crate::Error::new(ErrorKind::Utf8StringDecoding, "invalid utf-8 data"))
     }
 
     /// Attempts to read a big endian utf-16 string from the reader.
     fn read_be_utf16(&mut self, len: u64) -> crate::Result<String> {
-        let mut buf = vec![0; len as usize];
-
-        self.read_exact(&mut buf)?;
-
-        let data: Vec<u16> =
-            buf.chunks_exact(2).map(|c| u16::from_be_bytes([c[0], c[1]])).collect();
-
-        Ok(String::from_utf16(&data)?)
+        let data = self.read_u8_vec(len)?;
+        let code_units = data.chunks_exact(2).map(|c| u16::from_be_bytes([c[0], c[1]]));
+        let mut ret = String::with_capacity(data.len() / 2);
+        decode_utf16(&mut ret, code_units)?;
+        Ok(ret)
     }
 
     /// Attempts to read a little endian utf-16 string from the reader.
     fn read_le_utf16(&mut self, len: u64) -> crate::Result<String> {
-        let mut buf = vec![0; len as usize];
-
-        self.read_exact(&mut buf)?;
-
-        let data: Vec<u16> =
-            buf.chunks_exact(2).map(|c| u16::from_le_bytes([c[0], c[1]])).collect();
-
-        Ok(String::from_utf16(&data)?)
+        let data = self.read_u8_vec(len)?;
+        let code_units = data.chunks_exact(2).map(|c| u16::from_le_bytes([c[0], c[1]]));
+        let mut ret = String::with_capacity(data.len() / 2);
+        decode_utf16(&mut ret, code_units)?;
+        Ok(ret)
     }
+}
+
+fn decode_utf16(buf: &mut String, code_units: impl Iterator<Item = u16>) -> crate::Result<()> {
+    for c in char::decode_utf16(code_units) {
+        if let Ok(c) = c {
+            buf.push(c);
+        } else {
+            return Err(crate::Error::new(ErrorKind::Utf16StringDecoding, "invalid utf-16 data"));
+        }
+    }
+    Ok(())
 }
 
 impl<T: Read> ReadUtil for T {}
