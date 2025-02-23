@@ -1,5 +1,4 @@
 use std::fs;
-use std::os::unix::fs::MetadataExt as _;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -415,12 +414,12 @@ fn previous_chapter_track_media_data_is_removed() {
     write_tag(&tag, target_file);
 
     let file = std::fs::File::open(target_file).unwrap();
-    let prev_size = file.metadata().unwrap().size();
+    let prev_size = file.metadata().unwrap().len();
 
     write_tag(&tag, target_file);
 
     let file = std::fs::File::open(target_file).unwrap();
-    let new_size = file.metadata().unwrap().size();
+    let new_size = file.metadata().unwrap().len();
 
     assert_eq!(prev_size, new_size);
 
