@@ -91,8 +91,10 @@ pub const STANDARD_GENRES: [&str; 80] = [
 impl Userdata {
     /// Returns all standard genres (`gnre`).
     pub fn standard_genres(&self) -> impl Iterator<Item = u16> + '_ {
-        self.bytes_of(&ident::STANDARD_GENRE)
-            .filter_map(|v| if v.len() < 2 { None } else { Some(u16::from_be_bytes([v[0], v[1]])) })
+        self.bytes_of(&ident::STANDARD_GENRE).filter_map(|v| {
+            let &[b0, b1] = v else { return None };
+            Some(u16::from_be_bytes([b0, b1]))
+        })
     }
 
     /// Returns the first standard genre (`gnre`).
