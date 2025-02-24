@@ -388,6 +388,102 @@ impl Userdata {
     }
 }
 
+/// ### Album sort order
+impl Userdata {
+    /// Returns the album sort order (`soal`).
+    pub fn album_sort_order(&self) -> Option<&str> {
+        self.strings_of(&ident::ALBUM_SORT_ORDER).next()
+    }
+
+    /// Removes and returns the album sort order (`soal`).
+    pub fn take_album_sort_order(&mut self) -> Option<String> {
+        self.take_strings_of(&ident::ALBUM_SORT_ORDER).next()
+    }
+
+    /// Sets the album sort order (`soal`).
+    pub fn set_album_sort_order(&mut self, album_sort_order: impl Into<String>) {
+        self.set_data(ident::ALBUM_SORT_ORDER, Data::Utf8(album_sort_order.into()));
+    }
+
+    /// Removes the album sort order (`soal`).
+    pub fn remove_album_sort_order(&mut self) {
+        self.remove_data_of(&ident::ALBUM_SORT_ORDER);
+    }
+
+    /// Returns the album sort order formatted in an easily readable way.
+    #[allow(unused)]
+    pub(crate) fn format_album_sort_order(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.album_sort_order() {
+            Some(s) => writeln!(f, "album sort order: {}", s),
+            None => Ok(()),
+        }
+    }
+}
+
+/// ### Title sort order
+impl Userdata {
+    /// Returns the title sort order (`sonm`).
+    pub fn title_sort_order(&self) -> Option<&str> {
+        self.strings_of(&ident::TITLE_SORT_ORDER).next()
+    }
+
+    /// Removes and returns the title sort order (`sonm`).
+    pub fn take_title_sort_order(&mut self) -> Option<String> {
+        self.take_strings_of(&ident::TITLE_SORT_ORDER).next()
+    }
+
+    /// Sets the title sort order (`sonm`).
+    pub fn set_title_sort_order(&mut self, title_sort_order: impl Into<String>) {
+        self.set_data(ident::TITLE_SORT_ORDER, Data::Utf8(title_sort_order.into()));
+    }
+
+    /// Removes the title sort order (`sonm`).
+    pub fn remove_title_sort_order(&mut self) {
+        self.remove_data_of(&ident::TITLE_SORT_ORDER);
+    }
+
+    /// Returns the title sort order formatted in an easily readable way.
+    #[allow(unused)]
+    pub(crate) fn format_title_sort_order(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.title_sort_order() {
+            Some(s) => writeln!(f, "title sort order: {}", s),
+            None => Ok(()),
+        }
+    }
+}
+
+/// ### Tv show name sort order
+impl Userdata {
+    /// Returns the tv show name sort order (`sosn`).
+    pub fn tv_show_name_sort_order(&self) -> Option<&str> {
+        self.strings_of(&ident::TV_SHOW_NAME_SORT_ORDER).next()
+    }
+
+    /// Removes and returns the tv show name sort order (`sosn`).
+    pub fn take_tv_show_name_sort_order(&mut self) -> Option<String> {
+        self.take_strings_of(&ident::TV_SHOW_NAME_SORT_ORDER).next()
+    }
+
+    /// Sets the tv show name sort order (`sosn`).
+    pub fn set_tv_show_name_sort_order(&mut self, tv_show_name_sort_order: impl Into<String>) {
+        self.set_data(ident::TV_SHOW_NAME_SORT_ORDER, Data::Utf8(tv_show_name_sort_order.into()));
+    }
+
+    /// Removes the tv show name sort order (`sosn`).
+    pub fn remove_tv_show_name_sort_order(&mut self) {
+        self.remove_data_of(&ident::TV_SHOW_NAME_SORT_ORDER);
+    }
+
+    /// Returns the tv show name sort order formatted in an easily readable way.
+    #[allow(unused)]
+    pub(crate) fn format_tv_show_name_sort_order(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.tv_show_name_sort_order() {
+            Some(s) => writeln!(f, "tv show name sort order: {}", s),
+            None => Ok(()),
+        }
+    }
+}
+
 /// ### Album artist
 impl Userdata {
     /// Returns all album artists (`aART`).
@@ -1023,6 +1119,198 @@ impl Userdata {
             }
         } else if let Some(s) = self.lyricist() {
             writeln!(f, "lyricist: {}", s)?;
+        }
+        Ok(())
+    }
+}
+
+/// ### Album artist sort order
+impl Userdata {
+    /// Returns all album artist sort orders (`soaa`).
+    pub fn album_artist_sort_orders(&self) -> impl Iterator<Item=&str> {
+        self.strings_of(&ident::ALBUM_ARTIST_SORT_ORDER)
+    }
+
+    /// Returns the first album artist sort order (`soaa`).
+    pub fn album_artist_sort_order(&self) -> Option<&str> {
+        self.strings_of(&ident::ALBUM_ARTIST_SORT_ORDER).next()
+    }
+
+    /// Removes and returns all album artist sort orders (`soaa`).
+    pub fn take_album_artist_sort_orders(&mut self) -> impl Iterator<Item=String> + '_ {
+        self.take_strings_of(&ident::ALBUM_ARTIST_SORT_ORDER)
+    }
+
+    /// Removes all and returns the first album artist sort order (`soaa`).
+    pub fn take_album_artist_sort_order(&mut self) -> Option<String> {
+        self.take_strings_of(&ident::ALBUM_ARTIST_SORT_ORDER).next()
+    }
+
+    /// Sets all album artist sort orders (`soaa`). This will remove all other album artist sort orders.
+    pub fn set_album_artist_sort_orders(&mut self, album_artist_sort_orders: impl IntoIterator<Item = String>) {
+        let data = album_artist_sort_orders.into_iter().map(Data::Utf8);
+        self.set_all_data(ident::ALBUM_ARTIST_SORT_ORDER, data);
+    }
+
+    /// Sets the album artist sort order (`soaa`). This will remove all other album artist sort orders.
+    pub fn set_album_artist_sort_order(&mut self, album_artist_sort_order: impl Into<String>) {
+        self.set_data(ident::ALBUM_ARTIST_SORT_ORDER, Data::Utf8(album_artist_sort_order.into()));
+    }
+
+    /// Adds all album artist sort orders (`soaa`).
+    pub fn add_album_artist_sort_orders(&mut self, album_artist_sort_orders: impl IntoIterator<Item = String>) {
+        let data = album_artist_sort_orders.into_iter().map(Data::Utf8);
+        self.add_all_data(ident::ALBUM_ARTIST_SORT_ORDER, data);
+    }
+
+    /// Adds an album artist sort order (`soaa`).
+    pub fn add_album_artist_sort_order(&mut self, album_artist_sort_order: impl Into<String>) {
+        self.add_data(ident::ALBUM_ARTIST_SORT_ORDER, Data::Utf8(album_artist_sort_order.into()));
+    }
+
+    /// Removes all album artist sort orders (`soaa`).
+    pub fn remove_album_artist_sort_orders(&mut self) {
+        self.remove_data_of(&ident::ALBUM_ARTIST_SORT_ORDER);
+    }
+
+    /// Returns all album artist sort orders formatted in an easily readable way.
+    #[allow(unused)]
+    pub(crate) fn format_album_artist_sort_orders(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.album_artist_sort_orders().count() > 1 {
+            writeln!(f, "album artist sort orders:")?;
+            for s in self.album_artist_sort_orders() {
+                writeln!(f, "    {}", s)?;
+            }
+        } else if let Some(s) = self.album_artist_sort_order() {
+            writeln!(f, "album artist sort order: {}", s)?;
+        }
+        Ok(())
+    }
+}
+
+/// ### Artist sort order
+impl Userdata {
+    /// Returns all artist sort orders (`soar`).
+    pub fn artist_sort_orders(&self) -> impl Iterator<Item=&str> {
+        self.strings_of(&ident::ARTIST_SORT_ORDER)
+    }
+
+    /// Returns the first artist sort order (`soar`).
+    pub fn artist_sort_order(&self) -> Option<&str> {
+        self.strings_of(&ident::ARTIST_SORT_ORDER).next()
+    }
+
+    /// Removes and returns all artist sort orders (`soar`).
+    pub fn take_artist_sort_orders(&mut self) -> impl Iterator<Item=String> + '_ {
+        self.take_strings_of(&ident::ARTIST_SORT_ORDER)
+    }
+
+    /// Removes all and returns the first artist sort order (`soar`).
+    pub fn take_artist_sort_order(&mut self) -> Option<String> {
+        self.take_strings_of(&ident::ARTIST_SORT_ORDER).next()
+    }
+
+    /// Sets all artist sort orders (`soar`). This will remove all other artist sort orders.
+    pub fn set_artist_sort_orders(&mut self, artist_sort_orders: impl IntoIterator<Item = String>) {
+        let data = artist_sort_orders.into_iter().map(Data::Utf8);
+        self.set_all_data(ident::ARTIST_SORT_ORDER, data);
+    }
+
+    /// Sets the artist sort order (`soar`). This will remove all other artist sort orders.
+    pub fn set_artist_sort_order(&mut self, artist_sort_order: impl Into<String>) {
+        self.set_data(ident::ARTIST_SORT_ORDER, Data::Utf8(artist_sort_order.into()));
+    }
+
+    /// Adds all artist sort orders (`soar`).
+    pub fn add_artist_sort_orders(&mut self, artist_sort_orders: impl IntoIterator<Item = String>) {
+        let data = artist_sort_orders.into_iter().map(Data::Utf8);
+        self.add_all_data(ident::ARTIST_SORT_ORDER, data);
+    }
+
+    /// Adds an artist sort order (`soar`).
+    pub fn add_artist_sort_order(&mut self, artist_sort_order: impl Into<String>) {
+        self.add_data(ident::ARTIST_SORT_ORDER, Data::Utf8(artist_sort_order.into()));
+    }
+
+    /// Removes all artist sort orders (`soar`).
+    pub fn remove_artist_sort_orders(&mut self) {
+        self.remove_data_of(&ident::ARTIST_SORT_ORDER);
+    }
+
+    /// Returns all artist sort orders formatted in an easily readable way.
+    #[allow(unused)]
+    pub(crate) fn format_artist_sort_orders(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.artist_sort_orders().count() > 1 {
+            writeln!(f, "artist sort orders:")?;
+            for s in self.artist_sort_orders() {
+                writeln!(f, "    {}", s)?;
+            }
+        } else if let Some(s) = self.artist_sort_order() {
+            writeln!(f, "artist sort order: {}", s)?;
+        }
+        Ok(())
+    }
+}
+
+/// ### Composer sort order
+impl Userdata {
+    /// Returns all composer sort orders (`soco`).
+    pub fn composer_sort_orders(&self) -> impl Iterator<Item=&str> {
+        self.strings_of(&ident::COMPOSER_SORT_ORDER)
+    }
+
+    /// Returns the first composer sort order (`soco`).
+    pub fn composer_sort_order(&self) -> Option<&str> {
+        self.strings_of(&ident::COMPOSER_SORT_ORDER).next()
+    }
+
+    /// Removes and returns all composer sort orders (`soco`).
+    pub fn take_composer_sort_orders(&mut self) -> impl Iterator<Item=String> + '_ {
+        self.take_strings_of(&ident::COMPOSER_SORT_ORDER)
+    }
+
+    /// Removes all and returns the first composer sort order (`soco`).
+    pub fn take_composer_sort_order(&mut self) -> Option<String> {
+        self.take_strings_of(&ident::COMPOSER_SORT_ORDER).next()
+    }
+
+    /// Sets all composer sort orders (`soco`). This will remove all other composer sort orders.
+    pub fn set_composer_sort_orders(&mut self, composer_sort_orders: impl IntoIterator<Item = String>) {
+        let data = composer_sort_orders.into_iter().map(Data::Utf8);
+        self.set_all_data(ident::COMPOSER_SORT_ORDER, data);
+    }
+
+    /// Sets the composer sort order (`soco`). This will remove all other composer sort orders.
+    pub fn set_composer_sort_order(&mut self, composer_sort_order: impl Into<String>) {
+        self.set_data(ident::COMPOSER_SORT_ORDER, Data::Utf8(composer_sort_order.into()));
+    }
+
+    /// Adds all composer sort orders (`soco`).
+    pub fn add_composer_sort_orders(&mut self, composer_sort_orders: impl IntoIterator<Item = String>) {
+        let data = composer_sort_orders.into_iter().map(Data::Utf8);
+        self.add_all_data(ident::COMPOSER_SORT_ORDER, data);
+    }
+
+    /// Adds an composer sort order (`soco`).
+    pub fn add_composer_sort_order(&mut self, composer_sort_order: impl Into<String>) {
+        self.add_data(ident::COMPOSER_SORT_ORDER, Data::Utf8(composer_sort_order.into()));
+    }
+
+    /// Removes all composer sort orders (`soco`).
+    pub fn remove_composer_sort_orders(&mut self) {
+        self.remove_data_of(&ident::COMPOSER_SORT_ORDER);
+    }
+
+    /// Returns all composer sort orders formatted in an easily readable way.
+    #[allow(unused)]
+    pub(crate) fn format_composer_sort_orders(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.composer_sort_orders().count() > 1 {
+            writeln!(f, "composer sort orders:")?;
+            for s in self.composer_sort_orders() {
+                writeln!(f, "    {}", s)?;
+            }
+        } else if let Some(s) = self.composer_sort_order() {
+            writeln!(f, "composer sort order: {}", s)?;
         }
         Ok(())
     }

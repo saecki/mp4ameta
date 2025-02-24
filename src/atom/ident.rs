@@ -172,6 +172,20 @@ pub const WORK: Fourcc = Fourcc(*b"\xa9wrk");
 /// (`shwm`)
 pub const SHOW_MOVEMENT: Fourcc = Fourcc(*b"shwm");
 
+// Sort order
+/// (`soaa`)
+pub const ALBUM_ARTIST_SORT_ORDER: Fourcc = Fourcc(*b"soaa");
+/// (`soal`)
+pub const ALBUM_SORT_ORDER: Fourcc = Fourcc(*b"soal");
+/// (`soar`)
+pub const ARTIST_SORT_ORDER: Fourcc = Fourcc(*b"soar");
+/// (`soco`)
+pub const COMPOSER_SORT_ORDER: Fourcc = Fourcc(*b"soco");
+/// (`sonm`)
+pub const TITLE_SORT_ORDER: Fourcc = Fourcc(*b"sonm");
+/// (`sosn`)
+pub const TV_SHOW_NAME_SORT_ORDER: Fourcc = Fourcc(*b"sosn");
+
 // Freeform
 /// Mean string of most freeform identifiers (`com.apple.iTunes`)
 pub const APPLE_ITUNES_MEAN: &str = "com.apple.iTunes";
