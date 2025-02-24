@@ -108,9 +108,9 @@ tag.write_with_path("music.m4a", &write_cfg).unwrap();
 
 ## Useful Links
 - QuickTime spec
-    - [Overview of QTFF](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap1/qtff1.html)
-    - [Movie Atoms](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/QTFFChap2/qtff2.html)
-    - [Metadata](https://developer.apple.com/library/archive/documentation/QuickTime/QTFF/Metadata/Metadata.html)
+    - [Overview of QTFF](https://developer.apple.com/documentation/quicktime-file-format)
+    - [Movie atoms](https://developer.apple.com/documentation/quicktime-file-format/movie_atoms)
+    - [User data atoms](https://developer.apple.com/documentation/quicktime-file-format/user_data_atoms)
 - [MultimediaWiki QuickTime container](https://wiki.multimedia.cx/index.php/QuickTime_container)
 - [AtomicParsley docs](http://atomicparsley.sourceforge.net/mpeg-4files.html)
 - [Mutagen docs](https://mutagen.readthedocs.io/en/latest/api/mp4.html)
