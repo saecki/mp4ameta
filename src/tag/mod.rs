@@ -37,11 +37,16 @@ impl DerefMut for Tag {
 impl fmt::Display for Tag {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.format_album_artists(f)?;
+        self.format_album_artist_sort_orders(f)?;
         self.format_artists(f)?;
+        self.format_artist_sort_orders(f)?;
         self.format_composers(f)?;
+        self.format_composer_sort_orders(f)?;
         self.format_lyricists(f)?;
         self.format_album(f)?;
+        self.format_album_sort_order(f)?;
         self.format_title(f)?;
+        self.format_title_sort_order(f)?;
         self.format_genres(f)?;
         self.format_year(f)?;
         self.format_track(f)?;
@@ -57,6 +62,7 @@ impl fmt::Display for Tag {
         self.format_copyright(f)?;
         self.format_encoder(f)?;
         self.format_tv_show_name(f)?;
+        self.format_tv_show_name_sort_order(f)?;
         self.format_tv_network_name(f)?;
         self.format_tv_episode_name(f)?;
         self.format_tv_episode(f)?;
