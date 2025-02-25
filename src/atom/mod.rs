@@ -288,6 +288,26 @@ impl ReadConfig {
         read_audio_info: true,
         chpl_timescale: ChplTimescale::DEFAULT,
     };
+
+    /// A configuration that would read no data at all.
+    ///
+    /// ```
+    /// use mp4ameta::ReadConfig;
+    ///
+    /// let cfg = ReadConfig {
+    ///     read_meta_items: true,
+    ///     read_image_data: true,
+    ///     ..ReadConfig::NONE
+    /// };
+    /// ```
+    pub const NONE: ReadConfig = ReadConfig {
+        read_meta_items: false,
+        read_image_data: false,
+        read_chapter_list: false,
+        read_chapter_track: false,
+        read_audio_info: false,
+        chpl_timescale: ChplTimescale::DEFAULT,
+    };
 }
 
 impl Default for ReadConfig {
@@ -582,6 +602,23 @@ impl WriteConfig {
         write_meta_items: true,
         write_chapter_list: true,
         write_chapter_track: true,
+        chpl_timescale: ChplTimescale::DEFAULT,
+    };
+
+    /// A configuration that would write no data at all.
+    ///
+    /// ```
+    /// use mp4ameta::WriteConfig;
+    ///
+    /// let cfg = WriteConfig {
+    ///     write_meta_items: true,
+    ///     ..WriteConfig::NONE
+    /// };
+    /// ```
+    pub const NONE: WriteConfig = WriteConfig {
+        write_meta_items: false,
+        write_chapter_list: false,
+        write_chapter_track: false,
         chpl_timescale: ChplTimescale::DEFAULT,
     };
 }

@@ -77,10 +77,7 @@
 //! let read_cfg = ReadConfig {
 //!     read_meta_items: true,
 //!     read_image_data: false,
-//!     read_chapter_list: false,
-//!     read_chapter_track: false,
-//!     read_audio_info: false,
-//!     chpl_timescale: ChplTimescale::DEFAULT,
+//!     ..ReadConfig::NONE
 //! };
 //! let mut tag = Tag::read_with_path("music.m4a", &read_cfg).unwrap();
 //!
@@ -91,9 +88,7 @@
 //! // Only overwrite the metadata item list, leave chapters intact
 //! let write_cfg = WriteConfig {
 //!     write_meta_items: true,
-//!     write_chapter_list: false,
-//!     write_chapter_track: false,
-//!     chpl_timescale: ChplTimescale::DEFAULT,
+//!     ..WriteConfig::NONE
 //! };
 //! tag.write_with_path("music.m4a", &write_cfg).unwrap();
 //! ```

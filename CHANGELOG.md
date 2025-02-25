@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [unreleased]
+
+- Add ReadConfig::NONE and WriteConfig::NONE
+
 ## mp4ameta v0.12.0
 
 - Implement FromStr for Fourcc
