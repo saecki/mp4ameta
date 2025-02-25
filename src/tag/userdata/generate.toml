@@ -13,6 +13,7 @@
 "work"                    = "©wrk"
 "year"                    = "©day"
 "isrc"                    = "----:com.apple.iTunes:ISRC"
+"label"                   = "----:com.apple.iTunes:LABEL"
 "album_sort_order"        = "soal"
 "title_sort_order"        = "sonm"
 "tv_show_name_sort_order" = "sosn"

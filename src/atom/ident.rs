@@ -194,6 +194,8 @@ pub const APPLE_ITUNES_MEAN: &str = "com.apple.iTunes";
 pub const ISRC: FreeformIdentStatic = FreeformIdent::new_static(APPLE_ITUNES_MEAN, "ISRC");
 /// (`----:com.apple.iTunes:LYRICIST`)
 pub const LYRICIST: FreeformIdentStatic = FreeformIdent::new_static(APPLE_ITUNES_MEAN, "LYRICIST");
+/// (`----:com.apple.iTunes:LABEL`)
+pub const LABEL: FreeformIdentStatic = FreeformIdent::new_static(APPLE_ITUNES_MEAN, "LABEL");
 
 /// A trait providing information about an identifier.
 pub trait Ident: PartialEq<DataIdent> {

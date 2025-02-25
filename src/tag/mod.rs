@@ -81,6 +81,7 @@ impl fmt::Display for Tag {
         self.format_gapless_playback(f)?;
         self.format_compilation(f)?;
         self.format_isrc(f)?;
+        self.format_label(f)?;
         self.format_lyrics(f)?;
         self.format_chapter_list(f)?;
         self.format_chapter_track(f)?;

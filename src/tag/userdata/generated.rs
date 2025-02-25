@@ -388,6 +388,38 @@ impl Userdata {
     }
 }
 
+/// ### Label
+impl Userdata {
+    /// Returns the label (`----:com.apple.iTunes:LABEL`).
+    pub fn label(&self) -> Option<&str> {
+        self.strings_of(&ident::LABEL).next()
+    }
+
+    /// Removes and returns the label (`----:com.apple.iTunes:LABEL`).
+    pub fn take_label(&mut self) -> Option<String> {
+        self.take_strings_of(&ident::LABEL).next()
+    }
+
+    /// Sets the label (`----:com.apple.iTunes:LABEL`).
+    pub fn set_label(&mut self, label: impl Into<String>) {
+        self.set_data(ident::LABEL, Data::Utf8(label.into()));
+    }
+
+    /// Removes the label (`----:com.apple.iTunes:LABEL`).
+    pub fn remove_label(&mut self) {
+        self.remove_data_of(&ident::LABEL);
+    }
+
+    /// Returns the label formatted in an easily readable way.
+    #[allow(unused)]
+    pub(crate) fn format_label(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.label() {
+            Some(s) => writeln!(f, "label: {}", s),
+            None => Ok(()),
+        }
+    }
+}
+
 /// ### Album sort order
 impl Userdata {
     /// Returns the album sort order (`soal`).
