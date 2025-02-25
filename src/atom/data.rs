@@ -91,7 +91,7 @@ const AFFINE_TRANSFORM_F64: u32 = 79;
 #[derive(Clone, PartialEq, Eq)]
 pub enum Data {
     /// Reserved for use where no type needs to be indicated.
-    /// This is opten used for track/disc numbers and standard genre codes.
+    /// This is often used for track/disc numbers and standard genre codes.
     Reserved(Vec<u8>),
     /// A utf-8 encoded string.
     Utf8(String),
@@ -107,7 +107,7 @@ pub enum Data {
     /// formats for all kinds of image data.
     Bmp(Vec<u8>),
     /// A big-endian signed integer.
-    /// This is opten used for track/disc numbers and standard genre codes.
+    /// This is often used for track/disc numbers and standard genre codes.
     BeSigned(Vec<u8>),
     /// A value containing an unknown data type code and data.
     Unknown {
