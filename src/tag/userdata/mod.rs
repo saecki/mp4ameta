@@ -1,11 +1,12 @@
 use std::convert::TryFrom;
 use std::fmt;
-use std::fs::{File, OpenOptions};
+use std::fs::OpenOptions;
 use std::path::Path;
 
 use crate::{
-    AdvisoryRating, Chapter, Data, DataIdent, Ident, Img, ImgBuf, ImgFmt, ImgMut, ImgRef,
-    MediaType, MetaItem, WriteConfig, atom, ident,
+    atom::{self, GenericFile},
+    ident, AdvisoryRating, Chapter, Data, DataIdent, Ident, Img, ImgBuf, ImgFmt, ImgMut, ImgRef,
+    MediaType, MetaItem, WriteConfig,
 };
 
 pub use genre::*;
@@ -25,20 +26,20 @@ pub struct Userdata {
 
 impl Userdata {
     /// Attempts to write the MPEG-4 audio tag to the writer.
-    pub fn write_with(&self, file: &File, cfg: &WriteConfig) -> crate::Result<()> {
+    pub fn write_with(&self, file: &mut impl GenericFile, cfg: &WriteConfig) -> crate::Result<()> {
         atom::write_tag(file, cfg, self)
     }
 
     /// Attempts to write the MPEG-4 audio tag to the writer. This will overwrite any metadata
     /// previously present on the file.
-    pub fn write_to(&self, file: &File) -> crate::Result<()> {
+    pub fn write_to(&self, file: &mut impl GenericFile) -> crate::Result<()> {
         self.write_with(file, &WriteConfig::DEFAULT)
     }
 
     /// Attempts to write the MPEG-4 audio tag to the path.
     pub fn write_with_path(&self, path: impl AsRef<Path>, cfg: &WriteConfig) -> crate::Result<()> {
-        let file = OpenOptions::new().read(true).write(true).open(path)?;
-        self.write_with(&file, cfg)
+        let mut file = OpenOptions::new().read(true).write(true).open(path)?;
+        self.write_with(&mut file, cfg)
     }
 
     /// Attempts to write the MPEG-4 audio tag to the path. This will overwrite any metadata
@@ -203,7 +204,11 @@ impl Userdata {
     /// Returns either the chapter list or the chapter track.
     /// The chapter list is preferred.
     pub fn chapters(&self) -> &[Chapter] {
-        if !self.chapter_list.is_empty() { self.chapter_list() } else { self.chapter_track() }
+        if !self.chapter_list.is_empty() {
+            self.chapter_list()
+        } else {
+            self.chapter_track()
+        }
     }
 
     /// Returns either the chapter list or the chapter track.

@@ -45,7 +45,7 @@
 use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::fs::File;
-use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
+use std::io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom, Write};
 use std::num::NonZeroU32;
 use std::ops::Deref;
 
@@ -55,7 +55,7 @@ use change::{
     AtomRef, Change, ChunkOffsetInt, ChunkOffsets, CollectChanges, LeafAtomCollectChanges,
     SimpleCollectChanges, UpdateAtomLen, UpdateChunkOffsets,
 };
-use head::{AtomBounds, Head, Size, find_bounds};
+use head::{find_bounds, AtomBounds, Head, Size};
 use ident::*;
 use state::State;
 use util::*;
@@ -635,8 +635,29 @@ struct MovedData {
     data: Vec<u8>,
 }
 
-pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> crate::Result<()> {
-    let mut reader = BufReader::new(file);
+pub trait GenericFile: Read + Write + Seek {
+    fn set_len(&mut self, new_size: u64) -> crate::Result<()>;
+}
+
+impl GenericFile for File {
+    fn set_len(&mut self, new_size: u64) -> crate::Result<()> {
+        Ok(std::fs::File::set_len(self, new_size)?)
+    }
+}
+
+impl GenericFile for Cursor<Vec<u8>> {
+    fn set_len(&mut self, new_size: u64) -> crate::Result<()> {
+        self.get_mut().resize(new_size as usize, 0);
+        Ok(())
+    }
+}
+
+pub(crate) fn write_tag(
+    file: &mut impl GenericFile,
+    cfg: &WriteConfig,
+    userdata: &Userdata,
+) -> crate::Result<()> {
+    let mut reader = BufReader::new(&mut *file);
 
     let old_file_len = reader.seek(SeekFrom::End(0))?;
     reader.seek(SeekFrom::Start(0))?;
