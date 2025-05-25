@@ -4,10 +4,10 @@ use std::fs::OpenOptions;
 use std::path::Path;
 
 use crate::{
-    atom::{self, StorageFile},
-    ident, AdvisoryRating, Chapter, Data, DataIdent, Ident, Img, ImgBuf, ImgFmt, ImgMut, ImgRef,
-    MediaType, MetaItem, WriteConfig,
+    AdvisoryRating, Chapter, Data, DataIdent, Ident, Img, ImgBuf, ImgFmt, ImgMut, ImgRef,
+    MediaType, MetaItem, WriteConfig, atom, ident,
 };
+use atom::StorageFile;
 
 pub use genre::*;
 
@@ -204,11 +204,7 @@ impl Userdata {
     /// Returns either the chapter list or the chapter track.
     /// The chapter list is preferred.
     pub fn chapters(&self) -> &[Chapter] {
-        if !self.chapter_list.is_empty() {
-            self.chapter_list()
-        } else {
-            self.chapter_track()
-        }
+        if !self.chapter_list.is_empty() { self.chapter_list() } else { self.chapter_track() }
     }
 
     /// Returns either the chapter list or the chapter track.
