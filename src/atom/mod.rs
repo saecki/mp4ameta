@@ -635,17 +635,23 @@ struct MovedData {
     data: Vec<u8>,
 }
 
-pub trait GenericFile: Read + Write + Seek {
+/// A trait representing a file-like reader/writer.
+///
+/// This trait is the combination of the [`std::io`]
+/// stream traits with an additional method to resize the file.
+pub trait StorageFile: Read + Write + Seek {
+    /// Resize the file. This method behaves the same as
+    /// [`File::set_len`](std::fs::File::set_len).
     fn set_len(&mut self, new_size: u64) -> crate::Result<()>;
 }
 
-impl GenericFile for File {
+impl StorageFile for File {
     fn set_len(&mut self, new_size: u64) -> crate::Result<()> {
         Ok(std::fs::File::set_len(self, new_size)?)
     }
 }
 
-impl GenericFile for Cursor<Vec<u8>> {
+impl StorageFile for Cursor<Vec<u8>> {
     fn set_len(&mut self, new_size: u64) -> crate::Result<()> {
         self.get_mut().resize(new_size as usize, 0);
         Ok(())
@@ -653,7 +659,7 @@ impl GenericFile for Cursor<Vec<u8>> {
 }
 
 pub(crate) fn write_tag(
-    file: &mut impl GenericFile,
+    file: &mut impl StorageFile,
     cfg: &WriteConfig,
     userdata: &Userdata,
 ) -> crate::Result<()> {
