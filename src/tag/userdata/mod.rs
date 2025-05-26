@@ -5,9 +5,8 @@ use std::path::Path;
 
 use crate::{
     AdvisoryRating, Chapter, Data, DataIdent, Ident, Img, ImgBuf, ImgFmt, ImgMut, ImgRef,
-    MediaType, MetaItem, WriteConfig, atom, ident,
+    MediaType, MetaItem, StorageFile, WriteConfig, atom, ident,
 };
-use atom::StorageFile;
 
 pub use genre::*;
 
