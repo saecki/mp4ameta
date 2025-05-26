@@ -45,7 +45,7 @@
 use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::fs::File;
-use std::io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
+use std::io::{BufReader, BufWriter, Cursor, Read, Seek, SeekFrom, Write};
 use std::num::NonZeroU32;
 use std::ops::Deref;
 
@@ -635,8 +635,35 @@ struct MovedData {
     data: Vec<u8>,
 }
 
-pub(crate) fn write_tag(file: &File, cfg: &WriteConfig, userdata: &Userdata) -> crate::Result<()> {
-    let mut reader = BufReader::new(file);
+/// A trait representing a file-like reader/writer.
+///
+/// This trait is the combination of the [`std::io`]
+/// stream traits with an additional method to resize the file.
+pub trait StorageFile: Read + Write + Seek {
+    /// Resize the file. This method behaves the same as
+    /// [`File::set_len`](std::fs::File::set_len).
+    fn set_len(&mut self, new_size: u64) -> crate::Result<()>;
+}
+
+impl StorageFile for File {
+    fn set_len(&mut self, new_size: u64) -> crate::Result<()> {
+        Ok(std::fs::File::set_len(self, new_size)?)
+    }
+}
+
+impl StorageFile for Cursor<Vec<u8>> {
+    fn set_len(&mut self, new_size: u64) -> crate::Result<()> {
+        self.get_mut().resize(new_size as usize, 0);
+        Ok(())
+    }
+}
+
+pub(crate) fn write_tag(
+    file: &mut impl StorageFile,
+    cfg: &WriteConfig,
+    userdata: &Userdata,
+) -> crate::Result<()> {
+    let mut reader = BufReader::new(&mut *file);
 
     let old_file_len = reader.seek(SeekFrom::End(0))?;
     reader.seek(SeekFrom::Start(0))?;
