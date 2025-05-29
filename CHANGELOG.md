@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [unreleased]
+## mp4ameta v0.13.0
 
 - Add label accessors (`----:com.apple.iTunes:LABEL`)
 - Make write_to function generic over a StorageFile trait

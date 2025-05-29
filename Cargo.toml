@@ -1,6 +1,6 @@
 [package]
 name = "mp4ameta"
-version = "0.12.1"
+version = "0.13.0"
 authors = ["Saecki <tobiasschmitz2001@gmail.com>"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
