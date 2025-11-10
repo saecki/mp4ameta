@@ -132,17 +132,21 @@ impl WriteAtom for Tkhd {
 
         match self.version {
             0 => {
-                let mut buf = TkhdBufV0::default();
-                buf.id = u32::to_be_bytes(self.id);
-                buf.duration = u32::to_be_bytes(self.duration as u32);
-                buf.matrix = MATRIX;
+                let mut buf = TkhdBufV0 {
+                    id: u32::to_be_bytes(self.id),
+                    duration: u32::to_be_bytes(self.duration as u32),
+                    matrix: MATRIX,
+                    ..Default::default()
+                };
                 writer.write_all(buf.bytes_mut())?;
             }
             1 => {
-                let mut buf = TkhdBufV1::default();
-                buf.id = u32::to_be_bytes(self.id);
-                buf.duration = u64::to_be_bytes(self.duration);
-                buf.matrix = MATRIX;
+                let mut buf = TkhdBufV1 {
+                    id: u32::to_be_bytes(self.id),
+                    duration: u64::to_be_bytes(self.duration),
+                    matrix: MATRIX,
+                    ..Default::default()
+                };
                 writer.write_all(buf.bytes_mut())?;
             }
             v => {

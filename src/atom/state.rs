@@ -1,7 +1,7 @@
 use crate::atom::head::AtomBounds;
 
 /// The state of an atom.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub enum State {
     /// The atom already exists. Contains the current bounds the atom.
     Existing(AtomBounds),
@@ -10,13 +10,8 @@ pub enum State {
     /// The atom already existed and will be removed. Contains the old bounds the atom.
     Remove(AtomBounds),
     /// The atom will be added.
+    #[default]
     Insert,
-}
-
-impl Default for State {
-    fn default() -> Self {
-        Self::Insert
-    }
 }
 
 impl State {

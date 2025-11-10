@@ -1210,7 +1210,7 @@ impl Userdata {
     /// tag.set_data(test, Data::Utf8("data".into()));
     /// assert_eq!(tag.strings_of(&test).next().unwrap(), "data");
     /// ```
-    pub fn set_data(&mut self, ident: (impl Ident + Into<DataIdent>), data: Data) {
+    pub fn set_data(&mut self, ident: impl Ident + Into<DataIdent>, data: Data) {
         match self.meta_items.iter_mut().find(|a| ident == a.ident) {
             Some(a) => {
                 a.data.clear();
@@ -1243,7 +1243,7 @@ impl Userdata {
     /// ```
     pub fn set_all_data(
         &mut self,
-        ident: (impl Ident + Into<DataIdent>),
+        ident: impl Ident + Into<DataIdent>,
         data: impl IntoIterator<Item = Data>,
     ) {
         match self.meta_items.iter_mut().find(|a| ident == a.ident) {
@@ -1275,7 +1275,7 @@ impl Userdata {
     /// assert_eq!(strings.next(), Some("data2"));
     /// assert_eq!(strings.next(), None)
     /// ```
-    pub fn add_data(&mut self, ident: (impl Ident + Into<DataIdent>), data: Data) {
+    pub fn add_data(&mut self, ident: impl Ident + Into<DataIdent>, data: Data) {
         match self.meta_items.iter_mut().find(|a| ident == a.ident) {
             Some(a) => a.data.push(data),
             None => self.meta_items.push(MetaItem::new(ident.into(), vec![data])),
@@ -1305,7 +1305,7 @@ impl Userdata {
     /// ```
     pub fn add_all_data(
         &mut self,
-        ident: (impl Ident + Into<DataIdent>),
+        ident: impl Ident + Into<DataIdent>,
         data: impl IntoIterator<Item = Data>,
     ) {
         match self.meta_items.iter_mut().find(|a| ident == a.ident) {

@@ -113,17 +113,21 @@ impl WriteAtom for Mdhd {
 
         match self.version {
             0 => {
-                let mut buf = MdhdBufV0::default();
-                buf.timescale = u32::to_be_bytes(self.timescale);
-                buf.duration = u32::to_be_bytes(self.duration as u32);
-                buf.language = u16::to_be_bytes(UNSPECIFIED_LANGUAGE);
+                let mut buf = MdhdBufV0 {
+                    timescale: u32::to_be_bytes(self.timescale),
+                    duration: u32::to_be_bytes(self.duration as u32),
+                    language: u16::to_be_bytes(UNSPECIFIED_LANGUAGE),
+                    ..Default::default()
+                };
                 writer.write_all(buf.bytes_mut())?;
             }
             1 => {
-                let mut buf = MdhdBufV1::default();
-                buf.timescale = u32::to_be_bytes(self.timescale);
-                buf.duration = u64::to_be_bytes(self.duration);
-                buf.language = u16::to_be_bytes(UNSPECIFIED_LANGUAGE);
+                let mut buf = MdhdBufV1 {
+                    timescale: u32::to_be_bytes(self.timescale),
+                    duration: u64::to_be_bytes(self.duration),
+                    language: u16::to_be_bytes(UNSPECIFIED_LANGUAGE),
+                    ..Default::default()
+                };
                 writer.write_all(buf.bytes_mut())?;
             }
             v => {

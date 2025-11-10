@@ -361,20 +361,17 @@ pub(crate) fn read_tag(reader: &mut (impl Read + Seek), cfg: &ReadConfig) -> cra
 
     // chapter list atom
     let mut chapter_list = Vec::new();
-    if cfg.read_chapter_list {
-        if let Some(mut chpl) = moov.udta.and_then(|a| a.chpl).and_then(|a| a.into_owned()) {
-            let chpl_timescale = cfg.chpl_timescale.fixed_or_mvhd(mvhd.timescale);
+    if cfg.read_chapter_list
+        && let Some(udta) = moov.udta
+        && let Some(mut chpl) = udta.chpl.and_then(Chpl::into_owned)
+    {
+        let chpl_timescale = cfg.chpl_timescale.fixed_or_mvhd(mvhd.timescale);
 
-            chpl.sort_by_key(|c| c.start);
-            chapter_list.reserve(chpl.len());
-
-            for c in chpl {
-                chapter_list.push(Chapter {
-                    start: scale_duration(chpl_timescale, c.start),
-                    title: c.title,
-                });
-            }
-        }
+        chpl.sort_by_key(|c| c.start);
+        chapter_list.extend(chpl.into_iter().map(|c| Chapter {
+            start: scale_duration(chpl_timescale, c.start),
+            title: c.title,
+        }));
     }
 
     // chapter tracks
@@ -731,21 +728,21 @@ pub(crate) fn write_tag(
             continue;
         };
 
-        if let Some(co64) = &stbl.co64 {
-            if let State::Existing(bounds) = &co64.state {
-                let offsets = co64.offsets.get_or_read(&mut reader)?;
-                let offsets = ChunkOffsets::Co64(offsets);
-                let update = UpdateChunkOffsets { bounds, offsets };
-                changes.push(Change::UpdateChunkOffset(update));
-            }
+        if let Some(co64) = &stbl.co64
+            && let State::Existing(bounds) = &co64.state
+        {
+            let offsets = co64.offsets.get_or_read(&mut reader)?;
+            let offsets = ChunkOffsets::Co64(offsets);
+            let update = UpdateChunkOffsets { bounds, offsets };
+            changes.push(Change::UpdateChunkOffset(update));
         }
-        if let Some(stco) = &stbl.stco {
-            if let State::Existing(bounds) = &stco.state {
-                let offsets = stco.offsets.get_or_read(&mut reader)?;
-                let offsets = ChunkOffsets::Stco(offsets);
-                let update = UpdateChunkOffsets { bounds, offsets };
-                changes.push(Change::UpdateChunkOffset(update));
-            }
+        if let Some(stco) = &stbl.stco
+            && let State::Existing(bounds) = &stco.state
+        {
+            let offsets = stco.offsets.get_or_read(&mut reader)?;
+            let offsets = ChunkOffsets::Stco(offsets);
+            let update = UpdateChunkOffsets { bounds, offsets };
+            changes.push(Change::UpdateChunkOffset(update));
         }
     }
 

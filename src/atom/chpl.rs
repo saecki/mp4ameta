@@ -1,6 +1,6 @@
 use super::*;
 
-pub const DEFAULT_TIMESCALE: NonZeroU32 = unsafe { NonZeroU32::new_unchecked(10_000_000) };
+pub const DEFAULT_TIMESCALE: NonZeroU32 = NonZeroU32::new(10_000_000).unwrap();
 
 pub const HEADER_SIZE_V0: u64 = 5;
 pub const HEADER_SIZE_V1: u64 = 9;

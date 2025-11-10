@@ -19,7 +19,7 @@ impl ParseAtom for Chap {
         size: Size,
     ) -> crate::Result<Self> {
         let bounds = find_bounds(reader, size)?;
-        if size.content_len() % 4 != 0 {
+        if !size.content_len().is_multiple_of(4) {
             return Err(crate::Error::new(
                 ErrorKind::InvalidAtomSize,
                 "Chapter reference (chap) atom size is not a multiple of 4",
