@@ -61,6 +61,7 @@ impl fmt::Display for Tag {
         self.format_keywords(f)?;
         self.format_copyright(f)?;
         self.format_encoder(f)?;
+        self.format_publisher(f)?;
         self.format_tv_show_name(f)?;
         self.format_tv_show_name_sort_order(f)?;
         self.format_tv_network_name(f)?;
