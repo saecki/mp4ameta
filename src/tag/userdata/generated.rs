@@ -164,6 +164,38 @@ impl Userdata {
     }
 }
 
+/// ### Publisher
+impl Userdata {
+    /// Returns the publisher (`©pub`).
+    pub fn publisher(&self) -> Option<&str> {
+        self.strings_of(&ident::PUBLISHER).next()
+    }
+
+    /// Removes and returns the publisher (`©pub`).
+    pub fn take_publisher(&mut self) -> Option<String> {
+        self.take_strings_of(&ident::PUBLISHER).next()
+    }
+
+    /// Sets the publisher (`©pub`).
+    pub fn set_publisher(&mut self, publisher: impl Into<String>) {
+        self.set_data(ident::PUBLISHER, Data::Utf8(publisher.into()));
+    }
+
+    /// Removes the publisher (`©pub`).
+    pub fn remove_publisher(&mut self) {
+        self.remove_data_of(&ident::PUBLISHER);
+    }
+
+    /// Returns the publisher formatted in an easily readable way.
+    #[allow(unused)]
+    pub(crate) fn format_publisher(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.publisher() {
+            Some(s) => writeln!(f, "publisher: {}", s),
+            None => Ok(()),
+        }
+    }
+}
+
 /// ### Title
 impl Userdata {
     /// Returns the title (`©nam`).

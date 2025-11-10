@@ -107,6 +107,8 @@ pub const CUSTOM_GENRE: Fourcc = Fourcc(*b"\xa9gen");
 pub const DISC_NUMBER: Fourcc = Fourcc(*b"disk");
 /// (`©too`)
 pub const ENCODER: Fourcc = Fourcc(*b"\xa9too");
+/// (`©pub`)
+pub const PUBLISHER: Fourcc = Fourcc(*b"\xa9pub");
 /// (`gnre`)
 pub const STANDARD_GENRE: Fourcc = Fourcc(*b"gnre");
 /// (`©nam`)
