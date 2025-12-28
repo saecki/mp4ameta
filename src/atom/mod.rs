@@ -642,13 +642,32 @@ pub trait StorageFile: Read + Write + Seek {
     fn set_len(&mut self, new_size: u64) -> crate::Result<()>;
 }
 
+impl<T: StorageFile> StorageFile for &mut T {
+    fn set_len(&mut self, new_size: u64) -> crate::Result<()> {
+        T::set_len(self, new_size)
+    }
+}
+
 impl StorageFile for File {
     fn set_len(&mut self, new_size: u64) -> crate::Result<()> {
         Ok(std::fs::File::set_len(self, new_size)?)
     }
 }
 
+impl StorageFile for &File {
+    fn set_len(&mut self, new_size: u64) -> crate::Result<()> {
+        Ok(std::fs::File::set_len(self, new_size)?)
+    }
+}
+
 impl StorageFile for Cursor<Vec<u8>> {
+    fn set_len(&mut self, new_size: u64) -> crate::Result<()> {
+        self.get_mut().resize(new_size as usize, 0);
+        Ok(())
+    }
+}
+
+impl StorageFile for Cursor<&mut Vec<u8>> {
     fn set_len(&mut self, new_size: u64) -> crate::Result<()> {
         self.get_mut().resize(new_size as usize, 0);
         Ok(())
