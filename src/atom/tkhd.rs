@@ -17,7 +17,7 @@ const MATRIX: [[[u8; 4]; 3]; 3] = [
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Tkhd {
     pub version: u8,
-    pub flags: [u8; 3],
+    pub flags: Flags,
     pub id: u32,
     /// The duration in mvhd timescale units
     pub duration: u64,
@@ -71,6 +71,13 @@ impl TkhdBufV1 {
         // SAFETY: alignment and size match because all fields are byte arrays
         unsafe { std::mem::transmute(self) }
     }
+}
+
+impl Tkhd {
+    /// Indicates that the track is enabled.
+    pub const FLAG_ENABLED: Flags = Flags([0, 0, 0x1]);
+    /// Indicates that the track is enabled.
+    pub const FLAG_IN_MOVIE: Flags = Flags([0, 0, 0x2]);
 }
 
 impl Atom for Tkhd {

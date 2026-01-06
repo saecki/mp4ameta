@@ -11,7 +11,7 @@ const_assert!(std::mem::size_of::<MvhdBufV1>() == BUF_SIZE_V1);
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Mvhd {
     pub version: u8,
-    pub flags: [u8; 3],
+    pub flags: Flags,
     pub timescale: u32,
     pub duration: u64,
 }

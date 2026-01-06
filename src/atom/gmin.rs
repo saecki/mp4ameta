@@ -4,7 +4,7 @@ use super::*;
 pub struct Gmin {
     pub state: State,
     pub version: u8,
-    pub flags: [u8; 3],
+    pub flags: Flags,
     pub graphics_mode: u16,
     pub op_color: [u16; 3],
     pub balance: u16,
@@ -81,7 +81,7 @@ impl Gmin {
         Self {
             state: State::Insert,
             version: 0,
-            flags: [0; 3],
+            flags: Flags::ZERO,
             graphics_mode: 0x0040,
             op_color: [0x8000; 3],
             balance: 0,

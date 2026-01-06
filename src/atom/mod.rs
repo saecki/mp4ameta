@@ -55,7 +55,7 @@ use change::{
     AtomRef, Change, ChunkOffsetInt, ChunkOffsets, CollectChanges, LeafAtomCollectChanges,
     SimpleCollectChanges, UpdateAtomLen, UpdateChunkOffsets,
 };
-use head::{AtomBounds, Head, Size, find_bounds};
+use head::{AtomBounds, Flags, Head, Size, find_bounds};
 use ident::*;
 use state::State;
 use util::*;
@@ -914,19 +914,11 @@ fn update_userdata<'a>(
 
             // remove all chap track references
             for trak in moov.trak.iter_mut() {
-                let Some(tref) = &mut trak.tref else {
-                    continue;
-                };
-                let State::Existing(tref_bounds) = &tref.state else {
-                    continue;
-                };
+                let Some(tref) = &mut trak.tref else { continue };
+                let State::Existing(tref_bounds) = &tref.state else { continue };
 
-                let Some(chap) = &mut tref.chap else {
-                    continue;
-                };
-                let State::Existing(chap_bounds) = &chap.state else {
-                    continue;
-                };
+                let Some(chap) = &mut tref.chap else { continue };
+                let State::Existing(chap_bounds) = &chap.state else { continue };
 
                 if tref_bounds.content_len() == chap_bounds.len() {
                     tref.state.remove_existing();
@@ -993,11 +985,23 @@ fn update_userdata<'a>(
                 // add chapter track
                 moov.trak.push_and_get(Trak {
                     state: State::Insert,
-                    tkhd: Tkhd { version: 0, flags: [0, 0, 0], id: new_id, duration },
+                    tkhd: Tkhd {
+                        version: 0,
+                        flags: Flags::ZERO,
+                        id: new_id,
+                        duration,
+                    },
                     ..Default::default()
                 })
             }
         };
+
+        // https://developer.apple.com/documentation/quicktime-file-format/chapter_lists/
+        // > The text track that constitutes the chapter list does not need to be enabled, and
+        // > normally is not. If it is enabled, the text track will be displayed as part of the movie,
+        // > just like any other text track, in addition to functioning as a chapter list.
+        chapter_trak.tkhd.flags &= Tkhd::FLAG_ENABLED;
+        chapter_trak.tkhd.flags |= Tkhd::FLAG_IN_MOVIE;
 
         let mdia = chapter_trak.mdia.get_or_insert_with(|| Mdia {
             state: State::Insert,

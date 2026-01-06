@@ -63,7 +63,7 @@ impl AtomSize for Stsz {
 impl WriteAtom for Stsz {
     fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
-        head::write_full(writer, 0, [0; 3])?;
+        head::write_full(writer, 0, Flags::ZERO)?;
 
         writer.write_be_u32(self.uniform_sample_size)?;
         writer.write_be_u32(self.sizes.len() as u32)?;

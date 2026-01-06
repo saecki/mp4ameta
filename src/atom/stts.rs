@@ -56,7 +56,7 @@ impl AtomSize for Stts {
 impl WriteAtom for Stts {
     fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
-        head::write_full(writer, 0, [0; 3])?;
+        head::write_full(writer, 0, Flags::ZERO)?;
 
         writer.write_be_u32(self.items.len() as u32)?;
         match &self.items {

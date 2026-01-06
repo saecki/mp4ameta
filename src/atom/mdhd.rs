@@ -13,7 +13,7 @@ const UNSPECIFIED_LANGUAGE: u16 = i16::MAX as u16;
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Mdhd {
     pub version: u8,
-    pub flags: [u8; 3],
+    pub flags: Flags,
     pub timescale: u32,
     pub duration: u64,
 }

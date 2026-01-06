@@ -165,13 +165,62 @@ pub fn write(writer: &mut impl Write, head: Head) -> crate::Result<()> {
     Ok(())
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Flags(pub [u8; 3]);
+
+impl Flags {
+    pub const ZERO: Self = Self([0; 3]);
+}
+
+impl std::ops::Deref for Flags {
+    type Target = [u8; 3];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for Flags {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl std::ops::BitOr for Flags {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self::Output {
+        Self([self[0] | rhs[0], self[1] | rhs[1], self[2] | rhs[2]])
+    }
+}
+
+impl std::ops::BitOrAssign for Flags {
+    fn bitor_assign(&mut self, rhs: Self) {
+        *self = *self | rhs;
+    }
+}
+
+impl std::ops::BitAnd for Flags {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        Self([self[0] & rhs[0], self[1] & rhs[1], self[2] & rhs[2]])
+    }
+}
+
+impl std::ops::BitAndAssign for Flags {
+    fn bitand_assign(&mut self, rhs: Self) {
+        *self = *self & rhs;
+    }
+}
+
 /// Attempts to parse a full atom head.
 ///
 /// ```md
 /// 1 byte version
 /// 3 bytes flags
 /// ```
-pub fn parse_full(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
+pub fn parse_full(reader: &mut impl Read) -> crate::Result<(u8, Flags)> {
     let mut buf = [0; 4];
     reader.read_exact(&mut buf).map_err(|e| {
         crate::Error::new(
@@ -180,12 +229,12 @@ pub fn parse_full(reader: &mut impl Read) -> crate::Result<(u8, [u8; 3])> {
         )
     })?;
     let [version, flags @ ..] = buf;
-    Ok((version, flags))
+    Ok((version, Flags(flags)))
 }
 
-pub fn write_full(writer: &mut impl Write, version: u8, flags: [u8; 3]) -> crate::Result<()> {
+pub fn write_full(writer: &mut impl Write, version: u8, flags: Flags) -> crate::Result<()> {
     writer.write_all(&[version])?;
-    writer.write_all(&flags)?;
+    writer.write_all(flags.as_slice())?;
     Ok(())
 }
 
