@@ -89,7 +89,7 @@ impl AtomSize for Chpl<'_> {
                 v.iter().map(|c| ITEM_HEADER_SIZE + title_len(&c.title) as u64).sum::<u64>()
             }
         };
-        let content_len = HEADER_SIZE_V0 + data_len;
+        let content_len = HEADER_SIZE_V1 + data_len;
         Size::from(content_len)
     }
 }
@@ -97,7 +97,8 @@ impl AtomSize for Chpl<'_> {
 impl WriteAtom for Chpl<'_> {
     fn write_atom(&self, writer: &mut impl Write, _changes: &[Change<'_>]) -> crate::Result<()> {
         self.write_head(writer)?;
-        head::write_full(writer, 0, [0; 3])?;
+        head::write_full(writer, 1, [0; 3])?;
+        writer.write_all(&[0; 4])?;
 
         match &self.data {
             ChplData::Owned(v) => {
