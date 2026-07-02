@@ -3,7 +3,7 @@
 [![Crate](https://img.shields.io/crates/v/mp4ameta.svg)](https://crates.io/crates/mp4ameta)
 [![Documentation](https://img.shields.io/docsrs/mp4ameta?label=docs.rs)](https://docs.rs/mp4ameta)
 ![License](https://img.shields.io/crates/l/mp4ameta)
-![LOC](https://tokei.rs/b1/github/saecki/mp4ameta?category=code)
+[![Lines of code](https://img.shields.io/endpoint?url=https%3A%2F%2Ftokei.kojix2.net%2Fbadge%2Fgithub%2Fsaecki%2Fmp4ameta%2Flines)](https://tokei.kojix2.net/github/saecki/mp4ameta)
 
 A library for reading and writing iTunes style MPEG-4 audio metadata.
 Most commonly this kind of metadata is found inside `m4a` or `m4b` files but basically any `mp4` container supports it.

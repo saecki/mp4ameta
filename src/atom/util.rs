@@ -1,4 +1,4 @@
-use std::io::{self, Read, Seek, SeekFrom, Write};
+use std::io::{self, Read, Seek, Write};
 use std::time::Duration;
 
 use crate::ErrorKind;
@@ -82,7 +82,7 @@ impl<T: Read> ReadUtil for T {}
 
 pub trait SeekUtil: Seek {
     fn skip(&mut self, offset: i64) -> io::Result<()> {
-        self.seek(SeekFrom::Current(offset))?;
+        self.seek_relative(offset)?;
         Ok(())
     }
 }
