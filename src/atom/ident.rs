@@ -214,7 +214,7 @@ pub fn idents_match(a: &impl Ident, b: &impl Ident) -> bool {
 }
 
 /// A 4 byte atom identifier (four character code).
-#[derive(Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct Fourcc(pub [u8; 4]);
 
 impl Deref for Fourcc {
@@ -380,7 +380,7 @@ impl<'a> FreeformIdentBorrowed<'a> {
 
 /// The identifier used to store metadata inside an item list.
 /// Either a [`Fourcc`] or an freeform identifier.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum DataIdent {
     /// A standard identifier containing a 4 byte atom identifier.
     Fourcc(Fourcc),
