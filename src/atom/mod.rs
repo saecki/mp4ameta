@@ -940,8 +940,17 @@ fn update_userdata<'a>(
 
         // generate chapter track sample table
         let mut new_chapter_media_data = Vec::new();
-        let duration = moov.mvhd.duration;
-        let chapter_timescale = moov.mvhd.timescale;
+        let movie_duration = moov.mvhd.duration;
+        // An existing chapter track may run on a different clock than the
+        // movie header (e.g. a 44.1 kHz media timescale under a 600 Hz movie
+        // timescale). Regenerate its sample table in the track's own clock;
+        // using the movie timescale here rescales the chapter times on every
+        // write, compounding across passes. New tracks are created on the
+        // movie clock, matching Tkhd::duration below.
+        let (chapter_duration, chapter_timescale) = chapter_trak_idx
+            .and_then(|idx| moov.trak[idx].mdia.as_ref())
+            .map(|mdia| (mdia.mdhd.duration, mdia.mdhd.timescale))
+            .unwrap_or((movie_duration, moov.mvhd.timescale));
         let chunk_offsets = vec![mdat_bounds.end()];
         let mut sample_sizes = Vec::with_capacity(userdata.chapter_track.len());
         let mut time_to_samples = Vec::with_capacity(userdata.chapter_track.len());
@@ -954,7 +963,7 @@ fn update_userdata<'a>(
                 }
                 None => {
                     let start = unscale_duration(chapter_timescale, c.start);
-                    duration.saturating_sub(start)
+                    chapter_duration.saturating_sub(start)
                 }
             };
 
@@ -993,7 +1002,12 @@ fn update_userdata<'a>(
                 // add chapter track
                 moov.trak.push_and_get(Trak {
                     state: State::Insert,
-                    tkhd: Tkhd { version: 0, flags: [0, 0, 0], id: new_id, duration },
+                    tkhd: Tkhd {
+                        version: 0,
+                        flags: [0, 0, 0],
+                        id: new_id,
+                        duration: movie_duration,
+                    },
                     ..Default::default()
                 })
             }
@@ -1003,7 +1017,7 @@ fn update_userdata<'a>(
             state: State::Insert,
             mdhd: Mdhd {
                 timescale: chapter_timescale,
-                duration,
+                duration: chapter_duration,
                 ..Default::default()
             },
             ..Default::default()
